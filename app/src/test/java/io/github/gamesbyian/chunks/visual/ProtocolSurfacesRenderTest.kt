@@ -145,4 +145,37 @@ class ProtocolSurfacesRenderTest {
 
     @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
     @Test fun protocolAdd320At200Percent() = add(320, 2f, "320-200pct")
+    private fun addWithFileChoices(width: Int, scale: Float, name: String) {
+        val bytes = io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.build(
+            io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Request("Example Season", listOf(
+                io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(
+                    listOf("Season 1", "Example.S01E01.a-rather-long-episode-name.mkv"), 40_000L) {
+                    ByteArray(40_000).inputStream() },
+                io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(listOf("subtitles.srt"), 2_000L) {
+                    ByteArray(2_000) { 1 }.inputStream() }),
+                trackerTiers = emptyList(), pieceLength = 16 * 1024)).torrent
+        show(width, scale) {
+            ProtocolAddScreen(
+                profileId = "qb", clientLabel = "Seedbox qBittorrent",
+                createOperations = { ClientOperations(Fake(), 3, 1) },
+                destinationPicker = {},
+                sourceDraft = mutableStateOf(""),
+                reviewedTorrent = mutableStateOf<PendingLocalAdd?>(PendingLocalAdd(
+                    io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes), bytes)),
+                startState = mutableStateOf(false), attempt = ProtocolAddAttempt(),
+                attemptScope = MainScope(), onViewTransfer = {}
+            )
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_CHOICE).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".0").performClick()
+        rule.waitForIdle()
+        assertTouchTargetsAndWidth(width)
+        rule.onRoot().captureRoboImage("build/chunks-visual/protocol-add-files-$name.png")
+    }
+
+    @Test fun protocolAddFilePriorities412() = addWithFileChoices(412, 1f, "412-100pct")
+
+    @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
+    @Test fun protocolAddFilePriorities320At200Percent() = addWithFileChoices(320, 2f, "320-200pct")
 }

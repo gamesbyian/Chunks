@@ -161,14 +161,43 @@ internal data class ClientAddRequest(
      * index → reviewed relative path. Applied by the shared workflow while
      * the job is still stopped, before any requested Start.
      */
-    val skippedFiles: Map<Int, String> = emptyMap()
+    val skippedFiles: Map<Int, String> = emptyMap(),
+    /**
+     * Wanted files the person raised or lowered in the same review: metainfo
+     * index → reviewed path and a non-default level (Low or High). Applied
+     * together with [skippedFiles] while stopped, before any requested Start.
+     */
+    val filePriorities: Map<Int, ReviewedFilePriority> = emptyMap()
 ) {
     init {
         directory?.let { ClientHashes.requireDirectory(it) }
-        require(skippedFiles.isEmpty() || source is ClientAddSource.TorrentFile) {
+        require((skippedFiles.isEmpty() && filePriorities.isEmpty()) || source is ClientAddSource.TorrentFile) {
             "File choices need a reviewed .torrent layout"
         }
         require(skippedFiles.keys.all { it >= 0 } && skippedFiles.values.all { it.isNotBlank() })
+        require(filePriorities.keys.all { it >= 0 } && filePriorities.keys.none { it in skippedFiles }) {
+            "A file is either skipped or given a priority, not both"
+        }
+    }
+
+    val hasFileChoices: Boolean get() = skippedFiles.isNotEmpty() || filePriorities.isNotEmpty()
+
+    /** Every reviewed choice as the level the client must store: skipped → SKIP. */
+    val reviewedChoices: Map<Int, ReviewedFilePriority> get() =
+        skippedFiles.mapValues { (_, path) -> ReviewedFilePriority(path, ClientFilePriority.SKIP, allowSkip = true) } +
+            filePriorities
+}
+
+/** One reviewed file and the level chosen for it at Add (Low or High; SKIP only internally). */
+internal data class ReviewedFilePriority(
+    val path: String,
+    val priority: ClientFilePriority,
+    private val allowSkip: Boolean = false
+) {
+    init {
+        require(path.isNotBlank())
+        require(priority == ClientFilePriority.LOW || priority == ClientFilePriority.HIGH ||
+            (allowSkip && priority == ClientFilePriority.SKIP)) { "Only Low or High is a reviewed priority" }
     }
 }
 

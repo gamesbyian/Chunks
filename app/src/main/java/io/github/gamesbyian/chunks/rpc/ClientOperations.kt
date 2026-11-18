@@ -47,42 +47,50 @@ internal class ClientOperations(
     suspend fun files(hash: String): List<ClientFile> = client.files(ClientHashes.requireHash(hash))
 
     suspend fun add(request: ClientAddRequest): ClientOperationOutcome =
-        if (request.skippedFiles.isEmpty()) addOnce(request) else addWithFileChoices(request)
+        if (!request.hasFileChoices) addOnce(request) else addWithFileChoices(request)
 
     /**
-     * Reviewed file skips for every engine, one gated step at a time:
-     * stopped Add (verified) → the registered job's own layout must match the
-     * reviewed index AND path → skips (verified) → the requested Start. A
-     * failure after registration leaves the job stopped and is reported, never
-     * replayed; Start is never sent unless the skips were verified.
+     * Reviewed file choices (skips and Low/High) for every engine, one gated
+     * step at a time: stopped Add (verified) → the registered job's own layout
+     * must match the reviewed index AND path → ONE priorities write (verified)
+     * → the requested Start. A level the client cannot store is refused before
+     * any write, never silently mapped. A failure after registration leaves the
+     * job stopped and is reported, never replayed; Start is never sent unless
+     * the choices were verified.
      */
     private suspend fun addWithFileChoices(request: ClientAddRequest): ClientOperationOutcome {
         val hash = request.source.infoHash
-        val caps = try { session().capabilities } catch (e: CancellationException) { throw e }
+        val session = try { session() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
+        val caps = session.capabilities
         listOf(ClientCapability.ADD_STOPPED, ClientCapability.FILE_PRIORITIES).firstOrNull { it !in caps }?.let {
             return ClientOperationOutcome.Refused(hash, "Client does not support ${it.name} (needed for file choices)")
         }
+        request.filePriorities.values.map { it.priority }.firstOrNull { it !in session.filePriorities }?.let {
+            return ClientOperationOutcome.Refused(hash,
+                "This client cannot store ${it.name.lowercase()} file priority; nothing was added")
+        }
+        val reviewed = request.reviewedChoices
         if (ClientCapability.ADD_WITH_FILE_CHOICES in caps) {
-            // The client applies the skips inside its own Add; verify them here.
+            // The client applies the choices inside its own Add; verify them here.
             val added = addOnce(request)
             if (added is ClientOperationOutcome.Refused || added is ClientOperationOutcome.Uncertain) return added
-            return if (skipsObserved(hash, request.skippedFiles)) added
+            return if (choicesObserved(hash, reviewed)) added
             else ClientOperationOutcome.Pending(hash, (added as? ClientOperationOutcome.Verified)?.observed,
-                "Added; the skipped files were not confirmed")
+                "Added; the file choices were not confirmed")
         }
-        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap()))
+        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap(), filePriorities = emptyMap()))
         if (added !is ClientOperationOutcome.Verified) return added
         val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { null }
-        val matched = files?.let { ClientFileLayout.match(it, request.skippedFiles) }
+        files?.let { ClientFileLayout.match(it, reviewed.mapValues { (_, choice) -> choice.path }) }
             ?: return ClientOperationOutcome.Pending(hash, added.observed,
-                "Added stopped; its file list did not match the review, so no files were skipped and it was not started")
-        val skipped = setFilePriorities(hash, matched.associateWith { ClientFilePriority.SKIP })
-        if (skipped !is ClientOperationOutcome.Verified) return when (skipped) {
-            is ClientOperationOutcome.Uncertain -> skipped
+                "Added stopped; its file list did not match the review, so no file choices were applied and it was not started")
+        val applied = setFilePriorities(hash, reviewed.mapValues { (_, choice) -> choice.priority })
+        if (applied !is ClientOperationOutcome.Verified) return when (applied) {
+            is ClientOperationOutcome.Uncertain -> applied
             else -> ClientOperationOutcome.Pending(hash, added.observed,
-                "Added stopped; the skipped files were not confirmed, so it was not started")
+                "Added stopped; the file choices were not confirmed, so it was not started")
         }
         if (!request.startNow) return ClientOperationOutcome.Verified(hash, added.observed)
         return when (val started = setStarted(hash, true)) {
@@ -92,14 +100,14 @@ internal class ClientOperations(
         }
     }
 
-    private suspend fun skipsObserved(hash: String, reviewed: Map<Int, String>): Boolean {
+    private suspend fun choicesObserved(hash: String, reviewed: Map<Int, ReviewedFilePriority>): Boolean {
         repeat(readbackAttempts) { attempt ->
             if (attempt > 0) delay(readbackDelayMillis)
             val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { null } ?: return@repeat
-            val matched = ClientFileLayout.match(files, reviewed) ?: return false
+            ClientFileLayout.match(files, reviewed.mapValues { (_, choice) -> choice.path }) ?: return false
             val byIndex = files.associateBy { it.index }
-            if (matched.all { byIndex[it]?.priority == ClientFilePriority.SKIP }) return true
+            if (reviewed.all { (index, choice) -> byIndex[index]?.priority == choice.priority }) return true
         }
         return false
     }

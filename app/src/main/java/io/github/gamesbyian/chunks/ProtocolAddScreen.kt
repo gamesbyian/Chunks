@@ -161,6 +161,10 @@ internal fun ProtocolAddScreen(
         torrent?.let { runCatching { AddFileChoices.declared(it.preview) }.getOrNull() }
     }.takeIf { draft.isEmpty() }
     var skipped by remember(torrent?.preview?.infoHashV1) { mutableStateOf<Set<Int>>(emptySet()) }
+    // Reviewed Low/High per wanted file, for exactly this reviewed identity.
+    var levels by remember(torrent?.preview?.infoHashV1) {
+        mutableStateOf<Map<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>>(emptyMap())
+    }
     var fileChoiceOpen by remember(torrent?.preview?.infoHashV1) { mutableStateOf(false) }
     val canChooseFiles = ClientCapability.FILE_PRIORITIES in caps && ClientCapability.ADD_STOPPED in caps
     val chosenSkips = if (layout != null && canChooseFiles) skipped.filter { i -> layout.any { it.index == i } }.toSet()
@@ -196,7 +200,14 @@ internal fun ProtocolAddScreen(
             style = MaterialTheme.typography.bodySmall)
         if (layout != null && canChooseFiles) AddFileChoice(
             files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
-            onExpanded = { fileChoiceOpen = it }, onSkippedChange = { skipped = it })
+            onExpanded = { fileChoiceOpen = it },
+            // Only the levels this exact client stores (never a silent Low → Normal).
+            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
+                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
+                .filter { it in session?.filePriorities.orEmpty() },
+            priorities = levels.filterKeys { it !in chosenSkips },
+            onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
+            onSkippedChange = { skipped = it; levels = levels - it })
         else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
             "every file will download.", style = MaterialTheme.typography.bodySmall)
         // 2. Exact target (the shared picker).
@@ -233,7 +244,11 @@ internal fun ProtocolAddScreen(
                 // Frozen at the click: reviewed index → path for exactly these bytes.
                 val skips = if (frozen is ClientAddSource.TorrentFile) layout.orEmpty()
                     .filter { it.index in chosenSkips }.associate { it.index to it.path } else emptyMap()
-                val request = ClientAddRequest(frozen, folder, startState.value, skips)
+                val reviewedLevels = if (frozen is ClientAddSource.TorrentFile) layout.orEmpty()
+                    .filter { it.index !in chosenSkips && levels[it.index] != null }
+                    .associate { it.index to io.github.gamesbyian.chunks.rpc.ReviewedFilePriority(
+                        it.path, levels.getValue(it.index)) } else emptyMap()
+                val request = ClientAddRequest(frozen, folder, startState.value, skips, reviewedLevels)
                 if (!attempt.claim(profileId, frozen.infoHash)) return@Button
                 attemptScope.launch {
                     attempt.outcome = try { operations.add(request) } catch (cancel: CancellationException) {

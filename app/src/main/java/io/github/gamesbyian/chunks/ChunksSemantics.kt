@@ -56,6 +56,8 @@ internal object ChunksSemantics {
     const val REMOTE_FOLDER_NEW_DISABLED = "chunks.remote_folder.new.disabled"
     const val REMOTE_FOLDER_RENAME_UNAVAILABLE = "chunks.remote_folder.rename.unavailable"
     const val ADD_FILE_CHOICE = "chunks.add.file_choice"
+    /** Prefix; suffixed with ".<metainfo index>": one reviewed file's Add-time priority. */
+    const val ADD_FILE_PRIORITY = "chunks.add.file_priority"
     const val ADD_ORIGINAL_DELETE_PROMPT = "chunks.add.original_delete.prompt"
     const val ADD_ORIGINAL_DELETE_CONFIRM = "chunks.add.original_delete.confirm"
     const val ADD_FOREIGN_PARTIAL_REUSE = "chunks.add.foreign_partial.reuse"
