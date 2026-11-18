@@ -2654,7 +2654,12 @@ internal fun ConnectionScreen(
     delugeDaemonHostId: String = "",
     onDelugeDaemonHostId: (String) -> Unit = {},
     onConnectReadOnlyBackend: () -> Unit = {},
-    readOnlyBackendError: String? = null
+    readOnlyBackendError: String? = null,
+    readOnlySavedProfiles: List<RememberedRemoteProtocolProfiles.Profile> = emptyList(),
+    readOnlyConnectedProfileId: String? = null,
+    onViewReadOnlyProfile: (RememberedRemoteProtocolProfiles.Profile) -> Unit = {},
+    onRenameReadOnlyProfile: suspend (RememberedRemoteProtocolProfiles.Profile, String) -> Boolean = { _, _ -> false },
+    onForgetReadOnlyProfile: (RememberedRemoteProtocolProfiles.Profile) -> Unit = {}
 ) {
     // Submitting the form closes the keyboard, as forms conventionally do,
     // so the next screen's persistent footer is not waiting on an IME hide.
@@ -2714,8 +2719,10 @@ internal fun ConnectionScreen(
         showNewConnectionForm = false
         pendingForget = null
     }
-    LaunchedEffect(connectedSessionName) {
-        if (connectedSessionName != null) showNewConnectionForm = false
+    LaunchedEffect(connectedSessionName, readOnlyConnectedProfileId) {
+        if (connectedSessionName != null || readOnlyConnectedProfileId != null) {
+            showNewConnectionForm = false
+        }
     }
     LaunchedEffect(showNewConnectionForm, managedProfileId) { connectionList.scrollToItem(0) }
     // Reuse the exact existing verified Connect operation. No saved password or
@@ -2744,7 +2751,8 @@ internal fun ConnectionScreen(
             }
         }
         if (rosterVisible) {
-            if (savedProfiles.isEmpty() && connectedSessionName == null) item {
+            if (savedProfiles.isEmpty() && readOnlySavedProfiles.isEmpty() &&
+                readOnlyConnectedProfileId == null && connectedSessionName == null) item {
                     Card(colors = CardDefaults.cardColors(containerColor = Lilac)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Connect to a remote client", modifier = Modifier.semantics { heading() },
@@ -2779,6 +2787,36 @@ internal fun ConnectionScreen(
                         }
                     },
                     onManage = { managedProfileId = entry.id })
+            }
+            items(readOnlySavedProfiles, key = { "readonly-profile-" + it.id }) { profile ->
+                Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(profile.label, style = MaterialTheme.typography.titleMedium)
+                        val kindName = when (profile.backend) {
+                            RemoteBackendKind.TRANSMISSION -> "Transmission"
+                            RemoteBackendKind.QBITTORRENT -> "qBittorrent"
+                            RemoteBackendKind.DELUGE -> "Deluge"
+                            else -> "Remote client"
+                        }
+                        Text(kindName + " · " +
+                            if (readOnlyConnectedProfileId == profile.id) "Recently verified · viewing only"
+                            else "Saved connection · viewing only",
+                            style = MaterialTheme.typography.bodySmall)
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = { onViewReadOnlyProfile(profile) },
+                                enabled = !loading, modifier = cell.heightIn(min = 48.dp)
+                                    .testTag("protocol-profile-view-" + profile.id)) {
+                                Text("View transfers")
+                            }
+                            OutlinedButton(onClick = { managedProfileId = profile.id },
+                                modifier = cell.heightIn(min = 48.dp)
+                                    .testTag("protocol-profile-manage-" + profile.id)) {
+                                Text("Manage")
+                            }
+                        }
+                    }
+                }
             }
             if (error != null) item { Notice("Connection needs attention", error) }
         }
@@ -2864,7 +2902,8 @@ internal fun ConnectionScreen(
                 }
             }
         }
-        if (managedProfileId != null && savedProfiles.isNotEmpty()) {
+        if (managedProfileId != null &&
+            (savedProfiles.isNotEmpty() || readOnlySavedProfiles.isNotEmpty())) {
             /* Secondary profile settings, available independently of remembered-login preference. */
             item {
                 Text("Profile settings", style = MaterialTheme.typography.titleMedium)
@@ -2974,6 +3013,79 @@ internal fun ConnectionScreen(
                         configuredIds = listOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL) +
                             savedProfiles.map { io.github.gamesbyian.chunks.model.EnvironmentId(it.id) },
                         accessibilityLabel = profile.label + " on " + profile.address)
+                }
+            }
+        }
+        if (managedProfileId != null) {
+            items(readOnlySavedProfiles.filter { it.id == managedProfileId },
+                key = { "manage-readonly-profile-" + it.id }) { profile ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(profile.label, style = MaterialTheme.typography.titleMedium)
+                    Text("This connection can show transfers. Changing torrents isn't available yet.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = { onViewReadOnlyProfile(profile) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("View transfers")
+                    }
+                    if (pendingForget == profile.id) {
+                        Text("Forget this connection's saved login? Torrents are unchanged.",
+                            style = MaterialTheme.typography.bodySmall)
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = {
+                                pendingForget = null
+                                managedProfileId = null
+                                onForgetReadOnlyProfile(profile)
+                            }, enabled = !loading, modifier = cell.heightIn(min = 48.dp)) {
+                                Text("Forget connection")
+                            }
+                            OutlinedButton(onClick = { pendingForget = null },
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Cancel") }
+                        }
+                    } else {
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = {
+                                renameProfileId = profile.id
+                                renameDraft = profile.label
+                                renameNotice = null
+                            }, enabled = !loading && !renameBusy,
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Rename") }
+                            OutlinedButton(onClick = { pendingForget = profile.id },
+                                enabled = !loading && !renameBusy,
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Forget") }
+                        }
+                    }
+                    if (renameProfileId == profile.id) {
+                        OutlinedTextField(value = renameDraft, onValueChange = { renameDraft = it },
+                            label = { Text("Connection name") }, singleLine = true,
+                            modifier = Modifier.fillMaxWidth())
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = {
+                                if (!renameBusy) {
+                                    renameBusy = true
+                                    val name = renameDraft
+                                    renameScope.launch {
+                                        val saved = try { onRenameReadOnlyProfile(profile, name) }
+                                            catch (_: Exception) { false }
+                                        if (saved) renameProfileId = null
+                                        renameNotice = if (saved) "Name saved." else "Could not save the name."
+                                        renameBusy = false
+                                    }
+                                }
+                            }, enabled = !loading && !renameBusy &&
+                                RememberedRemoteProtocolProfiles.validLabel(renameDraft.trim()),
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Save") }
+                            OutlinedButton(onClick = { renameProfileId = null },
+                                enabled = !renameBusy,
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Cancel") }
+                        }
+                    }
+                    EnvironmentColourPreference(
+                        id = io.github.gamesbyian.chunks.model.EnvironmentId(profile.id),
+                        label = profile.label,
+                        configuredIds = listOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL) +
+                            (savedProfiles.map { io.github.gamesbyian.chunks.model.EnvironmentId(it.id) } +
+                                readOnlySavedProfiles.map { io.github.gamesbyian.chunks.model.EnvironmentId(it.id) }),
+                        accessibilityLabel = profile.label + " connection")
                 }
             }
         }
