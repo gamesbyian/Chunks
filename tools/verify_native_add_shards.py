@@ -69,7 +69,7 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
     # installed-protocol-client.yml.
     hashlib.sha256((
         "io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest" +
-        "\\0" + "transmissionConnectTransfersDetailsStartAndRemove").encode()).hexdigest(),
+        "\\0" + "protocolClientConnectTransfersDetailsAddAndRemove").encode()).hexdigest(),
     # Owner-authorized protected Seedhost Stop/Start of an existing transfer;
     # executes only in the manual seedhost-existing-stop-start-once.yml workflow.
     hashlib.sha256((
