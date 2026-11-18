@@ -154,9 +154,9 @@ internal class DelugeReadOnlyRpc(
     /** Authenticated web session cookie is scoped to this endpoint, never global. */
     private suspend fun login(): Pair<Boolean, String> {
         val result = call("auth.login", JSONArray().put(auth.password), 1, null)
-        if (result.status != 200) throw IOException("Deluge Web UI login refused")
+        if (result.status != 200) throw IOException("Deluge Web UI login refused (HTTP ${result.status})")
         val json = decode(result.body, 1)
-        if (json.opt("result") != true) throw IOException("Deluge Web UI login refused")
+        if (json.opt("result") != true) throw IOException("Deluge Web UI login refused (password rejected)")
         val sid = result.header("Set-Cookie").mapNotNull { value ->
             value.substringBefore(';').trim().takeIf { it.startsWith("_session_id=") }
                 ?.removePrefix("_session_id=")

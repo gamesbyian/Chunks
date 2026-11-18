@@ -84,6 +84,17 @@ class QBittorrentReadOnlyRpcTest {
         assertEquals("SID=$real", script.calls[1].cookie)
     }
 
+    /** Real Seedhost qBittorrent (2026-11-18, run 44218290539) answered login with 204 No Content. */
+    @Test fun noContentLoginWithOneSessionCookieIsAccepted() = runBlocking {
+        val script = Scripted(QBittorrentReadOnlyRpc.Response(204, "",
+            mapOf("Set-Cookie" to listOf("SID=$sid; HttpOnly; path=/"))), ok("v5.1.2"), ok("2.11.4"), ok("[]"))
+        assertEquals("v5.1.2", client(script).inspect().applicationVersion)
+        // 204 without a session cookie still never authorizes a read.
+        val noCookie = Scripted(QBittorrentReadOnlyRpc.Response(204, ""))
+        assertThrows(IOException::class.java) { runBlocking { client(noCookie).inspect() } }
+        assertEquals(1, noCookie.calls.size)
+    }
+
     @Test fun http200CanBeFailedLoginAndNeverAuthorizeRead() = runBlocking {
         val failed = listOf(
             QBittorrentReadOnlyRpc.Response(200, "Fails."),

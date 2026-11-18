@@ -111,7 +111,11 @@ internal class QBittorrentReadOnlyRpc(
         val response = wire.exchange(Request(
             endpoint("auth/login"), "POST", form.toByteArray(Charsets.UTF_8), origin, null
         ))
-        if (response.status != 200 || response.body.trim() != "Ok.") {
+        // qBittorrent <= 5.0 answers 200 "Ok."; newer releases answer 204 No
+        // Content. Either still needs exactly one valid SID cookie below.
+        val accepted = (response.status == 200 && response.body.trim() == "Ok.") ||
+            (response.status == 204 && response.body.isBlank())
+        if (!accepted) {
             // Fixed, credential-free reasons; 5.x answers failed logins 401.
             throw IOException("qBittorrent authentication refused (" + when {
                 response.status == 200 -> "credentials rejected"
