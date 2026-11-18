@@ -2,6 +2,15 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-18 UTC (later): Local on the port, Local ↔ remote Move, capability-aware routing (#1873)
+
+- **Real libtorrent, plain JVM:** `LocalClientInteropTest` 2/2 — shared journey on the bundled engine (stopped Add at a Place, duplicate refused, files, priorities incl. un-skip, Start → engine verified every piece → seeding, Stop, metainfo export, out-of-Place Add refused, Remove keeping files) and **job-only Move Local → real qBittorrent 4.6.3 and qBittorrent → Local**, each target downloading from the other over real BitTorrent via a loopback tracker (11 pieces each way, byte-identical files, source files kept after session-only retirement).
+- **Four-engine real-daemon ring** on the same head: Transmission → qBittorrent (magnet: metadata + pieces peer-to-peer), qBittorrent → rTorrent (exported .torrent), rTorrent → Deluge, Deluge → Transmission — every target downloaded from its source and verified 13 pieces. On loopback, rTorrent and Transmission do not dial each other directly (test-topology limitation, not a Chunks defect).
+- **Findings fixed while testing:** under Robolectric the engine's Android-only read probe applies (SDK_INT=35), so engine-backed tests must run as plain JVM; real `org.json` added test-only. Un-skipping a Local file needs "wanted" restored before a priority. Start immediately after a stopped Add over existing data must wait for the engine's existing-data check.
+- **Render inspection:** `ProtocolSurfacesRenderTest` (Roborazzi, native graphics) for Details controls + Move and protocol Add at 412dp/100% and 320dp/200%: all clickables ≥ 48dp, no horizontal overflow; at 320dp/200% the shared "Remove…" label wraps its ellipsis (deferred cosmetic).
+- **Full local JVM suite:** 2830 tests; only the 3 pre-existing JDK-21-local failures in untouched code.
+- **Not yet evidence:** protected live Seedhost cross-client Move (`seedhost-cross-client-move.yml`, needs merge); installed-app Local Move; physical device.
+
 ## 2026-11-18 UTC: shared write-capable client port, real daemons, live Seedhost
 
 - **Live Seedhost read-only (main `7441ab5`, #1861):** Transmission **accepted** (run 44215531718: challenged auth, complete inventory, 0 transfers, read-only capabilities). qBittorrent **red** (run 44215535596: `authentication refused`; qBittorrent 5.x answers 401 for both bad credentials and a proxied cross-site Origin mismatch). Deluge **red** (run 44215539330: Web UI `result=false`, i.e. that password secret is not the Web UI password). Fixes in #1862 (no Origin/Referer; explicit `credential_source`); reruns pending. First dispatch (44213127199, `2606a07`) sent no request (unmapped secrets).

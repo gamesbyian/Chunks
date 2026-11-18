@@ -19,7 +19,8 @@ import java.util.Locale
  * must reconcile read-only and never replay an uncertain write.
  */
 internal interface RemoteTorrentClient {
-    val kind: RemoteBackendKind
+    /** The remote protocol, or null for the bundled Local engine. */
+    val kind: RemoteBackendKind?
 
     /** Authenticated version/default-folder/capability probe (read-only). */
     suspend fun session(): ClientSessionInfo
@@ -64,7 +65,8 @@ internal enum class ClientCapability {
 }
 
 internal data class ClientSessionInfo(
-    val kind: RemoteBackendKind,
+    /** null = the bundled Local engine. */
+    val kind: RemoteBackendKind?,
     val version: String,
     /** Client-reported default; presentation and Add default only, not a verified Place. */
     val defaultDownloadDirectory: String?,

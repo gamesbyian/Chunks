@@ -13,6 +13,8 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RealClientInteropTest.kt"
       - "tools/interop/**"
       - ".github/workflows/real-client-interop.yml"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/LocalClientInteropTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
   push:
     branches: [main]
     paths:
@@ -69,6 +71,7 @@ jobs:
           set +e
           gradle --no-daemon --no-configuration-cache --console=plain :app:testDebugUnitTest \
             --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.LocalClientInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.RemoteClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
@@ -85,8 +88,22 @@ jobs:
           for line in (root.findtext("system-out") or "").splitlines():
               if line.startswith("CHUNKS_INTEROP:"):
                   print(line[:240])
+          local = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.LocalClientInteropTest.xml")
+          if not local.is_file():
+              print("CHUNKS_INTEROP: no Local receipt"); sys.exit(1)
+          lroot = ET.parse(local).getroot()
+          lfail = int(lroot.get("failures", 0)) + int(lroot.get("errors", 0))
+          print(f"CHUNKS_INTEROP: local tests={lroot.get('tests')} skipped={lroot.get('skipped')} failed={lfail}")
+          for line in (lroot.findtext("system-out") or "").splitlines():
+              if line.startswith("CHUNKS_INTEROP:"):
+                  print(line[:240])
+          if lfail or int(lroot.get("skipped", 0)) or int(lroot.get("tests", 0)) != 2:
+              sys.exit(1)
           # All four real daemons and the cross-engine Move ring must actually execute; a skip is not a pass.
-          sys.exit(0 if int(sys.argv[1]) == 0 and tests == 5 and skipped == 0 and failed == 0 else 1)
+          # Only the protected manual Seedhost Move case may skip here.
+          skipped_names = {c.get("name") for c in root.iter("testcase") if c.find("skipped") is not None}
+          ok_skips = skipped_names <= {"liveCrossClientJobMoveRegistersExactJob"}
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests - skipped == 5 and ok_skips and failed == 0 else 1)
           PY
       - name: Daemon logs on failure
         if: failure()
