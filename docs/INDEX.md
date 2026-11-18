@@ -2,7 +2,7 @@
 
 > **Universal Add client parity · 2026-11-16:** [One shared Add UX, architecture, status model and acceptance plan](design/UNIVERSAL-ADD-CLIENT-PARITY.md). Initial status-projection work does not yet establish the required app-owned navigation continuity, shared form or installed real-client parity.
 
-> **Next Claude handoff (2026-11-15):** [Preserved UI implementation, settings-registry integration, CI failures, and urgent intake work](CLAUDE-NEXT-HANDOFF-2026-11-15.md). #1785 remains draft and unaccepted; #1788 registry foundation is merged. Use WORK-QUEUE for priority and current live checks for status.
+> **Current executable Claude takeover (2026-11-17/18):** [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) directs the source-exact backend-first multi-protocol push. #1849–#1858 merged the read-only foundations; [draft #1859](https://github.com/gamesbyian/Chunks/pull/1859) preserves incomplete app-level caller wiring. Read [WORK-QUEUE](WORK-QUEUE.md) and [TECHNICAL-COMPLETENESS-LEDGER](TECHNICAL-COMPLETENESS-LEDGER.md), not an older snapshot, for implementation priority/status. [CLAUDE-NEXT-HANDOFF-2026-11-15](CLAUDE-NEXT-HANDOFF-2026-11-15.md) is historical; its #1785 pending claim was superseded by merged #1790.
 
 > **Settings architecture (2026-11-15):** [Declarative settings registry and page composition](SETTINGS-REGISTRY.md) defines stable reusable setting IDs, canonical owning stores, typed bindings and page assembly. An initial metadata-only foundation exists; generic renderer and migration remain future implementation, not accepted UI behavior.
 
