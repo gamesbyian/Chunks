@@ -86,7 +86,10 @@ jobs:
               if line.startswith("CHUNKS_INTEROP:"):
                   print(line[:240])
           # All four real daemons and the cross-engine Move ring must actually execute; a skip is not a pass.
-          sys.exit(0 if int(sys.argv[1]) == 0 and tests == 5 and skipped == 0 and failed == 0 else 1)
+          # Only the protected manual Seedhost Move case may skip here.
+          skipped_names = {c.get("name") for c in root.iter("testcase") if c.find("skipped") is not None}
+          ok_skips = skipped_names <= {"liveCrossClientJobMoveRegistersExactJob"}
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests - skipped == 5 and ok_skips and failed == 0 else 1)
           PY
       - name: Daemon logs on failure
         if: failure()
