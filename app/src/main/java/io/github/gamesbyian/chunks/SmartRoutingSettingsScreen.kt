@@ -124,6 +124,19 @@ internal fun SmartRoutingSettingsScreen(
                     Text("Suggest a client in Add", Modifier.weight(1f))
                     Switch(checked = policy.enabled, onCheckedChange = null)
                 }
+                // Explicit, separate opt-in. Choosing a target is a draft edit; Add
+                // still needs the person's tap and re-checks the exact client.
+                if (policy.enabled) Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                    value = policy.autoSelect, enabled = !saving, role = Role.Switch,
+                    onValueChange = { on -> save { it.copy(autoSelect = on) } }
+                ).testTag("chunks.smart_routing.auto_select"), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Pre-select the suggested client")
+                        Text("Add still waits for your tap. Your own choice always wins.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    Switch(checked = policy.autoSelect, onCheckedChange = null)
+                }
                 val labels = targets.associate { it.environmentId to it.label }
                 if (policy.rules.isEmpty()) Text("No rules yet. When nothing matches, Add asks.",
                     style = MaterialTheme.typography.bodySmall)

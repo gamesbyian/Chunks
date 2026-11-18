@@ -161,4 +161,35 @@ class SmartRoutingPolicyStoreTest {
         assertEquals(SmartRoutingPreview.Outcome.ASK,
             store.preview(episode, listOf(local)).outcome)
     }
+
+    @Test fun preselectOptInRoundTripsAndOlderPoliciesReadAsOff() {
+        val store = SmartRoutingPolicyStore(app)
+        val on = SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(rule("tv", aliceId)), autoSelect = true)
+        assertEquals(SmartRoutingPolicyStore.Save.SAVED, store.save(0L, on))
+        assertEquals(SmartRoutingPolicyStore.Read.Ready(1L, on), SmartRoutingPolicyStore(app).read())
+        // A policy saved before the opt-in existed has no field: it means off, not corruption.
+        val legacy = org.json.JSONObject(preferences.all.values.single().toString()).apply { remove("autoSelect") }
+        assertTrue(preferences.edit().putString("routing-policy-v1", legacy.toString()).commit())
+        assertEquals(false, (SmartRoutingPolicyStore(app).read() as SmartRoutingPolicyStore.Read.Ready).policy.autoSelect)
+        // A present non-Boolean value is corruption, never a guessed default.
+        assertTrue(preferences.edit().putString("routing-policy-v1", legacy.put("autoSelect", "yes").toString()).commit())
+        assertEquals(SmartRoutingPolicyStore.Read.Unavailable, SmartRoutingPolicyStore(app).read())
+    }
+
+    @Test fun preselectionIsOptInOncePerSourceAndNeverOverThePersonsChoice() {
+        val policy = SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(rule("tv", aliceId)), autoSelect = true)
+        val suggestion = SmartRoutingAddSuggestion.Suggestion(aliceId, "Seedbox", "tv", SmartRoutingPreview.Kind.TV, 95)
+        fun ask(p: SmartRoutingPolicyStore.Policy? = policy, applied: String? = null, chose: String? = null,
+                selected: Boolean = false, busy: Boolean = false, s: SmartRoutingAddSuggestion.Suggestion? = suggestion) =
+            SmartRoutingAddSuggestion.shouldPreselect(p, s, "hash-1", applied, chose, selected, busy)
+        assertTrue(ask())
+        assertFalse("opt-in required", ask(p = policy.copy(autoSelect = false)))
+        assertFalse("routing off", ask(p = policy.copy(enabled = false)))
+        assertFalse("once per source", ask(applied = "hash-1"))
+        assertTrue("a new source may be pre-selected", ask(applied = "hash-0"))
+        assertFalse("the person's own choice wins", ask(chose = "hash-1"))
+        assertFalse("already selected", ask(selected = true))
+        assertFalse("never during an Add", ask(busy = true))
+        assertFalse("nothing confident to apply", ask(s = null))
+    }
 }

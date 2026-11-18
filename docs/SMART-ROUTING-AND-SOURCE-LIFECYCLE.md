@@ -63,6 +63,10 @@ The pure, read-only `SmartRoutingPreview` classifies supported file types offlin
 
 **Verified engineering tier:** [#1846](https://github.com/gamesbyian/Chunks/pull/1846) merged at `2849f12` after four green source-exact workflows: Android/JVM (including Robolectric persistence/revision/identity tests), R8, complete native Add instrumentation (both shards and verifier), and documentation validation. No physical Pixel or real per-target routing acceptance was performed. **Neither an Options editor nor automatic Add target selection is wired yet.** No automatic Add, job-only Move, or payload operation is authorized. Integration next requires a real rule editor, explicit review, current exact-client capability/Place proof, one-shot Add tickets and installed Local/remote negative acceptance. The saved policy offers no automatic fallback beyond **Ask** at this stage.
 
+### Opt-in pre-selection at Add (2026-11-18)
+
+`SmartRoutingPolicyStore.Policy.autoSelect` (separate switch under "Suggest a client in Add"; **default off**; absent in older saved policies = off; a present non-Boolean value fails closed). When on, a confident proposal for a live, capable exact client (`candidateFor`) is pre-selected in Universal Add through the same handler as tapping the suggestion chip, **once per reviewed source identity**, never while an Add is in flight and never over a target the person chose for that source (`SmartRoutingAddSuggestion.shouldPreselect`). It is a draft edit: no Add, Start or Move is issued; the person's Add tap and the shared workflow's exact-client re-check remain the authority. Unattended Add and metadata-late automatic Move remain unimplemented.
+
 ### Delivery dependencies
 
 1. **Shared classifier and pure rule evaluator** with precedence, confidence, preview, no side effects, privacy isolation and deterministic fixture tests. Can be specified/implemented without enabling mutations.
