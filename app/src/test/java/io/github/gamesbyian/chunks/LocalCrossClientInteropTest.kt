@@ -88,11 +88,11 @@ class LocalCrossClientInteropTest {
         fun observe() { fence.acceptObservation(fence.snapshot(), engine.list()) }
     }
 
-    private fun device(name: String): Device {
+    private fun device(name: String, existingPlace: File? = null): Device {
         val engine = LocalTorrentEngine(LocalEngineConfig(
             listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true
         )).also { it.start(); engines += it }
-        val place = temp.newFolder(name).canonicalFile
+        val place = existingPlace ?: temp.newFolder(name).canonicalFile
         val fence = LocalScreenObservationRevision()
         val client = LocalTorrentClient({ engine }, places = object : LocalClientPlaces {
             override fun defaultDirectory() = place.path
@@ -171,8 +171,22 @@ class LocalCrossClientInteropTest {
             stage(kind, "remote job retired, its files kept")
 
             // 3. Local → remote job Move: the remote client re-downloads every piece from Local.
+            // On loopback Transmission and rTorrent never dial; only the Local side can, and
+            // the first engine remembers this remote endpoint as a seed (seeds don't dial
+            // seeds). A fresh Local engine re-adds the job over the files it downloaded,
+            // verifies every piece, seeds, and is the Move source.
+            local.observe()
+            assertTrue(local.ops.remove(hash, deleteData = false) is ClientOperationOutcome.Verified)
+            val seeder = device("local-seeder", existingPlace = local.place)
+            val reverified = seeder.ops.add(ClientAddRequest(ClientAddSource.TorrentFile(torrent), null, startNow = false))
+            assertTrue("$reverified", reverified is ClientOperationOutcome.Verified)
+            seeder.observe()
+            assertEquals("every existing piece verified", seeder.client.torrent(hash)?.totalBytes,
+                seeder.client.torrent(hash)?.completedBytes)
+            assertTrue(seeder.ops.setStarted(hash, true) is ClientOperationOutcome.Verified)
+            seeder.observe()
             assertTrue(remoteRoot.deleteRecursively())
-            val outbound = ClientJobTransfer(local.ops, local.client, remoteOps, remote, "local", "remote-" + kind.name)
+            val outbound = ClientJobTransfer(seeder.ops, seeder.client, remoteOps, remote, "local", "remote-" + kind.name)
             val back = outbound.copy(hash, File(payloadDir).canonicalPath, startOnTarget = true)
             assertTrue("$back", back is ClientJobTransfer.CopyResult.Copied)
             remoteHasJob = true
@@ -181,7 +195,7 @@ class LocalCrossClientInteropTest {
             waitFor("remote downloaded every piece from Local") {
                 val row = remote.torrent(hash)
                 if (probes++ % 40 == 0) stage(kind, "probe remote=${row?.runState}/${row?.completedBytes}/${row?.totalBytes} " +
-                    "local=${local.engine.status(hash)?.let { "${it.state} peers=${it.peers} up=${it.payloadUploadedBytes}" }}")
+                    "local=${seeder.engine.status(hash)?.let { "${it.state} peers=${it.peers} up=${it.payloadUploadedBytes}" }}")
                 row != null && row.totalBytes != null && row.completedBytes == row.totalBytes
             }
             waitFor("remote payload flushed", 60_000) {
@@ -190,7 +204,7 @@ class LocalCrossClientInteropTest {
             stage(kind, "remote completed all pieces from Local")
             val localRetired = outbound.retireSource(hash, back)
             assertTrue("$localRetired", localRetired is ClientOperationOutcome.Verified)
-            assertNull(local.client.torrent(hash))
+            assertNull(seeder.client.torrent(hash))
             for ((path, bytes) in files) assertArrayEquals("job-only retirement keeps Local files",
                 bytes, File(local.place, "$name/$path").readBytes())
             stage(kind, "Local job retired, its files kept")

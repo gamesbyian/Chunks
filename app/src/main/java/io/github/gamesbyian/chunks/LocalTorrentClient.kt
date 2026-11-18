@@ -103,46 +103,40 @@ internal class LocalTorrentClient(
                 if (request.directory == null) "No verified download location on this device"
                 else "That folder is not a verified download location on this device")
         write(forAdd = true) { running ->
-            val added = when (val source = request.source) {
-                is ClientAddSource.TorrentFile -> running.addStoppedChecked(source.bytes, folder)
-                is ClientAddSource.Magnet ->
-                    running.addMagnet(source.uri, folder, autoStartAfterMetadata = request.startNow)
-            }
-            if (added is LocalAddResult.Refused) {
+            fun refusedOrUncertain(added: LocalAddResult.Refused): Nothing {
                 // A Refused after the native write boundary (read-back or
                 // stop-enforcement failure) can leave a registered handle.
                 if (running.status(hash) == null) throw ClientRefusedException(added.reason)
                 throw ClientWriteUncertainException("The local engine did not confirm this Add")
             }
-            // Reviewed skips, applied while still stopped inside this ONE fenced
-            // Add (as the device screen does); Start only once they are confirmed.
-            val skipsConfirmed = request.skippedFiles.isEmpty() || (added is LocalAddResult.AddedStopped && run {
-                val current = running.files(hash) ?: return@run false
-                val matched = ClientFileLayout.match(current.map(::fileOf), request.skippedFiles) ?: return@run false
-                val reviewed = current.filter { it.index in matched }
-                when (running.setFilesWantedBatch(hash, reviewed, false)) {
-                    LocalFileBatchOutcome.VERIFIED, LocalFileBatchOutcome.UNCHANGED -> true
-                    LocalFileBatchOutcome.UNCERTAIN ->
+            when (val source = request.source) {
+                is ClientAddSource.Magnet -> {
+                    val added = running.addMagnet(source.uri, folder, autoStartAfterMetadata = request.startNow)
+                    if (added is LocalAddResult.Refused) refusedOrUncertain(added)
+                    if (request.startNow) notifyStarted() // payload starts after metadata
+                }
+                is ClientAddSource.TorrentFile -> {
+                    // The ONE native Local Add sequence, shared with the device screen.
+                    val result = LocalAddExecution.torrent(running, source.bytes, folder,
+                        skipsRequested = request.skippedFiles.isNotEmpty(),
+                        reviewedSkips = { files ->
+                            ClientFileLayout.match(files.map(::fileOf), request.skippedFiles)
+                                ?.let { matched -> files.filter { it.index in matched } }
+                        },
+                        startNow = request.startNow)
+                    (result.added as? LocalAddResult.Refused)?.let(::refusedOrUncertain)
+                    if (result.skipOutcome == LocalFileBatchOutcome.UNCERTAIN)
                         throw ClientWriteUncertainException("Added stopped; file choices not confirmed")
-                    else -> false
+                    // Not confirmed: registered stopped; the shared readback reports it.
+                    when (result.start?.outcome) {
+                        LocalCommandOutcome.VERIFIED -> notifyStarted()
+                        LocalCommandOutcome.UNCERTAIN -> throw ClientWriteUncertainException("Added; Start was not confirmed")
+                        // Registered stopped (e.g. the destination holds unreviewed
+                        // files). The shared readback reports Start as not observed.
+                        else -> Unit
+                    }
                 }
-            })
-            if (!skipsConfirmed) return@write // registered stopped: the shared readback reports it
-            if (request.startNow && added is LocalAddResult.AddedStopped) {
-                when (running.resume(hash).outcome) {
-                    LocalCommandOutcome.VERIFIED -> notifyStarted()
-                    LocalCommandOutcome.UNCERTAIN ->
-                        throw ClientWriteUncertainException("Added; Start was not confirmed")
-                    // Registered stopped (e.g. the destination holds unreviewed
-                    // files). The shared readback reports Start as not observed.
-                    LocalCommandOutcome.REFUSED, LocalCommandOutcome.NOT_FOUND -> Unit
-                }
-            } else if (request.startNow) notifyStarted() // magnet: Start after metadata
-            else if (added is LocalAddResult.AddedStopped)
-                // The device screen's "Stopped after verification": existing
-                // files at the exact torrent paths are hash-checked and the job
-                // pauses itself before any peer traffic (no-op when none exist).
-                runCatching { running.beginStoppedVerification(hash) }
+            }
         }
     }
 
