@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,13 @@ import org.libtorrent4j.TorrentInfo
 internal data class DeclaredAddFile(val index: Int, val path: String, val sizeBytes: Long)
 
 internal object AddFileChoices {
+    /** One visible word per reviewed level; Normal is the default. */
+    fun priorityLabel(level: io.github.gamesbyian.chunks.rpc.ClientFilePriority?): String = when (level) {
+        io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH -> "High"
+        io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW -> "Low"
+        else -> "Normal"
+    }
+
     /** Above this the per-file list is not shown at Add; Details offers the paged selector after Add. */
     const val MAX_LISTED = 300
 
@@ -93,6 +101,14 @@ internal fun AddFileChoice(
     onExpanded: (Boolean) -> Unit,
     /** True when the same reviewed torrent could instead be sent to a server Add. */
     localOnlyNote: Boolean = false,
+    /**
+     * Non-default levels the exact target client can store (e.g. High, or Low
+     * and High). Empty: no priority control, only skips (the default).
+     */
+    priorityLevels: List<io.github.gamesbyian.chunks.rpc.ClientFilePriority> = emptyList(),
+    /** Reviewed non-default level per wanted file index; absent = Normal. */
+    priorities: Map<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority> = emptyMap(),
+    onPriorityChange: (Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority?) -> Unit = { _, _ -> },
     onSkippedChange: (Set<Int>) -> Unit
 ) {
     val (chosen, chosenBytes) = androidx.compose.runtime.remember(files, skipped) {
@@ -116,18 +132,38 @@ internal fun AddFileChoice(
         }
         Text("Untick files you do not want. Skipped files are not downloaded; you can change this later in Details.",
             style = MaterialTheme.typography.bodySmall)
+        if (priorityLevels.isNotEmpty()) Text(
+            "Tap a file's priority (Normal" + priorityLevels.joinToString("") { ", " + AddFileChoices.priorityLabel(it) } +
+                ") to download it sooner or later than the others.",
+            style = MaterialTheme.typography.bodySmall)
         for (file in files) {
             val selected = file.index !in skipped
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .toggleable(value = selected, enabled = enabled, role = Role.Checkbox,
-                    onValueChange = { want -> onSkippedChange(if (want) skipped - file.index else skipped + file.index) }),
-                verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
-                Column(Modifier.padding(start = 8.dp)) {
-                    Text(file.path.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
-                    Text(Units.bytes(file.sizeBytes) + (if (file.path.contains('/'))
-                        " · " + file.path.substringBeforeLast('/') else ""),
-                        style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).heightIn(min = 48.dp)
+                    .toggleable(value = selected, enabled = enabled, role = Role.Checkbox,
+                        onValueChange = { want -> onSkippedChange(if (want) skipped - file.index else skipped + file.index) }),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = selected, onCheckedChange = null, enabled = enabled)
+                    Column(Modifier.padding(start = 8.dp)) {
+                        Text(file.path.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
+                        Text(Units.bytes(file.sizeBytes) + (if (file.path.contains('/'))
+                            " · " + file.path.substringBeforeLast('/') else ""),
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                // A skipped file has no priority; Normal is the default.
+                if (selected && priorityLevels.isNotEmpty()) {
+                    val level = priorities[file.index]
+                    val cycle = listOf<io.github.gamesbyian.chunks.rpc.ClientFilePriority?>(null) + priorityLevels
+                    val label = AddFileChoices.priorityLabel(level)
+                    androidx.compose.material3.TextButton(
+                        onClick = { onPriorityChange(file.index, cycle[(cycle.indexOf(level) + 1) % cycle.size]) },
+                        enabled = enabled,
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag(ChunksSemantics.ADD_FILE_PRIORITY + "." + file.index)
+                            .semantics {
+                                contentDescription = "Priority for " + file.path.substringAfterLast('/') + ": " + label
+                            }) { Text(label) }
                 }
             }
         }

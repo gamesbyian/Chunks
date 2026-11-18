@@ -276,4 +276,40 @@ class LocalTorrentClientTest {
         assertTrue(files.values.filter { it.index != skip.index }.all { it.priority == ClientFilePriority.NORMAL })
         assertEquals(ClientRunState.DOWNLOADING, d.client.torrent(p.hash)?.runState)
     }
+    @Test fun reviewedSkipLowAndHighAtAddAreAppliedStoppedOnRealLibtorrent() = runBlocking {
+        val d = device()
+        val p = payload("levels")
+        val reviewed = requireNotNull(AddFileChoices.declared(
+            io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(p.torrent)))
+        val skip = reviewed.single { it.path.endsWith("c.bin") }
+        val high = reviewed.single { it.path.endsWith("a.bin") }
+        val low = reviewed.single { it.path.endsWith("d.txt") }
+        val outcome = d.ops.add(ClientAddRequest(ClientAddSource.TorrentFile(p.torrent), null, startNow = false,
+            skippedFiles = mapOf(skip.index to skip.path),
+            filePriorities = mapOf(
+                high.index to io.github.gamesbyian.chunks.rpc.ReviewedFilePriority(high.path, ClientFilePriority.HIGH),
+                low.index to io.github.gamesbyian.chunks.rpc.ReviewedFilePriority(low.path, ClientFilePriority.LOW))))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Verified)
+        val files = d.client.files(p.hash).associateBy { it.index }
+        assertEquals(ClientFilePriority.SKIP, files.getValue(skip.index).priority)
+        assertEquals(ClientFilePriority.HIGH, files.getValue(high.index).priority)
+        assertEquals(ClientFilePriority.LOW, files.getValue(low.index).priority)
+        assertEquals("stopped Add stays stopped", ClientRunState.STOPPED, d.client.torrent(p.hash)?.runState)
+    }
+
+    @Test fun aLayoutThatDiffersFromTheReviewAppliesNoPriorityAndNeverStarts() = runBlocking {
+        val d = device()
+        val p = payload("mismatch")
+        val reviewed = requireNotNull(AddFileChoices.declared(
+            io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(p.torrent)))
+        val high = reviewed.single { it.path.endsWith("a.bin") }
+        // The reviewed path no longer names that index: never a guessed target.
+        val outcome = d.ops.add(ClientAddRequest(ClientAddSource.TorrentFile(p.torrent), null, startNow = true,
+            filePriorities = mapOf(high.index to
+                io.github.gamesbyian.chunks.rpc.ReviewedFilePriority("elsewhere/z.bin", ClientFilePriority.HIGH))))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Pending)
+        assertTrue(d.client.files(p.hash).all { it.priority == ClientFilePriority.NORMAL })
+        assertEquals("never started without confirmed choices", ClientRunState.STOPPED,
+            d.client.torrent(p.hash)?.runState)
+    }
 }

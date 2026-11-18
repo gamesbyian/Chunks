@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -35,11 +36,13 @@ class ProtocolAddScreenTest {
     @get:Rule val rule = createComposeRule()
     private val hash = "cd".repeat(20)
 
-    private inner class Fake : TorrentClient {
+    private inner class Fake(
+        val levels: Set<ClientFilePriority> = ClientFilePriority.entries.toSet()
+    ) : TorrentClient {
         override val kind = TorrentClientKind.DELUGE
         var added: ClientAddRequest? = null
         var writes = 0
-        override suspend fun session() = ClientSessionInfo(kind, "2.1", "/srv/dl", ClientCapability.entries.toSet())
+        override suspend fun session() = ClientSessionInfo(kind, "2.1", "/srv/dl", ClientCapability.entries.toSet(), levels)
         override suspend fun torrents() = listOfNotNull(torrent(hash))
         override suspend fun torrent(hash: String): ClientTorrent? = added?.takeIf { hash == this@ProtocolAddScreenTest.hash }?.let {
             ClientTorrent(hash, "x", if (it.startNow) ClientRunState.DOWNLOADING else ClientRunState.STOPPED,
@@ -86,6 +89,52 @@ class ProtocolAddScreenTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
         rule.waitForIdle()
         assertEquals(1, fake.writes)
+    }
+
+    @Test fun addTimeHighIsOfferedOnlyAtLevelsTheClientStoresAndFrozenIntoTheOneAdd() {
+        // Deluge-like: no distinct Low. The cycle is Normal -> High -> Normal only.
+        val fake = Fake(levels = setOf(ClientFilePriority.SKIP, ClientFilePriority.NORMAL, ClientFilePriority.HIGH))
+        val bytes = io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.build(
+            io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Request("pack", listOf(
+                io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(listOf("one.bin"), 20_000L) {
+                    ByteArray(20_000).inputStream() },
+                io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(listOf("two.bin"), 20_000L) {
+                    ByteArray(20_000) { 1 }.inputStream() }),
+                trackerTiers = emptyList(), pieceLength = 16 * 1024)).torrent
+        val torrent = mutableStateOf<PendingLocalAdd?>(
+            PendingLocalAdd(io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes), bytes))
+        val attempt = ProtocolAddAttempt()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolAddScreen(
+                    profileId = "p", clientLabel = "Box Deluge",
+                    createOperations = { ClientOperations(fake, 3, 1) },
+                    destinationPicker = {},
+                    sourceDraft = mutableStateOf(""), reviewedTorrent = torrent,
+                    startState = mutableStateOf(false), attempt = attempt,
+                    attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
+                    onViewTransfer = {}
+                )
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_CHOICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        val one = rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".0")
+        one.performScrollTo().assertTextEquals("Normal").performClick()
+        rule.waitForIdle()
+        one.assertTextEquals("High").performClick()
+        rule.waitForIdle()
+        one.assertTextEquals("Normal").performClick()   // never Low on this client
+        rule.waitForIdle()
+        one.assertTextEquals("High")
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsEnabled().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null }
+        assertEquals("one Add", 1, fake.writes)
+        val sent = fake.added!!
+        assertEquals(setOf(0), sent.filePriorities.keys)
+        assertEquals(ClientFilePriority.HIGH, sent.filePriorities.getValue(0).priority)
+        assertEquals("one.bin", sent.filePriorities.getValue(0).path.substringAfterLast('/'))
+        assertEquals(emptyMap<Int, String>(), sent.skippedFiles)
     }
 
     @Test fun anotherClientsAttemptBlocksSubmission() {

@@ -264,6 +264,39 @@ class ClientOperationsTest {
         assertEquals(0, fake.writes)
     }
 
+    @Test fun skipAndHighAreOnePriorityWriteBetweenStoppedAddAndStart() = runBlocking {
+        val (fake, source) = fileChoiceFake()
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true,
+            skippedFiles = mapOf(1 to "b"),
+            filePriorities = mapOf(0 to ReviewedFilePriority("a", ClientFilePriority.HIGH))))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Verified)
+        assertEquals(ClientFilePriority.HIGH, fake.files.single { it.index == 0 }.priority)
+        assertEquals(ClientFilePriority.SKIP, fake.files.single { it.index == 1 }.priority)
+        assertEquals("Add, ONE priorities write, Start", 3, fake.writes)
+    }
+
+    @Test fun aLevelTheClientCannotStoreIsRefusedBeforeAnyWrite() = runBlocking {
+        val source = ClientAddSource.TorrentFile(torrentBytes)
+        // rTorrent, qBittorrent and Deluge store no distinct Low.
+        val fake = Fake(null, caps = ClientCapability.entries.toSet() - ClientCapability.ADD_WITH_FILE_CHOICES,
+            levels = setOf(ClientFilePriority.SKIP, ClientFilePriority.NORMAL, ClientFilePriority.HIGH))
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true,
+            filePriorities = mapOf(0 to ReviewedFilePriority("a", ClientFilePriority.LOW))))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Refused)
+        assertEquals("never silently mapped Low to Normal, nothing added", 0, fake.writes)
+    }
+
+    @Test fun aFileIsEitherSkippedOrPrioritizedNeverBoth() {
+        val source = ClientAddSource.TorrentFile(torrentBytes)
+        assertTrue(runCatching {
+            ClientAddRequest(source, null, startNow = false, skippedFiles = mapOf(0 to "a"),
+                filePriorities = mapOf(0 to ReviewedFilePriority("a", ClientFilePriority.HIGH)))
+        }.isFailure)
+        assertTrue("Normal is the default, not a reviewed choice",
+            runCatching { ReviewedFilePriority("a", ClientFilePriority.NORMAL) }.isFailure)
+        assertTrue(runCatching { ReviewedFilePriority("a", ClientFilePriority.SKIP) }.isFailure)
+    }
+
     @Test fun layoutMatchIgnoresOnlyTheTopFolderPrefix() {
         val files = listOf(ClientFile(0, "Show/s1/e1.mkv", 1, 0, ClientFilePriority.NORMAL))
         assertEquals(listOf(0), ClientFileLayout.match(files, mapOf(0 to "s1/e1.mkv")))

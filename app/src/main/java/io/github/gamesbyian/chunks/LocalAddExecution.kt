@@ -27,7 +27,9 @@ internal object LocalAddExecution {
         /** Non-null only when Start was actually sent. */
         val start: LocalCommandResult?,
         /** libtorrent is checking existing files and stops itself afterwards. */
-        val verifyingExisting: Boolean
+        val verifyingExisting: Boolean,
+        /** Worst outcome of the reviewed Low/High writes; null when none were requested. */
+        val priorityOutcome: LocalFileBatchOutcome? = null
     )
 
     suspend fun torrent(
@@ -39,7 +41,12 @@ internal object LocalAddExecution {
         reviewedSkips: (List<LocalTransferFile>) -> List<LocalTransferFile>?,
         startNow: Boolean,
         beforeStart: suspend (String) -> Unit = {},
-        onAdded: (LocalAddResult) -> Unit = {}
+        onAdded: (LocalAddResult) -> Unit = {},
+        /**
+         * Reviewed Low/High for wanted files: registered index → native level
+         * (1 or 7), or null when the registered layout differs from the review.
+         */
+        reviewedPriorities: ((List<LocalTransferFile>) -> Map<Int, Int>?)? = null
     ): TorrentResult {
         val added = engine.addStoppedChecked(bytes, folder).also(onAdded)
         if (added !is LocalAddResult.AddedStopped)
@@ -51,10 +58,29 @@ internal object LocalAddExecution {
             skipOutcome = reviewed?.let { runCatching { engine.setFilesWantedBatch(hash, it, false) }.getOrNull() }
             AddFileChoices.confirmed(skipOutcome)
         }
-        if (skipsConfirmed) beforeStart(hash)
-        if (startNow && skipsConfirmed)
-            return TorrentResult(added, skipOutcome, true, engine.resume(hash), false)
-        val verifying = skipsConfirmed && runCatching { engine.beginStoppedVerification(hash) }.getOrDefault(false)
-        return TorrentResult(added, skipOutcome, skipsConfirmed, null, verifying)
+        // Reviewed Low/High, still stopped, only after the skips were confirmed.
+        val priorityOutcome = if (reviewedPriorities == null || !skipsConfirmed) null else {
+            val files = runCatching { engine.files(hash) }.getOrNull()
+            val levels = files?.let(reviewedPriorities)
+            if (files == null || levels == null) LocalFileBatchOutcome.STALE_REVIEW else {
+                var worst = LocalFileBatchOutcome.UNCHANGED
+                for ((index, level) in levels.toSortedMap()) {
+                    val file = runCatching { engine.files(hash) }.getOrNull()?.singleOrNull { it.index == index }
+                    val outcome = if (file == null) LocalFileBatchOutcome.STALE_REVIEW
+                        else runCatching { engine.setFilePriority(hash, file, level) }
+                            .getOrDefault(LocalFileBatchOutcome.UNCERTAIN)
+                    if (outcome == LocalFileBatchOutcome.VERIFIED && worst == LocalFileBatchOutcome.UNCHANGED)
+                        worst = outcome
+                    else if (!AddFileChoices.confirmed(outcome)) { worst = outcome; break }
+                }
+                worst
+            }
+        }
+        val choicesConfirmed = skipsConfirmed && (priorityOutcome == null || AddFileChoices.confirmed(priorityOutcome))
+        if (choicesConfirmed) beforeStart(hash)
+        if (startNow && choicesConfirmed)
+            return TorrentResult(added, skipOutcome, true, engine.resume(hash), false, priorityOutcome)
+        val verifying = choicesConfirmed && runCatching { engine.beginStoppedVerification(hash) }.getOrDefault(false)
+        return TorrentResult(added, skipOutcome, skipsConfirmed, null, verifying, priorityOutcome)
     }
 }

@@ -123,9 +123,16 @@ internal class LocalTorrentClient(
                             ClientFileLayout.match(files.map(::fileOf), request.skippedFiles)
                                 ?.let { matched -> files.filter { it.index in matched } }
                         },
-                        startNow = request.startNow)
+                        startNow = request.startNow,
+                        reviewedPriorities = request.filePriorities.takeIf { it.isNotEmpty() }?.let { reviewed ->
+                            { files ->
+                                ClientFileLayout.match(files.map(::fileOf), reviewed.mapValues { (_, c) -> c.path })
+                                    ?.let { reviewed.mapValues { (_, c) -> nativePriority(c.priority) } }
+                            }
+                        })
                     (result.added as? LocalAddResult.Refused)?.let(::refusedOrUncertain)
-                    if (result.skipOutcome == LocalFileBatchOutcome.UNCERTAIN)
+                    if (result.skipOutcome == LocalFileBatchOutcome.UNCERTAIN ||
+                        result.priorityOutcome == LocalFileBatchOutcome.UNCERTAIN)
                         throw ClientWriteUncertainException("Added stopped; file choices not confirmed")
                     // Not confirmed: registered stopped; the shared readback reports it.
                     when (result.start?.outcome) {
