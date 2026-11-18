@@ -1,5 +1,7 @@
 # Smart Routing, Add source lifecycle and transferable job preferences
 
+> **Implementation checkpoint · 2026-11-18:** #1863 merged an Options editor for ordered content-kind → exact-client rules plus a user-confirmed Smart Routing suggestion in Universal Add. Proposals never issue Add or Move commands. Automatic routing, metadata-late prompts, rule test/explain and job-only Move completion remain open. The contract below remains the target where broader than shipped behavior.
+
 > **OWNER ADD-ONLY MEDIA OPTION CORRECTION · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). `Add > Artwork & metadata` shows the default-checked per-job auto-identification checkbox **only when global Options collection and display are enabled**. Save that selection against the exact transfer at Add; respect durable exclusion without later active-transfer toggles. Active Details has only manual identification/art correction, never the Add-only checkbox. Provider network requests still require separate prior consent. No changes to source Keep/Archive/Delete, Smart Routing's offline classifier, job-only Move, or frozen Add authority.
 
 
