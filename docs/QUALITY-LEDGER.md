@@ -2,6 +2,14 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-18 UTC: shared write-capable client port, real daemons, live Seedhost
+
+- **Live Seedhost read-only (main `7441ab5`, #1861):** Transmission **accepted** (run 44215531718: challenged auth, complete inventory, 0 transfers, read-only capabilities). qBittorrent **red** (run 44215535596: `authentication refused`; qBittorrent 5.x answers 401 for both bad credentials and a proxied cross-site Origin mismatch). Deluge **red** (run 44215539330: Web UI `result=false`, i.e. that password secret is not the Web UI password). Fixes in #1862 (no Origin/Referer; explicit `credential_source`); reruns pending. First dispatch (44213127199, `2606a07`) sent no request (unmapped secrets).
+- **Real daemons, local (this session):** `RealClientInteropTest` 3/3 against transmission-daemon 4.0.5, qbittorrent-nox 4.6.3, Deluge 2.1.2-dev (loopback): exact stopped Add .torrent + magnet, duplicate refusal, files, priorities, Start, the client's own recheck verifying all 12 pieces to seeding, Stop, move storage and Remove + data each confirmed on the filesystem, absent-target and wrong-password refusals, unchanged unrelated inventory; plus the app's own `RemoteProtocolConnect` path. Found and fixed a real defect: base64 qBittorrent SIDs (`+ / =`) were rejected by the merged read-only adapter.
+- **Real daemons, CI:** `real-client-interop.yml` green on #1862 head `9e8f2d9` (job 134508373305) after isolating the runner's auto-started distro services and Transmission AppArmor profile (first attempt 134504501009 red: port collisions/AppArmor, not code).
+- **JVM:** local full suite 2801 tests, 5 failures before fixes: 2 genuine and fixed (API-33 `readNBytes` caught by `BoundedReadTest`; lazy-form scroll in `EnduringCapabilityAccessibilityTest`), 3 local-JDK-21-only (Security Manager, non-UTF-8 filename encoding) in untouched code; CI `build` (JDK 17) green on #1862.
+- **Not yet evidence:** installed-app (emulator/physical) protocol-client journeys; qBittorrent/Deluge live receipts; protected live mutation journey (`seedhost-other-protocols-interop.yml`) not yet dispatched.
+
 ## 2026-11-17/18 UTC: multi-protocol read-only foundation and unfinished app wiring
 
 - **Accepted source-exact PRs now merged to main:** #1849–#1851 isolated Transmission, qBittorrent and Deluge read-only RPC; #1852 protocol identity/explicit denied mutators; #1853 normalized per-engine inventory; #1854 common typed authenticated read facade (merge `1ab7fda8`); #1855 independently encrypted typed credentials/opt-out (merge `8ba832b8`); #1856 privacy-fenced canonical Combined source feed (merge `24d715d1`); #1857 optional Connections picker (merge `6a4e2f4c`); #1858 manual trusted-main actual Seedhost compatibility harness (merge `12438716`). Each is a **component acceptance**, not a completed new-backend user journey or proof of a real Seedhost instance.
