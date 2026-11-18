@@ -211,4 +211,82 @@ class ClientOperationsTest {
         assertEquals(ClientRunState.METADATA, QBittorrentClient.stateOf("metaDL"))
         assertEquals(ClientRunState.UNKNOWN, QBittorrentClient.stateOf("newState"))
     }
+
+    private val torrentBytes: ByteArray by lazy {
+        io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.build(
+            io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Request("n", listOf(
+                io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(listOf("a"), 3) { "abc".byteInputStream() },
+                io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(listOf("b"), 3) { "def".byteInputStream() }),
+                pieceLength = 16 * 1024)).torrent
+    }
+
+    private fun fileChoiceFake(): Pair<Fake, ClientAddSource.TorrentFile> {
+        val source = ClientAddSource.TorrentFile(torrentBytes)
+        // A remote client without native Add-time file choices: the gated multi-step path.
+        val fake = Fake(null, caps = ClientCapability.entries.toSet() - ClientCapability.ADD_WITH_FILE_CHOICES)
+        fake.files = listOf(ClientFile(0, "n/a", 3, 0, ClientFilePriority.NORMAL),
+            ClientFile(1, "n/b", 3, 0, ClientFilePriority.NORMAL))
+        var started = false
+        fake.applyWrite = { f ->
+            f.present = ClientTorrent(source.infoHash, "n", if (started) ClientRunState.DOWNLOADING else ClientRunState.STOPPED,
+                6, 0, 0, 0, "/d")
+            started = true // the 1st write is the stopped Add; any later lifecycle write starts it
+        }
+        return fake to source
+    }
+
+    @Test fun fileChoicesAddStoppedThenSkipThenStartEachVerified() = runBlocking {
+        val (fake, source) = fileChoiceFake()
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true, skippedFiles = mapOf(1 to "b")))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Verified)
+        assertEquals(ClientFilePriority.SKIP, fake.files.single { it.index == 1 }.priority)
+        assertEquals(ClientFilePriority.NORMAL, fake.files.single { it.index == 0 }.priority)
+        assertEquals("Add, skips, Start: three writes, none repeated", 3, fake.writes)
+    }
+
+    @Test fun fileLayoutMismatchLeavesTheJobStoppedWithNoSkipOrStart() = runBlocking {
+        val (fake, source) = fileChoiceFake()
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true, skippedFiles = mapOf(1 to "other")))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Pending)
+        assertEquals("Only the stopped Add was written", 1, fake.writes)
+        assertEquals(ClientRunState.STOPPED, fake.present?.runState)
+    }
+
+    @Test fun fileChoicesNeedPriorityCapabilityAndSendNothingOtherwise() = runBlocking {
+        val source = ClientAddSource.TorrentFile(torrentBytes)
+        val fake = Fake(null, caps = ClientCapability.entries.toSet() - ClientCapability.FILE_PRIORITIES)
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = false, skippedFiles = mapOf(1 to "b")))
+        assertTrue(outcome is ClientOperationOutcome.Refused)
+        assertEquals(0, fake.writes)
+    }
+
+    @Test fun layoutMatchIgnoresOnlyTheTopFolderPrefix() {
+        val files = listOf(ClientFile(0, "Show/s1/e1.mkv", 1, 0, ClientFilePriority.NORMAL))
+        assertEquals(listOf(0), ClientFileLayout.match(files, mapOf(0 to "s1/e1.mkv")))
+        assertEquals(listOf(0), ClientFileLayout.match(files, mapOf(0 to "Show/s1/e1.mkv")))
+        assertEquals(null, ClientFileLayout.match(files, mapOf(0 to "s2/e1.mkv")))
+        assertEquals(null, ClientFileLayout.match(files, mapOf(1 to "s1/e1.mkv")))
+    }
+
+    @Test fun nativeAddTimeFileChoicesAreOneWriteThenIndependentlyVerified() = runBlocking {
+        val source = ClientAddSource.TorrentFile(torrentBytes)
+        val fake = Fake(null)
+        fake.files = listOf(ClientFile(0, "n/a", 3, 0, ClientFilePriority.NORMAL),
+            ClientFile(1, "n/b", 3, 0, ClientFilePriority.NORMAL))
+        fake.applyWrite = { f ->
+            f.present = ClientTorrent(source.infoHash, "n", ClientRunState.STOPPED, 6, 0, 0, 0, "/d")
+        }
+        // The client "forgets" the skip: the shared workflow must not call it verified.
+        val forgot = ops(fake).add(ClientAddRequest(source, null, startNow = false, skippedFiles = mapOf(1 to "b")))
+        assertTrue("$forgot", forgot is ClientOperationOutcome.Pending)
+        assertEquals(1, fake.writes)
+        fake.present = null
+        fake.applyWrite = { f ->
+            f.present = ClientTorrent(source.infoHash, "n", ClientRunState.STOPPED, 6, 0, 0, 0, "/d")
+            f.files = f.files.map { if (it.index == 1) it.copy(priority = ClientFilePriority.SKIP) else it }
+        }
+        val applied = ops(fake).add(ClientAddRequest(source, null, startNow = false, skippedFiles = mapOf(1 to "b")))
+        assertTrue("$applied", applied is ClientOperationOutcome.Verified)
+        assertEquals(2, fake.writes)
+    }
 }

@@ -14,6 +14,7 @@ import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
 import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientFile
+import io.github.gamesbyian.chunks.rpc.ClientFileLayout
 import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientPostWritePendingException
@@ -113,6 +114,20 @@ internal class LocalTorrentClient(
                 if (running.status(hash) == null) throw ClientRefusedException(added.reason)
                 throw ClientWriteUncertainException("The local engine did not confirm this Add")
             }
+            // Reviewed skips, applied while still stopped inside this ONE fenced
+            // Add (as the device screen does); Start only once they are confirmed.
+            val skipsConfirmed = request.skippedFiles.isEmpty() || (added is LocalAddResult.AddedStopped && run {
+                val current = running.files(hash) ?: return@run false
+                val matched = ClientFileLayout.match(current.map(::fileOf), request.skippedFiles) ?: return@run false
+                val reviewed = current.filter { it.index in matched }
+                when (running.setFilesWantedBatch(hash, reviewed, false)) {
+                    LocalFileBatchOutcome.VERIFIED, LocalFileBatchOutcome.UNCHANGED -> true
+                    LocalFileBatchOutcome.UNCERTAIN ->
+                        throw ClientWriteUncertainException("Added stopped; file choices not confirmed")
+                    else -> false
+                }
+            })
+            if (!skipsConfirmed) return@write // registered stopped: the shared readback reports it
             if (request.startNow && added is LocalAddResult.AddedStopped) {
                 when (running.resume(hash).outcome) {
                     LocalCommandOutcome.VERIFIED -> notifyStarted()
@@ -263,7 +278,8 @@ internal class LocalTorrentClient(
             ClientCapability.ADD_STOPPED, ClientCapability.ADD_TO_DIRECTORY,
             ClientCapability.START_STOP, ClientCapability.FILE_PRIORITIES,
             ClientCapability.REMOVE, ClientCapability.REMOVE_WITH_DATA,
-            ClientCapability.RECHECK, ClientCapability.EXPORT_JOB
+            ClientCapability.RECHECK, ClientCapability.EXPORT_JOB,
+            ClientCapability.ADD_WITH_FILE_CHOICES
         )
 
         /** libtorrent 0..7 onto the shared four levels (1 Low, 4 Normal, 7 High). */

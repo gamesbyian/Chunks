@@ -155,8 +155,20 @@ internal fun ProtocolAddScreen(
         is ClientAddSource.Magnet -> ClientCapability.ADD_MAGNET in caps
         is ClientAddSource.TorrentFile -> ClientCapability.ADD_TORRENT_FILE in caps
     } && (startState.value || ClientCapability.ADD_STOPPED in caps)
+    // Files to download: the same shared component and reviewed-layout rule as
+    // every Add; skips belong only to the exact reviewed .torrent identity.
+    val layout = remember(torrent) {
+        torrent?.let { runCatching { AddFileChoices.declared(it.preview) }.getOrNull() }
+    }.takeIf { draft.isEmpty() }
+    var skipped by remember(torrent?.preview?.infoHashV1) { mutableStateOf<Set<Int>>(emptySet()) }
+    var fileChoiceOpen by remember(torrent?.preview?.infoHashV1) { mutableStateOf(false) }
+    val canChooseFiles = ClientCapability.FILE_PRIORITIES in caps && ClientCapability.ADD_STOPPED in caps
+    val chosenSkips = if (layout != null && canChooseFiles) skipped.filter { i -> layout.any { it.index == i } }.toSet()
+        else emptySet()
+    val noFileChosen = layout != null && layout.none { it.index !in chosenSkips }
     val mine = attempt.profileId == null || attempt.profileId == profileId
-    val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine
+    val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine &&
+        !noFileChosen
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -182,6 +194,11 @@ internal fun ProtocolAddScreen(
         fileError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (sourceInvalid) Text("Use a magnet link with one v1 info hash.", color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall)
+        if (layout != null && canChooseFiles) AddFileChoice(
+            files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
+            onExpanded = { fileChoiceOpen = it }, onSkippedChange = { skipped = it })
+        else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
+            "every file will download.", style = MaterialTheme.typography.bodySmall)
         // 2. Exact target (the shared picker).
         destinationPicker()
         sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
@@ -213,7 +230,10 @@ internal fun ProtocolAddScreen(
         Button(
             onClick = {
                 val frozen = source ?: return@Button
-                val request = ClientAddRequest(frozen, folder, startState.value)
+                // Frozen at the click: reviewed index → path for exactly these bytes.
+                val skips = if (frozen is ClientAddSource.TorrentFile) layout.orEmpty()
+                    .filter { it.index in chosenSkips }.associate { it.index to it.path } else emptyMap()
+                val request = ClientAddRequest(frozen, folder, startState.value, skips)
                 if (!attempt.claim(profileId, frozen.infoHash)) return@Button
                 attemptScope.launch {
                     attempt.outcome = try { operations.add(request) } catch (cancel: CancellationException) {
