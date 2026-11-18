@@ -3104,6 +3104,7 @@ internal fun ConnectionScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                     .testTag(ChunksSemantics.CONNECTION_CONNECT)
             ) { Text(when {
+                loading && isRTorrentForm -> "Finding secure rTorrent…"
                 loading -> "Checking connection…"
                 isRTorrentForm -> "Connect to rTorrent"
                 else -> "Connect to " + when (chosenBackend) {
@@ -3119,6 +3120,12 @@ internal fun ConnectionScreen(
                 ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect)
             }
             if (isRTorrentForm && error != null) item { Notice("Connection unsuccessful", error) }
+            if (!isRTorrentForm && loading) item {
+                OutlinedButton(onClick = onCancelConnect,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Cancel connection check")
+                }
+            }
             if (!isRTorrentForm && readOnlyBackendError != null) item {
                 Notice("Connection unsuccessful", readOnlyBackendError)
             }
