@@ -1180,6 +1180,7 @@ internal fun CombinedTransfersScreen(
                 ProtocolClientOperationsPanel(
                     hash = focusedKey.infoHash,
                     clientLabel = profile.label,
+                    sourceClientId = profile.id,
                     observedStarted = details.observation?.started,
                     current = details.readState == TransferDetailReadState.CURRENT &&
                         focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true &&
