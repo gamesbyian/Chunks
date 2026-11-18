@@ -101,6 +101,9 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connection name (optional)"))
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).assert(SemanticsMatcher.expectValue(
                 SemanticsProperties.EditableText, AnnotatedString("Studio")))
+            // The client-type picker precedes these fields in the lazy form;
+            // bring the retained draft address into composition first.
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("https://draft.invalid/RPC2"))
             rule.onNodeWithText("https://draft.invalid/RPC2").assertExists()
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Password"))
             rule.onNodeWithText("Password").assert(SemanticsMatcher.expectValue(
