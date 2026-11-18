@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.model
 
+import io.github.gamesbyian.chunks.rpc.ClientCapability as C
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -45,6 +47,30 @@ class SmartRoutingAddSuggestionTest {
     @Test fun duplicateCandidateIdentityIsNeverUsable() {
         val r = SmartRoutingAddSuggestion.evaluate(policy, "Show.S01E02", listOf("Show.S01E02.mkv"),
             listOf(c(qb, "One"), c(qb, "Two")))
+        assertTrue(r is SmartRoutingAddSuggestion.Result.Unavailable)
+    }
+
+    private fun session(vararg caps: io.github.gamesbyian.chunks.rpc.ClientCapability, dir: String? = "/srv") =
+        io.github.gamesbyian.chunks.rpc.ClientSessionInfo(io.github.gamesbyian.chunks.rpc.TorrentClientKind.DELUGE, "2", dir, caps.toSet())
+
+    @Test fun candidacyFollowsTheClientsOwnLiveCapabilities() {
+        val full = session(C.ADD_MAGNET, C.ADD_TORRENT_FILE, C.ADD_STOPPED)
+        assertTrue(SmartRoutingAddSuggestion.candidateFor(qb, "qB", full, magnetSource = true, startNow = false).let {
+            it.live && it.acceptsAdd && it.placeKnown })
+        // Not answered yet: never usable.
+        assertTrue(!SmartRoutingAddSuggestion.candidateFor(qb, "qB", null, true, true).live)
+        // No magnet support, or no stopped Add when Start is off: not an Add target.
+        assertTrue(!SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_TORRENT_FILE, C.ADD_STOPPED), true, true).acceptsAdd)
+        assertTrue(!SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_MAGNET), true, false).acceptsAdd)
+        assertTrue(SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_MAGNET), true, true).acceptsAdd)
+        // No reported Save to folder: not a verified Place.
+        assertTrue(!SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_MAGNET, dir = null), true, true).placeKnown)
+    }
+
+    @Test fun incapableMatchedClientIsUnavailableNotRerouted() {
+        val noMagnet = SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_TORRENT_FILE), true, true)
+        val r = SmartRoutingAddSuggestion.evaluate(policy, "Show.S01E02", listOf("Show.S01E02.mkv"),
+            listOf(noMagnet, c(deluge, "Deluge")))
         assertTrue(r is SmartRoutingAddSuggestion.Result.Unavailable)
     }
 }

@@ -58,7 +58,7 @@ class LocalTorrentClientTest {
             override fun resolve(directory: String?) =
                 if (directory == null) place else LocalClientPlaces.within(listOf(place), directory)
         }
-        val client = LocalTorrentClient({ engine }, places = places, fence = fence, deleteReadbackTimeoutMs = 20_000)
+        val client = LocalTorrentClient({ engine }, places = places, fence = LocalWriteFence.of(fence), deleteReadbackTimeoutMs = 20_000)
         return Device(engine, place, fence, client, ClientOperations(client, readbackAttempts = 40, readbackDelayMillis = 250))
     }
 
@@ -138,7 +138,8 @@ class LocalTorrentClientTest {
         val stop = d.ops.setStarted(p.hash, false)
         assertTrue("$stop", stop is ClientOperationOutcome.Verified)
         d.observe()
-        assertTrue(d.ops.recheck(p.hash) is ClientOperationOutcome.Verified)
+        val rechecked = d.ops.recheck(p.hash)
+        assertTrue("$rechecked", rechecked is ClientOperationOutcome.Verified)
         d.observe()
 
         val exported = d.client.transferSource(p.hash)

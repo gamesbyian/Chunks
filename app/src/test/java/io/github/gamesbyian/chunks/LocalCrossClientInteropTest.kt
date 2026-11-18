@@ -34,10 +34,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import org.junit.runner.RunWith
 import org.libtorrent4j.TorrentBuilder
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * Local ↔ remote job-only Move with REAL engines on both sides and real
@@ -53,11 +50,9 @@ import org.robolectric.annotation.Config
  *
  * Skipped per backend unless CHUNKS_INTEROP_<BACKEND>_URL/_PASS and
  * CHUNKS_INTEROP_TRACKER are set (tools/interop/start_local_clients.sh).
- * Prints no endpoint, credential, path or name. Robolectric supplies the
- * Android org.json the remote JSON adapters use.
+ * Prints no endpoint, credential, path or name. Plain JVM (real org.json),
+ * so the engine's JVM no-follow read probe applies as in LocalTorrentEngineTest.
  */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class LocalCrossClientInteropTest {
     @get:Rule val temp = TemporaryFolder()
     private val engines = ArrayList<LocalTorrentEngine>()
@@ -103,7 +98,7 @@ class LocalCrossClientInteropTest {
             override fun defaultDirectory() = place.path
             override fun resolve(directory: String?) =
                 if (directory == null) place else LocalClientPlaces.within(listOf(place), directory)
-        }, fence = fence)
+        }, fence = LocalWriteFence.of(fence))
         // A magnet Start-on-Add is verified only after metadata arrives and payload starts.
         return Device(engine, place, fence, client, ClientOperations(client, 120, 500))
     }

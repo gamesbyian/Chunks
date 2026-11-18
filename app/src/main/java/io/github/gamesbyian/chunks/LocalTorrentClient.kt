@@ -51,7 +51,7 @@ internal class LocalTorrentClient(
     /** Starts the engine for an explicit Add (production: LocalEngineHolder.get). */
     private val engineForAdd: () -> LocalTorrentEngine = { engine() ?: throw ClientRefusedException(ENGINE_UNAVAILABLE) },
     private val places: LocalClientPlaces,
-    private val fence: LocalScreenObservationRevision = LocalMutationFence.revision,
+    private val fence: LocalWriteFence = LocalWriteFence.of(LocalMutationFence.revision),
     /** Called after a verified payload Start (production: keep the foreground service up). */
     private val onPayloadStarted: () -> Unit = {},
     private val io: CoroutineDispatcher = Dispatchers.IO,
@@ -250,8 +250,8 @@ internal class LocalTorrentClient(
     private suspend fun write(forAdd: Boolean = false, block: suspend (LocalTorrentEngine) -> Unit) =
         withContext(io) {
             val running = if (forAdd) engineForAdd() else engine() ?: throw ClientRefusedException(ENGINE_UNAVAILABLE)
-            if (!fence.beginMutation()) throw ClientRefusedException(LOCKED)
-            try { block(running) } finally { fence.settledMutation() }
+            if (!fence.begin()) throw ClientRefusedException(LOCKED)
+            try { block(running) } finally { fence.settle() }
         }
 
     internal companion object {
@@ -321,6 +321,29 @@ internal class LocalTorrentClient(
                 places = LocalClientPlaces.forApp(app),
                 onPayloadStarted = { LocalEngineService.start(app) }
             )
+        }
+    }
+}
+
+/**
+ * The one Local write latch. Production is always the process-wide
+ * [LocalMutationFence] (every Local surface shares it, and a fresh complete
+ * list must be observed before the next change); [singleWriter] is only for
+ * tests that are provably the sole writer of a private engine.
+ */
+internal interface LocalWriteFence {
+    fun begin(): Boolean
+    fun settle()
+
+    companion object {
+        fun of(revision: LocalScreenObservationRevision): LocalWriteFence = object : LocalWriteFence {
+            override fun begin() = revision.beginMutation()
+            override fun settle() = revision.settledMutation()
+        }
+
+        val singleWriter: LocalWriteFence = object : LocalWriteFence {
+            override fun begin() = true
+            override fun settle() {}
         }
     }
 }

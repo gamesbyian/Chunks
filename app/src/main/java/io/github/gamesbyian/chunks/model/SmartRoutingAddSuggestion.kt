@@ -72,6 +72,28 @@ internal object SmartRoutingAddSuggestion {
         }
     }
 
+    /**
+     * A protocol client's candidacy from its own live session: it must have
+     * answered (live), support this source kind and the chosen Start mode,
+     * and report a Save to folder. A client that has not answered yet is not
+     * usable, so a matching rule says "unavailable" rather than guessing.
+     */
+    fun candidateFor(
+        environmentId: String,
+        label: String,
+        session: io.github.gamesbyian.chunks.rpc.ClientSessionInfo?,
+        magnetSource: Boolean,
+        startNow: Boolean
+    ): Candidate {
+        val caps = session?.capabilities.orEmpty()
+        val sourceOk = if (magnetSource) io.github.gamesbyian.chunks.rpc.ClientCapability.ADD_MAGNET in caps
+            else io.github.gamesbyian.chunks.rpc.ClientCapability.ADD_TORRENT_FILE in caps
+        val startOk = startNow || io.github.gamesbyian.chunks.rpc.ClientCapability.ADD_STOPPED in caps
+        return Candidate(environmentId, label, live = session != null,
+            acceptsAdd = sourceOk && startOk,
+            placeKnown = session?.defaultDownloadDirectory != null)
+    }
+
     fun kindLabel(kind: SmartRoutingPreview.Kind): String = when (kind) {
         SmartRoutingPreview.Kind.MOVIE -> "Movie"
         SmartRoutingPreview.Kind.TV -> "TV episode"
