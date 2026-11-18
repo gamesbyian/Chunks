@@ -1,6 +1,8 @@
 # Chunks technical completeness ledger
 
-**Living capability inventory, verified against source and GitHub integration on 2026-11-17.** This is a dispatch aid, not acceptance evidence. Before changing status, inspect live source and [SPEC-COVERAGE](SPEC-COVERAGE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), current PRs/CI and owner observations. [Backend-first mandate](BACKEND-FIRST-COMPLETION.md) governs priority. Never equate an open historical issue with absent implementation.
+**Living capability inventory, updated against source and GitHub integration on 2026-11-18.** This is a dispatch aid, not acceptance evidence. Before changing status, inspect live source and [SPEC-COVERAGE](SPEC-COVERAGE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), current PRs/CI and owner observations. [Backend-first mandate](BACKEND-FIRST-COMPLETION.md) governs priority. Never equate an open historical issue with absent implementation.
+
+> **Remote multi-client checkpoint · 2026-11-18:** #1866 merged at `750e0ddd` with shared rTorrent adapter and verified remote-to-remote job Copy/Move; five exact-head suites that ran passed, including installed three-client and two-rTorrent Combined. #1870 merged at `687aa7a` after Android/JVM, R8, native Add, four-engine interoperability and installed multi-client acceptance: Start/Start-on-Add now require independently observed active state. #1871 is a follow-on rTorrent-source UI entrypoint, not yet accepted at this snapshot. Local is **not** on the shared port; Local/remote Add form/readback remains separate. No physical Pixel, automatic Smart Routing or downloaded-payload Move acceptance is implied.
 
 | Capability / Android core | Known status on 2026-11-17 | Highest-value remaining technical work | Evidence / contract |
 | --- | --- | --- | --- |
