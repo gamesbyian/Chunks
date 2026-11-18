@@ -116,7 +116,9 @@ internal class RTorrentClientAdapter(
                 is RemoteDeleteDataOutcome.Refused -> throw ClientRefusedException("rTorrent refused Remove + data (${outcome.reason})")
                 is RemoteDeleteDataOutcome.Uncertain, is RemoteDeleteDataOutcome.Partial ->
                     throw ClientWriteUncertainException("rTorrent Remove + data not confirmed")
-                is RemoteDeleteDataOutcome.QueuedForCleanup -> Unit
+                is RemoteDeleteDataOutcome.QueuedForCleanup ->
+                    throw ClientPostWritePendingException(
+                        "ruTorrent queued cleanup; downloaded-file deletion is not independently verified")
             }
         } else {
             when (remote.eraseFromSession(exact, row.name, row.directory)) {
