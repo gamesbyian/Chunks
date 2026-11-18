@@ -77,6 +77,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
+import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
@@ -2620,7 +2621,15 @@ internal fun ConnectionScreen(
     onDisconnectCurrent: () -> Unit = {},
     connectionName: String = "",
     onConnectionName: (String) -> Unit = {},
-    onAddConnection: () -> Unit = {}
+    onAddConnection: () -> Unit = {},
+    /** Optional, existing-form expansion. Only the caller can enable and implement it. */
+    enableAdditionalProtocols: Boolean = false,
+    chosenBackend: RemoteBackendKind = RemoteBackendKind.RTORRENT,
+    onChosenBackend: (RemoteBackendKind) -> Unit = {},
+    delugeDaemonHostId: String = "",
+    onDelugeDaemonHostId: (String) -> Unit = {},
+    onConnectReadOnlyBackend: () -> Unit = {},
+    readOnlyBackendError: String? = null
 ) {
     // Submitting the form closes the keyboard, as forms conventionally do,
     // so the next screen's persistent footer is not waiting on an IME hide.
@@ -2628,10 +2637,15 @@ internal fun ConnectionScreen(
     val connectFocus = androidx.compose.ui.platform.LocalFocusManager.current
     val validName = connectionName.isBlank() ||
         RememberedRemoteProfileRoster.validFriendlyName(connectionName)
+    val isRTorrentForm = !enableAdditionalProtocols || chosenBackend == RemoteBackendKind.RTORRENT
+    val needsDaemonId = !isRTorrentForm && chosenBackend == RemoteBackendKind.DELUGE
+    val canSubmitConnection = endpoint.isNotBlank() && (!needsDaemonId || delugeDaemonHostId.isNotBlank())
     val submitConnect: () -> Unit = {
         connectKeyboard?.hide()
         connectFocus.clearFocus()
-        if (!loading && validName && connectedSessionName == null) onConnect()
+        if (!loading && validName && connectedSessionName == null && canSubmitConnection) {
+            if (isRTorrentForm) onConnect() else onConnectReadOnlyBackend()
+        }
     }
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
@@ -2943,6 +2957,29 @@ internal fun ConnectionScreen(
         }
         if (showNewConnectionForm) {
         if (connectedSessionName == null) {
+        if (enableAdditionalProtocols) item {
+            Text("Client type", style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                RemoteBackendKind.entries.forEach { backend ->
+                    FilterChip(
+                        selected = chosenBackend == backend,
+                        onClick = { if (!loading) onChosenBackend(backend) },
+                        enabled = !loading,
+                        label = { Text(when (backend) {
+                            RemoteBackendKind.RTORRENT -> "rTorrent"
+                            RemoteBackendKind.TRANSMISSION -> "Transmission"
+                            RemoteBackendKind.QBITTORRENT -> "qBittorrent"
+                            RemoteBackendKind.DELUGE -> "Deluge"
+                        }) },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag("connection-backend-" + backend.name.lowercase())
+                    )
+                }
+            }
+            Text("All clients use this same Connections screen. New protocols currently support read-only connection checks.",
+                style = MaterialTheme.typography.bodySmall)
+        }
         item {
             OutlinedTextField(
                 value = connectionName, onValueChange = onConnectionName,
@@ -2958,8 +2995,18 @@ internal fun ConnectionScreen(
         item {
             OutlinedTextField(
                 value = endpoint, onValueChange = onEndpoint,
-                label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
-                placeholder = { Text("server.example or https://server.example/rutorrent/") },
+                label = { Text(when {
+                    isRTorrentForm -> "Seedbox hostname, ruTorrent URL or RPC address"
+                    chosenBackend == RemoteBackendKind.TRANSMISSION -> "Transmission RPC URL"
+                    chosenBackend == RemoteBackendKind.QBITTORRENT -> "qBittorrent WebUI root URL"
+                    else -> "Deluge Web JSON URL"
+                }) },
+                placeholder = { Text(when {
+                    isRTorrentForm -> "server.example or https://server.example/rutorrent/"
+                    chosenBackend == RemoteBackendKind.TRANSMISSION -> "https://server.example/transmission/rpc"
+                    chosenBackend == RemoteBackendKind.QBITTORRENT -> "https://server.example/qbittorrent/"
+                    else -> "https://server.example/deluge/json"
+                }) },
                 // Next moves to the following field; no autocorrect on an address.
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
@@ -2967,11 +3014,13 @@ internal fun ConnectionScreen(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                 singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
             )
-            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
+            val providerHint = if (isRTorrentForm) remember(endpoint) {
+                RemoteProviderCatalog.hint(endpoint)
+            } else null
             if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
         }
-        item {
+        if (isRTorrentForm) item {
             var advancedOpen by rememberSaveable { mutableStateOf(rpcPath.isNotBlank()) }
             TextButton(onClick = { advancedOpen = !advancedOpen },
                 modifier = Modifier.heightIn(min = 48.dp)) {
@@ -2993,7 +3042,7 @@ internal fun ConnectionScreen(
                     "checking known paths.", style = MaterialTheme.typography.bodySmall)
             }
         }
-        item {
+        if (isRTorrentForm || chosenBackend != RemoteBackendKind.DELUGE) item {
             OutlinedTextField(
                 value = username, onValueChange = onUsername,
                 label = { Text("Username, if required") },
@@ -3010,7 +3059,16 @@ internal fun ConnectionScreen(
                 enabled = !loading,
                 modifier = Modifier.fillMaxWidth(),
                 // Go runs the same read-only Connect as the button, under its rules.
-                onGo = { if (!loading && endpoint.isNotBlank()) submitConnect() }
+                onGo = { if (!loading && canSubmitConnection) submitConnect() }
+            )
+        }
+        if (needsDaemonId) item {
+            OutlinedTextField(
+                value = delugeDaemonHostId, onValueChange = onDelugeDaemonHostId,
+                label = { Text("Deluge daemon ID") },
+                supportingText = { Text("Select the exact registered daemon, not just the Deluge WebUI.") },
+                singleLine = true, enabled = !loading,
+                modifier = Modifier.fillMaxWidth()
             )
         }
         } // No mutable login inputs while an authenticated session is active.
@@ -3041,15 +3099,36 @@ internal fun ConnectionScreen(
         if (connectedSessionName == null) item {
             Button(
                 onClick = submitConnect,
-                enabled = !loading && endpoint.isNotBlank() && validName,
+                enabled = !loading && canSubmitConnection && validName,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                     .testTag(ChunksSemantics.CONNECTION_CONNECT)
-            ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
+            ) { Text(when {
+                loading && isRTorrentForm -> "Finding secure rTorrent…"
+                loading -> "Checking connection…"
+                isRTorrentForm -> "Connect to rTorrent"
+                else -> "Connect to " + when (chosenBackend) {
+                    RemoteBackendKind.TRANSMISSION -> "Transmission"
+                    RemoteBackendKind.QBITTORRENT -> "qBittorrent"
+                    RemoteBackendKind.DELUGE -> "Deluge"
+                    else -> "rTorrent"
+                } + " (read only)"
+            }) }
         }
         if (connectedSessionName == null) {
-            item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
-            if (error != null) item { Notice("Connection unsuccessful", error) }
+            if (isRTorrentForm) item {
+                ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect)
+            }
+            if (isRTorrentForm && error != null) item { Notice("Connection unsuccessful", error) }
+            if (!isRTorrentForm && loading) item {
+                OutlinedButton(onClick = onCancelConnect,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Cancel connection check")
+                }
+            }
+            if (!isRTorrentForm && readOnlyBackendError != null) item {
+                Notice("Connection unsuccessful", readOnlyBackendError)
+            }
         }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
