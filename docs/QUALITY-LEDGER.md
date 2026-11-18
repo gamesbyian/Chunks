@@ -12,6 +12,18 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-18 UTC: device-screen Add-time Low/High (#1882) and the second-remote-Add stall diagnosed
+
+- **#1882** merged as `2d6e390` from exact head `d6cc3ce`. Integration-real-peer profile ACCEPTABLE, and every check run on the head succeeded:
+  - native atlas dispatched on the head;
+  - named waivers: check (no docs changed), two-server-combined and remote-delete-data (not path-triggered, and they never touch Add file choices).
+- **Second-remote-Add stall, diagnosed.** This is the intermittent `click-add-submit` failure seen on #1863, #1877 and main.
+  - On `1f15235` (run 44409816661) the post-click flags read `0000001-1`: no admission refusal phrase, no receipt, and `Add transfer` still enabled after the tap.
+  - So the app neither refused nor started an Add; the coordinate touch never reached the lazy control. Earlier, run 44381784954 had shown zero RPCs after the tap.
+  - Fix: `MainActivityRealMagnetJourney` activates the submit exactly once through its semantics `OnClick`, as it already did for the Details row. Assertions are unchanged.
+  - It passed on `d6cc3ce`. One pass is not proof the intermittent cause is gone; keep watching.
+- **Test-robustness follow-up.** `LocalTorrentEngineTest.startAfterPayloadTruncatedWhileStoppedRehashesAndRefetchesMissingPieces` timed out once in CI (`build` on `d6cc3ce`, green on rerun) and once in a local full suite. Both times it timed out at `repaired-download-flush`, after a single loopback `connectPeer`. This is engine-test timing, not product code changed here.
+
 ## 2026-11-18 UTC: Add-time Low/High priorities (#1879, #1880)
 
 - **#1879** merged as `7f79f87` from exact head `b345d4d`. It adds Add-time Low/High in the shared workflow, Local and protocol Add.
