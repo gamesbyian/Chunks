@@ -41,7 +41,8 @@ import kotlinx.coroutines.launch
 internal data class ProtocolMoveTarget(
     val id: String,
     val label: String,
-    val createOperations: () -> RemoteClientOperations
+    /** May do IO (for example resolving the verified Local Place). */
+    val createOperations: suspend () -> RemoteClientOperations
 )
 
 /** Plain-language, credential-free outcome text shared by every protocol. */

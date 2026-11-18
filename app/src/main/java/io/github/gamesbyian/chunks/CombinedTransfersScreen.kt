@@ -1191,8 +1191,15 @@ internal fun CombinedTransfersScreen(
                     moveTargets = buildList {
                         protocolProfiles.filter { it.id != profile.id && it.operations != null &&
                             it.environment in protocolAllowed }.forEach { other ->
-                            add(ProtocolMoveTarget(other.id, other.label, requireNotNull(other.operations)))
+                            val create = requireNotNull(other.operations)
+                            add(ProtocolMoveTarget(other.id, other.label) { create() })
                         }
+                        // This device: the bundled engine through the shared port,
+                        // into the verified Local Place (resolved on the tap).
+                        if (localPrivacy?.mayShow != false) add(ProtocolMoveTarget(
+                            EnvironmentSnapshots.LOCAL.value, "This device") {
+                            LocalClientOperations.forApp(context)
+                        })
                         // The authenticated rTorrent session, through the shared port.
                         (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
                             serverId != null && serverPrivacy?.mayShow == true && server.stale == false
