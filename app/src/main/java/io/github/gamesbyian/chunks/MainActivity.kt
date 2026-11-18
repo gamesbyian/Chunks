@@ -1597,6 +1597,13 @@ internal fun ChunksApp(
                     connectionDraftEdited = true
                     credentialNotice = null
                     connectDiagnostics = ConnectionDiagnostics()
+                    readOnlyConnectJob?.cancel()
+                    readOnlyConnectJob = null
+                    readOnlyBackendError = null
+                    delugeDaemonHostId = ""
+                    chosenBackend = RemoteBackendKind.RTORRENT
+                    verifiedReadOnlyProfileId = null
+                    transientReadOnlyProfile = null
                 },
                 startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
@@ -1626,21 +1633,67 @@ internal fun ChunksApp(
                     savedAddReconnect.abandon()
                     // Discovery is read-only, so abandoning it changes nothing.
                     connectJob?.cancel()
+                    readOnlyConnectJob?.cancel()
                     remoteFence.invalidate()
                     RemoteCredentialLock.invalidate()
                     returnFromStartupConnectToCanonical = false
                     loading = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
+                    readOnlyBackendError = "Connection check cancelled. Nothing was changed."
                 },
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
+                readOnlySavedProfiles = savedProtocolProfiles,
+                readOnlyConnectedProfileId = verifiedReadOnlyProfileId,
+                onViewReadOnlyProfile = { profile ->
+                    // The immutable typed client ID selects only a read-only
+                    // Combined view. No auth secret, Add or command is handed off.
+                    consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                    savedProfileCatalogFocus = profile.id
+                    combinedFromConnections = true
+                    section = Section.COMBINED
+                },
+                onRenameReadOnlyProfile = { profile, newLabel ->
+                    val saved = withContext(Dispatchers.IO) {
+                        runCatching { protocolProfileRoster.rename(profile.id, newLabel) }.getOrDefault(false)
+                    }
+                    if (saved) {
+                        savedProtocolProfiles = withContext(Dispatchers.IO) { protocolProfileRoster.list() }
+                    }
+                    saved
+                },
+                onForgetReadOnlyProfile = { profile ->
+                    RemoteCredentialLock.invalidate()
+                    // Hide immediately. A late background inventory may not
+                    // resurrect a just-forgotten account during its IO write.
+                    savedProtocolProfiles = savedProtocolProfiles.filterNot { it.id == profile.id }
+                    if (transientReadOnlyProfile?.id == profile.id) transientReadOnlyProfile = null
+                    if (verifiedReadOnlyProfileId == profile.id) verifiedReadOnlyProfileId = null
+                    credentialChanges.submit(scope) { revision ->
+                        val deleted = withContext(Dispatchers.IO) {
+                            runCatching { protocolProfileRoster.forget(profile.id) }.getOrDefault(false)
+                        }
+                        val remaining = withContext(Dispatchers.IO) { protocolProfileRoster.list() }
+                        if (credentialChanges.isLatest(revision)) {
+                            savedProtocolProfiles = remaining
+                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty() ||
+                                remaining.isNotEmpty()
+                            credentialNotice = if (deleted) "Saved connection forgotten on this device."
+                                else "Could not confirm credential removal. Review saved connections."
+                        }
+                    }
+                },
                 onSelectProfile = { profile ->
                     // Explicitly choosing another saved account abandons an
                     // older Add-return promise. Re-selecting the same account
                     // while editing its login leaves that draft intact.
                     savedAddReconnect.abandonIfDifferent(
                         RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
+                    chosenBackend = RemoteBackendKind.RTORRENT
+                    delugeDaemonHostId = ""
+                    readOnlyBackendError = null
+                    verifiedReadOnlyProfileId = null
                     endpoint = profile.credentials.endpoint
                     rpcPath = ""
                     username = profile.credentials.username
