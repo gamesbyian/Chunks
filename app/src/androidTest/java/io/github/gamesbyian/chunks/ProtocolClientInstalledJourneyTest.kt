@@ -247,9 +247,23 @@ class ProtocolClientInstalledJourneyTest {
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
             stage("add-dispatched-once")
             waitFor("Add confirmed", 90_000) { visible("Add: confirmed") }
-            val observed = runBlocking { client.torrent(second.infoHashV1) }
+            // Newly registered magnets may briefly report a queue/check state while
+            // the daemon settles the explicitly requested Start-off option. Never
+            // accept QUEUED as STOPPED: it can become runnable without permission.
+            var observed = runBlocking { client.torrent(second.infoHashV1) }
+            val settleUntil = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(20)
+            while (observed?.runState != ClientRunState.STOPPED &&
+                System.nanoTime() < settleUntil) {
+                Thread.sleep(500)
+                observed = runBlocking { client.torrent(second.infoHashV1) }
+            }
             assertTrue("Independent readback: added stopped ($observed)", observed != null &&
                 observed.runState == ClientRunState.STOPPED)
+            // A fleeting paused observation cannot prove a stable stopped Add.
+            Thread.sleep(1_500)
+            val settled = runBlocking { client.torrent(second.infoHashV1) }
+            assertTrue("Independent settled readback: remained stopped ($settled)",
+                settled?.runState == ClientRunState.STOPPED)
             stage("add-stopped-verified-independently")
             runBlocking { witness.remove(second.infoHashV1, deleteData = false) }
         }
