@@ -358,13 +358,15 @@ class RealClientInteropTest {
         val tag = "$from->$to"
         assertVerified("$tag source_add_stopped", srcOps.add(ClientAddRequest(
             ClientAddSource.TorrentFile(fx.result.torrent), null, startNow = false)))
-        val transfer = ClientJobTransfer(srcOps, src, dstOps, dst)
+        val transfer = ClientJobTransfer(srcOps, src, dstOps, dst,
+            sourceClientId = "live-$tag-source", targetClientId = "live-$tag-target")
         val copied = transfer.copy(hash, targetDirectory = null, startOnTarget = false)
         assertTrue("$tag copy: $copied", copied is ClientJobTransfer.CopyResult.Copied)
         println("CHUNKS_INTEROP: MOVE $tag job_copied=verified via=" +
             if ((copied as ClientJobTransfer.CopyResult.Copied).viaMetainfo) "metainfo" else "magnet")
         assertEquals(ClientRunState.STOPPED, dst.torrent(hash)?.runState)
-        assertVerified("$tag retire_source_session_only", transfer.retireSource(hash))
+        assertVerified("$tag retire_source_session_only",
+            transfer.retireSource(hash, copied as ClientJobTransfer.CopyResult.Copied))
         assertVerified("$tag target_fixture_cleanup", dstOps.remove(hash, deleteData = false))
         assertEquals(srcBefore, src.torrents().map { it.hash }.toSet())
         assertEquals(dstBefore, dst.torrents().map { it.hash }.toSet())
