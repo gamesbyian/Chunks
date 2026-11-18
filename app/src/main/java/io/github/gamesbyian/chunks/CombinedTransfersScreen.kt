@@ -570,7 +570,7 @@ internal fun CombinedTransfersScreen(
                 ?.let(RemoteTransferPrivacyScope::fromAuthenticatedAliasScope)
         }
     }
-    val requestedPrivacyScopes = remember(serverPrivacyScope, savedPrivacyScopes) {
+    val requestedPrivacyScopes = remember(serverPrivacyScope, savedPrivacyScopes, protocolPrivacyScopes) {
         buildSet {
             add(localPrivacyScope)
             serverPrivacyScope?.let { add(it) }
@@ -1786,7 +1786,8 @@ internal fun CombinedTransfersScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (showingSourceStatus || result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
-                    listings.values.any { it.error != null || it.loading }) {
+                    listings.values.any { it.error != null || it.loading } ||
+                    protocolSources.listings.values.any { it.failed || it.loading }) {
                     OutlinedButton(
                         onClick = { showingSourceStatus = !showingSourceStatus },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -1805,11 +1806,23 @@ internal fun CombinedTransfersScreen(
                     val listing = activeSavedScopes[source.environment]?.let { witness ->
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }
+                    val protocolProfile = protocolProfiles.firstOrNull {
+                        it.environment == source.environment
+                    }
+                    val protocolListing = protocolProfile?.let { profile ->
+                        protocolSources.listings[source.environment]
+                            ?.takeIf { it.witness == profile.identityWitness }
+                    }
                     val status = when {
                         source.environment in invalidSavedProfiles ->
                             "Saved account identity could not be verified; reconnect this profile"
                         privacyEvidence == null ->
                             "Privacy policy not yet verified; transfers hidden"
+                        protocolListing?.loading == true -> "Loading read-only list…"
+                        protocolListing?.failed == true && protocolListing.snapshot == null ->
+                            "Could not load this client (read-only)"
+                        protocolListing?.failed == true ->
+                            "Refresh failed; showing last read-only list"
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
                             "Could not load (" + listing.error + ")"
@@ -1819,6 +1832,17 @@ internal fun CombinedTransfersScreen(
                     }
                     Text(labels[source.environment].orEmpty() + ": " + status + " · " +
                         source.transfers.size + " transfers", style = MaterialTheme.typography.bodySmall)
+                    if (protocolProfile != null && source.environment in protocolAllowed) {
+                        val label = labels[source.environment].orEmpty()
+                        OutlinedButton(
+                            onClick = { protocolSources.reload(source.environment) },
+                            enabled = protocolListing?.loading != true,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                                contentDescription = "Refresh transfers on $label; read only"
+                            }
+                        ) { Text(if (protocolListing?.loading == true) "Loading $label transfers…"
+                            else "Refresh $label transfers") }
+                    }
                     loadable.firstOrNull { it.id == source.environment.value }?.let { profile ->
                         val label = labels[source.environment].orEmpty()
                         val verb = if (listing?.observedAtEpochMillis == null) "Load" else "Refresh"
