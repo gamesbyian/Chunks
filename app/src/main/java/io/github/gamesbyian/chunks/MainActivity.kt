@@ -308,7 +308,7 @@ internal fun shouldConsumeReviewedSourceOnExit(
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the local device). */
@@ -1111,6 +1111,38 @@ internal fun ChunksApp(
     // remote attempt's status. An alias never authorizes a server operation.
     val activeAddDisplayName = compactUniversalAddTargetLabels(
         activeAddRemoteName, otherSavedAddTargets).first
+    // Smart Routing: read the persisted policy off the composition thread
+    // whenever Add is shown; suggest from the reviewed source's own names.
+    var routingPolicy by remember { mutableStateOf<io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Policy?>(null) }
+    LaunchedEffect(section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD) {
+        routingPolicy = withContext(Dispatchers.IO) {
+            (runCatching { io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore(context).read() }.getOrNull()
+                as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
+        }
+    }
+    val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+        .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
+    val routingSource = localReviewedTorrent.value?.preview
+    val routingMagnetName = remember(magnet, addSourceDraft.value) {
+        (MagnetDraftCheck.inspect(magnet.ifBlank { addSourceDraft.value }) as? MagnetDraftCheck.Valid)?.displayName
+    }
+    val routingResult = remember(routingPolicy, routingSource, routingMagnetName, connectedRTorrentId,
+        combinedProtocolProfiles, activeAddRemoteName) {
+        val candidates = buildList {
+            add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
+                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local", true, true, true))
+            connectedRTorrentId?.let { add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
+                it, activeAddRemoteName ?: "rTorrent", true, true, true)) }
+            combinedProtocolProfiles.filter { it.operations != null }.forEach {
+                add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true))
+            }
+        }
+        io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.evaluate(routingPolicy,
+            routingSource?.name ?: routingMagnetName,
+            routingSource?.files?.map { it.path }.orEmpty(), candidates)
+    }
+    val routingSuggestion = (routingResult as?
+        io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Result.Suggested)?.suggestion
     val addDestinationPicker: @Composable () -> Unit = {
         UniversalAddDestinationPicker(
             addingRemotely = addTargetIsAuthenticated,
@@ -1153,6 +1185,28 @@ internal fun ChunksApp(
             onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
             protocolDestinations = combinedProtocolProfiles.filter { it.operations != null }
                 .map { UniversalAddSavedDestination(it.id, it.label) },
+            routingSuggestion = routingSuggestion?.let { it.label to
+                (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") },
+            routingSuggestionSelected = routingSuggestion?.environmentId?.let { id ->
+                id == addProtocolTargetId ||
+                    (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
+                    (addProtocolTargetId == null && !addTargetIsAuthenticated &&
+                        id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
+            } == true,
+            onUseRoutingSuggestion = {
+                val id = routingSuggestion?.environmentId
+                when {
+                    id == null -> Unit
+                    id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value -> selectLocalAddTarget()
+                    id == connectedRTorrentId -> selectAuthenticatedAddTarget()
+                    combinedProtocolProfiles.any { it.id == id && it.operations != null } &&
+                        (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) -> {
+                        addUsingAuthenticatedRemote = false
+                        addProtocolTargetId = id
+                        section = Section.ADD_CHOOSE
+                    }
+                }
+            },
             selectedProtocolId = addProtocolTargetId,
             onProtocol = { id ->
                 if (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) {
@@ -1194,6 +1248,13 @@ internal fun ChunksApp(
                 }
             }
         )
+    }
+    val smartRoutingTargets = remember(savedProfiles, combinedProtocolProfiles) {
+        buildList {
+            add(SmartRoutingTargetChoice(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local"))
+            savedProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
+            combinedProtocolProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
+        }.distinctBy { it.environmentId }
     }
     val protocolAddProfile = addProtocolTargetId?.let { id ->
         combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
@@ -1476,6 +1537,8 @@ internal fun ChunksApp(
             SeedingRulesScreen(seedingEnvironments, onBack = { leaveTool() })
         } else if (presentationSection == Section.MEDIA) {
             MediaSettingsScreen(onBack = { leaveTool() })
+        } else if (presentationSection == Section.ROUTING) {
+            SmartRoutingSettingsScreen(smartRoutingTargets, onBack = { leaveTool() })
         } else if (presentationSection == Section.CREATE && server == null) {
             val shownCreateRequest = createRequest
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(
@@ -1528,6 +1591,8 @@ internal fun ChunksApp(
                     onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onMediaSettings = { openTool(Section.MEDIA,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                    onSmartRouting = { openTool(Section.ROUTING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onCreateTorrent = { openTool(Section.CREATE,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -2205,6 +2270,8 @@ internal fun ChunksApp(
                         onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onMediaSettings = { openTool(Section.MEDIA,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                        onSmartRouting = { openTool(Section.ROUTING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onCreateTorrent = { openTool(Section.CREATE,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -3311,7 +3378,7 @@ internal fun ConnectionScreen(
                     )
                 }
             }
-            Text("All clients use this same Connections screen. New protocols currently support read-only connection checks.",
+            Text("All clients use this same Connections screen. Connecting only checks the login and reads the transfer list.",
                 style = MaterialTheme.typography.bodySmall)
         }
         item {

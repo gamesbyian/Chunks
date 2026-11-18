@@ -85,7 +85,11 @@ internal fun UniversalAddDestinationPicker(
     /** Connected Transmission / qBittorrent / Deluge clients (exact typed profiles). */
     protocolDestinations: List<UniversalAddSavedDestination> = emptyList(),
     selectedProtocolId: String? = null,
-    onProtocol: (String) -> Unit = {}
+    onProtocol: (String) -> Unit = {},
+    /** Smart Routing's proposal (label + reason); never applied without a tap. */
+    routingSuggestion: Pair<String, String>? = null,
+    routingSuggestionSelected: Boolean = false,
+    onUseRoutingSuggestion: () -> Unit = {}
 ) {
     var showAlias by rememberSaveable { mutableStateOf(false) }
     val (activeRemoteName, otherDestinations) = compactUniversalAddTargetLabels(
@@ -108,6 +112,13 @@ internal fun UniversalAddDestinationPicker(
         sourceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Text("Add to", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() })
+        routingSuggestion?.let { (label, reason) ->
+            Text("Smart Routing suggests $label · $reason", style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.testTag("chunks.add.routing.suggestion"))
+            if (!routingSuggestionSelected) OutlinedButton(onClick = onUseRoutingSuggestion, enabled = enabled,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag("chunks.add.routing.use")) { Text("Use $label") }
+        }
         FlowRow(Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {

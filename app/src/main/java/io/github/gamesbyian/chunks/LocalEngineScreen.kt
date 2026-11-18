@@ -287,6 +287,8 @@ internal fun LocalEngineScreen(
     showNavigationFooter: Boolean = true,
     /** Opens Smart Seeding Rules; null hides the entry. */
     onSeedingRules: (() -> Unit)? = null,
+    /** Options > Downloads: Smart Routing rules (suggest an Add target). */
+    onSmartRouting: (() -> Unit)? = null,
     /** Options → Artwork & media info (app-wide presentation preferences). */
     onMediaSettings: (() -> Unit)? = null,
     /** App-wide local tools, reachable from Local options without leaving via the server entry. */
@@ -3132,6 +3134,9 @@ internal fun LocalEngineScreen(
         OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
             if (onOpenAdd != null) OutlinedButton(onClick = onOpenAdd,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download location and Save to…") }
+            if (onSmartRouting != null) OutlinedButton(onClick = onSmartRouting,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag("chunks.options.smart_routing")) { Text("Smart Routing…") }
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,

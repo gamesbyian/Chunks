@@ -118,7 +118,15 @@ internal fun ProtocolAddScreen(
             val read = withContext(Dispatchers.IO) {
                 runCatching {
                     context.contentResolver.openInputStream(uri)?.use { input ->
-                        val bytes = input.readNBytes(TorrentMetainfoReader.MAX_BYTES + 1)
+                        // Bounded read without API 33-only InputStream calls (minSdk 29).
+                        val out = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(16 * 1024)
+                        while (out.size() <= TorrentMetainfoReader.MAX_BYTES) {
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            out.write(buffer, 0, n)
+                        }
+                        val bytes = out.toByteArray()
                         require(bytes.size <= TorrentMetainfoReader.MAX_BYTES) { "This .torrent is too large" }
                         PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
                     } ?: error("Could not open the document")
