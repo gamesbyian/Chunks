@@ -17,6 +17,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -182,7 +183,7 @@ internal fun rememberCombinedProtocolSources(
     LaunchedEffect(Unit) {
         while (true) {
             val clock = System.currentTimeMillis()
-            currentProfiles.value.forEach { profile ->
+            currentProfiles.value.values.forEach { profile ->
                 val id = profile.environment
                 val witness = profile.identityWitness
                 if (currentActive.value[id] == witness &&
