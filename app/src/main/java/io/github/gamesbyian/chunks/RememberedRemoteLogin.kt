@@ -96,8 +96,13 @@ internal class RememberedRemoteLogin(context: Context) {
         // If an older app or a crash left roster ciphertext behind, purge it
         // BEFORE re-enabling; a failed purge must leave remembering disabled.
         val previouslyEnabled = rememberingEnabled()
-        if (enabled && !previouslyEnabled &&
-            !RememberedRemoteProfileRoster(appContext).clearAll()) return false
+        if (enabled && !previouslyEnabled) {
+            // A previous opt-out must never resurrect either credential vault.
+            // A failed scrub leaves the original OFF policy in force.
+            val previousCleared = RememberedRemoteProfileRoster(appContext).clearAll()
+            val protocolsCleared = RememberedRemoteProtocolProfiles(appContext).clearAll()
+            if (!previousCleared || !protocolsCleared) return false
+        }
         val editor = prefs.edit().putBoolean("remember_enabled", enabled)
         // The one-profile vault must be scrubbed on OFF and on a later
         // OFF→ON transition. Otherwise a legacy interrupted opt-out could
@@ -111,7 +116,11 @@ internal class RememberedRemoteLogin(context: Context) {
             runCatching { keyStore().deleteEntry(alias) }
             // If a roster scrub fails, the OFF policy is already committed.
             // Re-enabling is blocked until its scrub succeeds.
-            return RememberedRemoteProfileRoster(appContext).clearAll()
+            // Always attempt BOTH scrubs. A failure in one store cannot
+            // prevent encrypted bytes in the other from being purged.
+            val legacyCleared = RememberedRemoteProfileRoster(appContext).clearAll()
+            val protocolCleared = RememberedRemoteProtocolProfiles(appContext).clearAll()
+            return legacyCleared && protocolCleared
         }
         return true
     }
