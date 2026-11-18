@@ -138,6 +138,18 @@ class RemoteClientOperationsTest {
         assertEquals(1, fake.writes)
     }
 
+    @Test fun startedAddIsPendingWhileQueuedOrChecking() = runBlocking {
+        for (state in listOf(ClientRunState.QUEUED, ClientRunState.CHECKING,
+            ClientRunState.UNKNOWN, ClientRunState.ERROR)) {
+            val fake = Fake(null).apply { applyWrite = { it.present = torrent(state) } }
+            val magnet = ClientAddSource.Magnet("magnet:?xt=urn:btih:$hash")
+            val outcome = ops(fake).add(ClientAddRequest(magnet, "/d", true))
+            assertTrue("No proven active Add for $state: $outcome",
+                outcome is ClientOperationOutcome.Pending)
+            assertEquals(1, fake.writes)
+        }
+    }
+
     @Test fun startedAddCanBeVerifiedWithObservedDownloadingJob() = runBlocking {
         val fake = Fake(null).apply { applyWrite = { it.present = torrent(ClientRunState.DOWNLOADING) } }
         val magnet = ClientAddSource.Magnet("magnet:?xt=urn:btih:$hash")

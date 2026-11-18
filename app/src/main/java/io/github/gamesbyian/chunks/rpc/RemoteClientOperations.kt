@@ -69,8 +69,11 @@ internal class RemoteClientOperations(
                 // Clients may hash-check existing payload first; only the
                 // settled stopped state satisfies a stopped Add.
                 !request.startNow && observed.runState != ClientRunState.STOPPED -> "Checking existing data"
-                request.startNow && observed.runState == ClientRunState.STOPPED ->
-                    "Registered but stopped; Start not observed"
+                // Add acknowledgement proves registration, not that an
+                // explicitly requested Start has taken effect. QUEUED and
+                // CHECKING may never advance without another authorization.
+                request.startNow && observed.runState.started != true ->
+                    "Registered but Start not yet observed"
                 else -> null
             }
         }
