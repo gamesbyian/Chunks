@@ -231,4 +231,20 @@ class LocalTorrentClientTest {
         // The one-use receipt cannot be replayed.
         assertTrue(move.retireSource(p.hash, copy) is ClientOperationOutcome.Refused)
     }
+
+    @Test fun sharedFileChoicesAtAddSkipReviewedFilesBeforeStartOnRealLibtorrent() = runBlocking {
+        val d = device()
+        val p = payload("choices")
+        // The reviewed layout exactly as Universal Add presents it.
+        val reviewed = requireNotNull(AddFileChoices.declared(
+            io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(p.torrent)))
+        val skip = reviewed.single { it.path.endsWith("c.bin") }
+        val outcome = d.ops.add(ClientAddRequest(ClientAddSource.TorrentFile(p.torrent), null, startNow = true,
+            skippedFiles = mapOf(skip.index to skip.path)))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Verified)
+        val files = d.client.files(p.hash).associateBy { it.index }
+        assertEquals(ClientFilePriority.SKIP, files.getValue(skip.index).priority)
+        assertTrue(files.values.filter { it.index != skip.index }.all { it.priority == ClientFilePriority.NORMAL })
+        assertEquals(ClientRunState.DOWNLOADING, d.client.torrent(p.hash)?.runState)
+    }
 }

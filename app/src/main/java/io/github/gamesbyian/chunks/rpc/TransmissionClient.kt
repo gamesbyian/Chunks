@@ -36,7 +36,7 @@ internal class TransmissionClient(
         val version = args.optString("version").takeIf { it.isNotBlank() && it.length <= 128 }
             ?: throw IOException("Transmission version unavailable")
         val dir = args.optString("download-dir").takeIf { it.startsWith("/") }
-        return ClientSessionInfo(kind, version, dir, ClientCapability.entries.toSet())
+        return ClientSessionInfo(kind, version, dir, ClientCapability.entries.toSet() - ClientCapability.ADD_WITH_FILE_CHOICES)
     }
 
     override suspend fun transferSource(hash: String): ClientAddSource? {

@@ -40,7 +40,7 @@ internal class QBittorrentClient(
         val dir = request("GET", "app/defaultSavePath").trim().takeIf { it.startsWith("/") }
         return ClientSessionInfo(
             kind, version, dir,
-            ClientCapability.entries.toSet(),
+            ClientCapability.entries.toSet() - ClientCapability.ADD_WITH_FILE_CHOICES,
             filePriorities = setOf(ClientFilePriority.SKIP, ClientFilePriority.NORMAL, ClientFilePriority.HIGH)
         )
     }
