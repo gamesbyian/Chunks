@@ -12,6 +12,17 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-18 UTC: Add-time Low/High priorities (#1879, #1880)
+
+- **#1879** merged as `7f79f87` from exact head `b345d4d`. It adds Add-time Low/High in the shared workflow, Local and protocol Add.
+  - Integration-real-peer profile ACCEPTABLE. installed-magnet-lifecycle and the native atlas were dispatched on that head (the shared file-choice component also renders in the rTorrent and device Add forms). Named waivers for api29-downloads, two-server-combined and remote-delete-data.
+  - Local real daemons stored skip/High/Low on Transmission and Deluge, and skip/High on qBittorrent and rTorrent (`SharedAddFileChoicesInteropTest`).
+  - Real libtorrent applied skip/High/Low while stopped; a layout mismatch applied nothing and never started.
+- **#1880** merged as `6bdbd4f` from exact head `42fed6b`. It adds High in the rTorrent Add form.
+  - `Disposable rTorrent protocol proof`: `RTorrentLibtorrentInteropTest` ran 6 tests, 0 skipped, 0 failed, against real rTorrent with a real local-device peer. The add-with-skip journey now also raises one wanted file to High and asserts `f.priority`=2, alongside the existing skipped-piece and exact-byte checks.
+  - interop, installed-protocol-client and installed-magnet-lifecycle were first red on runner infrastructure: Robolectric download exhausted; the apt mirror and its fallback were down; the first Connections field timed out before any Add. All three passed on rerun of the unchanged head.
+- **Not evidence:** installed-app Add-time priorities; physical device.
+
 ## 2026-11-18 UTC: live Seedhost Add-time file choices on merged main
 
 - `seedhost-other-protocols-interop.yml`, trusted `main` `f6f39fe` (#1877), apply=true, first attempt, fixture-only writes: Transmission [44390880056](https://github.com/gamesbyian/Chunks/actions/runs/44390880056), qBittorrent [44390885656](https://github.com/gamesbyian/Chunks/actions/runs/44390885656) and Deluge [44390891854](https://github.com/gamesbyian/Chunks/actions/runs/44390891854) all **passed**. In each run, `SharedAddFileChoicesInteropTest` executed exactly that client's case (`executed=1 failed=0`): stopped Add, the reviewed skip verified by the live client's own file priorities, then Start only after. The existing journey stages also passed in each run: stopped Add, app Connect, duplicate refused, 2 files, priorities set and restore, Start, Stop, stopped magnet Add, and the rest. Live tier is registration and priority level; server payload bytes are not observed remotely.
