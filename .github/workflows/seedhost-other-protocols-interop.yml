@@ -89,7 +89,8 @@ jobs:
                  "CHUNKS_INTEROP_${BACKEND}_PASS=$LIVE_PASS" "CHUNKS_INTEROP_${BACKEND}_DAEMON_ID=$LIVE_DAEMON"
           set +e
           gradle --no-daemon --no-configuration-cache --console=plain -q :app:testDebugUnitTest \
-            --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest > "$RUNNER_TEMP/gradle.log" 2>&1
+            --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest > "$RUNNER_TEMP/gradle.log" 2>&1
           status=$?
           set -e
           python3 - "$status" <<'PY'
@@ -111,5 +112,17 @@ jobs:
           for line in (root.findtext("system-out") or "").splitlines():
               if line.startswith("CHUNKS_INTEROP:"):
                   print(line[:240])
-          sys.exit(0 if int(sys.argv[1]) == 0 and tests - skipped == 1 and failed == 0 else 1)
+          # Add-time file choices on this one live client: exactly its case must execute.
+          choices = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest.xml")
+          if not choices.is_file():
+              print("CHUNKS_INTEROP: no file-choice receipt"); sys.exit(1)
+          croot = ET.parse(choices).getroot()
+          cexec = int(croot.get("tests", 0)) - int(croot.get("skipped", 0))
+          cfail = int(croot.get("failures", 0)) + int(croot.get("errors", 0))
+          print(f"CHUNKS_INTEROP: file choices executed={cexec} failed={cfail}")
+          for line in (croot.findtext("system-out") or "").splitlines():
+              if line.startswith("CHUNKS_FILECHOICE:"):
+                  print(line[:120])
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests - skipped == 1 and failed == 0
+                   and cexec == 1 and cfail == 0 else 1)
           PY

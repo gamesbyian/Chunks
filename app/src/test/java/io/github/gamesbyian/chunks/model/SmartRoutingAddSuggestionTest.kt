@@ -73,4 +73,20 @@ class SmartRoutingAddSuggestionTest {
             listOf(noMagnet, c(deluge, "Deluge")))
         assertTrue(r is SmartRoutingAddSuggestion.Result.Unavailable)
     }
+
+    @Test fun metadataLateMoveSuggestionIsAdvisoryAndOnlyForAnotherClient() {
+        val targets = listOf(c(qb, "Seedbox qB"), c(deluge, "Deluge"))
+        // A TV job sitting on Local, now that its real name is known: suggest qB.
+        val s = SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", false, "local", targets)
+        assertEquals(qb, s?.environmentId)
+        // Already on the rule's client: stay, no suggestion.
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", false, qb, targets))
+        // Metadata still pending, unknown name, routing off or target offline: nothing.
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", true, "local", targets))
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, null, false, "local", targets))
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy.copy(enabled = false),
+            "Show.S01E02.1080p.mkv", false, "local", targets))
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", false, "local",
+            listOf(c(qb, "Seedbox qB", live = false))))
+    }
 }

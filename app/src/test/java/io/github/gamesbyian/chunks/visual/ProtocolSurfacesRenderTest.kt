@@ -99,7 +99,7 @@ class ProtocolSurfacesRenderTest {
             onAllNodes(hasClickAction())[it].getUnclippedBoundsInRoot()
         }
 
-    private fun panel(width: Int, scale: Float, name: String) {
+    private fun panel(width: Int, scale: Float, name: String, expand: String = ChunksSemantics.PROTOCOL_MOVE) {
         show(width, scale) {
             ProtocolClientOperationsPanel(
                 hash = hash, clientLabel = "Seedbox qBittorrent", sourceClientId = "qb",
@@ -108,7 +108,7 @@ class ProtocolSurfacesRenderTest {
                 moveTargets = listOf(ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(Fake(), 3, 1) })
             )
         }
-        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(expand).performClick()
         rule.waitForIdle()
         assertTouchTargetsAndWidth(width)
         rule.onRoot().captureRoboImage("build/chunks-visual/protocol-details-$name.png")
@@ -118,6 +118,12 @@ class ProtocolSurfacesRenderTest {
 
     @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
     @Test fun detailsControlsWithMove320At200Percent() = panel(320, 2f, "320-200pct")
+
+    @Test fun detailsChangeFolder412() = panel(412, 1f, "folder-412-100pct", ChunksSemantics.PROTOCOL_SET_LOCATION)
+
+    @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
+    @Test fun detailsChangeFolder320At200Percent() =
+        panel(320, 2f, "folder-320-200pct", ChunksSemantics.PROTOCOL_SET_LOCATION)
 
     private fun add(width: Int, scale: Float, name: String) {
         show(width, scale) {

@@ -24,7 +24,13 @@ internal class SmartRoutingPolicyStore(context: Context) {
         val enabled: Boolean = false,
         val fallback: Fallback = Fallback.ASK,
         /** Order is user authority when priorities tie. */
-        val rules: List<SmartRoutingPreview.Rule> = emptyList()
+        val rules: List<SmartRoutingPreview.Rule> = emptyList(),
+        /**
+         * Explicit opt-in: Universal Add PRE-SELECTS a confident suggestion's
+         * exact client (once per reviewed source, never over the person's own
+         * choice). It never submits an Add; the Add tap stays the authority.
+         */
+        val autoSelect: Boolean = false
     )
 
     sealed class Read {
@@ -104,7 +110,11 @@ internal class SmartRoutingPolicyStore(context: Context) {
                     targetEnvironmentId = entry.strictString("targetEnvironmentId")
                 ))
             }
-            val policy = Policy(enabledValue, fallback, rules)
+            // Optional (absent in policies saved before it existed = off); a
+            // present non-Boolean value is corruption, never a guessed default.
+            val autoSelect = if (!objectValue.has("autoSelect")) false
+                else objectValue.get("autoSelect") as? Boolean ?: return Read.Unavailable
+            val policy = Policy(enabledValue, fallback, rules, autoSelect)
             if (!valid(policy)) Read.Unavailable else Read.Ready(revision, policy)
         } catch (_: Exception) {
             // Never overwrite an unknown future schema, legacy bytes, or a
@@ -128,6 +138,7 @@ internal class SmartRoutingPolicyStore(context: Context) {
                 .put("revision", existing.revision + 1)
                 .put("enabled", next.enabled)
                 .put("fallback", next.fallback.name)
+                .put("autoSelect", next.autoSelect)
             val entries = JSONArray()
             for (rule in next.rules) {
                 entries.put(JSONObject()

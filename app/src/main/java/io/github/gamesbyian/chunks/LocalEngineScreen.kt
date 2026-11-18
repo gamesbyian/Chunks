@@ -1821,8 +1821,21 @@ internal fun LocalEngineScreen(
                                                 ". Nothing was added. Review the folder and try again.") to null
                                     enteredNative.set(true)
                                     submittedBytes = authorizedBytes
-                                    val added = engine.addStoppedChecked(authorizedBytes, preflight.folder)
-                                        .also(nativeResult::set)
+                                    // The ONE native Local Add sequence (shared with the
+                                    // shared-port LocalTorrentClient): checked stopped Add →
+                                    // reviewed skips matched to the job's own index and path →
+                                    // Finish in Order while stopped → Start only if confirmed,
+                                    // else "Stopped after verification" of existing files.
+                                    val execution = LocalAddExecution.torrent(
+                                        engine, authorizedBytes, preflight.folder,
+                                        skipsRequested = frozenSkips.isNotEmpty(),
+                                        reviewedSkips = { files -> AddFileChoices.reviewedSkips(files, frozenSkips) },
+                                        startNow = autoStart,
+                                        beforeStart = { hash ->
+                                            if (orderAfterAdd) orderNote = enableFinishInOrderAfterAdd(context, engine, hash)
+                                        },
+                                        onAdded = nativeResult::set)
+                                    val added = execution.added
                                     if (adoption is io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Adoption.Renamed) {
                                         val count = adoption.receipt.renames.size
                                         recoveryNote = if (added is LocalAddResult.Refused) {
@@ -1832,34 +1845,14 @@ internal fun LocalEngineScreen(
                                         } else "Reusing " + count + (if (count == 1) " partial file" else " partial files") +
                                             " from another app. Chunks checks every piece and downloads only what is missing."
                                     }
-                                    // Configure file order while stopped, before any
-                                    // explicitly requested payload Start.
-                                    // Apply the reviewed file skips first, while still stopped, matched to
-                                    // the registered job's own index and path; no Start unless confirmed.
                                     if (frozenSkips.isNotEmpty() && added is LocalAddResult.AddedStopped) {
-                                        val reviewed = runCatching { engine.files(added.status.infoHash) }.getOrNull()
-                                            ?.let { AddFileChoices.reviewedSkips(it, frozenSkips) }
-                                        val outcome = reviewed?.let {
-                                            runCatching { engine.setFilesWantedBatch(added.status.infoHash, it, false) }.getOrNull()
-                                        }
-                                        skipConfirmed = AddFileChoices.confirmed(outcome)
-                                        skipNote = AddFileChoices.outcomeNote(outcome, frozenSkips.size, autoStart)
+                                        skipConfirmed = execution.skipsConfirmed
+                                        skipNote = AddFileChoices.outcomeNote(execution.skipOutcome, frozenSkips.size, autoStart)
                                     }
-                                    // Finish in Order plans over the files actually wanted after the skips.
-                                    if (orderAfterAdd && added is LocalAddResult.AddedStopped && skipConfirmed) {
-                                        orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
+                                    if (execution.verifyingExisting) verifyAfterAdd = added.let {
+                                        (it as LocalAddResult.AddedStopped).status.infoHash
                                     }
-                                    if (autoStart && added is LocalAddResult.AddedStopped && skipConfirmed)
-                                        added to engine.resume(added.status.infoHash)
-                                    else {
-                                        // "Stopped after verification": inside this Add's own change,
-                                        // libtorrent starts checking files already at the exact torrent
-                                        // paths and stops the job itself before any peer traffic.
-                                        if (added is LocalAddResult.AddedStopped && skipConfirmed &&
-                                            engine.beginStoppedVerification(added.status.infoHash))
-                                            verifyAfterAdd = added.status.infoHash
-                                        added to null
-                                    }
+                                    added to execution.start
                                 }
                             }
                         }

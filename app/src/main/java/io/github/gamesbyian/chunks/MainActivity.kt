@@ -1120,6 +1120,9 @@ internal fun ChunksApp(
                 as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
         }
     }
+    // Smart Routing pre-selection bookkeeping (process-only; never persisted).
+    var routingAutoAppliedFor by remember { mutableStateOf<String?>(null) }
+    var routingPersonChoiceFor by remember { mutableStateOf<String?>(null) }
     val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
     val routingSource = localReviewedTorrent.value?.preview
@@ -1161,6 +1164,42 @@ internal fun ChunksApp(
     }
     val routingSuggestion = (routingResult as?
         io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Result.Suggested)?.suggestion
+    // The one handler for using a suggestion: the person's tap on the chip, or
+    // the explicit opt-in pre-selection below. A target choice is a draft edit.
+    fun useRoutingSuggestion() {
+        val id = routingSuggestion?.environmentId
+        when {
+            id == null -> Unit
+            id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value -> selectLocalAddTarget()
+            id == connectedRTorrentId -> selectAuthenticatedAddTarget()
+            combinedProtocolProfiles.any { it.id == id && it.operations != null } &&
+                (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) -> {
+                addUsingAuthenticatedRemote = false
+                addProtocolTargetId = id
+                section = Section.ADD_CHOOSE
+            }
+        }
+    }
+    val routingMagnetKey = remember(magnet, addSourceDraft.value) {
+        (MagnetDraftCheck.inspect(magnet.ifBlank { addSourceDraft.value }) as? MagnetDraftCheck.Valid)?.infoHash
+    }
+    val routingSourceKey = routingSource?.infoHashV1 ?: routingMagnetKey
+    val routingSuggestionIsSelected = routingSuggestion?.environmentId?.let { id ->
+        id == addProtocolTargetId ||
+            (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
+            (addProtocolTargetId == null && !addTargetIsAuthenticated &&
+                id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
+    } == true
+    LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect, section) {
+        if (section != Section.ADD_CHOOSE && section != Section.ADD) return@LaunchedEffect
+        if (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.shouldPreselect(
+                routingPolicy, routingSuggestion, routingSourceKey, routingAutoAppliedFor, routingPersonChoiceFor,
+                routingSuggestionIsSelected,
+                addInFlight = protocolAddAttempt.busy || activeLocalAddAttempt.attemptedTicket != null)) {
+            routingAutoAppliedFor = routingSourceKey
+            useRoutingSuggestion()
+        }
+    }
     val addDestinationPicker: @Composable () -> Unit = {
         UniversalAddDestinationPicker(
             addingRemotely = addTargetIsAuthenticated,
@@ -1199,34 +1238,17 @@ internal fun ChunksApp(
                 pendingSharedMagnet = null
                 sharedTorrentError = null
             },
-            onLocal = { selectLocalAddTarget() },
-            onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
+            onLocal = { routingPersonChoiceFor = routingSourceKey; selectLocalAddTarget() },
+            onAuthenticatedRemote = { routingPersonChoiceFor = routingSourceKey; selectAuthenticatedAddTarget() },
             protocolDestinations = combinedProtocolProfiles.filter { it.operations != null }
                 .map { UniversalAddSavedDestination(it.id, it.label) },
             routingSuggestion = routingSuggestion?.let { it.label to
                 (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") },
-            routingSuggestionSelected = routingSuggestion?.environmentId?.let { id ->
-                id == addProtocolTargetId ||
-                    (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
-                    (addProtocolTargetId == null && !addTargetIsAuthenticated &&
-                        id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
-            } == true,
-            onUseRoutingSuggestion = {
-                val id = routingSuggestion?.environmentId
-                when {
-                    id == null -> Unit
-                    id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value -> selectLocalAddTarget()
-                    id == connectedRTorrentId -> selectAuthenticatedAddTarget()
-                    combinedProtocolProfiles.any { it.id == id && it.operations != null } &&
-                        (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) -> {
-                        addUsingAuthenticatedRemote = false
-                        addProtocolTargetId = id
-                        section = Section.ADD_CHOOSE
-                    }
-                }
-            },
+            routingSuggestionSelected = routingSuggestionIsSelected,
+            onUseRoutingSuggestion = { useRoutingSuggestion() },
             selectedProtocolId = addProtocolTargetId,
             onProtocol = { id ->
+                routingPersonChoiceFor = routingSourceKey
                 if (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) {
                     addUsingAuthenticatedRemote = false
                     addProtocolTargetId = id

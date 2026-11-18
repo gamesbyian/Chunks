@@ -202,6 +202,35 @@ class LocalTorrentClientTest {
         }
     }
 
+    @Test fun aStillFetchingMagnetJobMovesAsLibtorrentsOwnMagnetWithTheExactIdentity() = runBlocking {
+        // Found by the installed journey: a magnet job copied to This device had
+        // no metadata (no peers), so Copy back was refused "no metainfo".
+        val source = device(name = "magnet-source")
+        val target = device(name = "magnet-target")
+        val hash = ByteArray(20).also(java.security.SecureRandom()::nextBytes)
+            .joinToString("") { "%02x".format(it) }
+        val magnet = "magnet:?xt=urn:btih:$hash&dn=chunks-fetching&tr=" +
+            java.net.URLEncoder.encode("http://127.0.0.1:1/announce", "UTF-8")
+        val added = source.ops.add(ClientAddRequest(ClientAddSource.Magnet(magnet), null, startNow = false))
+        assertTrue("$added", added !is ClientOperationOutcome.Refused && added !is ClientOperationOutcome.Uncertain)
+        source.observe()
+
+        val exported = source.client.transferSource(hash)
+        assertTrue("$exported", exported is ClientAddSource.Magnet)
+        assertEquals(hash, exported!!.infoHash)
+        assertTrue("libtorrent's magnet keeps the job's tracker",
+            (exported as ClientAddSource.Magnet).uri.contains("127.0.0.1"))
+
+        val move = ClientJobTransfer(source.ops, source.client, target.ops, target.client, "local-a", "local-b")
+        val copy = move.copy(hash, null, startOnTarget = false)
+        assertTrue("$copy", copy is ClientJobTransfer.CopyResult.Copied)
+        assertTrue("re-created from the magnet", !(copy as ClientJobTransfer.CopyResult.Copied).viaMetainfo)
+        assertNotNull(target.client.torrent(hash))
+        target.observe()
+        assertTrue(move.retireSource(hash, copy) is ClientOperationOutcome.Verified)
+        assertNull(source.client.torrent(hash))
+    }
+
     @Test fun jobOnlyMoveBetweenTwoLocalEnginesUsesTheSharedReceiptAndKeepsSourceFiles() = runBlocking {
         val source = device(name = "move-source")
         val target = device(name = "move-target")

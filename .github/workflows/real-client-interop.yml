@@ -15,6 +15,7 @@ on:
       - ".github/workflows/real-client-interop.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/LocalClientInteropTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/SharedAddFileChoicesInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/PendingMagnetInventoryInteropTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
   push:
     branches: [main]
@@ -74,6 +75,7 @@ jobs:
             --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.LocalClientInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.PendingMagnetInventoryInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
@@ -107,6 +109,15 @@ jobs:
           croot = ET.parse(choices).getroot()
           cfail = int(croot.get("failures", 0)) + int(croot.get("errors", 0))
           print(f"CHUNKS_INTEROP: file choices tests={croot.get('tests')} skipped={croot.get('skipped')} failed={cfail}")
+          pending = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.PendingMagnetInventoryInteropTest.xml")
+          if not pending.is_file():
+              print("CHUNKS_INTEROP: no pending-magnet receipt"); sys.exit(1)
+          proot = ET.parse(pending).getroot()
+          pfail = int(proot.get("failures", 0)) + int(proot.get("errors", 0))
+          print(f"CHUNKS_INTEROP: pending magnets tests={proot.get('tests')} skipped={proot.get('skipped')} failed={pfail}")
+          # A metadata-less magnet must never blank a real client's inventory.
+          if pfail or int(proot.get("skipped", 0)) or int(proot.get("tests", 0)) != 3:
+              sys.exit(1)
           # Add-time file skips must execute on all four real daemons.
           if cfail or int(croot.get("skipped", 0)) or int(croot.get("tests", 0)) != 4:
               sys.exit(1)

@@ -55,7 +55,9 @@ class SharedAddFileChoicesInteropTest {
             assertTrue(after.values.filter { it.index != skip.index }.none { it.priority == ClientFilePriority.SKIP })
             assertEquals(true, client.torrent(source.infoHash)?.runState?.started)
         } finally {
-            runCatching { ops.remove(source.infoHash, deleteData = false) }
+            // This run's own unique fixture only: its (sparse) files go too where supported.
+            val withData = runCatching { ClientCapability.REMOVE_WITH_DATA in ops.session().capabilities }.getOrDefault(false)
+            runCatching { ops.remove(source.infoHash, deleteData = withData) }
         }
     }
 }

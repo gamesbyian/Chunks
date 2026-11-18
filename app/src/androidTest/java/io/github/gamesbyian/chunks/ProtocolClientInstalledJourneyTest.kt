@@ -271,6 +271,48 @@ class ProtocolClientInstalledJourneyTest {
             assertTrue("Independent settled readback: remained stopped ($settled)",
                 settled?.runState == ClientRunState.STOPPED)
             stage("add-stopped-verified-independently")
+
+            // Job-only Move of that exact job to This device (Local engine).
+            val secondName = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(second.torrent).name
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            val secondDetails = hasContentDescription("Details for $secondName", substring = true)
+            waitFor("added job row", 90_000) {
+                runCatching { scrollToNode(secondDetails); true }.getOrDefault(false)
+            }
+            rule.onAllNodes(secondDetails).onFirst().performClick()
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE, "Copy or move", 60_000)
+            val localId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE + "." + localId, "Copy job to This device")
+            stage("move-to-device-dispatched-once")
+            waitFor("job copied to This device", 90_000) { visible("Job copied to This device") }
+            val local = requireNotNull(LocalEngineHolder.current()) { "Local engine not started by the Move" }
+            assertTrue("Independent Local readback: job registered", local.status(second.infoHashV1) != null)
+            stage("move-copy-verified-on-device")
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE_RETIRE, "Finish move")
+            waitFor("source retired", 60_000) { runBlocking { client.torrent(second.infoHashV1) } == null }
+            stage("move-source-retired-independently")
+            assertTrue("Local copy kept after retiring the source", local.status(second.infoHashV1) != null)
+
+            // And back: the Local job's own Details move-only panel → the same remote client.
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            // The list may be scoped to the remote client; show This device as a person would.
+            val hiddenLocal = hasContentDescription("Hidden: On this device", substring = true)
+            if (rule.onAllNodes(hiddenLocal).fetchSemanticsNodes().isNotEmpty())
+                rule.onAllNodes(hiddenLocal).onFirst().performClick()
+            waitFor("local job row", 90_000) {
+                runCatching { scrollToNode(secondDetails); true }.getOrDefault(false)
+            }
+            rule.onAllNodes(secondDetails).onFirst().performClick()
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE, "Copy or move (from this device)", 60_000)
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE + "." + profileId, "Copy job back to the remote client")
+            stage("move-from-device-dispatched-once")
+            waitFor("job copied back to the remote client", 90_000) { visible("Job copied to") && !visible("Job copied to This device") }
+            assertTrue("Independent remote readback: job registered again",
+                runBlocking { client.torrent(second.infoHashV1) } != null)
+            stage("move-back-copy-verified-on-remote")
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE_RETIRE, "Finish move from this device")
+            waitFor("local job retired", 60_000) { local.status(second.infoHashV1) == null }
+            stage("move-back-local-retired-independently")
             runBlocking { witness.remove(second.infoHashV1, deleteData = false) }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
