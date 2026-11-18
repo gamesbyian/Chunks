@@ -360,11 +360,26 @@ class ProtocolClientInstalledJourneyTest {
             if (rule.onAllNodes(targetChip).fetchSemanticsNodes().isEmpty())
                 rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
             clickOnce("chunks.add.target.protocol.$profileId", "Add target chip (file choices)", 30_000)
+            // The earlier magnet draft is still there: the app asks before replacing it
+            // (neither choice adds anything). Choose the new source once, as a person would.
+            val choicesName = choices.first.let {
+                io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(it.torrent).name
+            }
+            waitFor("shared .torrent offered or adopted", 30_000) {
+                visible("Use new source") || visible(choicesName)
+            }
+            if (visible("Use new source")) {
+                scrollToNode(hasText("Use new source"))
+                rule.onNodeWithText("Use new source").performClick()
+                stage("choices-new-source-accepted")
+            }
             // A blank source field keeps the reviewed .torrent (only text replaces it).
             waitFor("protocol Add source") {
                 runCatching { scrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)); true }.getOrDefault(false)
             }
             rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement("")
+            rule.waitForIdle()
+            waitFor("reviewed .torrent in protocol Add", 30_000) { visible("Using $choicesName") }
             clickOnce(ChunksSemantics.ADD_FILE_CHOICE, "Files to download", 30_000)
             waitFor("both reviewed files listed") {
                 runCatching { scrollToNode(hasText(skipped)); true }.getOrDefault(false) && visible(kept)
