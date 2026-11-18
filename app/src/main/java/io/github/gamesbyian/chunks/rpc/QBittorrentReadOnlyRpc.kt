@@ -94,7 +94,9 @@ internal class QBittorrentReadOnlyRpc(
                 state = requiredText(row, "state", 128),
                 selectedSizeBytes = nonnegative(row, "size")
                     ?: throw IOException("Missing qBittorrent selected size"),
-                totalSizeBytes = nonnegative(row, "total_size"),
+                // Real qBittorrent (4.6.3) reports total_size -1 while a magnet
+                // has no metadata yet: that is "not known", not corruption.
+                totalSizeBytes = nonnegativeOrUnknown(row, "total_size"),
                 completedBytes = nonnegative(row, "completed"),
                 downloadBytesPerSecond = nonnegative(row, "dlspeed"),
                 uploadBytesPerSecond = nonnegative(row, "upspeed"),
@@ -176,6 +178,12 @@ internal class QBittorrentReadOnlyRpc(
             throw IOException("Invalid qBittorrent inventory text")
         }
         return value
+    }
+
+    /** qBittorrent's documented -1 means unknown; any other negative stays invalid. */
+    private fun nonnegativeOrUnknown(row: JSONObject, name: String): Long? {
+        if (row.has(name) && (row.opt(name) as? Number)?.toString() == "-1") return null
+        return nonnegative(row, name)
     }
 
     private fun nonnegative(row: JSONObject, name: String): Long? {

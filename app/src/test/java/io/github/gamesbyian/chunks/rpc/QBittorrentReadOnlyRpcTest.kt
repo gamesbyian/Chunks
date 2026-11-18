@@ -136,6 +136,20 @@ class QBittorrentReadOnlyRpcTest {
         assertNull(script.calls.last().url.rawQuery)
     }
 
+    @Test fun realPendingMagnetWithUnknownTotalSizeDoesNotBlankTheInventory() = runBlocking {
+        // Observed on real qBittorrent 4.6.3 for a stopped magnet without metadata.
+        val pending = """{"hash":"$hash","name":"$hash","state":"pausedDL","size":0,"total_size":-1,
+            "completed":0,"dlspeed":0,"upspeed":0,"save_path":"/srv/seedbox"}"""
+        val other = row("b".repeat(40))
+        val snapshot = client(Scripted(loginOk(), ok("v5"), ok("2.9"), ok("[$pending,$other]"))).inspect()
+        assertEquals(2, snapshot.torrents.size)
+        assertNull(snapshot.torrents.first { it.hash == hash }.totalSizeBytes)
+        // Only the documented -1 means unknown; other negatives still fail closed.
+        val script = Scripted(loginOk(), ok("v5"), ok("2.9"),
+            ok("""[{"hash":"$hash","name":"x","size":0,"total_size":-2,"state":"pausedDL"}]"""))
+        try { client(script).inspect(); fail("Unsafe inventory accepted") } catch (expected: IOException) { }
+    }
+
     @Test fun duplicatesMalformedRowsAndNonNumericCountersFailClosed() = runBlocking {
         val invalid = listOf(
             "[" + row(hash) + "," + row(hash) + "]",

@@ -295,6 +295,10 @@ class ProtocolClientInstalledJourneyTest {
 
             // And back: the Local job's own Details move-only panel → the same remote client.
             rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            // The list may be scoped to the remote client; show This device as a person would.
+            val hiddenLocal = hasContentDescription("Hidden: On this device", substring = true)
+            if (rule.onAllNodes(hiddenLocal).fetchSemanticsNodes().isNotEmpty())
+                rule.onAllNodes(hiddenLocal).onFirst().performClick()
             waitFor("local job row", 90_000) {
                 runCatching { scrollToNode(secondDetails); true }.getOrDefault(false)
             }
