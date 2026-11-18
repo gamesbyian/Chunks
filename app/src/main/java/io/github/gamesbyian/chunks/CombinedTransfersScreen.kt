@@ -1332,9 +1332,13 @@ internal fun CombinedTransfersScreen(
                             current = details.readState == TransferDetailReadState.CURRENT &&
                                 !operationsStale && focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                             inventoryWitness = owner.snapshotRevision,
-                            createOperations = {
-                                io.github.gamesbyian.chunks.rpc.ClientOperations(
-                                    io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(boundRemote))
+                            // Stable per bound session: a new adapter per recomposition
+                            // would re-read the server session on every list refresh.
+                            createOperations = remember(boundRemote) {
+                                {
+                                    io.github.gamesbyian.chunks.rpc.ClientOperations(
+                                        io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(boundRemote))
+                                }
                             },
                             onChanged = mutation.settled,
                             moveTargets = connectedTargets,

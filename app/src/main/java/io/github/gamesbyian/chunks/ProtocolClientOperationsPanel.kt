@@ -106,7 +106,12 @@ internal fun ProtocolClientOperationsPanel(
     var moveFiles by remember(hash) { mutableStateOf(false) }
     var currentFolder by remember(hash) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(operations) {
+    // Move-only (the owning Details screen already has the lifecycle controls)
+    // reads the client session lazily, on the first Copy/Move tap: opening
+    // Details must not cost an extra server round trip on every view.
+    var sessionWanted by remember(hash) { mutableStateOf(!moveOnly) }
+    LaunchedEffect(operations, sessionWanted) {
+        if (!sessionWanted || session != null) return@LaunchedEffect
         try {
             session = operations.session()
         } catch (cancel: CancellationException) {
@@ -191,8 +196,9 @@ internal fun ProtocolClientOperationsPanel(
                     .testTag(ChunksSemantics.PROTOCOL_REMOVE)
             ) { Text(if (confirmRemove) "Cancel remove" else "Remove…") }
         }
-        if (ClientCapability.EXPORT_JOB in caps && moveTargets.isNotEmpty()) {
-            OutlinedButton(onClick = { showMove = !showMove }, enabled = enabled,
+        if (moveTargets.isNotEmpty() && (ClientCapability.EXPORT_JOB in caps || (moveOnly && session == null))) {
+            OutlinedButton(onClick = { showMove = !showMove; sessionWanted = true },
+                enabled = current && !busy && !latched && (session != null || moveOnly),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .testTag(ChunksSemantics.PROTOCOL_MOVE)) {
                 Text(if (showMove) "Hide copy or move" else "Copy or move job to another client…")

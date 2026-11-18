@@ -43,7 +43,11 @@ class ProtocolClientOperationsPanelTest {
         var lose = false
         var dir = "/d"
         var movedData: Boolean? = null
-        override suspend fun session() = ClientSessionInfo(kind, "5", "/d", ClientCapability.entries.toSet())
+        var sessions = 0
+        override suspend fun session(): ClientSessionInfo {
+            sessions++
+            return ClientSessionInfo(kind, "5", "/d", ClientCapability.entries.toSet())
+        }
         override suspend fun torrents() = listOfNotNull(torrent(hash))
         override suspend fun torrent(hash: String) =
             if (present && hash == this@ProtocolClientOperationsPanelTest.hash)
@@ -210,5 +214,31 @@ class ProtocolClientOperationsPanelTest {
         assertEquals("files are only moved on explicit request", false, fake.movedData)
         assertEquals(1, fake.writes)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS).assertTextContains("confirmed", substring = true)
+    }
+
+    @Test fun moveOnlyPanelCostsNoServerCallUntilCopyOrMoveIsTapped() {
+        // Regression: an eager per-view (and per-recomposition) session read on
+        // rTorrent Details starved the next remote Add in the installed journey.
+        val source = Fake()
+        val created = java.util.concurrent.atomic.AtomicInteger()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
+                    current = true, inventoryWitness = 1L,
+                    createOperations = { created.incrementAndGet(); ClientOperations(source, 3, 1) },
+                    onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("local", "This device") { ClientOperations(Fake(), 3, 1) }),
+                    moveOnly = true)
+            }
+        }
+        rule.waitForIdle()
+        assertEquals("opening Details reads nothing from the server", 0, source.sessions)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.waitForIdle()
+        rule.waitUntil(5_000) { source.sessions >= 1 }
+        rule.waitForIdle()
+        assertEquals("one read after the tap, not one per recomposition", 1, source.sessions)
+        assertEquals("one adapter for the exact client, not one per recomposition", 1, created.get())
     }
 }
