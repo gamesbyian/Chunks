@@ -330,4 +330,46 @@ class RealClientInteropTest {
             dstOps.remove(hash, deleteData = ClientCapability.REMOVE_WITH_DATA in caps)
         }
     }
+
+    /**
+     * Protected live variant (no payload on the server): a unique fixture job
+     * is added STOPPED to CHUNKS_INTEROP_MOVE_FROM, copied job-only to
+     * CHUNKS_INTEROP_MOVE_TO through ClientJobTransfer (verified stopped
+     * registration), the source is retired session-only, and the fixture is
+     * removed from the target. Only those exact hashes are touched; both
+     * clients' unrelated inventories must be unchanged.
+     */
+    @Test fun liveCrossClientJobMoveRegistersExactJob() = runBlocking {
+        val fromName = System.getenv("CHUNKS_INTEROP_MOVE_FROM").orEmpty()
+        val toName = System.getenv("CHUNKS_INTEROP_MOVE_TO").orEmpty()
+        assumeTrue("Only the protected manual Move workflow", fromName.isNotBlank() && toName.isNotBlank())
+        val from = RemoteBackendKind.valueOf(fromName)
+        val to = RemoteBackendKind.valueOf(toName)
+        require(from != to) { "Choose two different clients" }
+        kind = from
+        val src = clientOf(from)
+        val dst = clientOf(to)
+        val srcOps = RemoteClientOperations(src, 40, 500)
+        val dstOps = RemoteClientOperations(dst, 40, 500)
+        val srcBefore = src.torrents().map { it.hash }.toSet()
+        val dstBefore = dst.torrents().map { it.hash }.toSet()
+        val fx = fixture()
+        val hash = fx.result.infoHashV1
+        val tag = "$from->$to"
+        assertVerified("$tag source_add_stopped", srcOps.add(ClientAddRequest(
+            ClientAddSource.TorrentFile(fx.result.torrent), null, startNow = false)))
+        val transfer = ClientJobTransfer(srcOps, src, dstOps, dst,
+            sourceClientId = "live-$tag-source", targetClientId = "live-$tag-target")
+        val copied = transfer.copy(hash, targetDirectory = null, startOnTarget = false)
+        assertTrue("$tag copy: $copied", copied is ClientJobTransfer.CopyResult.Copied)
+        println("CHUNKS_INTEROP: MOVE $tag job_copied=verified via=" +
+            if ((copied as ClientJobTransfer.CopyResult.Copied).viaMetainfo) "metainfo" else "magnet")
+        assertEquals(ClientRunState.STOPPED, dst.torrent(hash)?.runState)
+        assertVerified("$tag retire_source_session_only",
+            transfer.retireSource(hash, copied as ClientJobTransfer.CopyResult.Copied))
+        assertVerified("$tag target_fixture_cleanup", dstOps.remove(hash, deleteData = false))
+        assertEquals(srcBefore, src.torrents().map { it.hash }.toSet())
+        assertEquals(dstBefore, dst.torrents().map { it.hash }.toSet())
+        println("CHUNKS_INTEROP: MOVE $tag inventories_unchanged=true")
+    }
 }

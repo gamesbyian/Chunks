@@ -1126,15 +1126,33 @@ internal fun ChunksApp(
     val routingMagnetName = remember(magnet, addSourceDraft.value) {
         (MagnetDraftCheck.inspect(magnet.ifBlank { addSourceDraft.value }) as? MagnetDraftCheck.Valid)?.displayName
     }
+    // Capability-aware candidacy: each protocol client's own live session,
+    // read off the main thread only while Add is shown and routing is on.
+    var routingSessions by remember { mutableStateOf<Map<String, io.github.gamesbyian.chunks.rpc.ClientSessionInfo>>(emptyMap()) }
+    val routingAddVisible = section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD
+    LaunchedEffect(routingAddVisible, routingPolicy?.enabled, combinedProtocolProfiles.map { it.id }) {
+        if (!routingAddVisible || routingPolicy?.enabled != true) return@LaunchedEffect
+        val read = combinedProtocolProfiles.filter { it.operations != null }.mapNotNull { profile ->
+            val session = withContext(Dispatchers.IO) {
+                runCatching {
+                    kotlinx.coroutines.withTimeout(20_000) { requireNotNull(profile.operations).invoke().session() }
+                }.getOrNull()
+            }
+            session?.let { profile.id to it }
+        }.toMap()
+        routingSessions = read
+    }
     val routingResult = remember(routingPolicy, routingSource, routingMagnetName, connectedRTorrentId,
-        combinedProtocolProfiles, activeAddRemoteName) {
+        combinedProtocolProfiles, activeAddRemoteName, routingSessions, localAddStart.value) {
         val candidates = buildList {
             add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
                 io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local", true, true, true))
             connectedRTorrentId?.let { add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
                 it, activeAddRemoteName ?: "rTorrent", true, true, true)) }
             combinedProtocolProfiles.filter { it.operations != null }.forEach {
-                add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true))
+                add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.candidateFor(
+                    it.id, it.label, routingSessions[it.id],
+                    magnetSource = routingSource == null, startNow = localAddStart.value))
             }
         }
         io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.evaluate(routingPolicy,

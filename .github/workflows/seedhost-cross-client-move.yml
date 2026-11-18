@@ -1,0 +1,99 @@
+name: Protected Seedhost cross-client job Move
+
+# Owner-authorized disposable development clients only. Manual, trusted main,
+# first attempt, explicit apply=true. One unique fixture job (no payload) is
+# added stopped to the source, copied job-only to the target, the source is
+# retired session-only, and the fixture is removed from the target. Unrelated
+# inventories must be unchanged. Never logs endpoints, credentials or names.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Source client"
+        type: choice
+        required: true
+        options: [TRANSMISSION, QBITTORRENT, DELUGE]
+      target:
+        description: "Target client"
+        type: choice
+        required: true
+        options: [QBITTORRENT, DELUGE, TRANSMISSION]
+      apply:
+        description: "Type true to authorize fixture-only writes"
+        type: string
+        required: true
+        default: "false"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-protocol-live-move
+  cancel-in-progress: false
+
+jobs:
+  move:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.apply == 'true' && github.run_attempt == 1 && inputs.source != inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 compile SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run one exact fixture Move
+        env:
+          SOURCE: ${{ inputs.source }}
+          TARGET: ${{ inputs.target }}
+          ACCOUNT_USER: ${{ secrets.rtorrent_user }}
+          TR_USER: ${{ secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user }}
+          TR_PASS: ${{ secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password }}
+          QB_USER: ${{ secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user }}
+          QB_PASS: ${{ secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password }}
+          DE_PASS: ${{ secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password }}
+          DE_DAEMON: ${{ secrets.deluge_daemon_id || secrets.DELUGE_DAEMON_ID || vars.DELUGE_DAEMON_ID }}
+        run: |
+          export CHUNKS_INTEROP_MOVE_FROM="$SOURCE" CHUNKS_INTEROP_MOVE_TO="$TARGET"
+          export CHUNKS_INTEROP_TRANSMISSION_URL=https://wood.seedhost.eu/ianseeds/transmission/rpc
+          export CHUNKS_INTEROP_TRANSMISSION_USER="$TR_USER" CHUNKS_INTEROP_TRANSMISSION_PASS="$TR_PASS"
+          export CHUNKS_INTEROP_QBITTORRENT_URL=https://wood.seedhost.eu/ianseeds/qbittorrent/
+          export CHUNKS_INTEROP_QBITTORRENT_USER="$QB_USER" CHUNKS_INTEROP_QBITTORRENT_PASS="$QB_PASS"
+          export CHUNKS_INTEROP_DELUGE_URL=https://wood.seedhost.eu/ianseeds/deluge/json
+          export CHUNKS_INTEROP_DELUGE_PASS="$DE_PASS" CHUNKS_INTEROP_DELUGE_DAEMON_ID="$DE_DAEMON"
+          set +e
+          gradle --no-daemon --no-configuration-cache --console=plain -q :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.RealClientInteropTest.liveCrossClientJobMoveRegistersExactJob' \
+            > "$RUNNER_TEMP/gradle.log" 2>&1
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RealClientInteropTest.xml")
+          if not path.is_file():
+              print("CHUNKS_INTEROP: no executed receipt"); sys.exit(1)
+          root = ET.parse(path).getroot()
+          tests, skipped = int(root.get("tests", 0)), int(root.get("skipped", 0))
+          failed = int(root.get("failures", 0)) + int(root.get("errors", 0))
+          print(f"CHUNKS_INTEROP: tests={tests} executed={tests - skipped} failed={failed} skipped={skipped}")
+          for case in root.iter("testcase"):
+              for bad in list(case.findall("failure")) + list(case.findall("error")):
+                  kind = (bad.get("type") or "").rsplit(".", 1)[-1]
+                  msg = (bad.get("message") or "").splitlines()[0][:160] if bad.get("message") else ""
+                  if "://" in msg or "@" in msg or "/" in msg:
+                      msg = "<withheld>"
+                  print(f"CHUNKS_INTEROP: failure type={kind} message={msg}")
+          for line in (root.findtext("system-out") or "").splitlines():
+              if line.startswith("CHUNKS_INTEROP:"):
+                  print(line[:240])
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests - skipped == 1 and failed == 0 else 1)
+          PY
