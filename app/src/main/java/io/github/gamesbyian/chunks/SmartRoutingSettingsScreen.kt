@@ -156,9 +156,17 @@ internal fun SmartRoutingSettingsScreen(
                                     p.copy(rules = reprioritized(list))
                                 } }, enabled = !saving && index < policy.rules.lastIndex,
                                     modifier = cell.heightIn(min = 48.dp)) { Text("Down") }
-                                OutlinedButton(onClick = { save { p ->
-                                    p.copy(rules = reprioritized(p.rules.filterNot { it.id == rule.id }))
-                                } }, enabled = !saving,
+                                OutlinedButton(onClick = {
+                                    save(onSaved = {
+                                        if (editingRuleId == rule.id) {
+                                            editingRuleId = null
+                                            draftKind = null
+                                            draftTarget = null
+                                        }
+                                    }) { p ->
+                                        p.copy(rules = reprioritized(p.rules.filterNot { it.id == rule.id }))
+                                    }
+                                }, enabled = !saving,
                                     modifier = cell.heightIn(min = 48.dp)) { Text("Remove") }
                             }
                         }
