@@ -342,6 +342,9 @@ class ProtocolClientInstalledJourneyTest {
             requireNotNull(context.contentResolver.openOutputStream(document, "wt")).use {
                 out -> out.write(choices.first.torrent)
             }
+            // ActivityScenario tracks its launch identity; a genuine onNewIntent replaces it.
+            var launchIntent: android.content.Intent? = null
+            it.onActivity { activity -> launchIntent = activity.intent }
             it.onActivity { activity ->
                 activity.startActivity(android.content.Intent(activity, MainActivity::class.java).apply {
                     action = android.content.Intent.ACTION_VIEW
@@ -415,6 +418,9 @@ class ProtocolClientInstalledJourneyTest {
                 runBlocking { independentRead(choicesHash) }?.runState)
             stage("choices-skip-verified-independently")
             runBlocking { witness.remove(choicesHash, deleteData = false) }
+            // Restore only the test monitor's identity after all assertions (as the
+            // Open With handoff tests do); the shared source is never redispatched.
+            it.onActivity { activity -> launchIntent?.let { original -> activity.intent = original } }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
