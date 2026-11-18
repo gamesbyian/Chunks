@@ -34,8 +34,8 @@ import io.github.gamesbyian.chunks.rpc.ClientMagnets
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientTorrent
-import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
-import io.github.gamesbyian.chunks.rpc.RemoteTorrentClient
+import io.github.gamesbyian.chunks.rpc.ClientOperations
+import io.github.gamesbyian.chunks.rpc.TorrentClient
 import kotlinx.coroutines.MainScope
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,8 +58,8 @@ class ProtocolSurfacesRenderTest {
     @get:Rule val rule = createComposeRule()
     private val hash = "ab".repeat(20)
 
-    private class Fake : RemoteTorrentClient {
-        override val kind = RemoteBackendKind.QBITTORRENT
+    private class Fake : TorrentClient {
+        override val kind = io.github.gamesbyian.chunks.rpc.TorrentClientKind.QBITTORRENT
         override suspend fun session() = ClientSessionInfo(kind, "5.1", "/home/user/downloads",
             ClientCapability.entries.toSet(), setOf(ClientFilePriority.SKIP, ClientFilePriority.NORMAL, ClientFilePriority.HIGH))
         override suspend fun torrents() = emptyList<ClientTorrent>()
@@ -104,8 +104,8 @@ class ProtocolSurfacesRenderTest {
             ProtocolClientOperationsPanel(
                 hash = hash, clientLabel = "Seedbox qBittorrent", sourceClientId = "qb",
                 observedStarted = false, current = true, inventoryWitness = 1L,
-                createOperations = { RemoteClientOperations(Fake(), 3, 1) }, onChanged = {},
-                moveTargets = listOf(ProtocolMoveTarget("de", "Seedbox Deluge") { RemoteClientOperations(Fake(), 3, 1) })
+                createOperations = { ClientOperations(Fake(), 3, 1) }, onChanged = {},
+                moveTargets = listOf(ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(Fake(), 3, 1) })
             )
         }
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
@@ -123,7 +123,7 @@ class ProtocolSurfacesRenderTest {
         show(width, scale) {
             ProtocolAddScreen(
                 profileId = "qb", clientLabel = "Seedbox qBittorrent",
-                createOperations = { RemoteClientOperations(Fake(), 3, 1) },
+                createOperations = { ClientOperations(Fake(), 3, 1) },
                 destinationPicker = {},
                 sourceDraft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=Example"),
                 reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null),

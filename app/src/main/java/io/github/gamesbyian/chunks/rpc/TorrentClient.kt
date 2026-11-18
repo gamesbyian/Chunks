@@ -6,10 +6,12 @@ import java.net.URLDecoder
 import java.util.Locale
 
 /**
- * One protocol-neutral port for an authenticated remote BitTorrent client
- * (Transmission, qBittorrent, Deluge; rTorrent keeps its established
- * adapter and is bridged separately). Adapters isolate wire, auth and
- * version dialects; the shared [RemoteClientOperations] owns the
+ * The ONE engine-neutral port for every BitTorrent client Chunks drives:
+ * the device's own libtorrent engine ([io.github.gamesbyian.chunks.LocalTorrentClient])
+ * and authenticated rTorrent ([RTorrentClientAdapter]), Transmission,
+ * qBittorrent and Deluge. Adapters isolate wire, auth, native and version
+ * dialects; capability differences are explicit [ClientCapability] sets.
+ * The shared [ClientOperations] owns the
  * application workflow: exact precondition read, ONE write, exact-hash
  * readback and Verified / Pending / Uncertain / Refused classification.
  *
@@ -18,9 +20,8 @@ import java.util.Locale
  * may have been delivered throws [ClientWriteUncertainException]. Callers
  * must reconcile read-only and never replay an uncertain write.
  */
-internal interface RemoteTorrentClient {
-    /** The remote protocol, or null for the bundled Local engine. */
-    val kind: RemoteBackendKind?
+internal interface TorrentClient {
+    val kind: TorrentClientKind
 
     /** Authenticated version/default-folder/capability probe (read-only). */
     suspend fun session(): ClientSessionInfo
@@ -55,18 +56,31 @@ internal interface RemoteTorrentClient {
     suspend fun reannounce(hash: String) {}
 }
 
+/** Which engine an adapter drives; Local is the device's own libtorrent. */
+internal enum class TorrentClientKind {
+    LOCAL, RTORRENT, TRANSMISSION, QBITTORRENT, DELUGE;
+
+    companion object {
+        fun of(remote: RemoteBackendKind): TorrentClientKind = when (remote) {
+            RemoteBackendKind.RTORRENT -> RTORRENT
+            RemoteBackendKind.TRANSMISSION -> TRANSMISSION
+            RemoteBackendKind.QBITTORRENT -> QBITTORRENT
+            RemoteBackendKind.DELUGE -> DELUGE
+        }
+    }
+}
+
 /** Explicit, observed operation support; absent means unsupported here. */
 internal enum class ClientCapability {
     ADD_TORRENT_FILE, ADD_MAGNET, ADD_STOPPED, ADD_TO_DIRECTORY,
     START_STOP, FILE_PRIORITIES,
     REMOVE, REMOVE_WITH_DATA, SET_LOCATION, RECHECK,
-    /** [RemoteTorrentClient.transferSource] can re-create a job elsewhere. */
+    /** [TorrentClient.transferSource] can re-create a job elsewhere. */
     EXPORT_JOB
 }
 
 internal data class ClientSessionInfo(
-    /** null = the bundled Local engine. */
-    val kind: RemoteBackendKind?,
+    val kind: TorrentClientKind,
     val version: String,
     /** Client-reported default; presentation and Add default only, not a verified Place. */
     val defaultDownloadDirectory: String?,
@@ -231,7 +245,7 @@ internal object RemoteTorrentClients {
         kind: RemoteBackendKind,
         credentials: RemoteCredentials,
         delugeDaemonHostId: String?
-    ): RemoteTorrentClient = when (kind) {
+    ): TorrentClient = when (kind) {
         RemoteBackendKind.TRANSMISSION -> TransmissionClient(credentials)
         RemoteBackendKind.QBITTORRENT -> QBittorrentClient(credentials)
         RemoteBackendKind.DELUGE -> DelugeClient(credentials, requireNotNull(delugeDaemonHostId) {

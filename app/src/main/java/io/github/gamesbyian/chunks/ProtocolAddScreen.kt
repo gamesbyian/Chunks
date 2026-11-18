@@ -41,7 +41,7 @@ import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
-import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
+import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -81,14 +81,14 @@ internal class ProtocolAddAttempt {
  * Source-first review for a remote protocol client: the same draft magnet or
  * reviewed .torrent as every other Add, the client's own default folder (or
  * an exact absolute folder), and the shared Start choice. Submission is one
- * [RemoteClientOperations.add]: exact-absence precondition, ONE write, exact
+ * [ClientOperations.add]: exact-absence precondition, ONE write, exact
  * readback of registration, folder and stopped/started state.
  */
 @Composable
 internal fun ProtocolAddScreen(
     profileId: String,
     clientLabel: String,
-    createOperations: () -> RemoteClientOperations,
+    createOperations: () -> ClientOperations,
     destinationPicker: @Composable () -> Unit,
     sourceDraft: MutableState<String>,
     reviewedTorrent: MutableState<PendingLocalAdd?>,

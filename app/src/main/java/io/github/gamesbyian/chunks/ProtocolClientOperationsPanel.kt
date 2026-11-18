@@ -33,7 +33,7 @@ import io.github.gamesbyian.chunks.rpc.ClientFile
 import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
-import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
+import io.github.gamesbyian.chunks.rpc.ClientOperations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 internal data class ProtocolMoveTarget(
     val id: String,
     val label: String,
-    val createOperations: () -> RemoteClientOperations
+    val createOperations: () -> ClientOperations
 )
 
 /** Plain-language, credential-free outcome text shared by every protocol. */
@@ -58,7 +58,7 @@ internal object ProtocolOperationText {
 
 /**
  * Details operations for one exact Transmission / qBittorrent / Deluge
- * transfer. Every command goes through the shared [RemoteClientOperations]
+ * transfer. Every command goes through the shared [ClientOperations]
  * workflow (exact precondition, one write, exact readback). Offered actions
  * come from the client's own session capabilities. An uncertain result
  * locks further commands until a fresh list is read.
@@ -74,7 +74,7 @@ internal fun ProtocolClientOperationsPanel(
     current: Boolean,
     /** Changes whenever a fresh inventory is accepted. */
     inventoryWitness: Any?,
-    createOperations: () -> RemoteClientOperations,
+    createOperations: () -> ClientOperations,
     onChanged: () -> Unit,
     /** Other connected clients this job may be copied/moved to (job only). */
     moveTargets: List<ProtocolMoveTarget> = emptyList(),
@@ -299,5 +299,5 @@ private fun priorityLabel(p: ClientFilePriority) = when (p) {
     ClientFilePriority.HIGH -> "High"
 }
 
-private suspend fun filesOf(operations: RemoteClientOperations, hash: String): List<ClientFile> =
+private suspend fun filesOf(operations: ClientOperations, hash: String): List<ClientFile> =
     operations.files(hash)

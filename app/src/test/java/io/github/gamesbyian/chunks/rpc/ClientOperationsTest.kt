@@ -7,15 +7,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class RemoteClientOperationsTest {
+class ClientOperationsTest {
     private val hash = "0123456789abcdef0123456789abcdef01234567"
 
     private class Fake(
         var present: ClientTorrent?,
         val caps: Set<ClientCapability> = ClientCapability.entries.toSet(),
         val levels: Set<ClientFilePriority> = ClientFilePriority.entries.toSet()
-    ) : RemoteTorrentClient {
-        override val kind = RemoteBackendKind.TRANSMISSION
+    ) : TorrentClient {
+        override val kind = TorrentClientKind.TRANSMISSION
         var writes = 0
         var failWrite: Exception? = null
         var applyWrite: (Fake) -> Unit = {}
@@ -49,7 +49,7 @@ class RemoteClientOperationsTest {
     private fun torrent(state: ClientRunState, dir: String = "/d") =
         ClientTorrent(hash, "n", state, 1, 0, 0, 0, dir)
 
-    private fun ops(fake: Fake) = RemoteClientOperations(fake, readbackAttempts = 3, readbackDelayMillis = 1)
+    private fun ops(fake: Fake) = ClientOperations(fake, readbackAttempts = 3, readbackDelayMillis = 1)
 
     @Test fun lostWriteIsUncertainAndNeverReplayed() = runBlocking {
         val fake = Fake(torrent(ClientRunState.STOPPED)).apply {

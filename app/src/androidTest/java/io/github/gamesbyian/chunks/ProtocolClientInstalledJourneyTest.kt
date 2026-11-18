@@ -28,7 +28,7 @@ import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
-import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
+import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
@@ -152,7 +152,7 @@ class ProtocolClientInstalledJourneyTest {
             io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds().single()
         } else null
         val client = io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
-        val witness = RemoteClientOperations(client, 40, 500)
+        val witness = ClientOperations(client, 40, 500)
         // The fixture owner and the installed app establish separate Web UI
         // sessions. Always use a NEW independent authenticated connection for
         // post-app readback, not the potentially stale fixture-preload cookie.

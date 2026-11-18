@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.rpc.TorrentClientKind
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientFile
@@ -17,8 +18,8 @@ import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException
-import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
-import io.github.gamesbyian.chunks.rpc.RemoteTorrentClient
+import io.github.gamesbyian.chunks.rpc.ClientOperations
+import io.github.gamesbyian.chunks.rpc.TorrentClient
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -32,8 +33,8 @@ class ProtocolClientOperationsPanelTest {
     @get:Rule val rule = createComposeRule()
     private val hash = "ab".repeat(20)
 
-    private inner class Fake : RemoteTorrentClient {
-        override val kind = RemoteBackendKind.QBITTORRENT
+    private inner class Fake : TorrentClient {
+        override val kind = TorrentClientKind.QBITTORRENT
         var state = ClientRunState.STOPPED
         var present = true
         var writes = 0
@@ -60,8 +61,8 @@ class ProtocolClientOperationsPanelTest {
             io.github.gamesbyian.chunks.rpc.ClientMagnets.build(hash, "n", emptyList())
     }
 
-    private inner class Target : RemoteTorrentClient {
-        override val kind = RemoteBackendKind.DELUGE
+    private inner class Target : TorrentClient {
+        override val kind = TorrentClientKind.DELUGE
         var adds = 0
         var present = false
         override suspend fun session() = ClientSessionInfo(kind, "2", "/d", ClientCapability.entries.toSet())
@@ -85,8 +86,8 @@ class ProtocolClientOperationsPanelTest {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = true, inventoryWitness = 1L,
-                    createOperations = { RemoteClientOperations(fake, 3, 1) }, onChanged = {},
-                    moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge") { RemoteClientOperations(target, 3, 1) })
+                    createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge") { ClientOperations(target, 3, 1) })
                 )
             }
         }
@@ -111,9 +112,9 @@ class ProtocolClientOperationsPanelTest {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rtorrent-account",
                     observedStarted = false, current = true, inventoryWitness = 1L,
-                    createOperations = { RemoteClientOperations(source, 3, 1) }, onChanged = {},
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other-deluge", "Deluge") {
-                        RemoteClientOperations(destination, 3, 1)
+                        ClientOperations(destination, 3, 1)
                     }), moveOnly = true
                 )
             }
@@ -138,7 +139,7 @@ class ProtocolClientOperationsPanelTest {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = current, inventoryWitness = 1L,
-                    createOperations = { RemoteClientOperations(fake, 3, 1) },
+                    createOperations = { ClientOperations(fake, 3, 1) },
                     onChanged = {}
                 )
             }

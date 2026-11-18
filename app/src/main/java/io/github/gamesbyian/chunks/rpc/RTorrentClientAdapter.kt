@@ -4,11 +4,11 @@ import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import java.io.IOException
 
 /**
- * Bridges the established [RTorrentRemote] adapter onto [RemoteTorrentClient]
+ * Bridges the established [RTorrentRemote] adapter onto [TorrentClient]
  * WITHOUT changing its behaviour: each mutator delegates to the existing
  * exact-hash, readback-checked rTorrent operation and maps its own outcome
  * onto the port's contract (refusal = nothing written; uncertain = a write
- * may have been delivered). The shared [RemoteClientOperations] then adds
+ * may have been delivered). The shared [ClientOperations] then adds
  * its own independent exact-hash readback on top.
  *
  * rTorrent stores three file priority levels (off / normal / high). Remove +
@@ -17,8 +17,8 @@ import java.io.IOException
  */
 internal class RTorrentClientAdapter(
     private val remote: RTorrentRemote
-) : RemoteTorrentClient {
-    override val kind = RemoteBackendKind.RTORRENT
+) : TorrentClient {
+    override val kind = TorrentClientKind.RTORRENT
 
     override suspend fun session(): ClientSessionInfo {
         val version = remote.version()

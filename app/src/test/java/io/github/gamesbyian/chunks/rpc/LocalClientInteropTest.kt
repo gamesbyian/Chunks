@@ -47,13 +47,21 @@ class LocalClientInteropTest {
         return result to files
     }
 
+    /** The ONE production Local adapter; this test is the sole writer of its private engine. */
+    private fun localClient(engine: LocalTorrentEngine, place: File) = io.github.gamesbyian.chunks.LocalTorrentClient(
+        { engine }, places = object : io.github.gamesbyian.chunks.LocalClientPlaces {
+            override fun defaultDirectory() = place.canonicalPath
+            override fun resolve(directory: String?) = if (directory == null) place.canonicalFile
+                else io.github.gamesbyian.chunks.LocalClientPlaces.within(listOf(place), directory)
+        }, fence = io.github.gamesbyian.chunks.LocalWriteFence.singleWriter)
+
     private fun verified(label: String, o: ClientOperationOutcome) =
         assertTrue("$label: $o", o is ClientOperationOutcome.Verified)
 
     @Test fun localEngineRunsTheSharedJourney() = runBlocking {
         val place = temp.newFolder("place")
-        val client = LocalClientAdapter(engine(), place, listOf(place))
-        val ops = RemoteClientOperations(client, 60, 250)
+        val client = localClient(engine(), place)
+        val ops = ClientOperations(client, 60, 250)
         val (fx, files) = fixture(null)
         val hash = fx.infoHashV1
         val dir = File(place, "job").apply { mkdirs() }
@@ -98,11 +106,11 @@ class LocalClientInteropTest {
             System.getenv("CHUNKS_INTEROP_QBITTORRENT_USER").orEmpty(),
             System.getenv("CHUNKS_INTEROP_QBITTORRENT_PASS").orEmpty()))
         val place = temp.newFolder("place")
-        val local = LocalClientAdapter(engine(), place, listOf(place))
-        val localOps = RemoteClientOperations(local, 60, 500)
-        val remoteOps = RemoteClientOperations(remote, 60, 500)
+        val local = localClient(engine(), place)
+        val localOps = ClientOperations(local, 60, 500)
+        val remoteOps = ClientOperations(remote, 60, 500)
 
-        suspend fun waitSeeding(c: RemoteTorrentClient, hash: String, total: Long, poke: suspend () -> Unit): Boolean {
+        suspend fun waitSeeding(c: TorrentClient, hash: String, total: Long, poke: suspend () -> Unit): Boolean {
             for (i in 0 until 240) {
                 val t = c.torrent(hash)
                 if (t?.runState == ClientRunState.SEEDING && t.completedBytes == total) return true
@@ -119,8 +127,8 @@ class LocalClientInteropTest {
             val toRemote = direction.startsWith("LOCAL")
             val (src, srcOps, dst, dstOps) = if (toRemote) listOf(local, localOps, remote, remoteOps)
                 else listOf(remote, remoteOps, local, localOps)
-            src as RemoteTorrentClient; dst as RemoteTorrentClient
-            srcOps as RemoteClientOperations; dstOps as RemoteClientOperations
+            src as TorrentClient; dst as TorrentClient
+            srcOps as ClientOperations; dstOps as ClientOperations
             val srcDir = (if (toRemote) File(place, "src-" + hash.take(8)) else File(remoteDir, "src-" + hash.take(8))).apply { mkdirs() }
             val dstDir = (if (toRemote) File(remoteDir, "dst-" + hash.take(8)) else File(place, "dst-" + hash.take(8))).apply { mkdirs() }
             File(srcDir, name).mkdirs()

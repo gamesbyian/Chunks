@@ -19,10 +19,10 @@ import kotlinx.coroutines.sync.withLock
  * currently selected UI filters or mutable connection slots.
  */
 internal class ClientJobTransfer(
-    private val source: RemoteClientOperations,
-    private val sourceClient: RemoteTorrentClient,
-    private val target: RemoteClientOperations,
-    private val targetClient: RemoteTorrentClient,
+    private val source: ClientOperations,
+    private val sourceClient: TorrentClient,
+    private val target: ClientOperations,
+    private val targetClient: TorrentClient,
     sourceClientId: String,
     targetClientId: String
 ) {

@@ -51,7 +51,7 @@ class SmartRoutingAddSuggestionTest {
     }
 
     private fun session(vararg caps: io.github.gamesbyian.chunks.rpc.ClientCapability, dir: String? = "/srv") =
-        io.github.gamesbyian.chunks.rpc.ClientSessionInfo(RemoteBackendKind.DELUGE, "2", dir, caps.toSet())
+        io.github.gamesbyian.chunks.rpc.ClientSessionInfo(io.github.gamesbyian.chunks.rpc.TorrentClientKind.DELUGE, "2", dir, caps.toSet())
 
     @Test fun candidacyFollowsTheClientsOwnLiveCapabilities() {
         val full = session(C.ADD_MAGNET, C.ADD_TORRENT_FILE, C.ADD_STOPPED)

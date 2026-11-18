@@ -26,8 +26,8 @@ internal class DelugeClient(
     credentials: RemoteCredentials,
     private val daemonHostId: String,
     private val wire: DelugeReadOnlyRpc.Wire = DelugeReadOnlyRpc.HttpWire
-) : RemoteTorrentClient {
-    override val kind = RemoteBackendKind.DELUGE
+) : TorrentClient {
+    override val kind = TorrentClientKind.DELUGE
     private val auth = credentials
     private val endpoint: URI = DelugeReadOnlyRpc.validateEndpoint(credentials.endpoint)
     private var cookie: String? = null
