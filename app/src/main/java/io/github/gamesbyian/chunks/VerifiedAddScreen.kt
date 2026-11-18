@@ -284,6 +284,8 @@ internal fun VerifiedAddScreen(
     val skippedFiles = if (reviewedHash != null && draft.skippedFilesHash == reviewedHash)
         draft.skippedFiles else emptySet()
     val fileChoiceOpen = reviewedHash != null && draft.skippedFilesHash == reviewedHash && draft.fileChoiceOpen
+    val highFiles = if (reviewedHash != null && draft.skippedFilesHash == reviewedHash)
+        draft.highFiles - skippedFiles else emptySet()
     val declaredFiles = remember(selectedTorrent) { selectedTorrent?.let { AddFileChoices.declared(it) } }
     val noFileChosen = useFile && declaredFiles != null &&
         declaredFiles.none { it.index !in skippedFiles }
@@ -986,13 +988,28 @@ internal fun VerifiedAddScreen(
                 AddFileChoice(reviewedFiles, skippedFiles, fileChoiceOpen,
                     enabled = !submitting,
                     onExpanded = { open ->
-                        if (draft.skippedFilesHash != reviewedHash) draft.skippedFiles = emptySet()
+                        if (draft.skippedFilesHash != reviewedHash) {
+                            draft.skippedFiles = emptySet(); draft.highFiles = emptySet()
+                        }
                         draft.skippedFilesHash = reviewedHash
                         draft.fileChoiceOpen = open
                     },
+                    // rTorrent stores off/normal/high: High is the only raised level.
+                    priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH),
+                    priorities = highFiles.associateWith { io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH },
+                    onPriorityChange = { index, level ->
+                        if (draft.skippedFilesHash != reviewedHash) {
+                            draft.skippedFiles = emptySet(); draft.highFiles = emptySet()
+                        }
+                        draft.skippedFilesHash = reviewedHash
+                        draft.highFiles = if (level == null) draft.highFiles - index else draft.highFiles + index
+                        awaitingConfirmation = false
+                    },
                     onSkippedChange = { chosen ->
+                        if (draft.skippedFilesHash != reviewedHash) draft.highFiles = emptySet()
                         draft.skippedFilesHash = reviewedHash
                         draft.skippedFiles = chosen
+                        draft.highFiles = draft.highFiles - chosen
                         awaitingConfirmation = false
                     })
             }
@@ -1035,11 +1052,20 @@ internal fun VerifiedAddScreen(
                             if (layoutAtClick != null && layoutAtClick.none { it.index !in clickSkips })
                                 return@addClick
                             val skippedAtClick = layoutAtClick?.filter { it.index in clickSkips }.orEmpty()
+                            // High counts only for the same reviewed identity, never for a skipped file.
+                            val clickHigh = if (bytes != null && draft.skippedFilesHash ==
+                                    runCatching { TorrentMetainfoReader.preview(bytes).infoHashV1 }.getOrNull())
+                                draft.highFiles - clickSkips else emptySet()
+                            val highAtClick = layoutAtClick?.filter { it.index in clickHigh }.orEmpty()
+                            // Finish in Order manages every file's priority itself: only
+                            // when the person made no file choices of their own.
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && requestedStart && finishInOrderAfterAdd &&
-                                    (selectedTorrent?.fileCount ?: 0) >= 2 && skippedAtClick.isEmpty()
+                                    (selectedTorrent?.fileCount ?: 0) >= 2 && skippedAtClick.isEmpty() &&
+                                    highAtClick.isEmpty()
                             }
-                            val prioritiesFirst = orderScope != null || skippedAtClick.isNotEmpty()
+                            val prioritiesFirst = orderScope != null || skippedAtClick.isNotEmpty() ||
+                                highAtClick.isNotEmpty()
                             val admission = runCatching {
                                 val reviewedSource = if (bytes != null)
                                     UniversalAddSource.metainfo(bytes, requireNotNull(selectedTorrent).infoHashV1)
@@ -1108,9 +1134,10 @@ internal fun VerifiedAddScreen(
                                     // nested let infers Function1 instead and fails
                                     // the Kotlin compile despite compatible bodies.
                                     val priorityCallback: (suspend (String) -> RemotePreStartSetup)? =
-                                        if (skippedAtClick.isNotEmpty()) { hash: String ->
-                                            // Start follows only if every skip reads back as 0.
-                                            RemoteAddFileSkips.apply(remote, hash, skippedAtClick, requestedStart)
+                                        if (skippedAtClick.isNotEmpty() || highAtClick.isNotEmpty()) { hash: String ->
+                                            // Start follows only if every choice reads back exactly.
+                                            RemoteAddFileSkips.apply(remote, hash, skippedAtClick, requestedStart,
+                                                high = highAtClick)
                                         } else if (orderScope == null) null
                                         else { hash: String ->
                                             RemotePreStartSetup(enableRemoteFinishInOrderAfterAdd(

@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -89,5 +90,57 @@ class RemoteAddFileChoiceTest {
         }
         list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_CHOICE))
         rule.onNodeWithText("Files to download (2 of 2", substring = true).assertExists()
+    }
+    @Test fun rTorrentAddOffersHighOnlyAndSkippingAFileClearsItsHigh() {
+        val bytes = twoFileTorrent()
+        val session = RemoteAddSession(null).apply {
+            selectedTorrent = TorrentMetainfoReader.preview(bytes)
+            selectedBytes = bytes
+            useFile = true
+            textAtFileSelection = ""
+        }
+        rule.setContent {
+            ChunksTheme { Surface {
+                VerifiedAddScreen(RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", "")),
+                    "", "/srv/downloads", onMagnet = {}, onDestination = {}, onBack = {}, onComplete = {},
+                    onMutationStarted = { throw AssertionError("review must not start a mutation") },
+                    onMutationSettled = {}, session = session, environmentLabel = "Wood")
+            } }
+        }
+        val list = rule.onNode(hasScrollToIndexAction())
+        rule.waitForIdle()
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_CHOICE))
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_CHOICE).performClick()
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_PRIORITY + ".0"))
+        val first = rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".0")
+        first.assertTextEquals("Normal").performClick()
+        rule.waitForIdle()
+        first.assertTextEquals("High").performClick()
+        rule.waitForIdle()
+        first.assertTextEquals("Normal")   // rTorrent stores no distinct Low
+        first.performClick()
+        rule.waitForIdle()
+        assertEquals(setOf(0), session.highFiles)
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-add-file-high.png")
+        // A skipped file has no priority, and its High is dropped.
+        rule.onNodeWithText("Episode 01.mkv").performClick()
+        rule.waitForIdle()
+        assertEquals(setOf(0), session.skippedFiles)
+        assertEquals(emptySet<Int>(), session.highFiles)
+        assertTrue(rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_FILE_PRIORITY + ".0")).fetchSemanticsNodes().isEmpty())
+        // Another reviewed .torrent never inherits a High.
+        rule.onNodeWithText("Episode 01.mkv").performClick()
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_PRIORITY + ".1"))
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".1").performClick()
+        rule.waitForIdle()
+        val other = twoFileTorrent("Show S02")
+        rule.runOnIdle {
+            session.selectedTorrent = TorrentMetainfoReader.preview(other)
+            session.selectedBytes = other
+        }
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_CHOICE))
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_CHOICE).performClick()
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_PRIORITY + ".1"))
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".1").assertTextEquals("Normal")
     }
 }

@@ -25,6 +25,8 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     /** Reviewed "Files to download" skips (native metainfo indexes) for [skippedFilesHash]. */
     internal var skippedFiles by mutableStateOf<Set<Int>>(emptySet())
     internal var skippedFilesHash by mutableStateOf<String?>(null)
+    /** Reviewed wanted files raised to High (rTorrent stores no distinct Low), for [skippedFilesHash]. */
+    internal var highFiles by mutableStateOf<Set<Int>>(emptySet())
     internal var fileChoiceOpen by mutableStateOf(false)
     internal var submitting by mutableStateOf(false)
     internal var alreadyAttempted by mutableStateOf(false)

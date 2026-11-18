@@ -379,6 +379,8 @@ class RTorrentLibtorrentInteropTest {
             val layout = requireNotNull(io.github.gamesbyian.chunks.AddFileChoices.declared(preview))
             val skipped = layout.filter { it.path.endsWith("video/part-2.bin") }
             assertEquals(1, skipped.size)
+            // One more wanted file raised to High in the same review (rTorrent: 2).
+            val raised = layout.filter { it.index != skipped.single().index }.take(1)
             val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
                 io.github.gamesbyian.chunks.model.UniversalAddSource.metainfo(torrent, hash),
                 io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedServer(rig.remote.addAccountScope()),
@@ -392,15 +394,18 @@ class RTorrentLibtorrentInteropTest {
             val ticket = requireNotNull(coordinator.beginSubmission(System.currentTimeMillis()))
             val execution = io.github.gamesbyian.chunks.rpc.RemoteUniversalAddAdapter(rig.remote).submit(
                 ticket, prioritiesBeforeStart = true) { added ->
-                io.github.gamesbyian.chunks.rpc.RemoteAddFileSkips.apply(rig.remote, added, skipped, true)
+                io.github.gamesbyian.chunks.rpc.RemoteAddFileSkips.apply(rig.remote, added, skipped, true, high = raised)
             }
             println("CHUNKS_RT_ADD_SKIP: result=${execution.result::class.simpleName} note=${execution.orderNote}")
             assertEquals(io.github.gamesbyian.chunks.rpc.RemoteAddAndStart.Started(hash), execution.result)
-            assertEquals("Skipping 1 file as chosen; they will not download.", execution.orderNote)
+            assertEquals("Skipping 1 file as chosen; they will not download. " +
+                "Raising 1 file to High priority as chosen.", execution.orderNote)
             val listed = rig.remote.listFiles(hash)
             val skipIndex = skipped.single().index
             assertEquals("video/part-2.bin", listed[skipIndex].path)
-            assertEquals("Only the reviewed file is off", listed.indices.map { if (it == skipIndex) 0 else 1 },
+            val raisedIndex = raised.single().index
+            assertEquals("Only the reviewed file is off; only the raised one is high",
+                listed.indices.map { when (it) { skipIndex -> 0; raisedIndex -> 2; else -> 1 } },
                 listed.map { it.priority })
             suspend fun chunks(index: Int, method: String) =
                 (rig.remote.call(method, listOf("$hash:f$index")) as Number).toLong()
