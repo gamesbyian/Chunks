@@ -1662,6 +1662,10 @@ internal fun LocalEngineScreen(
         // Files to download, chosen before Add (multi-file .torrent only); read off the UI thread.
         var addFiles by remember(add) { mutableStateOf<List<DeclaredAddFile>?>(null) }
         var skippedFiles by remember(add) { mutableStateOf<Set<Int>>(emptySet()) }
+        // Reviewed Low/High per wanted file, for exactly this reviewed .torrent.
+        var fileLevels by remember(add) {
+            mutableStateOf<Map<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>>(emptyMap())
+        }
         var fileChoiceOpen by remember(add) { mutableStateOf(false) }
         LaunchedEffect(add) {
             val reviewedAdd = add?.takeIf { it.preview.fileCount >= 2 } ?: return@LaunchedEffect
@@ -1673,7 +1677,14 @@ internal fun LocalEngineScreen(
                 enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
                 onExpanded = { fileChoiceOpen = it },
                 localOnlyNote = canReviewOnConnectedServer && onPrepareRemoteTorrent != null,
-                onSkippedChange = { skippedFiles = it })
+                // This device stores every level.
+                priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
+                    io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW),
+                priorities = fileLevels.filterKeys { it !in skippedFiles },
+                onPriorityChange = { index, level ->
+                    fileLevels = if (level == null) fileLevels - index else fileLevels + (index to level)
+                },
+                onSkippedChange = { skippedFiles = it; fileLevels = fileLevels - it })
         var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
         if (add != null && destination != null && add.preview.fileCount >= 2) {
             FinishInOrderAddChoice(
@@ -1740,7 +1751,13 @@ internal fun LocalEngineScreen(
                 val selectedPlace = place
                 val autoStart = startAfterAdd
                 val allowArtwork = automaticArtwork
-                val orderAfterAdd = finishInOrderAfterAdd
+                // Frozen at the click: native index -> reviewed path of each raised/lowered file.
+                val frozenLevels = addFiles.orEmpty()
+                    .filter { it.index !in skippedFiles && fileLevels[it.index] != null }
+                    .associate { it.index to (it.path to fileLevels.getValue(it.index)) }
+                // Finish in Order manages every file's priority itself: only without the
+                // person's own Low/High choices.
+                val orderAfterAdd = finishInOrderAfterAdd && frozenLevels.isEmpty()
                 val inventoryReadyAtClick = addInventoryReady
                 // Frozen at the click: only this exact reviewed offer may be renamed.
                 val reviewedRecovery = addRecovery?.takeIf { useRecovery && it.first == add.preview.infoHashV1 }?.second
@@ -1750,6 +1767,7 @@ internal fun LocalEngineScreen(
                 // Frozen at the click: native index -> reviewed path of each file to skip.
                 val frozenSkips = addFiles.orEmpty().filter { it.index in skippedFiles }.associate { it.index to it.path }
                 var skipNote: String? = null
+                var priorityNote: String? = null
                 var skipConfirmed = true
                 if (addFiles != null && frozenSkips.size >= addFiles.orEmpty().size && frozenSkips.isNotEmpty()) {
                     noteProblem("Choose at least one file to download. Nothing was added.")
@@ -1831,6 +1849,13 @@ internal fun LocalEngineScreen(
                                         skipsRequested = frozenSkips.isNotEmpty(),
                                         reviewedSkips = { files -> AddFileChoices.reviewedSkips(files, frozenSkips) },
                                         startNow = autoStart,
+                                        reviewedPriorities = frozenLevels.takeIf { it.isNotEmpty() }?.let { levels ->
+                                            { files ->
+                                                AddFileChoices.reviewedSkips(files, levels.mapValues { it.value.first })
+                                                    ?.associate { file -> file.index to
+                                                        LocalTorrentClient.nativePriority(levels.getValue(file.index).second) }
+                                            }
+                                        },
                                         beforeStart = { hash ->
                                             if (orderAfterAdd) orderNote = enableFinishInOrderAfterAdd(context, engine, hash)
                                         },
@@ -1848,6 +1873,11 @@ internal fun LocalEngineScreen(
                                     if (frozenSkips.isNotEmpty() && added is LocalAddResult.AddedStopped) {
                                         skipConfirmed = execution.skipsConfirmed
                                         skipNote = AddFileChoices.outcomeNote(execution.skipOutcome, frozenSkips.size, autoStart)
+                                    }
+                                    if (frozenLevels.isNotEmpty() && added is LocalAddResult.AddedStopped) {
+                                        if (!AddFileChoices.confirmed(execution.priorityOutcome)) skipConfirmed = false
+                                        priorityNote = AddFileChoices.priorityNote(
+                                            execution.priorityOutcome, frozenLevels.size, autoStart)
                                     }
                                     if (execution.verifyingExisting) verifyAfterAdd = added.let {
                                         (it as LocalAddResult.AddedStopped).status.infoHash
@@ -1890,6 +1920,7 @@ internal fun LocalEngineScreen(
                         recoveryNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         skipNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
+                        priorityNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         if (added is LocalAddResult.Refused || (added is LocalAddResult.AddedStopped &&
                                 started != null && started.outcome != LocalCommandOutcome.VERIFIED) ||
                             (added is LocalAddResult.AddedStopped && !skipConfirmed))

@@ -77,6 +77,15 @@ internal object AddFileChoices {
     fun confirmed(outcome: LocalFileBatchOutcome?) =
         outcome == LocalFileBatchOutcome.VERIFIED || outcome == LocalFileBatchOutcome.UNCHANGED
 
+    /** Reviewed Low/High at a Local Add; null when none were chosen. */
+    fun priorityNote(outcome: LocalFileBatchOutcome?, count: Int, startRequested: Boolean): String? = when {
+        count == 0 -> null
+        confirmed(outcome) -> "Set the priority of " + count + (if (count == 1) " file" else " files") + " as chosen."
+        startRequested -> "The file priorities you chose could not be confirmed, so the transfer was not started. " +
+            "Review its files in Details before starting."
+        else -> "The file priorities you chose could not be confirmed. Review its files in Details before starting."
+    }
+
     fun outcomeNote(outcome: LocalFileBatchOutcome?, skippedCount: Int, startRequested: Boolean): String? = when {
         skippedCount == 0 -> null
         confirmed(outcome) ->

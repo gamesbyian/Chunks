@@ -6,12 +6,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -52,5 +54,40 @@ class AddFileChoiceTest {
         rule.setContent { ChunksTheme { AddFileChoice(files, setOf(0, 1), expanded = false, enabled = true,
             onExpanded = {}, onSkippedChange = {}) } }
         rule.onNodeWithText("Choose at least one file to download.").assertExists()
+    }
+    @Test fun withLowAndHighOfferedAWantedFileCyclesNormalHighLowAndASkippedFileHasNoPriority() {
+        var skipped by mutableStateOf(emptySet<Int>())
+        var levels by mutableStateOf(emptyMap<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>())
+        rule.setContent { ChunksTheme { AddFileChoice(files, skipped, expanded = true, enabled = true,
+            onExpanded = {},
+            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
+                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW),
+            priorities = levels.filterKeys { it !in skipped },
+            onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
+            onSkippedChange = { skipped = it; levels = levels - it }) } }
+        val first = rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".0")
+        first.assertHeightIsAtLeast(48.dp).assertTextEquals("Normal").performClick()
+        first.assertTextEquals("High").performClick()
+        first.assertTextEquals("Low")
+        assertEquals(mapOf(0 to io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW), levels)
+        first.performClick()
+        first.assertTextEquals("Normal")
+        assertEquals(emptyMap<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>(), levels)
+        rule.onNodeWithText("sooner or later", substring = true).assertExists()
+        // Skipping a raised file drops its level and its control.
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".1").performClick()
+        rule.onNodeWithText("sample.mkv").performClick()
+        assertEquals(emptyMap<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>(), levels)
+        rule.onNodeWithTag(ChunksSemantics.ADD_FILE_PRIORITY + ".1").assertDoesNotExist()
+    }
+
+    @Test fun priorityOutcomeNotesAreHonestAboutStart() {
+        assertEquals(null, AddFileChoices.priorityNote(null, 0, true))
+        assertEquals("Set the priority of 2 files as chosen.",
+            AddFileChoices.priorityNote(io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome.VERIFIED, 2, true))
+        assertTrue(AddFileChoices.priorityNote(
+            io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome.STALE_REVIEW, 1, true)!!.contains("was not started"))
+        assertTrue("never attempted is never confirmed", AddFileChoices.priorityNote(null, 1, false)!!
+            .contains("could not be confirmed"))
     }
 }
