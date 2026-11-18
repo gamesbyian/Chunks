@@ -97,6 +97,13 @@ class ProtocolClientInstalledJourneyTest {
             } catch (failure: AssertionError) {
                 last = failure
                 Thread.sleep(400)
+            } catch (failure: IllegalStateException) {
+                // Compose may dispose a lazy text node between scroll/lookup and
+                // its focus request. No text action was dispatched; re-locate it.
+                if (failure.message?.contains("visitAncestors called on an unattached node") != true)
+                    throw failure
+                last = failure
+                Thread.sleep(400)
             }
         }
         throw AssertionError("Could not enter $label", last)
