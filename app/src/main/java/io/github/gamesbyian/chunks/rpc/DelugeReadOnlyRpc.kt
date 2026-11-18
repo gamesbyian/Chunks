@@ -131,6 +131,26 @@ internal class DelugeReadOnlyRpc(
         Snapshot(daemonHostId, version, torrents)
     }
 
+    /**
+     * Read-only discovery of the daemon host IDs registered in this Web UI.
+     * Selection remains explicit: callers may adopt an ID automatically only
+     * when exactly one daemon is registered, never by picking among several.
+     */
+    suspend fun registeredDaemonIds(): List<String> = withContext(Dispatchers.IO) {
+        require(auth.password.isNotEmpty()) { "Deluge web password is required" }
+        val (authenticated, cookie) = login()
+        if (!authenticated) throw IOException("Deluge Web UI login refused")
+        val hostList = rpc("web.get_hosts", JSONArray(), 2, cookie) as? JSONArray
+            ?: throw IOException("Deluge did not return a host list")
+        if (hostList.length() > 1000) throw IOException("Deluge host list exceeds safety limit")
+        (0 until hostList.length()).map { index ->
+            val host = hostList.opt(index) as? JSONArray
+                ?: throw IOException("Malformed Deluge host list")
+            (host.opt(0) as? String)?.takeIf { DAEMON_ID.matches(it) }
+                ?: throw IOException("Malformed Deluge host identity")
+        }
+    }
+
     /** Authenticated web session cookie is scoped to this endpoint, never global. */
     private suspend fun login(): Pair<Boolean, String> {
         val result = call("auth.login", JSONArray().put(auth.password), 1, null)
@@ -198,6 +218,7 @@ internal class DelugeReadOnlyRpc(
     private companion object {
         const val MAX_BODY = 4_194_304
         val HASH = Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})")
+        val DAEMON_ID = Regex("[A-Za-z0-9._:-]{1,128}")
         val SESSION = Regex("[A-Za-z0-9._~%-]{8,256}")
         val ESCAPED = Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
         val DOT = Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
