@@ -68,15 +68,22 @@ class ProtocolClientInstalledJourneyTest {
         try {
             rule.waitUntil(timeoutMs, condition)
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
-            val ui = runCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
+            // Prefer the protocol controls when present: the whole root is too long.
+            val ui = runCatching {
+                rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATIONS, useUnmergedTree = true)
+                    .printToString().take(6_000)
+            }.recoverCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
                 .getOrDefault("semantics unavailable")
             throw AssertionError("Timed out: $what\n$ui", failure)
         }
     }
 
     private fun scrollToNode(matcher: androidx.compose.ui.test.SemanticsMatcher) {
-        if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
-            rule.onAllNodes(hasScrollToIndexAction()).onFirst().performScrollToNode(matcher)
+        // Lazy lists compose rows only when scrolled to; Details is a plain
+        // scrolling column. Try the lazy path, then the composed node itself.
+        if (rule.onAllNodes(matcher).fetchSemanticsNodes().isEmpty() &&
+            rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
+            runCatching { rule.onAllNodes(hasScrollToIndexAction()).onFirst().performScrollToNode(matcher) }
         rule.onAllNodes(matcher).onFirst().performScrollTo()
     }
 
@@ -169,7 +176,7 @@ class ProtocolClientInstalledJourneyTest {
                 started.runState != ClientRunState.STOPPED)
             stage("start-verified-independently")
 
-            clickOnce(ChunksSemantics.PROTOCOL_REMOVE, "Remove…")
+            clickOnce(ChunksSemantics.PROTOCOL_REMOVE, "Remove…", 60_000)
             clickOnce(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM, "Remove, keep files")
             waitFor("Remove confirmed", 60_000) { visible("Remove: confirmed") }
             assertNull("Independent readback: removed", runBlocking { client.torrent(hash) })
