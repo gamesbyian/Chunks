@@ -1175,6 +1175,26 @@ internal fun CombinedTransfersScreen(
         val focusedProtocolListing = focusedProtocol?.let { profile ->
             protocolSources.listings[profile.environment]?.takeIf { it.witness == profile.identityWitness }
         }
+        // Connected remote clients a job may be copied or moved to (job only),
+        // each through the shared port; [excludeId] is the source itself.
+        fun remoteMoveTargets(excludeId: String?): List<ProtocolMoveTarget> = buildList {
+            protocolProfiles.filter { it.id != excludeId && it.operations != null &&
+                it.environment in protocolAllowed }.forEach { other ->
+                val create = requireNotNull(other.operations)
+                add(ProtocolMoveTarget(other.id, other.label) { create() })
+            }
+            // The authenticated rTorrent session, through the shared port.
+            (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
+                serverId != null && serverId.value != excludeId &&
+                    serverPrivacy?.mayShow == true && server.stale == false
+            }?.let { remote ->
+                add(ProtocolMoveTarget(requireNotNull(serverId).value,
+                    labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
+                    io.github.gamesbyian.chunks.rpc.RemoteClientOperations(
+                        io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
+                })
+            }
+        }
         val protocolOperations: (@Composable () -> Unit)? = focusedProtocol?.let { profile ->
             {
                 ProtocolClientOperationsPanel(
@@ -1188,29 +1208,13 @@ internal fun CombinedTransfersScreen(
                     inventoryWitness = focusedProtocolListing?.snapshot?.observedAtEpochMillis,
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
-                    moveTargets = buildList {
-                        protocolProfiles.filter { it.id != profile.id && it.operations != null &&
-                            it.environment in protocolAllowed }.forEach { other ->
-                            val create = requireNotNull(other.operations)
-                            add(ProtocolMoveTarget(other.id, other.label) { create() })
-                        }
+                    moveTargets = remoteMoveTargets(profile.id) + listOfNotNull(
                         // This device: the bundled engine through the shared port,
                         // into the verified Local Place (resolved on the tap).
-                        if (localPrivacy?.mayShow != false) add(ProtocolMoveTarget(
+                        if (localPrivacy?.mayShow != false) ProtocolMoveTarget(
                             EnvironmentSnapshots.LOCAL.value, "This device") {
                             LocalClientOperations.forApp(context)
-                        })
-                        // The authenticated rTorrent session, through the shared port.
-                        (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
-                            serverId != null && serverPrivacy?.mayShow == true && server.stale == false
-                        }?.let { remote ->
-                            add(ProtocolMoveTarget(requireNotNull(serverId).value,
-                                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
-                                io.github.gamesbyian.chunks.rpc.RemoteClientOperations(
-                                    io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
-                            })
-                        }
-                    }
+                        } else null)
                 )
             }
         }
@@ -1254,6 +1258,16 @@ internal fun CombinedTransfersScreen(
                     }
                     // Full Details parity with server jobs: files & priorities and Remove.
                     LocalDetailsOperations(focusedKey.infoHash, current = current, stale = localFrame.stale)
+                    // Job-only Copy / Move from This device to another connected client.
+                    LocalJobMoveSection(
+                        hash = focusedKey.infoHash,
+                        current = current && !localFrame.stale && focusedKey.infoHash.matches(V1_TRANSFER_HASH),
+                        observedStarted = details.observation?.started,
+                        inventoryWitness = details.observation,
+                        createSource = { LocalClientOperations.forApp(context) },
+                        targets = remoteMoveTargets(EnvironmentSnapshots.LOCAL.value),
+                        onChanged = {}
+                    )
                 }
             }) else null,
             exactServerOperations = if (canShowExactRemoval) ({

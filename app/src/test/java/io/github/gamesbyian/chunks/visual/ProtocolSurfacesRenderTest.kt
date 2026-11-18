@@ -25,6 +25,7 @@ import io.github.gamesbyian.chunks.ProtocolAddAttempt
 import io.github.gamesbyian.chunks.ProtocolAddScreen
 import io.github.gamesbyian.chunks.ProtocolClientOperationsPanel
 import io.github.gamesbyian.chunks.ProtocolMoveTarget
+import io.github.gamesbyian.chunks.LocalJobMoveSection
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientCapability
@@ -118,6 +119,25 @@ class ProtocolSurfacesRenderTest {
 
     @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
     @Test fun detailsControlsWithMove320At200Percent() = panel(320, 2f, "320-200pct")
+
+    private fun localMove(width: Int, scale: Float, name: String) {
+        show(width, scale) {
+            LocalJobMoveSection(hash = hash, current = true, observedStarted = false, inventoryWitness = 1L,
+                createSource = { RemoteClientOperations(Fake(), 3, 1) },
+                targets = listOf(ProtocolMoveTarget("tr", "Seedbox Transmission") { RemoteClientOperations(Fake(), 3, 1) },
+                    ProtocolMoveTarget("rt", "Seedbox rTorrent") { RemoteClientOperations(Fake(), 3, 1) }),
+                onChanged = {})
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.waitForIdle()
+        assertTouchTargetsAndWidth(width)
+        rule.onRoot().captureRoboImage("build/chunks-visual/local-move-$name.png")
+    }
+
+    @Test fun localMove412() = localMove(412, 1f, "412-100pct")
+
+    @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
+    @Test fun localMove320At200Percent() = localMove(320, 2f, "320-200pct")
 
     private fun add(width: Int, scale: Float, name: String) {
         show(width, scale) {
