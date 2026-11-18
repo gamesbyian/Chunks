@@ -22,13 +22,13 @@ internal sealed interface ClientOperationOutcome {
 }
 
 /**
- * The single application-level workflow shared by every remote protocol.
- * Protocol differences live only behind [RemoteTorrentClient] and its
+ * The single application-level workflow shared by every client, Local included.
+ * Protocol differences live only behind [TorrentClient] and its
  * [ClientCapability] set; this object never branches on backend kind.
  */
-internal class RemoteClientOperations(
+internal class ClientOperations(
     /** The exact client this workflow drives (shared with Move). */
-    val client: RemoteTorrentClient,
+    val client: TorrentClient,
     private val readbackAttempts: Int = 12,
     private val readbackDelayMillis: Long = 750
 ) {

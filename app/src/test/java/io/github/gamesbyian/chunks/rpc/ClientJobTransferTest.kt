@@ -14,8 +14,8 @@ class ClientJobTransferTest {
         var jobs: MutableSet<String> = mutableSetOf(),
         val caps: Set<ClientCapability> = ClientCapability.entries.toSet(),
         var export: Boolean = true
-    ) : RemoteTorrentClient {
-        override val kind = RemoteBackendKind.QBITTORRENT
+    ) : TorrentClient {
+        override val kind = TorrentClientKind.QBITTORRENT
         var adds = 0
         var removes = 0
         var removedData: Boolean? = null
@@ -35,7 +35,7 @@ class ClientJobTransferTest {
     }
 
     private fun transfer(a: Fake, b: Fake) =
-        ClientJobTransfer(RemoteClientOperations(a, 3, 1), a, RemoteClientOperations(b, 3, 1), b,
+        ClientJobTransfer(ClientOperations(a, 3, 1), a, ClientOperations(b, 3, 1), b,
             "source-" + a.name, "target-" + b.name)
 
     @Test fun verifiedCopyThenSessionOnlyRetirement() = runBlocking {
@@ -109,12 +109,12 @@ class ClientJobTransferTest {
     @Test fun sameClientOrWrongOperationOwnerCannotConstructMove() {
         val a = Fake("a"); val b = Fake("b")
         try {
-            ClientJobTransfer(RemoteClientOperations(a), a, RemoteClientOperations(b), b,
+            ClientJobTransfer(ClientOperations(a), a, ClientOperations(b), b,
                 "same-client", "same-client")
             throw AssertionError("Same canonical client identity must be refused")
         } catch (_: IllegalArgumentException) { }
         try {
-            ClientJobTransfer(RemoteClientOperations(b), a, RemoteClientOperations(b), b,
+            ClientJobTransfer(ClientOperations(b), a, ClientOperations(b), b,
                 "a", "b")
             throw AssertionError("Mismatched operation owner must be refused")
         } catch (_: IllegalArgumentException) { }

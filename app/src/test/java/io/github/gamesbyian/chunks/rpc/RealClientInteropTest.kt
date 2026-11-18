@@ -18,7 +18,7 @@ import org.robolectric.annotation.Config
 
 /**
  * Full mutation journey against ONE real Transmission, qBittorrent or Deluge
- * daemon through the shared [RemoteClientOperations] workflow.
+ * daemon through the shared [ClientOperations] workflow.
  *
  * Each backend's test is skipped unless CHUNKS_INTEROP_<BACKEND>_URL and
  * _PASS are set (local daemons from tools/interop/start_local_clients.sh,
@@ -41,7 +41,7 @@ class RealClientInteropTest {
 
     private fun stage(text: String) = println("CHUNKS_INTEROP: " + kind.name + " " + text)
 
-    private fun client(password: String = env("PASS")): RemoteTorrentClient {
+    private fun client(password: String = env("PASS")): TorrentClient {
         val credentials = RemoteCredentials(env("URL"), env("USER"), password)
         return when (kind) {
             RemoteBackendKind.TRANSMISSION -> TransmissionClient(credentials)
@@ -97,7 +97,7 @@ class RealClientInteropTest {
             env("URL").isNotBlank() && env("PASS").isNotBlank())
         val start = System.nanoTime()
         val client = client()
-        val ops = RemoteClientOperations(client, readbackAttempts = 40, readbackDelayMillis = 500)
+        val ops = ClientOperations(client, readbackAttempts = 40, readbackDelayMillis = 500)
         val session = ops.session()
         stage("session version_present=${session.version.isNotBlank()} capabilities=" +
             session.capabilities.map { it.name }.sorted().joinToString(","))
@@ -236,7 +236,7 @@ class RealClientInteropTest {
     private fun envOf(k: RemoteBackendKind, name: String) =
         System.getenv("CHUNKS_INTEROP_" + k.name + "_" + name).orEmpty()
 
-    private fun clientOf(k: RemoteBackendKind): RemoteTorrentClient {
+    private fun clientOf(k: RemoteBackendKind): TorrentClient {
         val saved = if (this::kind.isInitialized) kind else null
         kind = k
         try { return client() } finally { if (saved != null) kind = saved }
@@ -270,8 +270,8 @@ class RealClientInteropTest {
             kind = from
             val src = clientOf(from)
             val dst = clientOf(to)
-            val srcOps = RemoteClientOperations(src, 60, 500)
-            val dstOps = RemoteClientOperations(dst, 60, 500)
+            val srcOps = ClientOperations(src, 60, 500)
+            val dstOps = ClientOperations(dst, 60, 500)
             val random = SecureRandom()
             val name = "chunks-move-" + from.name.lowercase() + "-" + to.name.lowercase() + "-" +
                 java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)

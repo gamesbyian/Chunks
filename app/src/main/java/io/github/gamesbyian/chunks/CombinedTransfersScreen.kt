@@ -1199,7 +1199,7 @@ internal fun CombinedTransfersScreen(
                         }?.let { remote ->
                             add(ProtocolMoveTarget(requireNotNull(serverId).value,
                                 labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
-                                io.github.gamesbyian.chunks.rpc.RemoteClientOperations(
+                                io.github.gamesbyian.chunks.rpc.ClientOperations(
                                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
                             })
                         }

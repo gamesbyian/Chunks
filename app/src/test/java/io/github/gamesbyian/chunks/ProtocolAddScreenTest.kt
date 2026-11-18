@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.rpc.TorrentClientKind
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
 import io.github.gamesbyian.chunks.rpc.ClientCapability
@@ -17,8 +18,8 @@ import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientTorrent
-import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
-import io.github.gamesbyian.chunks.rpc.RemoteTorrentClient
+import io.github.gamesbyian.chunks.rpc.ClientOperations
+import io.github.gamesbyian.chunks.rpc.TorrentClient
 import kotlinx.coroutines.MainScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,8 +35,8 @@ class ProtocolAddScreenTest {
     @get:Rule val rule = createComposeRule()
     private val hash = "cd".repeat(20)
 
-    private inner class Fake : RemoteTorrentClient {
-        override val kind = RemoteBackendKind.DELUGE
+    private inner class Fake : TorrentClient {
+        override val kind = TorrentClientKind.DELUGE
         var added: ClientAddRequest? = null
         var writes = 0
         override suspend fun session() = ClientSessionInfo(kind, "2.1", "/srv/dl", ClientCapability.entries.toSet())
@@ -63,7 +64,7 @@ class ProtocolAddScreenTest {
             ChunksTheme {
                 ProtocolAddScreen(
                     profileId = "p", clientLabel = "Box Deluge",
-                    createOperations = { RemoteClientOperations(fake, 3, 1) },
+                    createOperations = { ClientOperations(fake, 3, 1) },
                     destinationPicker = {},
                     sourceDraft = draft, reviewedTorrent = torrent,
                     startState = start, attempt = attempt, attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
@@ -93,7 +94,7 @@ class ProtocolAddScreenTest {
         rule.setContent {
             ChunksTheme {
                 ProtocolAddScreen(
-                    profileId = "p", clientLabel = "Box", createOperations = { RemoteClientOperations(Fake(), 3, 1) },
+                    profileId = "p", clientLabel = "Box", createOperations = { ClientOperations(Fake(), 3, 1) },
                     destinationPicker = {}, sourceDraft = draft,
                     reviewedTorrent = mutableStateOf(null), startState = mutableStateOf(true),
                     attempt = attempt, attemptScope = MainScope(), onViewTransfer = {}

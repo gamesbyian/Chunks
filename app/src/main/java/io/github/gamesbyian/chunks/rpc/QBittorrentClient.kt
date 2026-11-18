@@ -24,8 +24,8 @@ import org.json.JSONObject
 internal class QBittorrentClient(
     credentials: RemoteCredentials,
     private val wire: QBittorrentReadOnlyRpc.Wire = QBittorrentReadOnlyRpc.HttpWire
-) : RemoteTorrentClient {
-    override val kind = RemoteBackendKind.QBITTORRENT
+) : TorrentClient {
+    override val kind = TorrentClientKind.QBITTORRENT
     private val auth = credentials
     private val webRoot: URI = QBittorrentReadOnlyRpc.validateRoot(credentials.endpoint)
     private val origin = URI(webRoot.scheme, null, webRoot.host, webRoot.port, "/", null, null)

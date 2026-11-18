@@ -24,8 +24,8 @@ import org.json.JSONObject
 internal class TransmissionClient(
     credentials: RemoteCredentials,
     private val wire: TransmissionReadOnlyRpc.Wire = TransmissionReadOnlyRpc.HttpWire
-) : RemoteTorrentClient {
-    override val kind = RemoteBackendKind.TRANSMISSION
+) : TorrentClient {
+    override val kind = TorrentClientKind.TRANSMISSION
     private val auth = credentials
     private val endpoint: URI = TransmissionReadOnlyRpc.validateEndpoint(credentials.endpoint)
     private var csrfSession: String? = null
