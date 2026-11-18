@@ -18,7 +18,7 @@ cat > "$ROOT/tr/settings.json" <<JSON
 {"rpc-enabled":true,"rpc-port":19091,"rpc-bind-address":"127.0.0.1",
  "rpc-authentication-required":true,"rpc-username":"chunks","rpc-password":"chunkspass",
  "rpc-whitelist-enabled":false,"rpc-host-whitelist-enabled":false,
- "download-dir":"$ROOT/dl/tr","peer-port":51413,"dht-enabled":false,"lpd-enabled":false,
+ "download-dir":"$ROOT/dl/tr","peer-port":51513,"dht-enabled":false,"lpd-enabled":false,
  "pex-enabled":false,"port-forwarding-enabled":false}
 JSON
 transmission-daemon -g "$ROOT/tr" -f >"$ROOT/tr.log" 2>&1 &
@@ -34,7 +34,7 @@ with open(f"{root}/qb/qBittorrent/config/qBittorrent.conf", "w") as f:
 Accepted=true
 [BitTorrent]
 Session\\DefaultSavePath={root}/dl/qb
-Session\\Port=51414
+Session\\Port=51514
 Session\\DHTEnabled=false
 [Preferences]
 WebUI\\Port=18080
@@ -49,7 +49,24 @@ qbittorrent-nox --profile="$ROOT/qb" >"$ROOT/qb.log" 2>&1 &
 
 if [ -n "$PY" ]; then
   echo "localclient:localpass:10" > "$ROOT/de/auth"
-  "$PY" /usr/bin/deluged -c "$ROOT/de" -p 58846 -L warning -l "$ROOT/de.log"
+  # Off the default port; register exactly one daemon in the Web UI host list.
+  cat > "$ROOT/de/hostlist.conf" <<HOSTS
+{
+    "file": 3,
+    "format": 1
+}{
+    "hosts": [
+        [
+            "c0ffee00c0ffee00c0ffee00c0ffee00",
+            "127.0.0.1",
+            58946,
+            "localclient",
+            "localpass"
+        ]
+    ]
+}
+HOSTS
+  "$PY" /usr/bin/deluged -c "$ROOT/de" -p 58946 -L warning -l "$ROOT/de.log"
   sleep 3
   "$PY" /usr/bin/deluge-web -c "$ROOT/de" -p 18112 -i 127.0.0.1 -L warning -l "$ROOT/deweb.log" &
 else

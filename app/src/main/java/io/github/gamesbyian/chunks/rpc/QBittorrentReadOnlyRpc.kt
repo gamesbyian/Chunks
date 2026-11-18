@@ -112,7 +112,13 @@ internal class QBittorrentReadOnlyRpc(
             endpoint("auth/login"), "POST", form.toByteArray(Charsets.UTF_8), origin, null
         ))
         if (response.status != 200 || response.body.trim() != "Ok.") {
-            throw IOException("qBittorrent authentication refused")
+            // Fixed, credential-free reasons; 5.x answers failed logins 401.
+            throw IOException("qBittorrent authentication refused (" + when {
+                response.status == 200 -> "credentials rejected"
+                response.status == 401 -> "401 unauthorized"
+                response.status == 403 -> "403 forbidden, possibly too many failed logins"
+                else -> "HTTP " + response.status
+            } + ")")
         }
         // Modern qBittorrent names the cookie QBT_SID_<WebUIPort> to
         // distinguish parallel WebUI daemons on one origin; older versions
@@ -211,8 +217,9 @@ internal class QBittorrentReadOnlyRpc(
             connection.readTimeout = 15_000
             connection.instanceFollowRedirects = false
             connection.requestMethod = request.method
-            connection.setRequestProperty("Origin", request.origin)
-            connection.setRequestProperty("Referer", request.origin + "/")
+            // Like other native API clients, send no Origin/Referer: behind a
+            // reverse proxy the WebUI's cross-site check compares them with
+            // the proxied Host and rejects the login with 401.
             request.cookie?.let { connection.setRequestProperty("Cookie", it) }
             request.body?.let { body ->
                 connection.doOutput = true

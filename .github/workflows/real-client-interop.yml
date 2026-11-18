@@ -34,7 +34,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install real torrent client daemons
-        run: bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web
+        run: |
+          bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web
+          # The packages start their own system services on default ports, and
+          # Ubuntu's AppArmor profile confines transmission-daemon to its own
+          # state paths. Use only the test's disposable loopback instances.
+          sudo systemctl stop transmission-daemon deluged deluge-web qbittorrent-nox 2>/dev/null || true
+          sudo pkill -x transmission-da 2>/dev/null || true
+          sudo pkill -f /usr/bin/deluged 2>/dev/null || true
+          if [ -f /etc/apparmor.d/transmission ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/transmission 2>/dev/null || true
+          fi
       - name: Start loopback daemons
         run: tools/interop/start_local_clients.sh "$RUNNER_TEMP/interop"
       - uses: actions/setup-java@v4

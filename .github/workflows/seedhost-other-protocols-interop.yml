@@ -17,6 +17,14 @@ on:
           - TRANSMISSION
           - QBITTORRENT
           - DELUGE
+      credential_source:
+        description: "client = per-client secrets; account = the shared Seedhost account login (rtorrent_user/rtorrent_pass)"
+        type: choice
+        required: false
+        default: client
+        options:
+          - client
+          - account
       apply:
         description: "Type true to authorize fixture-only writes"
         type: string
@@ -60,8 +68,8 @@ jobs:
           BACKEND: ${{ inputs.backend }}
           INPUT_URL: ${{ inputs.endpoint }}
           SECRET_URL: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_url || secrets.TRANSMISSION_URL) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_url || secrets.QBITTORRENT_URL) || (secrets.deluge_url || secrets.DELUGE_URL) }}
-          LIVE_USER: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user) || (secrets.deluge_user || secrets.DELUGE_USER || secrets.rtorrent_user) }}
-          LIVE_PASS: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password) || (secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password) }}
+          LIVE_USER: ${{ inputs.credential_source == 'account' && secrets.rtorrent_user || (inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user) || (secrets.deluge_user || secrets.DELUGE_USER || secrets.rtorrent_user)) }}
+          LIVE_PASS: ${{ inputs.credential_source == 'account' && secrets.rtorrent_pass || (inputs.backend == 'TRANSMISSION' && (secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password) || (secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password)) }}
           LIVE_DAEMON: ${{ inputs.backend == 'DELUGE' && (secrets.deluge_daemon_id || secrets.DELUGE_DAEMON_ID || vars.DELUGE_DAEMON_ID) || '' }}
         run: |
           case "$BACKEND" in

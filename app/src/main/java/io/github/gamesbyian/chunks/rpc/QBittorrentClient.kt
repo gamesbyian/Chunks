@@ -243,7 +243,12 @@ internal class QBittorrentClient(
             throw IOException("qBittorrent connection failed")
         }
         if (response.status != 200 || response.body.trim() != "Ok.") {
-            throw ClientRefusedException("qBittorrent authentication refused")
+            throw ClientRefusedException("qBittorrent authentication refused (" + when {
+                response.status == 200 -> "credentials rejected"
+                response.status == 401 -> "401 unauthorized"
+                response.status == 403 -> "403 forbidden, possibly too many failed logins"
+                else -> "HTTP " + response.status
+            } + ")")
         }
         val cookies = response.header("Set-Cookie").mapNotNull { header ->
             val pair = header.substringBefore(';').trim()
