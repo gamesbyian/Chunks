@@ -35,23 +35,24 @@ class ClientJobTransferTest {
     }
 
     private fun transfer(a: Fake, b: Fake) =
-        ClientJobTransfer(RemoteClientOperations(a, 3, 1), a, RemoteClientOperations(b, 3, 1), b)
+        ClientJobTransfer(RemoteClientOperations(a, 3, 1), a, RemoteClientOperations(b, 3, 1), b,
+            "source-" + a.name, "target-" + b.name)
 
     @Test fun verifiedCopyThenSessionOnlyRetirement() = runBlocking {
         val a = Fake("a", mutableSetOf(hash)); val b = Fake("b")
         val t = transfer(a, b)
-        assertTrue(t.copy(hash, null, false) is ClientJobTransfer.CopyResult.Copied)
+        val copied = t.copy(hash, null, false) as ClientJobTransfer.CopyResult.Copied
         assertEquals(1, b.adds)
-        assertTrue(t.retireSource(hash) is ClientOperationOutcome.Verified)
+        assertTrue(t.retireSource(hash, copied) is ClientOperationOutcome.Verified)
         assertEquals(false, a.removedData)
     }
 
     @Test fun retireRefusedWhenTargetNoLongerHoldsTheJob() = runBlocking {
         val a = Fake("a", mutableSetOf(hash)); val b = Fake("b")
         val t = transfer(a, b)
-        t.copy(hash, null, false)
+        val copied = t.copy(hash, null, false) as ClientJobTransfer.CopyResult.Copied
         b.jobs.clear()
-        assertTrue(t.retireSource(hash) is ClientOperationOutcome.Refused)
+        assertTrue(t.retireSource(hash, copied) is ClientOperationOutcome.Refused)
         assertEquals(0, a.removes)
     }
 
@@ -70,6 +71,53 @@ class ClientJobTransferTest {
         val r = transfer(a, b).copy(hash, null, false)
         assertTrue(r is ClientJobTransfer.CopyResult.NotCopied)
         assertEquals(0, b.adds)
+    }
+
+    @Test fun cannotRetireWithoutOriginalVerifiedCopyOrAfterDuplicate() = runBlocking {
+        val a = Fake("a", mutableSetOf(hash)); val b = Fake("b", mutableSetOf(hash))
+        val t = transfer(a, b)
+        // A pre-existing target registration is not a verified Move by this attempt.
+        val forged = ClientJobTransfer.CopyResult.Copied(hash, false)
+        assertTrue(t.retireSource(hash, forged) is ClientOperationOutcome.Refused)
+        assertTrue(t.copy(hash, null, false) is ClientJobTransfer.CopyResult.NotCopied)
+        assertTrue(t.retireSource(hash, forged) is ClientOperationOutcome.Refused)
+        assertEquals(0, a.removes)
+        assertEquals(0, b.adds)
+    }
+
+    @Test fun cannotReplayConsumedReceiptOrRetireDifferentHash() = runBlocking {
+        val a = Fake("a", mutableSetOf(hash)); val b = Fake("b")
+        val t = transfer(a, b)
+        val copied = t.copy(hash, null, false) as ClientJobTransfer.CopyResult.Copied
+        assertTrue(t.retireSource("cd".repeat(20), copied) is ClientOperationOutcome.Refused)
+        assertEquals(0, a.removes)
+        assertTrue(t.retireSource(hash, copied) is ClientOperationOutcome.Verified)
+        assertTrue(t.retireSource(hash, copied) is ClientOperationOutcome.Refused)
+        assertEquals(1, a.removes)
+        assertEquals(false, a.removedData)
+    }
+
+    @Test fun secondFailedCopyInvalidatesFirstVerifiedReceipt() = runBlocking {
+        val a = Fake("a", mutableSetOf(hash)); val b = Fake("b")
+        val t = transfer(a, b)
+        val copied = t.copy(hash, null, false) as ClientJobTransfer.CopyResult.Copied
+        assertTrue(t.copy(hash, null, false) is ClientJobTransfer.CopyResult.NotCopied)
+        assertTrue(t.retireSource(hash, copied) is ClientOperationOutcome.Refused)
+        assertEquals(0, a.removes)
+    }
+
+    @Test fun sameClientOrWrongOperationOwnerCannotConstructMove() {
+        val a = Fake("a"); val b = Fake("b")
+        try {
+            ClientJobTransfer(RemoteClientOperations(a), a, RemoteClientOperations(b), b,
+                "same-client", "same-client")
+            throw AssertionError("Same canonical client identity must be refused")
+        } catch (_: IllegalArgumentException) { }
+        try {
+            ClientJobTransfer(RemoteClientOperations(b), a, RemoteClientOperations(b), b,
+                "a", "b")
+            throw AssertionError("Mismatched operation owner must be refused")
+        } catch (_: IllegalArgumentException) { }
     }
 
     @Test fun builtMagnetKeepsExactHashAndOnlyWebTrackers() {
