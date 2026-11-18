@@ -16,3 +16,4 @@ if [ -f "$_root/rt/rtorrent.rc" ]; then
   export CHUNKS_INTEROP_RTORRENT_USER=chunks CHUNKS_INTEROP_RTORRENT_PASS=chunkspass
   export CHUNKS_INTEROP_RTORRENT_PAYLOAD_DIR="$_root/dl/rt"
 fi
+export CHUNKS_INTEROP_TRACKER=http://127.0.0.1:16969/announce

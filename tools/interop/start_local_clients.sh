@@ -73,6 +73,9 @@ else
   echo "interop: no Python can import Deluge; Deluge daemon not started" >&2
 fi
 
+# Loopback tracker so these real clients can exchange pieces with each other.
+python3 -I "$(dirname "$0")/loopback_tracker.py" 16969 > "$ROOT/tracker.log" 2>&1 &
+
 # rTorrent (rakshasa) behind nginx SCGI with Basic auth, when installed.
 RT=""
 if command -v rtorrent >/dev/null 2>&1 && command -v nginx >/dev/null 2>&1; then

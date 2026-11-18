@@ -57,11 +57,24 @@ internal class DelugeClient(
             if ("core.remove_torrent" in methods) { add(ClientCapability.REMOVE); add(ClientCapability.REMOVE_WITH_DATA) }
             if ("core.move_storage" in methods) add(ClientCapability.SET_LOCATION)
             if ("core.force_recheck" in methods) add(ClientCapability.RECHECK)
+            add(ClientCapability.EXPORT_JOB)
         }
         val levels = if (legacyPriorities)
             setOf(ClientFilePriority.SKIP, ClientFilePriority.NORMAL, ClientFilePriority.HIGH)
         else ClientFilePriority.entries.toSet()
         return ClientSessionInfo(kind, daemonVersion ?: "unknown", dir, caps, levels)
+    }
+
+    override suspend fun transferSource(hash: String): ClientAddSource? {
+        val exact = ClientHashes.requireHash(hash)
+        connect()
+        val row = call("core.get_torrent_status", JSONArray().put(exact)
+            .put(JSONArray(listOf("name", "trackers", "private")))) as? JSONObject ?: return null
+        if (row.optBoolean("private", false)) return null // a bare magnet cannot carry a private job faithfully
+        val trackers = row.optJSONArray("trackers")?.let { list ->
+            (0 until list.length()).mapNotNull { (list.opt(it) as? JSONObject)?.optString("url") }
+        }.orEmpty()
+        return ClientMagnets.build(exact, row.optString("name"), trackers)
     }
 
     override suspend fun torrents(): List<ClientTorrent> = status(JSONObject())
@@ -150,6 +163,11 @@ internal class DelugeClient(
         connect()
         call("core.move_storage", JSONArray().put(JSONArray().put(ClientHashes.requireHash(hash)))
             .put(ClientHashes.requireDirectory(directory)), mutating = true)
+    }
+
+    override suspend fun reannounce(hash: String) {
+        connect()
+        call("core.force_reannounce", JSONArray().put(JSONArray().put(ClientHashes.requireHash(hash))), mutating = true)
     }
 
     override suspend fun recheck(hash: String) {

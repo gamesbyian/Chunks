@@ -30,9 +30,23 @@ internal class RTorrentClientAdapter(
                 ClientCapability.START_STOP, ClientCapability.FILE_PRIORITIES,
                 ClientCapability.REMOVE, ClientCapability.RECHECK))
             if (deleteData) add(ClientCapability.REMOVE_WITH_DATA)
+            add(ClientCapability.EXPORT_JOB)
         }
         return ClientSessionInfo(kind, version, default, caps,
             setOf(ClientFilePriority.SKIP, ClientFilePriority.NORMAL, ClientFilePriority.HIGH))
+    }
+
+    override suspend fun transferSource(hash: String): ClientAddSource? {
+        val exact = ClientHashes.requireHash(hash)
+        runCatching { remote.originalMetainfoForSnapshot(exact) }.getOrNull()?.let { bytes ->
+            val file = runCatching { ClientAddSource.TorrentFile(bytes) }.getOrNull()
+            if (file?.infoHash == exact) return file
+        }
+        val row = torrent(exact) ?: return null
+        return when (val trackers = runCatching { remote.readPublicTrackers(exact) }.getOrNull()) {
+            is RTorrentRemote.PublicTrackers.Urls -> ClientMagnets.build(exact, row.name, trackers.urls)
+            else -> null // private or unreadable: a bare magnet would not be faithful
+        }
     }
 
     override suspend fun torrents(): List<ClientTorrent> = remote.listTransfers("main").map(::torrentOf)
@@ -138,6 +152,14 @@ internal class RTorrentClientAdapter(
 
     override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) {
         throw ClientRefusedException("Changing an rTorrent transfer's folder is not supported here")
+    }
+
+    override suspend fun reannounce(hash: String) {
+        val exact = ClientHashes.requireHash(hash)
+        torrentRow(exact)
+        try { remote.call("d.tracker_announce", listOf(exact)) } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) { throw ClientWriteUncertainException("rTorrent announce reply lost") }
     }
 
     override suspend fun recheck(hash: String) {
