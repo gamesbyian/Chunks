@@ -134,7 +134,8 @@ internal fun AddFileChoice(
             style = MaterialTheme.typography.bodySmall)
         if (priorityLevels.isNotEmpty()) Text(
             "Tap a file's priority (Normal" + priorityLevels.joinToString("") { ", " + AddFileChoices.priorityLabel(it) } +
-                ") to download it sooner or later than the others.",
+                ") to download it " + (if (io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW in priorityLevels)
+                    "sooner or later than the others." else "before the others."),
             style = MaterialTheme.typography.bodySmall)
         for (file in files) {
             val selected = file.index !in skipped

@@ -97,6 +97,28 @@ class RemoteAddFileSkipsTest {
         assertFalse("No Start is sent by the skip step", fixture.calls.any { it.startsWith("d.start") })
     }
 
+    @Test fun skipAndHighAreEachVerifiedBeforeTheRequestedStart() {
+        val fixture = Fixture(serverFiles())
+        val setup = withServer(fixture) { remote ->
+            RemoteAddFileSkips.apply(remote, hash, listOf(declared[2]), startRequested = true, high = listOf(declared[0]))
+        }
+        assertTrue(setup.startAllowed)
+        assertEquals("Skipping 1 file as chosen; they will not download. Raising 1 file to High priority as chosen.",
+            setup.note)
+        assertEquals("off for the skip, high (2) for the raised file", listOf(2, 1, 0), fixture.files.map { it.priority })
+        assertFalse(fixture.calls.any { it.startsWith("d.start") })
+    }
+
+    @Test fun aHighChoiceOnAMismatchedFileWritesNothingAtAll() {
+        // The skip would match, but the High file's size differs: no write for either.
+        val fixture = Fixture(serverFiles().also { it[0] = it[0].copy(sizeBytes = 1) })
+        val setup = withServer(fixture) { remote ->
+            RemoteAddFileSkips.apply(remote, hash, listOf(declared[2]), startRequested = true, high = listOf(declared[0]))
+        }
+        assertFalse(setup.startAllowed)
+        assertTrue(fixture.calls.none { it.startsWith("f.priority.set") })
+    }
+
     @Test fun aMismatchedServerLayoutWritesNothingAndVetoesStart() {
         val fixture = Fixture(serverFiles().also { it[1] = it[1].copy(sizeBytes = 1) })
         val setup = withServer(fixture) { remote ->
