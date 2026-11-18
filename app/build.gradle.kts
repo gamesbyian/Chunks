@@ -124,6 +124,9 @@ dependencies {
     implementation("org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrent4j")
     testImplementation("org.libtorrent4j:libtorrent4j-linux:$libtorrent4j")
     testImplementation("junit:junit:4.13.2")
+    // Real org.json for plain-JVM (non-Robolectric) tests that drive the real
+    // libtorrent engine together with the JSON remote-client adapters.
+    testImplementation("org.json:json:20240303")
     // JVM screenshots of real Compose UI (Robolectric native graphics) for
     // visual review against docs/design/reference-images; never a device claim.
     testImplementation(composeBom)
