@@ -153,6 +153,12 @@ class ProtocolClientInstalledJourneyTest {
         } else null
         val client = io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
         val witness = RemoteClientOperations(client, 40, 500)
+        // The fixture owner and the installed app establish separate Web UI
+        // sessions. Always use a NEW independent authenticated connection for
+        // post-app readback, not the potentially stale fixture-preload cookie.
+        // This remains real-daemon evidence and never replays the app's write.
+        suspend fun independentRead(hash: String) =
+            io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
         stage("client-" + kind.name.lowercase())
 
         fun fixture(tag: String): TorrentMetainfoBuilder.Result {
@@ -214,7 +220,7 @@ class ProtocolClientInstalledJourneyTest {
 
             clickOnce(ChunksSemantics.PROTOCOL_START_STOP, "Start", 60_000)
             waitFor("Start confirmed", 60_000) { visible("Start: confirmed") }
-            val started = runBlocking { client.torrent(hash) }
+            val started = runBlocking { independentRead(hash) }
             assertTrue("Independent readback: started", started != null &&
                 started.runState != ClientRunState.STOPPED)
             stage("start-verified-independently")
@@ -222,7 +228,7 @@ class ProtocolClientInstalledJourneyTest {
             clickOnce(ChunksSemantics.PROTOCOL_REMOVE, "Remove…", 60_000)
             clickOnce(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM, "Remove, keep files")
             waitFor("Remove confirmed", 60_000) { visible("Remove: confirmed") }
-            assertNull("Independent readback: removed", runBlocking { client.torrent(hash) })
+            assertNull("Independent readback: removed", runBlocking { independentRead(hash) })
             stage("remove-verified-independently")
 
             // Universal Add to this exact client, stopped, from a magnet.
@@ -250,18 +256,18 @@ class ProtocolClientInstalledJourneyTest {
             // Newly registered magnets may briefly report a queue/check state while
             // the daemon settles the explicitly requested Start-off option. Never
             // accept QUEUED as STOPPED: it can become runnable without permission.
-            var observed = runBlocking { client.torrent(second.infoHashV1) }
+            var observed = runBlocking { independentRead(second.infoHashV1) }
             val settleUntil = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(20)
             while (observed?.runState != ClientRunState.STOPPED &&
                 System.nanoTime() < settleUntil) {
                 Thread.sleep(500)
-                observed = runBlocking { client.torrent(second.infoHashV1) }
+                observed = runBlocking { independentRead(second.infoHashV1) }
             }
             assertTrue("Independent readback: added stopped ($observed)", observed != null &&
                 observed.runState == ClientRunState.STOPPED)
             // A fleeting paused observation cannot prove a stable stopped Add.
             Thread.sleep(1_500)
-            val settled = runBlocking { client.torrent(second.infoHashV1) }
+            val settled = runBlocking { independentRead(second.infoHashV1) }
             assertTrue("Independent settled readback: remained stopped ($settled)",
                 settled?.runState == ClientRunState.STOPPED)
             stage("add-stopped-verified-independently")
