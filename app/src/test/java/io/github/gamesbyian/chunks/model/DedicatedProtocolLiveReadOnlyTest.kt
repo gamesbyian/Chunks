@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.model
 
+import io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.net.URI
 import kotlinx.coroutines.runBlocking
@@ -40,12 +41,22 @@ class DedicatedProtocolLiveReadOnlyTest {
             uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null) {
             "Live protocol fixture must use a credential-free HTTPS Seedhost URL"
         }
-        require(kind != RemoteBackendKind.DELUGE || daemon.isNotBlank()) {
-            "Deluge fixture must select one exact registered daemon"
+        val credentials = RemoteCredentials(url, user, pass)
+        val daemonId = if (kind != RemoteBackendKind.DELUGE) null
+        else daemon.ifBlank {
+            // No configured ID: adopt one only when the Web UI registers
+            // exactly one daemon. Several daemons remain an explicit choice.
+            val registered = runBlocking {
+                DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds()
+            }
+            require(registered.size == 1) {
+                "Deluge fixture must select one exact registered daemon (found " +
+                    registered.size + ")"
+            }
+            println("CHUNKS_PROTOCOL_LIVE: deluge_daemon=discovered_single")
+            registered.single()
         }
-        return RemoteProtocolReadOnlyClient.Configuration(kind,
-            RemoteCredentials(url, user, pass),
-            daemon.takeIf { kind == RemoteBackendKind.DELUGE })
+        return RemoteProtocolReadOnlyClient.Configuration(kind, credentials, daemonId)
     }
 
     private suspend fun verify(kind: RemoteBackendKind) {

@@ -13,6 +13,11 @@ on:
           - TRANSMISSION
           - QBITTORRENT
           - DELUGE
+      endpoint:
+        description: "Optional credential-free HTTPS endpoint override (blank = owner's development default)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -44,17 +49,24 @@ jobs:
       - name: Verify one selected client without writing torrent state
         env:
           CHUNKS_PROTOCOL_LIVE_BACKEND: ${{ inputs.backend }}
-          CHUNKS_PROTOCOL_LIVE_URL: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_url || secrets.TRANSMISSION_URL || secrets.CHUNKS_TRANSMISSION_URL) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_url || secrets.QBITTORRENT_URL || secrets.CHUNKS_QBITTORRENT_URL) || (secrets.deluge_url || secrets.DELUGE_URL || secrets.CHUNKS_DELUGE_URL) }}
-          CHUNKS_PROTOCOL_LIVE_USER: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER) || (secrets.deluge_user || secrets.DELUGE_USER) }}
+          SECRET_URL: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_url || secrets.TRANSMISSION_URL || secrets.CHUNKS_TRANSMISSION_URL) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_url || secrets.QBITTORRENT_URL || secrets.CHUNKS_QBITTORRENT_URL) || (secrets.deluge_url || secrets.DELUGE_URL || secrets.CHUNKS_DELUGE_URL) }}
+          INPUT_URL: ${{ inputs.endpoint }}
+          # Seedhost apps share the account login unless a per-client user is set.
+          CHUNKS_PROTOCOL_LIVE_USER: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user) || (secrets.deluge_user || secrets.DELUGE_USER || secrets.rtorrent_user) }}
           CHUNKS_PROTOCOL_LIVE_PASS: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password) || (secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password) }}
           CHUNKS_PROTOCOL_LIVE_DAEMON_ID: ${{ inputs.backend == 'DELUGE' && (secrets.deluge_daemon_id || secrets.DELUGE_DAEMON_ID || vars.DELUGE_DAEMON_ID) || '' }}
         run: |
+          # Owner's development endpoints (credential-free; observed 401/login
+          # challenges on 2026-11-18). A secret or explicit input overrides.
+          case "$CHUNKS_PROTOCOL_LIVE_BACKEND" in
+            TRANSMISSION) default_url="https://wood.seedhost.eu/ianseeds/transmission/rpc" ;;
+            QBITTORRENT) default_url="https://wood.seedhost.eu/ianseeds/qbittorrent/" ;;
+            DELUGE) default_url="https://wood.seedhost.eu/ianseeds/deluge/json" ;;
+          esac
+          CHUNKS_PROTOCOL_LIVE_URL="${INPUT_URL:-${SECRET_URL:-$default_url}}"
+          export CHUNKS_PROTOCOL_LIVE_URL
           if [ -z "$CHUNKS_PROTOCOL_LIVE_URL" ] || [ -z "$CHUNKS_PROTOCOL_LIVE_PASS" ]; then
             echo "::error::Development-client URL/password secret names need mapping; no request was sent."
-            exit 1
-          fi
-          if [ "$CHUNKS_PROTOCOL_LIVE_BACKEND" = DELUGE ] && [ -z "$CHUNKS_PROTOCOL_LIVE_DAEMON_ID" ]; then
-            echo "::error::Exact Deluge daemon ID needs configuring; no request was sent."
             exit 1
           fi
           set +e
@@ -74,6 +86,14 @@ jobs:
           failed = int(root.get("failures", "0")) + int(root.get("errors", "0"))
           executed = tests - skipped
           print(f"CHUNKS_PROTOCOL_LIVE: tests={tests} executed={executed} failed={failed} skipped={skipped}")
+          for case in root.iter("testcase"):
+              for bad in list(case.findall("failure")) + list(case.findall("error")):
+                  # Adapter messages are fixed, credential-free strings.
+                  kind = (bad.get("type") or "").rsplit(".", 1)[-1]
+                  msg = (bad.get("message") or "").splitlines()[0][:160] if bad.get("message") else ""
+                  if "://" in msg or "@" in msg:
+                      msg = "<withheld>"
+                  print(f"CHUNKS_PROTOCOL_LIVE: failure type={kind} message={msg}")
           for line in (root.findtext("system-out") or "").splitlines():
               if line.startswith("CHUNKS_PROTOCOL_LIVE:"):
                   print(line[:180])
