@@ -38,6 +38,9 @@ run_one() {
 failed=0
 run_one TRANSMISSION http://127.0.0.1:19091/transmission/rpc chunks chunkspass || failed=1
 run_one QBITTORRENT http://127.0.0.1:18080/ chunks chunkspass || failed=1
-run_one DELUGE http://127.0.0.1:18112/json "" deluge || failed=1
+# Deluge authenticates with a password only; a blank shell extra is swallowed by
+# adb shell, shifting every following am instrument argument out of position.
+# Send a non-empty unused username placeholder (ignored by the Deluge adapter).
+run_one DELUGE http://127.0.0.1:18112/json unused deluge || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed
