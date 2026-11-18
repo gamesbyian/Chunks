@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.EnvironmentHue
+import kotlin.math.abs
 import io.github.gamesbyian.chunks.model.EnvironmentId
 import org.junit.Assert.*
 import org.junit.Rule
@@ -27,6 +28,21 @@ class EnvironmentBadgePaletteTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private val id = EnvironmentId("e".repeat(64))
 
+    /** Exact persisted hue in a rendered border/icon, rather than an initial placeholder. */
+    private fun badgeShowsHue(hue: EnvironmentHue): Boolean {
+        val image = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
+        val expected = hue.argb.toInt()
+        for (y in 0 until image.height) for (x in 0 until image.width) {
+            val actual = image.getPixel(x, y)
+            if (abs(android.graphics.Color.red(actual) - android.graphics.Color.red(expected)) <= 3 &&
+                abs(android.graphics.Color.green(actual) - android.graphics.Color.green(expected)) <= 3 &&
+                abs(android.graphics.Color.blue(actual) - android.graphics.Color.blue(expected)) <= 3) {
+                return true
+            }
+        }
+        return false
+    }
+
     @Test fun visibleBadgeUpdatesAfterColourChangeAndRestoreWithoutNavigation() {
         val store = EnvironmentColourStore(context)
         val automatic = store.ensure(listOf(id)).hueOf(id)
@@ -43,21 +59,22 @@ class EnvironmentBadgePaletteTest {
             }
         }
 
-        rule.waitForIdle()
+        // Compose-idle does not necessarily await the badge's Dispatchers.IO
+        // persisted-palette read. Capturing now may record the temporary blue
+        // default, creating a false failure when the next chosen hue matches it.
+        rule.waitUntil(10_000) { badgeShowsHue(requireNotNull(automatic)) }
         val original = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
         try {
             // A different store object updates an already-composed badge.
             assertTrue(EnvironmentColourStore(context).choose(id, chosen))
-            rule.waitUntil(5_000) {
-                !original.sameAs(rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap())
-            }
+            rule.waitUntil(10_000) { badgeShowsHue(chosen) }
+            rule.waitForIdle()
             val changed = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
             assertFalse("Choosing a hue must update an existing badge", original.sameAs(changed))
 
             assertTrue(EnvironmentColourStore(context).restoreAutomatic(id))
-            rule.waitUntil(5_000) {
-                original.sameAs(rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap())
-            }
+            rule.waitUntil(10_000) { badgeShowsHue(requireNotNull(automatic)) }
+            rule.waitForIdle()
             val restored = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
             assertTrue("Restoring automatic should render the original badge", original.sameAs(restored))
             assertEquals(automatic, store.load().hueOf(id))
