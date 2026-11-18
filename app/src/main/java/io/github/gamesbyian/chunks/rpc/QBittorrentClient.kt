@@ -45,6 +45,27 @@ internal class QBittorrentClient(
         )
     }
 
+    override suspend fun transferSource(hash: String): ClientAddSource? {
+        val exact = ClientHashes.requireHash(hash)
+        // WebAPI >= 2.8.14 exports the job's exact .torrent (binary).
+        val exported = try {
+            withContext(Dispatchers.IO) {
+                val session = cookie ?: login().also { cookie = it }
+                wire.exchange(QBittorrentReadOnlyRpc.Request(
+                    URI(webRoot.toString() + "api/v2/torrents/export?hash=$exact"), "GET", null, origin, session))
+            }.takeIf { it.status == 200 }?.raw
+        } catch (e: CancellationException) { throw e } catch (_: Exception) { null }
+        if (exported != null) {
+            val file = runCatching { ClientAddSource.TorrentFile(exported) }.getOrNull()
+            if (file?.infoHash == exact) return file
+        }
+        val rows = try { JSONArray(request("GET", "torrents/info?hashes=$exact")) } catch (_: Exception) { return null }
+        val row = (0 until rows.length()).map { rows.getJSONObject(it) }
+            .singleOrNull { it.optString("hash").equals(exact, true) } ?: return null
+        val magnet = row.optString("magnet_uri").takeIf { it.startsWith("magnet:?") } ?: return null
+        return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
+    }
+
     override suspend fun torrents(): List<ClientTorrent> = info(null)
 
     override suspend fun torrent(hash: String): ClientTorrent? {
@@ -157,6 +178,10 @@ internal class QBittorrentClient(
         if (!moveData) throw ClientRefusedException("qBittorrent can only change location by moving files")
         form("torrents/setLocation", "hashes" to ClientHashes.requireHash(hash),
             "location" to ClientHashes.requireDirectory(directory))
+    }
+
+    override suspend fun reannounce(hash: String) {
+        form("torrents/reannounce", "hashes" to ClientHashes.requireHash(hash))
     }
 
     override suspend fun recheck(hash: String) {

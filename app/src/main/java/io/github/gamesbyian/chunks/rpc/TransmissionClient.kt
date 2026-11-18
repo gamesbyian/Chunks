@@ -39,6 +39,18 @@ internal class TransmissionClient(
         return ClientSessionInfo(kind, version, dir, ClientCapability.entries.toSet())
     }
 
+    override suspend fun transferSource(hash: String): ClientAddSource? {
+        val exact = ClientHashes.requireHash(hash)
+        val rows = call("torrent-get", JSONObject().put("ids", JSONArray().put(exact))
+            .put("fields", JSONArray(listOf("hashString", "magnetLink"))), mutating = false)
+            .optJSONArray("torrents") ?: return null
+        val row = (0 until rows.length()).map { rows.getJSONObject(it) }
+            .singleOrNull { it.optString("hashString").equals(exact, true) } ?: return null
+        val magnet = row.optString("magnetLink").takeIf { it.startsWith("magnet:?") } ?: return null
+        // Transmission's own magnet carries this job's trackers and name.
+        return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
+    }
+
     override suspend fun torrents(): List<ClientTorrent> = get(null).map(::torrentOf)
 
     override suspend fun torrent(hash: String): ClientTorrent? {
@@ -120,6 +132,10 @@ internal class TransmissionClient(
     override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) {
         call("torrent-set-location", ids(hash)
             .put("location", ClientHashes.requireDirectory(directory)).put("move", moveData), mutating = true)
+    }
+
+    override suspend fun reannounce(hash: String) {
+        call("torrent-reannounce", ids(hash), mutating = true)
     }
 
     override suspend fun recheck(hash: String) {

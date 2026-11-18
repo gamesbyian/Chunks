@@ -56,13 +56,58 @@ class ProtocolClientOperationsPanelTest {
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = write {}
         override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) = write {}
         override suspend fun recheck(hash: String) = write {}
+        override suspend fun transferSource(hash: String) =
+            io.github.gamesbyian.chunks.rpc.ClientMagnets.build(hash, "n", emptyList())
+    }
+
+    private inner class Target : RemoteTorrentClient {
+        override val kind = RemoteBackendKind.DELUGE
+        var adds = 0
+        var present = false
+        override suspend fun session() = ClientSessionInfo(kind, "2", "/d", ClientCapability.entries.toSet())
+        override suspend fun torrents() = listOfNotNull(torrent(hash))
+        override suspend fun torrent(hash: String) = if (present) ClientTorrent(hash, "n",
+            ClientRunState.STOPPED, 1, 0, 0, 0, "/d") else null
+        override suspend fun files(hash: String) = emptyList<ClientFile>()
+        override suspend fun add(request: ClientAddRequest) { adds++; present = true }
+        override suspend fun setStarted(hash: String, started: Boolean) = Unit
+        override suspend fun remove(hash: String, deleteData: Boolean) = Unit
+        override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = Unit
+        override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) = Unit
+        override suspend fun recheck(hash: String) = Unit
+    }
+
+    @Test fun moveCopiesJobThenRetiresSourceOnlyAfterSecondTap() {
+        val fake = Fake()
+        val target = Target()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
+                    current = true, inventoryWitness = 1L,
+                    createOperations = { RemoteClientOperations(fake, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge") { RemoteClientOperations(target, 3, 1) })
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".t").performClick()
+        rule.waitUntil(5_000) { target.present }
+        rule.waitForIdle()
+        rule.onNodeWithText("Job copied to Box Deluge (confirmed). Its files download there separately.").assertExists()
+        assertEquals(1, target.adds)
+        assertEquals("source untouched until the second tap", true, fake.present)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).performClick()
+        rule.waitUntil(5_000) { !fake.present }
+        assertEquals(1, target.adds)
     }
 
     private fun render(fake: Fake, current: Boolean = true) {
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
-                    hash = hash, clientLabel = "Seedbox qB", observedStarted = false,
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = current, inventoryWitness = 1L,
                     createOperations = { RemoteClientOperations(fake, 3, 1) },
                     onChanged = {}

@@ -27,7 +27,8 @@ internal sealed interface ClientOperationOutcome {
  * [ClientCapability] set; this object never branches on backend kind.
  */
 internal class RemoteClientOperations(
-    private val client: RemoteTorrentClient,
+    /** The exact client this workflow drives (shared with Move). */
+    val client: RemoteTorrentClient,
     private val readbackAttempts: Int = 12,
     private val readbackDelayMillis: Long = 750
 ) {
@@ -68,9 +69,6 @@ internal class RemoteClientOperations(
                 // Clients may hash-check existing payload first; only the
                 // settled stopped state satisfies a stopped Add.
                 !request.startNow && observed.runState != ClientRunState.STOPPED -> "Checking existing data"
-                // A registered job in an explicitly stopped state cannot
-                // satisfy a request to Start when added. Preserve the job
-                // without repeating Add; let read-only refresh settle it.
                 request.startNow && observed.runState == ClientRunState.STOPPED ->
                     "Registered but stopped; Start not observed"
                 else -> null
@@ -82,9 +80,6 @@ internal class RemoteClientOperations(
         mutateExisting(hash, ClientCapability.START_STOP, { client.setStarted(hash, started) }) { observed ->
             when {
                 observed == null -> "Transfer disappeared"
-                // QUEUED, CHECKING, UNKNOWN and ERROR do not independently
-                // establish the postcondition of a requested Start. The
-                // client may accept scheduling without actually starting.
                 started && observed.runState.started != true -> "Start not yet observed"
                 !started && observed.runState != ClientRunState.STOPPED -> "Still running"
                 else -> null
@@ -175,6 +170,10 @@ internal class RemoteClientOperations(
         null
     } catch (e: CancellationException) {
         throw e
+    } catch (e: ClientPostWritePendingException) {
+        // The client acknowledged a consequential write. A successful session
+        // read cannot prove asynchronous filesystem cleanup; never replay it.
+        ClientOperationOutcome.Pending(hash, null, e.message ?: "Effect still pending")
     } catch (e: ClientRefusedException) {
         ClientOperationOutcome.Refused(hash, e.message ?: "Refused by the client")
     } catch (e: Exception) {
