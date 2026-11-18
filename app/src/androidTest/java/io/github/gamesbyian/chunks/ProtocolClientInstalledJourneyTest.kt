@@ -81,8 +81,7 @@ class ProtocolClientInstalledJourneyTest {
     private fun scrollToNode(matcher: androidx.compose.ui.test.SemanticsMatcher) {
         // Lazy lists compose rows only when scrolled to; Details is a plain
         // scrolling column. Try the lazy path, then the composed node itself.
-        if (rule.onAllNodes(matcher).fetchSemanticsNodes().isEmpty() &&
-            rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
+        if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
             runCatching { rule.onAllNodes(hasScrollToIndexAction()).onFirst().performScrollToNode(matcher) }
         rule.onAllNodes(matcher).onFirst().performScrollTo()
     }
@@ -114,10 +113,25 @@ class ProtocolClientInstalledJourneyTest {
                 true
             }.getOrDefault(false)
         }
-        rule.waitForIdle()
-        rule.onNode(matcher, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick) {
-            assertTrue("$what must accept the click", it())
+        // A lazy row can be disposed between the check and the tap (IME,
+        // insets). "No node" fails BEFORE any click is dispatched, so
+        // re-locating is safe; an accepted click is never repeated.
+        var last: AssertionError? = null
+        repeat(5) {
+            try {
+                runCatching { scrollToNode(matcher) }
+                rule.waitForIdle()
+                rule.onNode(matcher, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick) {
+                    assertTrue("$what must accept the click", it())
+                }
+                return
+            } catch (missing: AssertionError) {
+                if (missing.message?.contains("could not find any node") != true) throw missing
+                last = missing
+                Thread.sleep(300)
+            }
         }
+        throw AssertionError("Could not locate $what to click", last)
     }
 
     @Test fun transmissionConnectTransfersDetailsStartAndRemove() {
