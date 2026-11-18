@@ -10,9 +10,9 @@
 
 ## 1. Current state (2026-11-18) and immediate next steps
 
-Merged/landing: #1861 (live endpoints), #1862 (shared write-capable port + three adapters + real-daemon CI), and the app slice (Connect, Details controls, Universal Add target, Smart Routing suggestion/editor; supersedes draft #1859, whose commits it contains). Verify the exact merged SHAs before relying on this list.
+Merged: #1861 `7441ab5`, #1862 `0219ae7`, #1863 `0ac42f3` (supersedes draft #1859, which can be closed). Live Seedhost read-only + mutation journeys passed for Transmission and qBittorrent; see QUALITY-LEDGER.
 
-1. Dispatch `seedhost-other-protocols-readonly.yml` for QBITTORRENT and DELUGE from main. If login is refused, rerun with `credential_source=account`. Then run `seedhost-other-protocols-interop.yml` (`apply=true`) per client. Record run IDs in QUALITY-LEDGER; a refused or never-dispatched run is not acceptance.
+1. **Deluge is blocked on credentials:** the Web UI answers `result:false` for both the client password secret and `credential_source=account`. Ask the owner for the Deluge Web UI password secret name/value (or set `deluge_pass`), then run `seedhost-other-protocols-readonly.yml` and `seedhost-other-protocols-interop.yml` (`apply=true`) for DELUGE. Never guess passwords.
 2. Local interop: `tools/interop/start_local_clients.sh build/interop && source tools/interop/local_env.sh build/interop`, then `gradle --no-configuration-cache :app:testDebugUnitTest --rerun --tests '*RealClientInteropTest'` (configuration cache otherwise freezes the test environment).
 3. Installed emulator journey for one protocol client against a loopback daemon (Connect → Transfers → Details Start/Stop → Add stopped → Remove).
 4. Bridge rTorrent (`RTorrentRemote`) and Local onto `RemoteTorrentClient` behind behavior-preserving tests; then cross-client job-only Move and automatic Smart Routing policy beyond suggestions.
