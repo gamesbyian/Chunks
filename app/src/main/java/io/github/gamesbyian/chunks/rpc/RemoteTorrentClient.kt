@@ -1,0 +1,190 @@
+package io.github.gamesbyian.chunks.rpc
+
+import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import java.io.IOException
+import java.net.URLDecoder
+import java.util.Locale
+
+/**
+ * One protocol-neutral port for an authenticated remote BitTorrent client
+ * (Transmission, qBittorrent, Deluge; rTorrent keeps its established
+ * adapter and is bridged separately). Adapters isolate wire, auth and
+ * version dialects; the shared [RemoteClientOperations] owns the
+ * application workflow: exact precondition read, ONE write, exact-hash
+ * readback and Verified / Pending / Uncertain / Refused classification.
+ *
+ * Every mutating method sends at most one logical write. A failure before
+ * the write is sent throws [ClientRefusedException]; any failure after it
+ * may have been delivered throws [ClientWriteUncertainException]. Callers
+ * must reconcile read-only and never replay an uncertain write.
+ */
+internal interface RemoteTorrentClient {
+    val kind: RemoteBackendKind
+
+    /** Authenticated version/default-folder/capability probe (read-only). */
+    suspend fun session(): ClientSessionInfo
+
+    /** Complete inventory or an exception; never a partial list. */
+    suspend fun torrents(): List<ClientTorrent>
+
+    /** Exact-hash read: null only when the client verifiably lacks it. */
+    suspend fun torrent(hash: String): ClientTorrent?
+
+    suspend fun files(hash: String): List<ClientFile>
+
+    suspend fun add(request: ClientAddRequest)
+    suspend fun setStarted(hash: String, started: Boolean)
+    suspend fun remove(hash: String, deleteData: Boolean)
+    suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>)
+    suspend fun setLocation(hash: String, directory: String, moveData: Boolean)
+    suspend fun recheck(hash: String)
+}
+
+/** Explicit, observed operation support; absent means unsupported here. */
+internal enum class ClientCapability {
+    ADD_TORRENT_FILE, ADD_MAGNET, ADD_STOPPED, ADD_TO_DIRECTORY,
+    START_STOP, FILE_PRIORITIES,
+    REMOVE, REMOVE_WITH_DATA, SET_LOCATION, RECHECK
+}
+
+internal data class ClientSessionInfo(
+    val kind: RemoteBackendKind,
+    val version: String,
+    /** Client-reported default; presentation and Add default only, not a verified Place. */
+    val defaultDownloadDirectory: String?,
+    val capabilities: Set<ClientCapability>,
+    /** Distinct levels this client stores; others map to the nearest wanted level. */
+    val filePriorities: Set<ClientFilePriority> = ClientFilePriority.entries.toSet()
+) {
+    /** The value this client will actually store for [requested]. */
+    fun storable(requested: ClientFilePriority): ClientFilePriority = when {
+        requested in filePriorities -> requested
+        requested == ClientFilePriority.SKIP -> requested
+        else -> ClientFilePriority.NORMAL
+    }
+}
+
+internal enum class ClientRunState {
+    STOPPED, DOWNLOADING, SEEDING, CHECKING, QUEUED, METADATA, MOVING, ERROR, UNKNOWN;
+
+    /** null = the client did not say clearly; never guess Started/Stopped. */
+    val started: Boolean? get() = when (this) {
+        STOPPED -> false
+        DOWNLOADING, SEEDING, METADATA -> true
+        else -> null
+    }
+}
+
+internal data class ClientTorrent(
+    val hash: String,
+    val name: String,
+    val runState: ClientRunState,
+    val totalBytes: Long?,
+    val completedBytes: Long?,
+    val downloadBytesPerSecond: Long?,
+    val uploadBytesPerSecond: Long?,
+    /** Client-reported only, never independent filesystem proof. */
+    val downloadDirectory: String?
+)
+
+/** Shared priority semantics. Clients with fewer levels map down explicitly. */
+internal enum class ClientFilePriority { SKIP, LOW, NORMAL, HIGH }
+
+internal data class ClientFile(
+    /** The client's own file index in metainfo order. */
+    val index: Int,
+    val path: String,
+    val sizeBytes: Long,
+    val completedBytes: Long?,
+    val priority: ClientFilePriority
+)
+
+internal sealed interface ClientAddSource {
+    val infoHash: String
+
+    class TorrentFile(val bytes: ByteArray) : ClientAddSource {
+        override val infoHash: String = TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase(Locale.ROOT)
+        override fun toString(): String = "TorrentFile(<redacted>)"
+    }
+
+    class Magnet(val uri: String) : ClientAddSource {
+        override val infoHash: String = ClientHashes.magnetInfoHash(uri)
+        override fun toString(): String = "Magnet(<redacted>)"
+    }
+}
+
+internal data class ClientAddRequest(
+    val source: ClientAddSource,
+    /** null = the client's own default; otherwise an exact absolute directory. */
+    val directory: String?,
+    val startNow: Boolean
+) {
+    init {
+        directory?.let { ClientHashes.requireDirectory(it) }
+    }
+}
+
+/** Definite refusal: nothing was (or could have been) changed. */
+internal class ClientRefusedException(message: String) : IOException(message)
+
+/** A write may have been delivered; reconcile read-only, never replay. */
+internal class ClientWriteUncertainException(message: String) : IOException(message)
+
+internal object ClientHashes {
+    private val HEX40 = Regex("[0-9a-f]{40}")
+
+    fun requireHash(hash: String): String {
+        val lower = hash.lowercase(Locale.ROOT)
+        require(HEX40.matches(lower)) { "Invalid v1 torrent hash" }
+        return lower
+    }
+
+    fun requireDirectory(path: String): String {
+        require(path.startsWith("/") && path.length in 1..4096 &&
+            path.none { it.isISOControl() } &&
+            path.split('/').none { it == "." || it == ".." }) {
+            "Choose a specific absolute client directory"
+        }
+        return path
+    }
+
+    /** Equivalent directory spellings: trailing separators are not identity. */
+    fun sameDirectory(a: String?, b: String?): Boolean =
+        a != null && b != null && a.trimEnd('/').ifEmpty { "/" } == b.trimEnd('/').ifEmpty { "/" }
+
+    /** Exactly one v1 `xt=urn:btih:` (40 hex or 32 base32 characters). */
+    fun magnetInfoHash(magnet: String): String {
+        require(magnet.startsWith("magnet:?", ignoreCase = true) && magnet.length <= 8192 &&
+            magnet.none { it.isISOControl() }) { "Expected a bounded magnet link" }
+        val xt = magnet.substringAfter('?').split('&').mapNotNull { part ->
+            val pair = part.split('=', limit = 2)
+            if (pair.size != 2 || !pair[0].equals("xt", true)) null
+            else URLDecoder.decode(pair[1], "UTF-8")
+        }.filter { it.startsWith("urn:btih:", true) }
+        require(xt.size == 1) { "Use exactly one v1 magnet identity" }
+        val raw = xt.single().substring(9)
+        return when (raw.length) {
+            40 -> requireHash(raw)
+            32 -> base32ToHex(raw)
+            else -> throw IllegalArgumentException("Only v1 info hashes are supported")
+        }
+    }
+
+    private fun base32ToHex(value: String): String {
+        val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+        var buffer = 0L
+        var bits = 0
+        val out = StringBuilder()
+        for (c in value.uppercase(Locale.ROOT)) {
+            val v = alphabet.indexOf(c)
+            require(v >= 0) { "Invalid base32 magnet hash" }
+            buffer = (buffer shl 5) or v.toLong()
+            bits += 5
+            if (bits >= 8) {
+                bits -= 8
+                out.append("%02x".format(((buffer shr bits) and 0xff).toInt()))
+            }
+        }
+        return requireHash(out.toString())
+    }
+}

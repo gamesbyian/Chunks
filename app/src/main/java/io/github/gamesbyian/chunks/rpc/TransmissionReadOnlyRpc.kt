@@ -228,7 +228,7 @@ internal class TransmissionReadOnlyRpc(
         value.all { it.code in 33..126 } && !value.contains(':') &&
         !value.contains('\\')
 
-    private companion object {
+    internal companion object {
         const val MAX_BODY = 4_194_304
         val HASH = Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})")
         val ESCAPED_SEPARATOR = Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
@@ -257,7 +257,7 @@ internal class TransmissionReadOnlyRpc(
     }
 
     /** Keep response parsing and credentials isolated from redirect-capable stacks. */
-    private object HttpWire : Wire {
+    internal object HttpWire : Wire {
         override suspend fun exchange(request: Request): Response {
             val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
             connection.connectTimeout = 8_000

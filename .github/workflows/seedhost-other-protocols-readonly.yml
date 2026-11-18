@@ -13,6 +13,14 @@ on:
           - TRANSMISSION
           - QBITTORRENT
           - DELUGE
+      credential_source:
+        description: "client = per-client secrets; account = the shared Seedhost account login (rtorrent_user/rtorrent_pass)"
+        type: choice
+        required: false
+        default: client
+        options:
+          - client
+          - account
       endpoint:
         description: "Optional credential-free HTTPS endpoint override (blank = owner's development default)"
         type: string
@@ -52,8 +60,8 @@ jobs:
           SECRET_URL: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_url || secrets.TRANSMISSION_URL || secrets.CHUNKS_TRANSMISSION_URL) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_url || secrets.QBITTORRENT_URL || secrets.CHUNKS_QBITTORRENT_URL) || (secrets.deluge_url || secrets.DELUGE_URL || secrets.CHUNKS_DELUGE_URL) }}
           INPUT_URL: ${{ inputs.endpoint }}
           # Seedhost apps share the account login unless a per-client user is set.
-          CHUNKS_PROTOCOL_LIVE_USER: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user) || (secrets.deluge_user || secrets.DELUGE_USER || secrets.rtorrent_user) }}
-          CHUNKS_PROTOCOL_LIVE_PASS: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password) || (secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password) }}
+          CHUNKS_PROTOCOL_LIVE_USER: ${{ inputs.credential_source == 'account' && secrets.rtorrent_user || (inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user) || (secrets.deluge_user || secrets.DELUGE_USER || secrets.rtorrent_user)) }}
+          CHUNKS_PROTOCOL_LIVE_PASS: ${{ inputs.credential_source == 'account' && secrets.rtorrent_pass || (inputs.backend == 'TRANSMISSION' && (secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password) || (secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password)) }}
           CHUNKS_PROTOCOL_LIVE_DAEMON_ID: ${{ inputs.backend == 'DELUGE' && (secrets.deluge_daemon_id || secrets.DELUGE_DAEMON_ID || vars.DELUGE_DAEMON_ID) || '' }}
         run: |
           # Owner's development endpoints (credential-free; observed 401/login

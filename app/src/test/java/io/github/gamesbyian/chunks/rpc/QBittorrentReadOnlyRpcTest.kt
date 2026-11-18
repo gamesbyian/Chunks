@@ -74,6 +74,16 @@ class QBittorrentReadOnlyRpcTest {
         assertTrue(script.calls.drop(1).all { it.url.host == "seedbox.example" })
     }
 
+    /** Real qBittorrent 4.6.3 issues base64 SIDs (observed "Me4t...+IQEw..."). */
+    @Test fun base64SessionIdFromRealQBittorrentIsAccepted() = runBlocking {
+        val real = "Me4t0iZ67a+IQEwSgboYi+L6e6Q7/AeZ"
+        val script = Scripted(QBittorrentReadOnlyRpc.Response(200, "Ok.",
+            mapOf("Set-Cookie" to listOf("SID=$real; HttpOnly; path=/; SameSite=Strict"))),
+            ok("v4.6.3"), ok("2.9.3"), ok("[]"))
+        assertTrue(client(script).inspect().torrents.isEmpty())
+        assertEquals("SID=$real", script.calls[1].cookie)
+    }
+
     @Test fun http200CanBeFailedLoginAndNeverAuthorizeRead() = runBlocking {
         val failed = listOf(
             QBittorrentReadOnlyRpc.Response(200, "Fails."),

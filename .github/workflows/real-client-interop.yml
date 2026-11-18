@@ -1,0 +1,92 @@
+name: Real-client interop (Transmission, qBittorrent, Deluge)
+
+# Real loopback daemons, disposable fixtures, no secrets. Each backend runs
+# the full shared-workflow journey: exact Add (.torrent + magnet), duplicate
+# refusal, files and priorities, Start, the client's own piece verification,
+# Stop, Move storage, session Remove, Remove + data with filesystem proof,
+# and negative controls. Protected Seedhost runs stay manual-only.
+on:
+  pull_request:
+    paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/RemoteBackendIdentity.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RealClientInteropTest.kt"
+      - "tools/interop/**"
+  push:
+    branches: [main]
+    paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RealClientInteropTest.kt"
+      - "tools/interop/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-real-client-interop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  interop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install real torrent client daemons
+        run: |
+          bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web
+          # The packages start their own system services on default ports, and
+          # Ubuntu's AppArmor profile confines transmission-daemon to its own
+          # state paths. Use only the test's disposable loopback instances.
+          sudo systemctl stop transmission-daemon deluged deluge-web qbittorrent-nox 2>/dev/null || true
+          sudo pkill -x transmission-da 2>/dev/null || true
+          sudo pkill -f /usr/bin/deluged 2>/dev/null || true
+          if [ -f /etc/apparmor.d/transmission ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/transmission 2>/dev/null || true
+          fi
+      - name: Start loopback daemons
+        run: tools/interop/start_local_clients.sh "$RUNNER_TEMP/interop"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Prefetch and verify Robolectric Android 15 runtime SDK
+        run: timeout 240s python3 tools/prefetch_robolectric_sdk.py --sdk 35
+      - name: Run real-client journeys and protocol adapter tests
+        run: |
+          source tools/interop/local_env.sh "$RUNNER_TEMP/interop"
+          set +e
+          gradle --no-daemon --no-configuration-cache --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.RemoteClientOperationsTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RealClientInteropTest.xml")
+          if not path.is_file():
+              print("CHUNKS_INTEROP: no executed receipt"); sys.exit(1)
+          root = ET.parse(path).getroot()
+          tests, skipped = int(root.get("tests", 0)), int(root.get("skipped", 0))
+          failed = int(root.get("failures", 0)) + int(root.get("errors", 0))
+          print(f"CHUNKS_INTEROP: tests={tests} executed={tests - skipped} failed={failed} skipped={skipped}")
+          for line in (root.findtext("system-out") or "").splitlines():
+              if line.startswith("CHUNKS_INTEROP:"):
+                  print(line[:240])
+          # All three real daemons must actually execute; a skip is not a pass.
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests == 3 and skipped == 0 and failed == 0 else 1)
+          PY
+      - name: Daemon logs on failure
+        if: failure()
+        run: tail -n 40 "$RUNNER_TEMP"/interop/*.log || true
