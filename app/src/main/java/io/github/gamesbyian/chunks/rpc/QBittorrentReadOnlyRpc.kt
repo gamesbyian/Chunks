@@ -38,7 +38,9 @@ internal class QBittorrentReadOnlyRpc(
     internal data class Response(
         val status: Int,
         val body: String,
-        val headers: Map<String, List<String>> = emptyMap()
+        val headers: Map<String, List<String>> = emptyMap(),
+        /** Exact reply bytes (binary endpoints such as torrents/export). */
+        val raw: ByteArray? = null
     ) {
         fun header(name: String): List<String> =
             headers.entries.filter { it.key.equals(name, true) }.flatMap { it.value }
@@ -237,19 +239,19 @@ internal class QBittorrentReadOnlyRpc(
                 val headers = connection.headerFields.entries
                     .filter { it.key?.equals("Set-Cookie", true) == true }
                     .associate { it.key!! to it.value.orEmpty() }
-                val body = if (status !in 200..299) "" else
-                    connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                        val builder = StringBuilder()
-                        val buffer = CharArray(4096)
-                        while (true) {
-                            val count = reader.read(buffer)
-                            if (count == -1) break
-                            builder.append(buffer, 0, count)
-                            if (builder.length > MAX_BODY) throw IOException("qBittorrent reply too large")
-                        }
-                        builder.toString()
+                val bytes = if (status !in 200..299) ByteArray(0) else connection.inputStream.use { input ->
+                    val out = java.io.ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count == -1) break
+                        out.write(buffer, 0, count)
+                        if (out.size() > MAX_BODY) throw IOException("qBittorrent reply too large")
                     }
-                return Response(status, body, headers)
+                    out.toByteArray()
+                }
+                val body = String(bytes, Charsets.UTF_8)
+                return Response(status, body, headers, bytes)
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (_: IOException) {

@@ -38,13 +38,29 @@ internal interface RemoteTorrentClient {
     suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>)
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean)
     suspend fun recheck(hash: String)
+
+    /**
+     * A source that re-creates this exact job on another client: the job's
+     * own metainfo where the API exports it, else a magnet with this job's
+     * trackers. Read-only. null when neither can be obtained faithfully.
+     * Contains tracker URLs (possibly passkeys): never log or persist it.
+     */
+    suspend fun transferSource(hash: String): ClientAddSource? = null
+
+    /**
+     * Ask the client to contact this job's trackers now (the ordinary
+     * "force reannounce"). Changes no job state; unsupported clients ignore it.
+     */
+    suspend fun reannounce(hash: String) {}
 }
 
 /** Explicit, observed operation support; absent means unsupported here. */
 internal enum class ClientCapability {
     ADD_TORRENT_FILE, ADD_MAGNET, ADD_STOPPED, ADD_TO_DIRECTORY,
     START_STOP, FILE_PRIORITIES,
-    REMOVE, REMOVE_WITH_DATA, SET_LOCATION, RECHECK
+    REMOVE, REMOVE_WITH_DATA, SET_LOCATION, RECHECK,
+    /** [RemoteTorrentClient.transferSource] can re-create a job elsewhere. */
+    EXPORT_JOB
 }
 
 internal data class ClientSessionInfo(
@@ -129,6 +145,24 @@ internal class ClientRefusedException(message: String) : IOException(message)
 
 /** A write may have been delivered; reconcile read-only, never replay. */
 internal class ClientWriteUncertainException(message: String) : IOException(message)
+
+/** The client accepted a write, but its consequential effect remains unverified. */
+internal class ClientPostWritePendingException(message: String) : IOException(message)
+
+internal object ClientMagnets {
+    /** magnet:?xt=urn:btih:<hash>&dn=<name>&tr=... (exact hash; trackers as given). */
+    fun build(hash: String, name: String?, trackers: List<String>): ClientAddSource.Magnet {
+        val exact = ClientHashes.requireHash(hash)
+        fun enc(v: String) = java.net.URLEncoder.encode(v, "UTF-8")
+        val uri = buildString {
+            append("magnet:?xt=urn:btih:").append(exact)
+            name?.takeIf { it.isNotBlank() }?.let { append("&dn=").append(enc(it.take(512))) }
+            trackers.filter { it.length <= 2048 && (it.startsWith("http://") || it.startsWith("https://") ||
+                it.startsWith("udp://")) }.distinct().take(50).forEach { append("&tr=").append(enc(it)) }
+        }
+        return ClientAddSource.Magnet(uri)
+    }
+}
 
 internal object ClientHashes {
     private val HEX40 = Regex("[0-9a-f]{40}")

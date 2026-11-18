@@ -73,13 +73,49 @@ else
   echo "interop: no Python can import Deluge; Deluge daemon not started" >&2
 fi
 
+# Loopback tracker so these real clients can exchange pieces with each other.
+python3 -I "$(dirname "$0")/loopback_tracker.py" 16969 > "$ROOT/tracker.log" 2>&1 &
+
+# rTorrent (rakshasa) behind nginx SCGI with Basic auth, when installed.
+RT=""
+if command -v rtorrent >/dev/null 2>&1 && command -v nginx >/dev/null 2>&1; then
+  RT=1
+  mkdir -p "$ROOT/rt/session" "$ROOT/dl/rt"
+  cat > "$ROOT/rt/rtorrent.rc" <<RC
+directory.default.set = $ROOT/dl/rt
+session.path.set = $ROOT/rt/session
+network.scgi.open_port = 127.0.0.1:15000
+network.port_range.set = 51515-51515
+network.port_random.set = no
+protocol.pex.set = no
+dht.mode.set = disable
+system.daemon.set = true
+RC
+  nohup rtorrent -n -o "import=$ROOT/rt/rtorrent.rc" > "$ROOT/rt.log" 2>&1 < /dev/null &
+  printf 'chunks:%s\n' "$(openssl passwd -apr1 chunkspass)" > /tmp/chunks-interop-rt.htpasswd
+  chmod 644 /tmp/chunks-interop-rt.htpasswd
+  cat > "$ROOT/rt/nginx.conf" <<NG
+worker_processes 1;
+pid $ROOT/rt/nginx.pid;
+error_log $ROOT/rt/nginx.error notice;
+events { worker_connections 64; }
+http {
+  server { listen 127.0.0.1:18090; location /RPC2 { auth_basic "chunks"; auth_basic_user_file /tmp/chunks-interop-rt.htpasswd; include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:15000; } }
+}
+NG
+  ${SUDO:-} nginx -c "$ROOT/rt/nginx.conf"
+fi
+
 for i in $(seq 1 30); do
   tr=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:19091/transmission/rpc || true)
   qb=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ || true)
   de=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
        -d '{"method":"auth.login","params":["deluge"],"id":1}' http://127.0.0.1:18112/json || true)
-  if [ "$tr" = 401 ] && [ "$qb" = 200 ] && { [ -z "$PY" ] || [ "$de" = 200 ]; }; then
-    echo "interop: transmission=$tr qbittorrent=$qb deluge=${de:-absent} root=$ROOT"
+  rt=$(curl -s -o /dev/null -w '%{http_code}' -u chunks:chunkspass -H 'Content-Type: text/xml' \
+       --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
+       http://127.0.0.1:18090/RPC2 || true)
+  if [ "$tr" = 401 ] && [ "$qb" = 200 ] && { [ -z "$PY" ] || [ "$de" = 200 ]; } && { [ -z "$RT" ] || [ "$rt" = 200 ]; }; then
+    echo "interop: transmission=$tr qbittorrent=$qb deluge=${de:-absent} rtorrent=${rt:-absent} root=$ROOT"
     exit 0
   fi
   sleep 1

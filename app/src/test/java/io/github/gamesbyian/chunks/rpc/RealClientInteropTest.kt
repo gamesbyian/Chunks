@@ -54,7 +54,7 @@ class RealClientInteropTest {
                 }
                 DelugeClient(credentials, daemon)
             }
-            RemoteBackendKind.RTORRENT -> error("rTorrent uses its established adapter")
+            RemoteBackendKind.RTORRENT -> RTorrentClientAdapter(RTorrentRemote(credentials))
         }
     }
 
@@ -73,6 +73,9 @@ class RealClientInteropTest {
             entries = files.map { (file, bytes) ->
                 TorrentMetainfoBuilder.Entry(listOf(file), bytes.size.toLong()) { bytes.inputStream() }
             },
+            // A dead loopback tracker: rTorrent with DHT off silently drops a
+            // trackerless .torrent (load.raw_verbose still answers 0).
+            trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")),
             pieceLength = 16 * 1024
         ))
         return Fixture(result, name, files)
@@ -86,6 +89,7 @@ class RealClientInteropTest {
     @Test fun transmission() = journey(RemoteBackendKind.TRANSMISSION)
     @Test fun qbittorrent() = journey(RemoteBackendKind.QBITTORRENT)
     @Test fun deluge() = journey(RemoteBackendKind.DELUGE)
+    @Test fun rtorrent() = journey(RemoteBackendKind.RTORRENT)
 
     private fun journey(backend: RemoteBackendKind) = runBlocking {
         kind = backend
@@ -122,12 +126,14 @@ class RealClientInteropTest {
 
         // 1b. The app's own Connect path (browser-style URL normalization,
         //     single-daemon adoption, authenticated complete read) sees it.
-        val connected = io.github.gamesbyian.chunks.RemoteProtocolConnect.connect(
-            kind, env("URL"), env("USER"), env("PASS"), env("DAEMON_ID"))
-        assertEquals(kind, connected.read.backend)
-        assertTrue(connected.read.snapshot.canClaimCompleteLiveInventory)
-        assertTrue(connected.read.snapshot.transfers.any { it.key.infoHash == hash })
-        stage("app_connect=verified_inventory_contains_fixture")
+        if (kind != RemoteBackendKind.RTORRENT) {
+            val connected = io.github.gamesbyian.chunks.RemoteProtocolConnect.connect(
+                kind, env("URL"), env("USER"), env("PASS"), env("DAEMON_ID"))
+            assertEquals(kind, connected.read.backend)
+            assertTrue(connected.read.snapshot.canClaimCompleteLiveInventory)
+            assertTrue(connected.read.snapshot.transfers.any { it.key.infoHash == hash })
+            stage("app_connect=verified_inventory_contains_fixture")
+        }
 
         // 2. Duplicate Add is refused without a second registration.
         val dup = ops.add(ClientAddRequest(ClientAddSource.TorrentFile(fx.result.torrent), directory, false))
@@ -188,7 +194,18 @@ class RealClientInteropTest {
             ops.add(ClientAddRequest(ClientAddSource.Magnet(magnet), directory, startNow = false)))
         assertVerified("remove_magnet_session_only", ops.remove(magnetFx.result.infoHashV1, deleteData = false))
 
-        // 9. Remove + data for the exact disposable fixture only.
+        // 9. Remove + data for the exact disposable fixture only; where the
+        //    client cannot delete data, session Remove must leave files intact.
+        if (ClientCapability.REMOVE_WITH_DATA !in session.capabilities) {
+            val refused = ops.remove(hash, deleteData = true)
+            assertTrue("unsupported Remove + data: $refused", refused is ClientOperationOutcome.Refused)
+            assertVerified("remove_session_only", ops.remove(hash, deleteData = false))
+            if (payloadRoot != null) {
+                assertTrue("Session Remove must keep payload files",
+                    fx.files.keys.all { File(finalDir, fx.name + "/" + it).isFile })
+                stage("payload_kept=independently_observed")
+            }
+        } else {
         assertVerified("remove_with_data", ops.remove(hash, deleteData = true))
         if (payloadRoot != null) {
             var gone = false
@@ -198,6 +215,7 @@ class RealClientInteropTest {
             }
             assertTrue("Payload still present after Remove + data", gone)
             stage("payload_deleted=independently_observed")
+        }
         }
 
         // 10. Negative controls: absent target and wrong password write nothing.
@@ -213,5 +231,103 @@ class RealClientInteropTest {
         val after = client.torrents().map { it.hash }.toSet()
         assertEquals(before, after)
         stage("inventory_after_unchanged=true duration_ms=${(System.nanoTime() - start) / 1_000_000}")
+    }
+
+    private fun envOf(k: RemoteBackendKind, name: String) =
+        System.getenv("CHUNKS_INTEROP_" + k.name + "_" + name).orEmpty()
+
+    private fun clientOf(k: RemoteBackendKind): RemoteTorrentClient {
+        val saved = if (this::kind.isInitialized) kind else null
+        kind = k
+        try { return client() } finally { if (saved != null) kind = saved }
+    }
+
+    /**
+     * Job-only Move across real engines, as a ring over every locally
+     * available client (Transmission → qBittorrent → Deluge → rTorrent → …).
+     * The payload exists ONLY on the source; the target receives the job
+     * (exported .torrent or the job's own magnet), downloads it from the
+     * source over real BitTorrent via a loopback tracker, and must verify
+     * every piece. The source is then retired session-only with its files
+     * still on disk.
+     */
+    @Test fun crossClientJobMoveTransfersRealBytes() = runBlocking {
+        val tracker = System.getenv("CHUNKS_INTEROP_TRACKER").orEmpty()
+        val order = System.getenv("CHUNKS_INTEROP_RING").orEmpty().split(',').filter { it.isNotBlank() }
+            .map { RemoteBackendKind.valueOf(it.trim()) }.ifEmpty {
+                // Every engine is both source and target. On loopback neither
+                // rTorrent nor Transmission dials the other, so rTorrent hands
+                // to Deluge and Deluge to Transmission instead.
+                listOf(RemoteBackendKind.TRANSMISSION, RemoteBackendKind.QBITTORRENT,
+                    RemoteBackendKind.RTORRENT, RemoteBackendKind.DELUGE)
+            }
+        val ring = order.filter {
+            envOf(it, "URL").isNotBlank() && envOf(it, "PAYLOAD_DIR").isNotBlank()
+        }
+        assumeTrue("Needs two local real clients and the loopback tracker", tracker.isNotBlank() && ring.size >= 2)
+        val pairs = ring.indices.map { ring[it] to ring[(it + 1) % ring.size] }
+        for ((from, to) in pairs) {
+            kind = from
+            val src = clientOf(from)
+            val dst = clientOf(to)
+            val srcOps = RemoteClientOperations(src, 60, 500)
+            val dstOps = RemoteClientOperations(dst, 60, 500)
+            val random = SecureRandom()
+            val name = "chunks-move-" + from.name.lowercase() + "-" + to.name.lowercase() + "-" +
+                java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
+            val payload = ByteArray(200 * 1024 + 77).also(random::nextBytes)
+            val built = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
+                listOf(TorrentMetainfoBuilder.Entry(listOf(name), payload.size.toLong()) { payload.inputStream() }),
+                trackerTiers = listOf(listOf(tracker)), pieceLength = 16 * 1024))
+            val hash = built.infoHashV1
+            val srcDir = File(envOf(from, "PAYLOAD_DIR"), "move-src-" + hash.take(10)).apply { mkdirs() }
+            File(srcDir, name).writeBytes(payload)
+            val dstDir = File(envOf(to, "PAYLOAD_DIR"), "move-dst-" + hash.take(10)).apply { mkdirs() }
+            val tag = from.name + "->" + to.name
+
+            assertVerified("$tag source_add", srcOps.add(ClientAddRequest(
+                ClientAddSource.TorrentFile(built.torrent), srcDir.absolutePath, startNow = true)))
+            var seeding = false
+            for (i in 0 until 120) {
+                val t = src.torrent(hash)
+                if (t?.runState == ClientRunState.SEEDING) { seeding = true; break }
+                if (i == 10) srcOps.recheck(hash)
+                delay(500)
+            }
+            assertTrue("$tag: source never verified its payload", seeding)
+
+            val transfer = ClientJobTransfer(srcOps, src, dstOps, dst,
+                sourceClientId = "interop-$tag-source", targetClientId = "interop-$tag-target")
+            val copied = transfer.copy(hash, dstDir.absolutePath, startOnTarget = true)
+            assertTrue("$tag copy: $copied", copied is ClientJobTransfer.CopyResult.Copied)
+            println("CHUNKS_INTEROP: MOVE $tag job_copied=verified via=" +
+                if ((copied as ClientJobTransfer.CopyResult.Copied).viaMetainfo) "metainfo" else "magnet")
+
+            var received = false
+            for (i in 0 until 240) {
+                // Loopback discovery: some clients only learn of a new peer
+                // on their next announce. Ask both sides periodically.
+                if (i % 10 == 2) {
+                    runCatching { src.reannounce(hash) }
+                    runCatching { dst.reannounce(hash) }
+                }
+                val t = dst.torrent(hash)
+                if (t != null && t.runState == ClientRunState.SEEDING && t.completedBytes == payload.size.toLong()) {
+                    received = true; break
+                }
+                delay(500)
+            }
+            assertTrue("$tag: target never downloaded and verified the payload from the source", received)
+            assertTrue("$tag: target bytes differ", File(dstDir, name).readBytes().contentEquals(payload))
+            println("CHUNKS_INTEROP: MOVE $tag target_downloaded_from_source=true pieces=${built.pieceCount} bytes_identical=true")
+
+            assertVerified("$tag retire_source_session_only", transfer.retireSource(hash, copied as ClientJobTransfer.CopyResult.Copied))
+            assertTrue("$tag: source payload must remain", File(srcDir, name).isFile)
+            println("CHUNKS_INTEROP: MOVE $tag source_files_kept=independently_observed")
+
+            // Disposable cleanup of the exact fixture on the target only.
+            val caps = dstOps.session().capabilities
+            dstOps.remove(hash, deleteData = ClientCapability.REMOVE_WITH_DATA in caps)
+        }
     }
 }

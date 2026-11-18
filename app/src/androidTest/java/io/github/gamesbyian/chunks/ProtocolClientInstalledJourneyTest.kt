@@ -30,7 +30,6 @@ import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
-import io.github.gamesbyian.chunks.rpc.TransmissionClient
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -98,6 +97,13 @@ class ProtocolClientInstalledJourneyTest {
             } catch (failure: AssertionError) {
                 last = failure
                 Thread.sleep(400)
+            } catch (failure: IllegalStateException) {
+                // Compose may dispose a lazy text node between scroll/lookup and
+                // its focus request. No text action was dispatched; re-locate it.
+                if (failure.message?.contains("visitAncestors called on an unattached node") != true)
+                    throw failure
+                last = failure
+                Thread.sleep(400)
             }
         }
         throw AssertionError("Could not enter $label", last)
@@ -134,24 +140,40 @@ class ProtocolClientInstalledJourneyTest {
         throw AssertionError("Could not locate $what to click", last)
     }
 
-    @Test fun transmissionConnectTransfersDetailsStartAndRemove() {
+    @Test fun protocolClientConnectTransfersDetailsAddAndRemove() {
         assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
+        val kind = io.github.gamesbyian.chunks.model.RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
         val url = decoded("chunks_protocol_url_b64")
         val user = decoded("chunks_protocol_user_b64")
         val pass = decoded("chunks_protocol_pass_b64")
-        val client = TransmissionClient(RemoteCredentials(url, user, pass))
+        val credentials = RemoteCredentials(url,
+            if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE) "" else user, pass)
+        val daemon = if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE) runBlocking {
+            io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds().single()
+        } else null
+        val client = io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
         val witness = RemoteClientOperations(client, 40, 500)
+        // The fixture owner and the installed app establish separate Web UI
+        // sessions. Always use a NEW independent authenticated connection for
+        // post-app readback, not the potentially stale fixture-preload cookie.
+        // This remains real-daemon evidence and never replays the app's write.
+        suspend fun independentRead(hash: String) =
+            io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+        stage("client-" + kind.name.lowercase())
 
-        // Unique random payload: its hash cannot match any existing job.
-        val random = SecureRandom()
-        val name = "chunks-installed-" + java.lang.Long.toString(System.currentTimeMillis(), 36)
-        val bytes = ByteArray(64 * 1024).also(random::nextBytes)
-        val fixture = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
-            listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
-            pieceLength = 16 * 1024))
-        val hash = fixture.infoHashV1
+        fun fixture(tag: String): TorrentMetainfoBuilder.Result {
+            val random = SecureRandom()
+            val name = "chunks-installed-$tag-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
+            val bytes = ByteArray(64 * 1024).also(random::nextBytes)
+            return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
+                listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
+                trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
+        }
+        val preload = fixture("details")
+        val name = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(preload.torrent).name
+        val hash = preload.infoHashV1
         val added = runBlocking {
-            witness.add(ClientAddRequest(ClientAddSource.TorrentFile(fixture.torrent), null, startNow = false))
+            witness.add(ClientAddRequest(ClientAddSource.TorrentFile(preload.torrent), null, startNow = false))
         }
         assertTrue("Fixture preload: $added", added is ClientOperationOutcome.Verified)
         stage("fixture-preloaded-stopped")
@@ -163,14 +185,27 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { scrollToNode(hasTestTag(ChunksSemantics.CONNECTION_ADD)); true }.getOrDefault(false)
             }
             rule.openConnectionFormIfNeeded()
-            clickOnce("connection-backend-transmission", "Transmission type")
-            typeInto("Transmission RPC URL", url)
-            typeInto("Username, if required", user)
+            when (kind) {
+                io.github.gamesbyian.chunks.model.RemoteBackendKind.TRANSMISSION -> {
+                    clickOnce("connection-backend-transmission", "Transmission type")
+                    typeInto("Transmission RPC URL", url)
+                    typeInto("Username, if required", user)
+                }
+                io.github.gamesbyian.chunks.model.RemoteBackendKind.QBITTORRENT -> {
+                    clickOnce("connection-backend-qbittorrent", "qBittorrent type")
+                    typeInto("qBittorrent WebUI root URL", url)
+                    typeInto("Username, if required", user)
+                }
+                io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE -> {
+                    clickOnce("connection-backend-deluge", "Deluge type")
+                    typeInto("Deluge Web JSON URL", url)
+                }
+                else -> error("rTorrent has its own installed journeys")
+            }
             typeInto("Password", pass)
             clickOnce(ChunksSemantics.CONNECTION_CONNECT, "Connect")
             stage("connect-dispatched-once")
 
-            // The app lands in canonical Transfers focused on the client.
             waitFor("fixture row in canonical Transfers", 90_000) {
                 runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
             }
@@ -185,7 +220,7 @@ class ProtocolClientInstalledJourneyTest {
 
             clickOnce(ChunksSemantics.PROTOCOL_START_STOP, "Start", 60_000)
             waitFor("Start confirmed", 60_000) { visible("Start: confirmed") }
-            val started = runBlocking { client.torrent(hash) }
+            val started = runBlocking { independentRead(hash) }
             assertTrue("Independent readback: started", started != null &&
                 started.runState != ClientRunState.STOPPED)
             stage("start-verified-independently")
@@ -193,12 +228,54 @@ class ProtocolClientInstalledJourneyTest {
             clickOnce(ChunksSemantics.PROTOCOL_REMOVE, "Remove…", 60_000)
             clickOnce(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM, "Remove, keep files")
             waitFor("Remove confirmed", 60_000) { visible("Remove: confirmed") }
-            assertNull("Independent readback: removed", runBlocking { client.torrent(hash) })
+            assertNull("Independent readback: removed", runBlocking { independentRead(hash) })
             stage("remove-verified-independently")
+
+            // Universal Add to this exact client, stopped, from a magnet.
+            val profileId = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+                .list().single { it.backend == kind }.id
+            val second = fixture("add")
+            val magnet = requireNotNull(second.magnet)
+            // Details may hide the footer: go back to Transfers first.
+            if (rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_ADD)).fetchSemanticsNodes().isEmpty()) {
+                it.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+            }
+            waitFor("Add footer") { rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_ADD)).fetchSemanticsNodes().isNotEmpty() }
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+            clickOnce("chunks.add.target.protocol.$profileId", "Add target chip", 30_000)
+            waitFor("protocol Add review") {
+                runCatching { scrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)); true }.getOrDefault(false)
+            }
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(magnet)
+            rule.waitForIdle()
+            scrollToNode(hasText("Start when added"))
+            rule.onNodeWithText("Start when added").performClick()
+            clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
+            stage("add-dispatched-once")
+            waitFor("Add confirmed", 90_000) { visible("Add: confirmed") }
+            // Newly registered magnets may briefly report a queue/check state while
+            // the daemon settles the explicitly requested Start-off option. Never
+            // accept QUEUED as STOPPED: it can become runnable without permission.
+            var observed = runBlocking { independentRead(second.infoHashV1) }
+            val settleUntil = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(20)
+            while (observed?.runState != ClientRunState.STOPPED &&
+                System.nanoTime() < settleUntil) {
+                Thread.sleep(500)
+                observed = runBlocking { independentRead(second.infoHashV1) }
+            }
+            assertTrue("Independent readback: added stopped ($observed)", observed != null &&
+                observed.runState == ClientRunState.STOPPED)
+            // A fleeting paused observation cannot prove a stable stopped Add.
+            Thread.sleep(1_500)
+            val settled = runBlocking { independentRead(second.infoHashV1) }
+            assertTrue("Independent settled readback: remained stopped ($settled)",
+                settled?.runState == ClientRunState.STOPPED)
+            stage("add-stopped-verified-independently")
+            runBlocking { witness.remove(second.infoHashV1, deleteData = false) }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
-        assertEquals("The verified Transmission login was saved once", 1,
-            profiles.count { it.credentials.endpoint == url && it.credentials.username == user })
+        assertEquals("The verified login was saved once", 1,
+            profiles.count { it.credentials.endpoint == credentials.endpoint && it.backend == kind })
         stage("profile-saved")
     }
 }

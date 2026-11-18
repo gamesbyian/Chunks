@@ -37,6 +37,13 @@ import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
+/** Another connected client a job may be copied or moved to. */
+internal data class ProtocolMoveTarget(
+    val id: String,
+    val label: String,
+    val createOperations: () -> RemoteClientOperations
+)
+
 /** Plain-language, credential-free outcome text shared by every protocol. */
 internal object ProtocolOperationText {
     fun describe(action: String, outcome: ClientOperationOutcome, clientLabel: String): String = when (outcome) {
@@ -60,13 +67,17 @@ internal object ProtocolOperationText {
 internal fun ProtocolClientOperationsPanel(
     hash: String,
     clientLabel: String,
+    /** Stable authenticated client identity, never a display label. */
+    sourceClientId: String,
     observedStarted: Boolean?,
     /** The list row is current, complete and privacy-visible. */
     current: Boolean,
     /** Changes whenever a fresh inventory is accepted. */
     inventoryWitness: Any?,
     createOperations: () -> RemoteClientOperations,
-    onChanged: () -> Unit
+    onChanged: () -> Unit,
+    /** Other connected clients this job may be copied/moved to (job only). */
+    moveTargets: List<ProtocolMoveTarget> = emptyList()
 ) {
     val scope = rememberCoroutineScope()
     val operations = remember(hash, createOperations) { createOperations() }
@@ -80,6 +91,12 @@ internal fun ProtocolClientOperationsPanel(
     var confirmRemove by remember(hash) { mutableStateOf(false) }
     var deleteData by remember(hash) { mutableStateOf(false) }
     var files by remember(hash) { mutableStateOf<List<ClientFile>?>(null) }
+    var showMove by remember(hash) { mutableStateOf(false) }
+    var copiedTo by remember(hash, sourceClientId) { mutableStateOf<ProtocolMoveTarget?>(null) }
+    var copiedTransfer by remember(hash, sourceClientId) { mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer?>(null) }
+    var copiedReceipt by remember(hash, sourceClientId) {
+        mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied?>(null)
+    }
     var draft by remember(hash) { mutableStateOf<Map<Int, ClientFilePriority>>(emptyMap()) }
 
     LaunchedEffect(operations) {
@@ -152,6 +169,68 @@ internal fun ProtocolClientOperationsPanel(
                 enabled = enabled, modifier = cell.heightIn(min = 48.dp)
                     .testTag(ChunksSemantics.PROTOCOL_REMOVE)
             ) { Text(if (confirmRemove) "Cancel remove" else "Remove…") }
+        }
+        if (ClientCapability.EXPORT_JOB in caps && moveTargets.isNotEmpty()) {
+            OutlinedButton(onClick = { showMove = !showMove }, enabled = enabled,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.PROTOCOL_MOVE)) {
+                Text(if (showMove) "Hide copy or move" else "Copy or move job to another client…")
+            }
+        }
+        if (showMove) {
+            Text("Copies only the torrent job. The other client downloads its files itself; " +
+                "nothing on $clientLabel is changed unless you then remove it here.",
+                style = MaterialTheme.typography.bodySmall)
+            moveTargets.forEach { target ->
+                OutlinedButton(onClick = {
+                    if (busy || latched) return@OutlinedButton
+                    busy = true
+                    copiedTo = null; copiedTransfer = null; copiedReceipt = null
+                    notice = "Copying job to ${target.label}…"
+                    scope.launch {
+                        val transfer = try {
+                            val dst = target.createOperations()
+                            io.github.gamesbyian.chunks.rpc.ClientJobTransfer(
+                                operations, operations.client, dst, dst.client,
+                                sourceClientId = sourceClientId, targetClientId = target.id
+                            )
+                        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
+                        val result = try {
+                            transfer?.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true)
+                        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
+                        when (result) {
+                            is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied -> {
+                                copiedTo = target; copiedTransfer = transfer; copiedReceipt = result
+                                notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
+                            }
+                            is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.NotCopied -> {
+                                notice = ProtocolOperationText.describe("Copy to ${target.label}", result.outcome, target.label)
+                                if (result.outcome is ClientOperationOutcome.Uncertain) uncertainAt = inventoryWitness
+                            }
+                            is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Refused ->
+                                notice = "Copy to ${target.label}: not changed. ${result.reason}."
+                            null -> notice = "Copy to ${target.label}: could not reach both clients. Nothing was changed."
+                        }
+                        busy = false
+                        onChanged()
+                    }
+                }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.PROTOCOL_MOVE + "." + target.id)) {
+                    Text("Copy job to ${target.label}")
+                }
+            }
+            val done = copiedTo
+            val transfer = copiedTransfer
+            val receipt = copiedReceipt
+            if (done != null && transfer != null && receipt != null) Button(onClick = {
+                run("Remove from $clientLabel after moving to ${done.label}") {
+                    transfer.retireSource(hash, receipt)
+                }
+                copiedTo = null; copiedTransfer = null; copiedReceipt = null
+            }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .testTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE)) {
+                Text("Finish move: remove from $clientLabel (keep files)")
+            }
         }
         val shown = files
         if (shown != null) {

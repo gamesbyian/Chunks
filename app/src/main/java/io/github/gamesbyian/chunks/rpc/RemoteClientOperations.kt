@@ -27,7 +27,8 @@ internal sealed interface ClientOperationOutcome {
  * [ClientCapability] set; this object never branches on backend kind.
  */
 internal class RemoteClientOperations(
-    private val client: RemoteTorrentClient,
+    /** The exact client this workflow drives (shared with Move). */
+    val client: RemoteTorrentClient,
     private val readbackAttempts: Int = 12,
     private val readbackDelayMillis: Long = 750
 ) {
@@ -167,6 +168,10 @@ internal class RemoteClientOperations(
         null
     } catch (e: CancellationException) {
         throw e
+    } catch (e: ClientPostWritePendingException) {
+        // The client acknowledged a consequential write. A successful session
+        // read cannot prove asynchronous filesystem cleanup; never replay it.
+        ClientOperationOutcome.Pending(hash, null, e.message ?: "Effect still pending")
     } catch (e: ClientRefusedException) {
         ClientOperationOutcome.Refused(hash, e.message ?: "Refused by the client")
     } catch (e: Exception) {

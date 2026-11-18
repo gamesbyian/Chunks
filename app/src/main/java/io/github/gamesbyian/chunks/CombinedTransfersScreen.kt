@@ -1180,13 +1180,30 @@ internal fun CombinedTransfersScreen(
                 ProtocolClientOperationsPanel(
                     hash = focusedKey.infoHash,
                     clientLabel = profile.label,
+                    sourceClientId = profile.id,
                     observedStarted = details.observation?.started,
                     current = details.readState == TransferDetailReadState.CURRENT &&
                         focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true &&
                         focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                     inventoryWitness = focusedProtocolListing?.snapshot?.observedAtEpochMillis,
                     createOperations = requireNotNull(profile.operations),
-                    onChanged = { protocolSources.reload(profile.environment) }
+                    onChanged = { protocolSources.reload(profile.environment) },
+                    moveTargets = buildList {
+                        protocolProfiles.filter { it.id != profile.id && it.operations != null &&
+                            it.environment in protocolAllowed }.forEach { other ->
+                            add(ProtocolMoveTarget(other.id, other.label, requireNotNull(other.operations)))
+                        }
+                        // The authenticated rTorrent session, through the shared port.
+                        (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
+                            serverId != null && serverPrivacy?.mayShow == true && server.stale == false
+                        }?.let { remote ->
+                            add(ProtocolMoveTarget(requireNotNull(serverId).value,
+                                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
+                                io.github.gamesbyian.chunks.rpc.RemoteClientOperations(
+                                    io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
+                            })
+                        }
+                    }
                 )
             }
         }

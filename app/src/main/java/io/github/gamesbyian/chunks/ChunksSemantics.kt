@@ -34,6 +34,8 @@ internal object ChunksSemantics {
     const val PROTOCOL_REMOVE = "chunks.protocol.remove"
     const val PROTOCOL_REMOVE_CONFIRM = "chunks.protocol.remove.confirm"
     const val PROTOCOL_OPERATION_STATUS = "chunks.protocol.operation_status"
+    const val PROTOCOL_MOVE = "chunks.protocol.move"
+    const val PROTOCOL_MOVE_RETIRE = "chunks.protocol.move.retire"
     const val CONNECTION_NAME = "chunks.connection.name"
 
     // Universal Add: one source, one submission action, one Start preference.
