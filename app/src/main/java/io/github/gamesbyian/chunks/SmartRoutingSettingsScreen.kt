@@ -71,8 +71,8 @@ internal fun SmartRoutingSettingsScreen(
     LaunchedEffect(store) { reload() }
 
     fun save(
-        transform: (SmartRoutingPolicyStore.Policy) -> SmartRoutingPolicyStore.Policy,
-        onSaved: () -> Unit = {}
+        onSaved: () -> Unit = {},
+        transform: (SmartRoutingPolicyStore.Policy) -> SmartRoutingPolicyStore.Policy
     ) {
         // One in-flight write per screen. Otherwise rapid taps can reuse an old revision,
         // lose the second edit, and let an older completion replace newer UI state.
