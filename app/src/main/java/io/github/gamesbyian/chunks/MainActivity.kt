@@ -460,6 +460,10 @@ internal fun ChunksApp(
     // This chooses the visible Universal Add target in the *same* Add route.
     // Never restore account authority, a private source, or an attempted write.
     var addUsingAuthenticatedRemote by remember { mutableStateOf(false) }
+    // Exact typed profile id (non-secret) of a Transmission/qBittorrent/Deluge
+    // Add target. Selecting Local or the rTorrent session clears it.
+    var addProtocolTargetId by rememberSaveable { mutableStateOf<String?>(null) }
+    val protocolAddAttempt = remember { ProtocolAddAttempt() }
     var combinedFromLocal by rememberSaveable { mutableStateOf(false) }
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
@@ -617,6 +621,7 @@ internal fun ChunksApp(
             remoteReview.textAtFileSelection = ""
         }
         addUsingAuthenticatedRemote = false
+        addProtocolTargetId = null
         section = Section.ADD_CHOOSE
     }
     fun selectAuthenticatedAddTarget() {
@@ -642,6 +647,7 @@ internal fun ChunksApp(
             remoteReview.preferMagnet()
         }
         addUsingAuthenticatedRemote = true
+        addProtocolTargetId = null
         section = Section.ADD_CHOOSE
     }
     fun prepareRemoteMagnet(source: String) {
@@ -1145,6 +1151,16 @@ internal fun ChunksApp(
             },
             onLocal = { selectLocalAddTarget() },
             onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
+            protocolDestinations = combinedProtocolProfiles.filter { it.operations != null }
+                .map { UniversalAddSavedDestination(it.id, it.label) },
+            selectedProtocolId = addProtocolTargetId,
+            onProtocol = { id ->
+                if (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) {
+                    addUsingAuthenticatedRemote = false
+                    addProtocolTargetId = id
+                    section = Section.ADD_CHOOSE
+                }
+            },
             onConnectSaved = { requested ->
                 val profile = savedProfiles.firstOrNull { it.id == requested }
                 if (profile != null && !loading) {
@@ -1176,6 +1192,28 @@ internal fun ChunksApp(
                         section = Section.SERVER
                     }
                 }
+            }
+        )
+    }
+    val protocolAddProfile = addProtocolTargetId?.let { id ->
+        combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
+    }
+    val protocolAddContent: @Composable (CombinedReadOnlyProtocolProfile) -> Unit = { profile ->
+        ProtocolAddScreen(
+            profileId = profile.id,
+            clientLabel = profile.label,
+            createOperations = requireNotNull(profile.operations),
+            destinationPicker = addDestinationPicker,
+            sourceDraft = addSourceDraft,
+            reviewedTorrent = localReviewedTorrent,
+            startState = localAddStart,
+            attempt = protocolAddAttempt,
+            attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
+            onViewTransfer = { hash ->
+                consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                savedProfileCatalogFocus = profile.id
+                combinedFromConnections = true
+                section = Section.COMBINED
             }
         )
     }
@@ -1454,6 +1492,8 @@ internal fun ChunksApp(
                 },
                 retainedSourceState = retainedAddOwner?.createSource
             )
+        } else if (presentationSection == Section.LOCAL_ADD && protocolAddProfile != null) {
+            protocolAddContent(protocolAddProfile)
         } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
@@ -2127,7 +2167,9 @@ internal fun ChunksApp(
             val remotePrivacyScope = remember(aliasScope) {
                 RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
             }
-            if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
+            if (presentationSection == Section.LOCAL_ADD && protocolAddProfile != null) {
+                protocolAddContent(protocolAddProfile)
+            } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
                 // Local and rTorrent privacy are independent. A locked remote
                 // profile can still navigate to the separately gated local.
                 LocalTransferPrivacyGate(

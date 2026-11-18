@@ -81,7 +81,11 @@ internal fun UniversalAddDestinationPicker(
     onKeepDraft: () -> Unit = {},
     onLocal: () -> Unit,
     onAuthenticatedRemote: () -> Unit,
-    onConnectSaved: (String) -> Unit
+    onConnectSaved: (String) -> Unit,
+    /** Connected Transmission / qBittorrent / Deluge clients (exact typed profiles). */
+    protocolDestinations: List<UniversalAddSavedDestination> = emptyList(),
+    selectedProtocolId: String? = null,
+    onProtocol: (String) -> Unit = {}
 ) {
     var showAlias by rememberSaveable { mutableStateOf(false) }
     val (activeRemoteName, otherDestinations) = compactUniversalAddTargetLabels(
@@ -107,14 +111,20 @@ internal fun UniversalAddDestinationPicker(
         FlowRow(Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            FilterChip(selected = !addingRemotely, enabled = enabled,
+            FilterChip(selected = !addingRemotely && selectedProtocolId == null, enabled = enabled,
                 onClick = onLocal, label = { Text("Local") },
                 modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_DEVICE))
             activeRemoteName?.let { name ->
-                FilterChip(selected = addingRemotely, enabled = enabled,
+                FilterChip(selected = addingRemotely && selectedProtocolId == null, enabled = enabled,
                     onClick = onAuthenticatedRemote,
                     label = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_REMOTE))
+            }
+            protocolDestinations.forEach { client ->
+                FilterChip(selected = selectedProtocolId == client.id, enabled = enabled,
+                    onClick = { onProtocol(client.id) },
+                    label = { Text(client.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("chunks.add.target.protocol." + client.id))
             }
             otherDestinations.forEach { profile ->
                 // A saved profile requires authentication first. This gesture only
