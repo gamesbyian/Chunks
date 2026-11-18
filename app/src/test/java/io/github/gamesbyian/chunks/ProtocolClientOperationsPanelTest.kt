@@ -83,7 +83,7 @@ class ProtocolClientOperationsPanelTest {
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
-                    hash = hash, clientLabel = "Seedbox qB", observedStarted = false,
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = true, inventoryWitness = 1L,
                     createOperations = { RemoteClientOperations(fake, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge") { RemoteClientOperations(target, 3, 1) })
@@ -107,7 +107,7 @@ class ProtocolClientOperationsPanelTest {
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
-                    hash = hash, clientLabel = "Seedbox qB", observedStarted = false,
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = current, inventoryWitness = 1L,
                     createOperations = { RemoteClientOperations(fake, 3, 1) },
                     onChanged = {}
