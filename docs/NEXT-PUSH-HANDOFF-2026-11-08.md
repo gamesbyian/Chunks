@@ -12,7 +12,7 @@
 
 Merged: #1861 `7441ab5`, #1862 `0219ae7`, #1863 `0ac42f3` (supersedes draft #1859, which can be closed). Live Seedhost read-only + mutation journeys passed for Transmission and qBittorrent; see QUALITY-LEDGER.
 
-1. **Deluge is blocked on credentials:** the Web UI answers `result:false` for both the client password secret and `credential_source=account`. Ask the owner for the Deluge Web UI password secret name/value (or set `deluge_pass`), then run `seedhost-other-protocols-readonly.yml` and `seedhost-other-protocols-interop.yml` (`apply=true`) for DELUGE. Never guess passwords.
+1. **All three clients have live Seedhost read-only and mutation receipts** (Deluge runs 44228490265 / 44228494342 after the owner updated the secret). Re-run the protected workflows after any adapter change.
 2. Local interop: `tools/interop/start_local_clients.sh build/interop && source tools/interop/local_env.sh build/interop`, then `gradle --no-configuration-cache :app:testDebugUnitTest --rerun --tests '*RealClientInteropTest'` (configuration cache otherwise freezes the test environment).
 3. Installed emulator journey for one protocol client against a loopback daemon (Connect → Transfers → Details Start/Stop → Add stopped → Remove).
 4. Bridge rTorrent (`RTorrentRemote`) and Local onto `RemoteTorrentClient` behind behavior-preserving tests; then cross-client job-only Move and automatic Smart Routing policy beyond suggestions.
