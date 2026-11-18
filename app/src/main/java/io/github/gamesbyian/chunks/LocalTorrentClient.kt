@@ -249,8 +249,16 @@ internal class LocalTorrentClient(
     /** The job's own exported metainfo (exact info dictionary). Never logged. */
     override suspend fun transferSource(hash: String): ClientAddSource? = withContext(io) {
         val exact = ClientHashes.requireHash(hash)
-        val bytes = engine()?.exportTorrentFile(exact) ?: return@withContext null
-        runCatching { ClientAddSource.TorrentFile(bytes) }.getOrNull()?.takeIf { it.infoHash == exact }
+        val running = engine() ?: return@withContext null
+        // Faithful .torrent when metadata exists; a still-fetching magnet job
+        // re-creates as libtorrent's own magnet (as Transmission exports its own).
+        running.exportTorrentFile(exact)?.let { bytes ->
+            return@withContext runCatching { ClientAddSource.TorrentFile(bytes) }.getOrNull()
+                ?.takeIf { it.infoHash == exact }
+        }
+        running.exportMagnetWithoutMetadata(exact)?.let { magnet ->
+            runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
+        }
     }
 
     private fun notifyStarted() { runCatching { onPayloadStarted() } }

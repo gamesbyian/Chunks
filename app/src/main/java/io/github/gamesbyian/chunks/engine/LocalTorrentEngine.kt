@@ -1389,6 +1389,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * libtorrent's own magnet for a job that has NO metadata yet (a magnet still
+     * fetching): infohash, name and trackers, from `make_magnet_uri`. Once
+     * metadata exists the faithful .torrent export is the only path, so a
+     * magnet never stands in for a metainfo identity problem.
+     */
+    fun exportMagnetWithoutMetadata(infoHash: String): String? {
+        val handle = handles[normal(infoHash)]?.takeIf { it.isValid } ?: return null
+        if (handle.torrentFile()?.isValid == true || handle.status().hasMetadata()) return null
+        val magnet = runCatching { handle.makeMagnetUri() }.getOrNull() ?: return null
+        return magnet.takeIf { magnetIdentity(it) == normal(infoHash) }
+    }
+
+    /**
      * Repair the missing announce list in a PRE-#392 local .torrent already in
      * this engine, without removing, resuming, rechecking, moving, or replacing
      * any payload. The caller must separately review a user-chosen, strictly
