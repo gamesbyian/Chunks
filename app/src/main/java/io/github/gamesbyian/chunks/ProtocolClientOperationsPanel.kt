@@ -100,6 +100,11 @@ internal fun ProtocolClientOperationsPanel(
         mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied?>(null)
     }
     var draft by remember(hash) { mutableStateOf<Map<Int, ClientFilePriority>>(emptyMap()) }
+    // Change folder: the client's own set-location, verified by exact readback.
+    var relocating by remember(hash) { mutableStateOf(false) }
+    var relocateTo by remember(hash) { mutableStateOf("") }
+    var moveFiles by remember(hash) { mutableStateOf(false) }
+    var currentFolder by remember(hash) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(operations) {
         try {
@@ -167,6 +172,19 @@ internal fun ProtocolClientOperationsPanel(
                 },
                 enabled = current && !busy, modifier = cell.heightIn(min = 48.dp)
             ) { Text(if (files == null) "Files" else "Hide files") }
+            if (ClientCapability.SET_LOCATION in caps) OutlinedButton(
+                onClick = {
+                    relocating = !relocating
+                    moveFiles = false
+                    if (relocating) scope.launch {
+                        // The exact job's own reported folder, read just now.
+                        currentFolder = try { operations.client.torrent(hash)?.downloadDirectory }
+                            catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
+                    }
+                },
+                enabled = enabled, modifier = cell.heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.PROTOCOL_SET_LOCATION)
+            ) { Text(if (relocating) "Cancel" else "Change folder…") }
             if (ClientCapability.REMOVE in caps) OutlinedButton(
                 onClick = { confirmRemove = !confirmRemove; deleteData = false },
                 enabled = enabled, modifier = cell.heightIn(min = 48.dp)
@@ -258,6 +276,40 @@ internal fun ProtocolClientOperationsPanel(
                 enabled = enabled && changed.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Apply ${changed.size} priority change" + if (changed.size == 1) "" else "s") }
+        }
+        if (!moveOnly && relocating) {
+            val target = relocateTo.trim()
+            val valid = runCatching { io.github.gamesbyian.chunks.rpc.ClientHashes.requireDirectory(target) }.isSuccess &&
+                !io.github.gamesbyian.chunks.rpc.ClientHashes.sameDirectory(target, currentFolder)
+            Text("Current folder on $clientLabel: " + (currentFolder ?: "not reported"),
+                style = MaterialTheme.typography.bodySmall)
+            androidx.compose.material3.OutlinedTextField(
+                value = relocateTo, onValueChange = { relocateTo = it }, singleLine = true,
+                label = { Text("New absolute folder on $clientLabel") }, enabled = !busy,
+                isError = target.isNotEmpty() && !valid,
+                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.PROTOCOL_SET_LOCATION_FOLDER))
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                value = moveFiles, enabled = !busy, role = Role.Checkbox, onValueChange = { moveFiles = it })
+                .testTag(ChunksSemantics.PROTOCOL_SET_LOCATION_MOVE_FILES),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Checkbox(checked = moveFiles, onCheckedChange = null)
+                Text("Move the downloaded files there too", modifier = Modifier.padding(start = 8.dp))
+            }
+            Text(if (moveFiles) "$clientLabel itself moves this transfer's files into the new folder. " +
+                    "Nothing is deleted by Chunks; check the result before removing anything."
+                else "$clientLabel only looks for this transfer's files in the new folder; no files are moved. " +
+                    "Use Recheck afterwards if the files are already there.",
+                style = MaterialTheme.typography.bodySmall)
+            Button(onClick = {
+                val dir = target
+                relocating = false
+                run(if (moveFiles) "Move files to the new folder" else "Change folder") {
+                    operations.setLocation(hash, dir, moveFiles)
+                }
+            }, enabled = enabled && valid, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .testTag(ChunksSemantics.PROTOCOL_SET_LOCATION_CONFIRM)) {
+                Text(if (moveFiles) "Move files to this folder" else "Use this folder")
+            }
         }
         if (!moveOnly && confirmRemove) {
             Text("Remove this transfer from $clientLabel? By default its downloaded files stay on the server.",

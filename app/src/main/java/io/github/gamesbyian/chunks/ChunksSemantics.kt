@@ -36,6 +36,10 @@ internal object ChunksSemantics {
     const val PROTOCOL_OPERATION_STATUS = "chunks.protocol.operation_status"
     const val PROTOCOL_MOVE = "chunks.protocol.move"
     const val PROTOCOL_MOVE_RETIRE = "chunks.protocol.move.retire"
+    const val PROTOCOL_SET_LOCATION = "chunks.protocol.set_location"
+    const val PROTOCOL_SET_LOCATION_FOLDER = "chunks.protocol.set_location.folder"
+    const val PROTOCOL_SET_LOCATION_MOVE_FILES = "chunks.protocol.set_location.move_files"
+    const val PROTOCOL_SET_LOCATION_CONFIRM = "chunks.protocol.set_location.confirm"
     const val CONNECTION_NAME = "chunks.connection.name"
 
     // Universal Add: one source, one submission action, one Start preference.

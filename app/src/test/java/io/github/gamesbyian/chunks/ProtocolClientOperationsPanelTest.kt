@@ -21,6 +21,8 @@ import io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.TorrentClient
 import org.junit.Assert.assertEquals
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.assertTextContains
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,11 +41,13 @@ class ProtocolClientOperationsPanelTest {
         var present = true
         var writes = 0
         var lose = false
+        var dir = "/d"
+        var movedData: Boolean? = null
         override suspend fun session() = ClientSessionInfo(kind, "5", "/d", ClientCapability.entries.toSet())
         override suspend fun torrents() = listOfNotNull(torrent(hash))
         override suspend fun torrent(hash: String) =
             if (present && hash == this@ProtocolClientOperationsPanelTest.hash)
-                ClientTorrent(hash, "n", state, 1, 0, 0, 0, "/d") else null
+                ClientTorrent(hash, "n", state, 1, 0, 0, 0, dir) else null
         override suspend fun files(hash: String) = listOf(ClientFile(0, "a", 1, 0, ClientFilePriority.NORMAL))
         private fun write(apply: () -> Unit) {
             writes++
@@ -55,7 +59,8 @@ class ProtocolClientOperationsPanelTest {
             write { state = if (started) ClientRunState.DOWNLOADING else ClientRunState.STOPPED }
         override suspend fun remove(hash: String, deleteData: Boolean) = write { present = false }
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = write {}
-        override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) = write {}
+        override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) =
+            write { dir = directory; movedData = moveData }
         override suspend fun recheck(hash: String) = write {}
         override suspend fun transferSource(hash: String) =
             io.github.gamesbyian.chunks.rpc.ClientMagnets.build(hash, "n", emptyList())
@@ -183,5 +188,27 @@ class ProtocolClientOperationsPanelTest {
         render(fake, current = false)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
         assertEquals(0, fake.writes)
+    }
+
+    @Test fun changeFolderShowsTheCurrentFolderDefaultsToNoFileMoveAndVerifiesByReadback() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION).performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodes(androidx.compose.ui.test.hasText("Current folder on Seedbox qB: /d", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        // The same folder, or a relative one, can't be confirmed: nothing is sent.
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION_FOLDER).performTextReplacement("/d/")
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION_CONFIRM).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION_FOLDER).performTextReplacement("relative/x")
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION_CONFIRM).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION_FOLDER).performTextReplacement("/srv/new")
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_SET_LOCATION_CONFIRM).performClick()
+        rule.waitUntil(5_000) { fake.dir == "/srv/new" }
+        rule.waitForIdle()
+        assertEquals("files are only moved on explicit request", false, fake.movedData)
+        assertEquals(1, fake.writes)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS).assertTextContains("confirmed", substring = true)
     }
 }
