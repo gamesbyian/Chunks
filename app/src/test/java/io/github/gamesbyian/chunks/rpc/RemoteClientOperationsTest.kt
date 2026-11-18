@@ -99,9 +99,11 @@ class RemoteClientOperationsTest {
         val fake = Fake(torrent(ClientRunState.STOPPED)).apply {
             // A ruTorrent erasedata plugin may accept cleanup and remove the
             // session before the backing files have actually been deleted.
-            applyWrite = { it.present = null }
-            failWrite = ClientPostWritePendingException(
-                "ruTorrent queued cleanup; downloaded-file deletion not verified")
+            applyWrite = {
+                it.present = null
+                throw ClientPostWritePendingException(
+                    "ruTorrent queued cleanup; downloaded-file deletion not verified")
+            }
         }
         val result = ops(fake).remove(hash, deleteData = true)
         assertTrue(result is ClientOperationOutcome.Pending)
