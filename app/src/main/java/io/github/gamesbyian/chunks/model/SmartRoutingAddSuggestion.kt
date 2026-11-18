@@ -94,6 +94,45 @@ internal object SmartRoutingAddSuggestion {
             placeKnown = session?.defaultDownloadDirectory != null)
     }
 
+    /**
+     * Whether Universal Add should pre-select [suggestion]'s client now. Only
+     * with the explicit opt-in, at most once per reviewed source identity,
+     * never while an Add is in flight, and never over a target the person
+     * picked themselves for this source. Selection is a draft edit, not an Add.
+     */
+    fun shouldPreselect(
+        policy: SmartRoutingPolicyStore.Policy?,
+        suggestion: Suggestion?,
+        sourceKey: String?,
+        alreadyAppliedFor: String?,
+        personChoseTargetFor: String?,
+        alreadySelected: Boolean,
+        addInFlight: Boolean
+    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&
+        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&
+        !alreadySelected && !addInFlight
+
+    /**
+     * Metadata-late Ask: once a job's real name is known (never while its
+     * metadata is pending), a confident rule pointing at ANOTHER connected
+     * client than the one holding the job becomes a Move suggestion in
+     * Details. Advisory only: the person still taps Copy and Finish move.
+     * A rule pointing at the current client means "stay": no suggestion.
+     */
+    fun moveSuggestion(
+        policy: SmartRoutingPolicyStore.Policy?,
+        originalName: String?,
+        metadataPending: Boolean?,
+        currentEnvironmentId: String,
+        targets: List<Candidate>
+    ): Suggestion? {
+        if (metadataPending == true || originalName.isNullOrBlank()) return null
+        val here = Candidate(currentEnvironmentId, "current", live = true, acceptsAdd = true, placeKnown = true)
+        val result = evaluate(policy, originalName, emptyList(), targets.filter { it.environmentId != currentEnvironmentId } + here)
+        val suggestion = (result as? Result.Suggested)?.suggestion ?: return null
+        return suggestion.takeIf { it.environmentId != currentEnvironmentId }
+    }
+
     fun kindLabel(kind: SmartRoutingPreview.Kind): String = when (kind) {
         SmartRoutingPreview.Kind.MOVIE -> "Movie"
         SmartRoutingPreview.Kind.TV -> "TV episode"

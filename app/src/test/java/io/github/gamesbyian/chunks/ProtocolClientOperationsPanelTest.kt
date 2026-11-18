@@ -241,4 +241,27 @@ class ProtocolClientOperationsPanelTest {
         assertEquals("one read after the tap, not one per recomposition", 1, source.sessions)
         assertEquals("one adapter for the exact client, not one per recomposition", 1, created.get())
     }
+
+    @Test fun smartRoutingMoveSuggestionIsShownFirstAndNeverActsByItself() {
+        val source = Fake(); val destination = Target()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
+                    current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
+                        ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
+                    moveOnly = true, suggestedTarget = "de" to "tv episode rule")
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
+            .assertTextContains("Seedbox Deluge (tv episode rule)", substring = true)
+        rule.waitForIdle()
+        assertEquals("a suggestion never copies anything", 0, destination.adds)
+        org.junit.Assert.assertTrue(source.present)
+    }
 }

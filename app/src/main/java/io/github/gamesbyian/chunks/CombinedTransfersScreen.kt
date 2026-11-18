@@ -1191,6 +1191,21 @@ internal fun CombinedTransfersScreen(
                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
             }
         }
+        // Metadata-late Smart Routing Ask: an advisory Move suggestion once the
+        // job's real name is known. Read-only; never moves anything by itself.
+        val routingPolicy by androidx.compose.runtime.produceState<
+            io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Policy?>(null, context) {
+            value = withContext(Dispatchers.IO) {
+                (runCatching { io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore(context).read() }.getOrNull()
+                    as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
+            }
+        }
+        fun moveSuggestionFor(targets: List<ProtocolMoveTarget>): Pair<String, String>? =
+            io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.moveSuggestion(
+                routingPolicy, details.observation?.originalName, details.observation?.metadataPending,
+                focusedKey.environment.value,
+                targets.map { io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true) }
+            )?.let { it.environmentId to (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") }
         val protocolMoveTargets = protocolProfiles.filter {
             it.operations != null && it.environment in protocolAllowed
         }.distinctBy { it.id }.map { ProtocolMoveTarget(it.id, it.label, requireNotNull(it.operations)) }
@@ -1203,6 +1218,8 @@ internal fun CombinedTransfersScreen(
         }
         val protocolOperations: (@Composable () -> Unit)? = focusedProtocol?.let { profile ->
             {
+                val protocolTargets = protocolMoveTargets.filter { it.id != profile.id } +
+                    listOfNotNull(rtorrentMoveTarget, localMoveTarget)
                 ProtocolClientOperationsPanel(
                     hash = focusedKey.infoHash,
                     clientLabel = profile.label,
@@ -1214,8 +1231,8 @@ internal fun CombinedTransfersScreen(
                     inventoryWitness = focusedProtocolListing?.snapshot?.observedAtEpochMillis,
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
-                    moveTargets = protocolMoveTargets.filter { it.id != profile.id } +
-                        listOfNotNull(rtorrentMoveTarget, localMoveTarget)
+                    moveTargets = protocolTargets,
+                    suggestedTarget = moveSuggestionFor(protocolTargets)
                 )
             }
         }
@@ -1273,7 +1290,8 @@ internal fun CombinedTransfersScreen(
                             createOperations = localClientOperations,
                             onChanged = {},
                             moveTargets = outbound,
-                            moveOnly = true
+                            moveOnly = true,
+                            suggestedTarget = moveSuggestionFor(outbound)
                         )
                     }
                 }
@@ -1342,7 +1360,8 @@ internal fun CombinedTransfersScreen(
                             },
                             onChanged = mutation.settled,
                             moveTargets = connectedTargets,
-                            moveOnly = true
+                            moveOnly = true,
+                            suggestedTarget = moveSuggestionFor(connectedTargets)
                         )
                     }
                 }
