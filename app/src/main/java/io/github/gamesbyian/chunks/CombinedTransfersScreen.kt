@@ -1289,6 +1289,33 @@ internal fun CombinedTransfersScreen(
                         retainDuringRefresh = details.readState == TransferDetailReadState.CURRENT ||
                             details.readState == TransferDetailReadState.STALE
                     )
+                    // Use the exact same Copy/Move receipt controller as the
+                    // other protocols. Existing rTorrent lifecycle/Remove/Files
+                    // controls remain authoritative and are never duplicated.
+                    val connectedTargets = protocolProfiles.filter { profile ->
+                        profile.operations != null && profile.environment in protocolAllowed &&
+                            profile.id != requireNotNull(serverId).value
+                    }.distinctBy { it.id }.map { profile ->
+                        ProtocolMoveTarget(profile.id, profile.label, requireNotNull(profile.operations))
+                    }
+                    if (connectedTargets.isNotEmpty() && !operationsStale) {
+                        ProtocolClientOperationsPanel(
+                            hash = focusedKey.infoHash,
+                            clientLabel = labels[requireNotNull(serverId)]?.removePrefix("Server · ") ?: "rTorrent",
+                            sourceClientId = serverId.value,
+                            observedStarted = details.observation?.started,
+                            current = details.readState == TransferDetailReadState.CURRENT &&
+                                !operationsStale && focusedKey.infoHash.matches(V1_TRANSFER_HASH),
+                            inventoryWitness = owner.snapshotRevision,
+                            createOperations = {
+                                io.github.gamesbyian.chunks.rpc.RemoteClientOperations(
+                                    io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(boundRemote))
+                            },
+                            onChanged = mutation.settled,
+                            moveTargets = connectedTargets,
+                            moveOnly = true
+                        )
+                    }
                 }
             }) else protocolOperations,
             onOpenOwningList = openFor(focusedKey),

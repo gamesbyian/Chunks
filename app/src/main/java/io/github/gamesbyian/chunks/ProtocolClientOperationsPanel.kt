@@ -77,7 +77,9 @@ internal fun ProtocolClientOperationsPanel(
     createOperations: () -> ClientOperations,
     onChanged: () -> Unit,
     /** Other connected clients this job may be copied/moved to (job only). */
-    moveTargets: List<ProtocolMoveTarget> = emptyList()
+    moveTargets: List<ProtocolMoveTarget> = emptyList(),
+    /** The rTorrent Details surface already owns its verified lifecycle/file controls. */
+    moveOnly: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val operations = remember(hash, createOperations) { createOperations() }
@@ -127,11 +129,12 @@ internal fun ProtocolClientOperationsPanel(
     val enabled = current && !busy && !latched && session != null
     Column(verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_OPERATIONS)) {
-        Text("Controls on $clientLabel", style = MaterialTheme.typography.titleSmall)
+        Text(if (moveOnly) "Copy or move from $clientLabel" else "Controls on $clientLabel",
+            style = MaterialTheme.typography.titleSmall)
         sessionError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow) }
         if (!current) Text("The transfer list is out of date or locked. Refresh before changing this transfer.",
             style = MaterialTheme.typography.bodySmall)
-        ResponsiveActionGroup(maxColumns = 2) { cell ->
+        if (!moveOnly) ResponsiveActionGroup(maxColumns = 2) { cell ->
             if (ClientCapability.START_STOP in caps) {
                 val start = observedStarted != true
                 OutlinedButton(
@@ -233,7 +236,7 @@ internal fun ProtocolClientOperationsPanel(
             }
         }
         val shown = files
-        if (shown != null) {
+        if (!moveOnly && shown != null) {
             val levels = session?.filePriorities.orEmpty()
             shown.sortedBy { it.index }.forEach { file ->
                 val chosen = draft[file.index] ?: file.priority
@@ -256,7 +259,7 @@ internal fun ProtocolClientOperationsPanel(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Apply ${changed.size} priority change" + if (changed.size == 1) "" else "s") }
         }
-        if (confirmRemove) {
+        if (!moveOnly && confirmRemove) {
             Text("Remove this transfer from $clientLabel? By default its downloaded files stay on the server.",
                 style = MaterialTheme.typography.bodySmall)
             if (ClientCapability.REMOVE_WITH_DATA in caps) Row(
