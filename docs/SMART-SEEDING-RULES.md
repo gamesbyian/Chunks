@@ -187,7 +187,15 @@ independent seeding duration or the behavior of numbered ruTorrent profiles.
 4. A second tick must send nothing.
 5. One restoring Start, with readback, returns the transfer to its original state.
 
-Logs carry only redacted outcomes. A local loopback rehearsal used a real rTorrent job with an actual 1.0 ratio. It showed a verified Stop and no second Stop, and a restored Start confirmed independently as `d.state=1 d.is_active=1`. The live run is recorded in QUALITY-LEDGER once dispatched.
+Logs carry only redacted outcomes. A local loopback rehearsal used a real rTorrent job with an actual 1.0 ratio. It showed a verified Stop and no second Stop, and a restored Start confirmed independently as `d.state=1 d.is_active=1`. **Live result** (trusted `main` `3131d51`, run 44496130679, first attempt):
+```
+tests=1 skipped=0 failed=0
+started_complete=44 eligible=true
+stop=verified reason_ratio=true
+second_tick=no_write
+restore=verified
+```
+One existing primary-account transfer was stopped once by the production rule path from its own server ratio, then restored to started.
 
 ### Transmission, qBittorrent and Deluge (same controller, 2026-11-19)
 
