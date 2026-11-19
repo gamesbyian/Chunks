@@ -202,6 +202,17 @@ class ProtocolClientInstalledJourneyTest {
                 TorrentMetainfoBuilder.Entry(listOf("skip-$suffix"), b.size.toLong()) { b.inputStream() }),
                 trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024)) to suffix
         }
+        /** Three episode files deliberately NOT in metainfo order. */
+        fun episodeFixture(): TorrentMetainfoBuilder.Result {
+            val random = SecureRandom()
+            val folder = "chunks-installed-fio-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
+            val entries = listOf("Show S01E03.bin", "Show S01E01.bin", "Show S01E02.bin").map { name ->
+                val bytes = ByteArray(24 * 1024).also(random::nextBytes)
+                TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }
+            }
+            return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(folder, entries,
+                trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
+        }
         val preload = fixture("details")
         val name = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(preload.torrent).name
         val hash = preload.infoHashV1
@@ -447,6 +458,58 @@ class ProtocolClientInstalledJourneyTest {
             // Restore only the test monitor's identity after all assertions (as the
             // Open With handoff tests do); the shared source is never redispatched.
             it.onActivity { activity -> launchIntent?.let { original -> activity.intent = original } }
+
+            // Finish in Order from this client's Details on a real preloaded episode job:
+            // review the detected order once; the real daemon must show E01 at High.
+            val episodes = episodeFixture()
+            val episodesName = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(episodes.torrent).name
+            val episodesHash = episodes.infoHashV1
+            val preloaded = runBlocking {
+                witness.add(ClientAddRequest(ClientAddSource.TorrentFile(episodes.torrent), null, startNow = false))
+            }
+            assertTrue("Episode fixture preload: $preloaded", preloaded is ClientOperationOutcome.Verified)
+            stage("fio-fixture-preloaded")
+            if (rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_TRANSFERS)).fetchSemanticsNodes().isEmpty()) {
+                it.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
+            }
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            val episodesDetails = hasContentDescription("Details for $episodesName", substring = true)
+            waitFor("episode job row", 90_000) {
+                runCatching { scrollToNode(episodesDetails); true }.getOrDefault(false)
+            }
+            rule.onAllNodes(episodesDetails).onFirst().performClick()
+            waitFor("protocol Files control", 60_000) {
+                runCatching { scrollToNode(hasText("Files")); rule.onNodeWithText("Files").assertIsEnabled(); true }
+                    .getOrDefault(false)
+            }
+            rule.onNodeWithText("Files").performClick()
+            waitFor("Finish in Order entry", 60_000) {
+                runCatching { scrollToNode(hasText("Finish in Order…")); true }.getOrDefault(false)
+            }
+            rule.onNodeWithText("Finish in Order…").performClick()
+            waitFor("detected episode order", 30_000) {
+                runCatching { scrollToNode(hasText("Start Finish in Order")); true }.getOrDefault(false) &&
+                    visible("Found an episode order")
+            }
+            rule.onNodeWithText("Start Finish in Order").performClick()
+            stage("fio-start-dispatched-once")
+            val firstEpisode = "Show S01E01.bin"
+            waitFor("E01 at High on the real client", 90_000) {
+                val files = runCatching {
+                    runBlocking {
+                        io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
+                            .files(episodesHash)
+                    }
+                }.getOrNull().orEmpty()
+                files.size == 3 && files.single { f -> f.path.endsWith(firstEpisode) }.priority ==
+                    io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH &&
+                    files.filter { f -> !f.path.endsWith(firstEpisode) }
+                        .none { f -> f.priority == io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH }
+            }
+            assertEquals("Finish in Order never starts a stopped job", ClientRunState.STOPPED,
+                runBlocking { independentRead(episodesHash) }?.runState)
+            stage("fio-e01-high-verified-independently")
+            runBlocking { witness.remove(episodesHash, deleteData = false) }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
