@@ -2,6 +2,11 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: Transmission ratio Stop proved; protocol display names and Move name carry
+
+- **Real daemons, this container:** `ProtocolSeedingInteropTest` 4/4 on three consecutive runs; new `transmissionRatio`: real Transmission 4.0.5 downloaded every piece from a Local seeder that dialled its peer port (ratio 0, still running), a fresh Local leech pulled every piece back, Transmission's own counters passed 0.5 and the shared controller sent one verified Stop; a later manual Start stayed started over three ticks. The earlier "loopback peering" blocker concerned tracker-discovered peers only. CI interop now requires 4 seeding cases and the 3 upload-cap cases.
+- **Robolectric:** protocol Add display name saved only after a verified NEW Add under the exact `ProtocolAliasScope` (uncertain Add saves nothing); a confirmed job Copy carries the source's Chunks name to the target scope and never overwrites one already set.
+
 ## 2026-11-19 UTC: #1903 merged; numbered Seedhost seeding getters
 
 - **#1903** merged as `f9a29e0` from exact head `bd939b9`. `pr_acceptance_report.py --profile integration-real-peer` ACCEPTABLE on that head: check, JVM build, build-once, both native Add shards + verifier, android-native-atlas, minified-smoke, api29-downloads, two-server-combined, remote-delete-data, installed-magnet-lifecycle; also installed-protocol-client and four-engine interop green. Earlier reds on this PR are recorded below and in the PR body; additionally on `3786b54` the JVM `RepeatedAndroidIntakeTest.openWithDuringASettlingAddIsOfferedAfterItVerifies` timed out at its 30 s wait (5/5 local isolated passes, classified intermittent; watch it).
