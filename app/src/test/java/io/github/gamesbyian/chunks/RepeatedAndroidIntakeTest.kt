@@ -99,6 +99,26 @@ class RepeatedAndroidIntakeTest {
         rule.waitForIdle()
     }
 
+    /**
+     * The installed delete-data / two-server journeys enter canonical Transfers this way:
+     * Connect, Continue to Connections, View transfers. The server-scoped Transfers search
+     * must appear (it sits in a lazy list, so reveal it before asserting).
+     */
+    @Test fun connectThenViewTransfersOpensCanonicalServerScopedTransfers() {
+        connect()
+        rule.waitUntil(30_000) {
+            rule.onAllNodes(hasTestTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS)).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
+        rule.waitUntil(30_000) {
+            runCatching {
+                list().performScrollToNode(hasTestTag(ChunksSemantics.TRANSFERS_SEARCH))
+                rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SEARCH).fetchSemanticsNode()
+                true
+            }.getOrDefault(false)
+        }
+    }
+
     /** A second Open With while Chunks is already showing Add. */
     private fun openWith(name: String): String {
         val bytes = torrent(name)
