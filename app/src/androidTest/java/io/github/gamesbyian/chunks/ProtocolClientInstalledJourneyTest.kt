@@ -429,7 +429,9 @@ class ProtocolClientInstalledJourneyTest {
             waitFor("both reviewed files listed") {
                 runCatching { scrollToNode(hasText(skipped)); true }.getOrDefault(false) && visible(kept)
             }
-            rule.onNodeWithText(skipped).performClick()
+            // The row's own toggle action, not a coordinate tap: clearing the source
+            // field above can move the list while the keyboard settles (e56c116).
+            rule.onNodeWithText(skipped).performSemanticsAction(SemanticsActions.OnClick)
             waitFor("one of two files chosen") { visible("Files to download (1 of 2") }
             stage("choices-one-file-unticked")
             // Add-time priority: raise the kept file to High (every client stores High).
