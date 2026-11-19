@@ -73,7 +73,14 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 
 **Local readback joins the shared observer (2026-11-19, branch after #1901).** `LocalNativeAddObserver` is Local's `UniversalAddObserver`: one fence-checked, JNI-safe native list read gives the existing exact hash / reviewed Place / payload Start / this-Add native-token evidence. `UniversalAddAttemptController.followUp` keeps observing an unresolved ticket read-only from the app-owned scope (bounded schedule; never overlapping a write or a manual Check status; stopping once the ticket is resolved or replaced), so verification continues after leaving Add or recreation. Local and protocol Adds pass their observer to the shared run; Local gains the same read-only **Check status**. The Local screen only explains each new phase once.
 
-**Still separate:** three Add screens (`LocalEngineScreen`, `VerifiedAddScreen`, `ProtocolAddScreen`) with their own form, source intake and post-Add messaging; rTorrent's post-Add readback inside `VerifiedAddScreen`.
+**One source-first intake and observer for all five clients (2026-11-19, follow-up batch).**
+- `UniversalAddSourceSection` is the one **Torrent source** block (field "Magnet or torrent link", **Open .torrent**, **Paste link**, HTTPS link review fetched only on tap, magnet check) in every client body. It owns no state and starts no IO; each body keeps its proven source precedence, stale-fetch witness and one-Add fences.
+- Transmission/qBittorrent/Deluge gained HTTPS `.torrent` links (fetched and validated on the device, never by the client), Paste and the canonical `MagnetDraftCheck` (base32 normalized to hex).
+- `OriginalSourceRetirement` applies the global original-`.torrent` Keep/Archive/Delete policy after a verified NEW registration for rTorrent **and** the protocol clients (previously not applied to protocol Adds at all). Uncertain results keep the original; Delete stays a separately confirmed request.
+- `RTorrentAddObserver` composes rTorrent's existing read-only Recheck evidence as a `UniversalAddObserver`; every client's unresolved write now gets the same app-owned follow-up.
+- The shared picker no longer offers a Chunks display name for protocol targets, where it was silently dropped (protocol aliases are not yet supported in Combined).
+
+**Still separate:** the three bodies still own their Save to/Start/options controls and submit orchestration (each calling the shared admission and lifecycle with its own executor); `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
 
 Step 3 below (one capability-driven source-first route) remains the finish line.
 

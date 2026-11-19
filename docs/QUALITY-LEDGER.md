@@ -2,6 +2,13 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: one source-first intake for five clients; rTorrent observer; protocol source parity (follow-up branch)
+
+- **Real daemons, this container (loopback):** `UniversalAddLifecycleInteropTest` 4/4. New rTorrent 0.9.8 stage: load whose reply is lost → fence kept → app-owned `RTorrentAddObserver` follow-up reached SESSION_CONFIRMED with exactly one load and one job; cleanup verified. Protocol follow-up stages repeated green on Transmission 4.0.5, qBittorrent 4.6.3, Deluge.
+- **Robolectric:** `ProtocolAddSourceParityTest` 4/4 (HTTPS link fetched only on tap, then one TorrentFile Add; base32 magnet normalized to hex; verified NEW Add archives the person's original `.torrent`; uncertain Add keeps it and archives nothing). Add/Remote/Protocol/VerifiedAdd suites 752/752. Roborazzi `ChunksAddReviewRenderTest`, `ProtocolSurfacesRenderTest` (11), `LocalAddLargeTextAuditTest` green; renders inspected: identical Torrent source block on rTorrent and protocol forms; Local at 320dp/200% fits (footer label wrap is pre-existing).
+- **Contract reconciliation:** installed tests that used the two old source labels to tell Local and rTorrent forms apart now check the selected `ADD_TARGET_REMOTE` chip (`MainActivityRealMagnetJourney.remoteAddShowing`, `CombinedTwoRealServersInstrumentedTest`); label-only references updated to "Magnet or torrent link". No assertion removed.
+- **Local-only known failures:** `LocalCheckedPayloadReservationsTest` (container path encoding) and an SDK-29 Robolectric artifact download; untouched code.
+
 ## 2026-11-19 UTC: Local Add readback becomes the shared app-owned observer (branch `ccr-92d59cb4-nptvoi`)
 
 - **Change:** `LocalNativeAddObserver` (the Local `UniversalAddObserver`) and `UniversalAddAttemptController.followUp` replace `LocalEngineScreen`'s own post-Add reconcile. Local (magnet, .torrent) and protocol Adds keep being observed read-only from the app-owned scope after leaving Add; Local gains the read-only Check status.
