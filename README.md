@@ -11,19 +11,19 @@
 
 **Your downloads have places to be.**
 
-Chunks is an Android-native BitTorrent client and first-class rTorrent remote control. It aims to make torrent management powerful without making file locations, queue controls, storage integrity or server administration needlessly complicated.
+Chunks is an Android-native BitTorrent client for Local Device downloads and remote control of rTorrent, Transmission, qBittorrent and Deluge. These five client integrations have functioning and independently tested slices; release-quality assembled/physical-device acceptance is still in progress. It aims to make torrent management powerful without making file locations, queue controls, storage integrity or server administration needlessly complicated.
 
-**Development status: pre-alpha.** Merged, tested slices exist, but full physical-device, supported-server, security, release-signing and accessibility acceptance is still incomplete. Do not infer feature readiness from a screenshot, PR title or aspirational specification. See [live coverage](docs/SPEC-COVERAGE.md), [test evidence](docs/QUALITY-LEDGER.md) and the [active work queue](docs/WORK-QUEUE.md).
+**Development status: pre-alpha.** Merged, tested slices exist, but full physical-device, supported-server, security, release-signing and accessibility acceptance is still incomplete. Do not infer feature readiness from a screenshot, PR title or aspirational specification. See [live coverage](docs/SPEC-COVERAGE.md), [test evidence](docs/QUALITY-LEDGER.md), the [active work queue](docs/WORK-QUEUE.md) and the [release acceptance checklist](docs/RELEASE-ACCEPTANCE.md).
 
 ## One experience, your choice of environments
 
 Chunks supports three intended configurations:
 
-- **On-local device client only:** the default first-run offer, with no rTorrent connection required.
-- **rTorrent remote only:** control configured seedbox/server profiles without requiring local torrent-engine setup.
-- **Both:** switch among local device and one or more independently configured rTorrent instances while using a consistent Transfers list, details, Add, controls, Collections and settings model.
+- **Local Device only:** the default first-run offer, with no remote connection required.
+- **Remote clients only:** use one or more supported rTorrent, Transmission, qBittorrent or Deluge profiles without running the Local engine.
+- **Local and remote together:** view Local and independently configured remote profiles through one scoped Transfers/Details/operation model. Client-specific features are capability-gated.
 
-Each environment has its own torrent identities, connection/storage capabilities and appropriate settings. Lists and transfer details identify the active local device/server. Switching is UI navigation and does not move files or torrent jobs. [Binding environment contract](docs/UNIFIED-ENVIRONMENTS.md).
+Each client has its own torrent identities, authenticated connection/storage capabilities and appropriate settings. Lists and transfer details identify the selected Local Device or exact server profile. Switching is UI navigation and does not move files or torrent jobs. [Binding environment contract](docs/UNIFIED-ENVIRONMENTS.md).
 
 ## Fundamental concepts
 
@@ -41,11 +41,11 @@ The libtorrent4j-based local engine has implemented and tested slices for torren
 
 On Add, Chunks must show a valid destination and optional Change/recent selections without requiring a picker. Download data and detached copies retain distinct ownership. Physical file management, quotas and cleanup obey [storage and extraction](docs/STORAGE-AND-EXTRACTION.md) safety rules.
 
-## rTorrent remote control
+## Remote client protocols
 
-The remote adapter uses authenticated HTTPS XML-RPC and scoped capabilities for connection, transfer inspection, Add, Start/Stop, priorities and safe session-only removal. **Smart Connect** should normally allow a seedbox hostname or exact ruTorrent instance URL and credentials, while retaining an advanced custom endpoint path. Instance identity, TLS, permissions and uncertain RPC mutations must be handled explicitly. A network success alone is not proof that a torrent or file operation succeeded.
+rTorrent uses authenticated HTTPS XML-RPC and scoped capabilities for connection, transfer inspection, Add, Start/Stop, priorities and safe session-only removal. Transmission, qBittorrent and Deluge use their typed authenticated remote APIs through the shared client operations/observation model. Exact profile, feature capability and independently observed results remain mandatory. **Smart Connect** should normally allow a seedbox hostname or exact ruTorrent instance URL and credentials, while retaining an advanced custom endpoint path. Instance identity, TLS, permissions and uncertain RPC mutations must be handled explicitly. A network success alone is not proof that a torrent or file operation succeeded.
 
-Multiple server profiles and provider variants require independent testing; provider catalog entries are hints, not promises of compatibility. See the [Smart Connect contract](docs/SMART-REMOTE-CONNECTION.md), [rTorrent matrix](docs/RTORRENT-COMPATIBILITY-MATRIX.md), and [approved Seedhost testing guide](docs/SEEDHOST-REMOTE-TESTING.md). Incoming BitTorrent peer ports and the HTTPS remote-control port serve different purposes.
+Multiple server profiles and provider variants require independent testing; a tested daemon version is not blanket compatibility with every host. Provider catalog entries are hints, not promises of compatibility. See the [Smart Connect contract](docs/SMART-REMOTE-CONNECTION.md), [rTorrent matrix](docs/RTORRENT-COMPATIBILITY-MATRIX.md), and [approved Seedhost testing guide](docs/SEEDHOST-REMOTE-TESTING.md). Incoming BitTorrent peer ports and the HTTPS remote-control port serve different purposes.
 
 ## Further planned experience
 
