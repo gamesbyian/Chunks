@@ -318,8 +318,8 @@ internal fun ProtocolAddScreen(
         // 2. Exact target (the shared picker).
         destinationPicker()
         sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
-        // 3. Save to: client default, or one exact folder.
-        Text("Save to", style = MaterialTheme.typography.titleMedium)
+        // 3. Save to: client default or one exact folder, within the shared section.
+        UniversalAddSaveToSection {
         Text(if (useCustom) "A folder you enter on $clientLabel"
             else "$clientLabel's default folder" + (session?.defaultDownloadDirectory?.let { " ($it)" } ?: ""),
             style = MaterialTheme.typography.bodyMedium)
@@ -333,14 +333,15 @@ internal fun ProtocolAddScreen(
             isError = !folderValid, singleLine = true, enabled = !attempt.busy,
             modifier = Modifier.fillMaxWidth()
         )
+        }
         // 4. Start.
         UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
             onCheckedChange = { startState.value = it })
         if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
-        Button(
+        UniversalAddSubmitAction(
             onClick = {
-                val frozen = source ?: return@Button
+                val frozen = source ?: return@UniversalAddSubmitAction
                 // Frozen at the click: reviewed index → path for exactly these bytes.
                 val skips = if (frozen is ClientAddSource.TorrentFile) layout.orEmpty()
                     .filter { it.index in chosenSkips }.associate { it.index to it.path } else emptyMap()
@@ -361,7 +362,7 @@ internal fun ProtocolAddScreen(
                 val frozenAlias = runCatching { normalizedUniversalAddAlias(aliasState?.value.orEmpty()) }
                     .getOrElse {
                         attempt.admissionRefusal = "Not added: that display name contains unsupported characters or exceeds 160 characters."
-                        return@Button
+                        return@UniversalAddSubmitAction
                     }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
                     profileId, request, session?.defaultDownloadDirectory)
@@ -443,8 +444,9 @@ internal fun ProtocolAddScreen(
                 }
             },
             enabled = canSubmit,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(ChunksSemantics.ADD_SUBMIT)
-        ) { Text(if (attempt.busy) "Adding to $clientLabel…" else "Add to $clientLabel") }
+            modifier = Modifier.fillMaxWidth(),
+            label = if (attempt.busy) "Adding to $clientLabel…" else "Add transfer"
+        )
         // A refusal before any write (fixed admission vocabulary) shares the one status location.
         attempt.admissionRefusal?.takeIf { attempt.profileId == null || attempt.profileId == profileId }?.let { why ->
             Text(why, color = MaterialTheme.colorScheme.error,
