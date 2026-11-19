@@ -92,27 +92,31 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             assertTrue(roster.saveVerified(requireNotNull(vault.load()), "Saved account"))
             connectionsFooter().performClick()
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
-            // Each field is brought into the lazy form's composition and replaced (idempotent).
-            // A lazy row can be disposed between lookup and its focus request; that fails
-            // before any text is entered, so only that case re-locates (twice seen at the
-            // Password field, native Add shard 0 on #1885 and #1889).
+            // Find -> reveal -> re-find -> act (TEST-ARCHITECTURE lazy-container contract).
+            // Presence is a defined condition (fetchSemanticsNodes), not a caught assertion.
+            // Compose exposes no dedicated type for a row disposed between lookup and its
+            // focus request: it is a plain IllegalStateException, so that one case alone is
+            // matched by message. It fails before any text is entered, and replacement is
+            // idempotent, so re-locating is safe. Anything else propagates.
             fun enter(field: SemanticsMatcher, value: String) {
-                var last: Throwable? = null
+                var detached: IllegalStateException? = null
                 repeat(5) {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(field)
+                    rule.waitForIdle()
+                    if (rule.onAllNodes(field).fetchSemanticsNodes().isEmpty()) {
+                        Thread.sleep(300)
+                        return@repeat
+                    }
                     try {
-                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(field)
-                        rule.waitForIdle()
                         rule.onNode(field).performTextReplacement(value)
                         return
                     } catch (failure: IllegalStateException) {
-                        if (failure.message?.contains("unattached") != true) throw failure
-                        last = failure
-                    } catch (failure: AssertionError) {
-                        last = failure
+                        if (failure.message?.contains("unattached node") != true) throw failure
+                        detached = failure
+                        Thread.sleep(300)
                     }
-                    Thread.sleep(300)
                 }
-                throw AssertionError("Could not enter a draft field", last)
+                throw AssertionError("Could not enter a draft field (never composed, or detached each time)", detached)
             }
             enter(hasTestTag(ChunksSemantics.CONNECTION_NAME), "Studio")
             enter(hasText("Seedbox hostname, ruTorrent URL or RPC address"), "https://draft.invalid/RPC2")
