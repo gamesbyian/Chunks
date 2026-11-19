@@ -75,9 +75,9 @@ class ProtocolSeedingInteropTest {
     @Test fun deluge() = timeJourney(RemoteBackendKind.DELUGE)
 
     /**
-     * Transmission 4.0.5 (loopback rig) keeps secondsSeeding at 0 for an idle seed
-     * verified at Add, and the rig cannot connect a peer to it. Negative control:
-     * real counters are read, and a time rule never fabricates a Stop.
+     * Transmission: 4.0.5 keeps secondsSeeding at 0 for an idle seed verified at Add,
+     * 4.1.1 advances it, and the rig cannot connect a peer to it. Either way: real
+     * counters are read, and a Stop happens only once the client's own counter passes the limit.
      */
     @Test fun transmission() = timeJourney(RemoteBackendKind.TRANSMISSION, expectStop = false)
 
@@ -122,15 +122,29 @@ class ProtocolSeedingInteropTest {
                 "seed_time=${facts.seedingSeconds != null} private=${facts.isPrivate} public_trackers=${facts.publicTrackerUrls?.size}")
 
             if (!expectStop) {
-                repeat(12) {
-                    assertEquals("an unadvanced time counter never stops", RemoteSeeding.Tick.NO_WRITE,
-                        tick(ops, environment))
+                // Version-dependent: Transmission 4.0.5 keeps secondsSeeding at 0 for an idle seed,
+                // 4.1.1 (CI) advances it. Either way a Stop may follow only the client's own counter.
+                var stopped = false
+                for (attempt in 0 until 30) {
+                    val before = client.seedingFacts(hash)?.seedingSeconds ?: 0
+                    val tick = tick(ops, environment)
+                    val a = assignments.get(hash)
+                    if (a?.stoppedByRule != null || a?.stopAttemptedReason != null) {
+                        assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED, tick)
+                        assertTrue("never before the client's own 8 s", before >= 8 ||
+                            (client.seedingFacts(hash)?.seedingSeconds ?: 0) >= 8)
+                        assertTrue("verified stop: $a", a.stoppedByRule != null)
+                        assertEquals(ClientRunState.STOPPED, client.torrent(hash)?.runState)
+                        stopped = true
+                        break
+                    }
+                    assertEquals("no Stop below the limit", RemoteSeeding.Tick.NO_WRITE, tick)
                     delay(1_000)
                 }
                 val a = requireNotNull(assignments.get(hash))
-                assertTrue("managed, never stopped: $a", a.policy != null && a.stopAttemptedReason == null)
-                assertEquals(true, client.torrent(hash)?.runState?.started)
-                stage("time_counter_seconds=${client.seedingFacts(hash)?.seedingSeconds} no_false_stop=true")
+                assertTrue("managed: $a", a.policy != null)
+                stage("time_counter_seconds=${client.seedingFacts(hash)?.seedingSeconds} " +
+                    (if (stopped) "stopped_by_rule=verified" else "no_false_stop=true"))
                 return@runBlocking
             }
             var probes = 0

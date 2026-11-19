@@ -194,7 +194,12 @@ independent seeding duration or the behavior of numbered ruTorrent profiles.
 **Real-daemon evidence**, loopback rig, `ProtocolSeedingInteropTest`. These are plain JUnit tests, because the desktop libtorrent JNI library must not load in a Robolectric sandbox:
 - **Deluge 2.1.2:** its own `seeding_time` for an idle seed passed 8 s, then exactly one verified Stop. A manual Start was respected.
 - **qBittorrent 4.6.3:** real pieces both ways, then its own `uploaded`/`downloaded` passed a ratio of 0.5 and exactly one verified Stop followed. A manual Start was respected.
-- **Transmission 4.0.5:** `secondsSeeding` stayed **0** for an idle seed verified at Add. qBittorrent's `seeding_time` likewise stalled (at 2 s) while idle. A time limit therefore never fabricated a Stop across 12 ticks. Loopback Transmission peering is a known rig limit, so a Transmission ratio Stop is unproved.
+- **Transmission:** behavior depends on the version.
+  - **4.0.5 (local rig):** `secondsSeeding` stayed **0** for an idle seed verified at Add, so the time rule never fabricated a Stop.
+  - **4.1.1 (CI):** the counter advanced, and the rule stopped the job once its own counter passed the limit.
+  - The test asserts the shared invariant: a Stop happens only once the client's own counter passes the limit.
+  - qBittorrent's `seeding_time` also stalled (at 2 s) while idle.
+  - Loopback Transmission peering is a known rig limit, so a Transmission ratio Stop is unproved.
 
 **Product consequence:** on these clients, seeding time may count only while a transfer is active. A time limit can then stop later than wall-clock time, never earlier.
 
