@@ -482,16 +482,16 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { scrollToNode(hasText("Files")); rule.onNodeWithText("Files").assertIsEnabled(); true }
                     .getOrDefault(false)
             }
-            rule.onNodeWithText("Files").performClick()
+            rule.onNodeWithText("Files").performSemanticsAction(SemanticsActions.OnClick)
             waitFor("Finish in Order entry", 60_000) {
                 runCatching { scrollToNode(hasText("Finish in Order…")); true }.getOrDefault(false)
             }
-            rule.onNodeWithText("Finish in Order…").performClick()
+            rule.onNodeWithText("Finish in Order…").performSemanticsAction(SemanticsActions.OnClick)
             waitFor("detected episode order", 30_000) {
                 runCatching { scrollToNode(hasText("Start Finish in Order")); true }.getOrDefault(false) &&
                     visible("Found an episode order")
             }
-            rule.onNodeWithText("Start Finish in Order").performClick()
+            rule.onNodeWithText("Start Finish in Order").performSemanticsAction(SemanticsActions.OnClick)
             stage("fio-start-dispatched-once")
             val firstEpisode = "Show S01E01.bin"
             waitFor("E01 at High on the real client", 90_000) {
