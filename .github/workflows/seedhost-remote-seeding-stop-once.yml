@@ -1,0 +1,73 @@
+name: Protected Seedhost remote Smart Seeding Stop (one existing transfer)
+
+# Owner-authorized (2026-11-14) real-host operation on the PRIMARY instance:
+# the production rTorrent Smart Seeding port and shared controller stop ONE
+# existing started, complete transfer whose real server ratio already meets
+# 1.0, exactly once with exact-hash readback, then restore its Start.
+# The controller sees only that one hash. No Add/Remove/priority/path/file
+# operation. Manual, main only, explicit apply input, first attempt only:
+# never PR/push, never a retry. Logs contain only redacted outcomes.
+on:
+  workflow_dispatch:
+    inputs:
+      apply_seeding_stop:
+        description: "Permit one rule Stop, then one restoring Start, of one existing transfer on the primary Seedhost"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-seedhost-android-manual
+  cancel-in-progress: false
+
+jobs:
+  seeding-stop-once:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          github.event_name == 'workflow_dispatch' && inputs.apply_seeding_stop }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+      CHUNKS_APPLY_SEEDING_STOP: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse missing secrets before any request
+        run: test -n "$CHUNKS_LIVE_RTORRENT_USER" && test -n "$CHUNKS_LIVE_RTORRENT_PASS"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Stop one eligible transfer by rule, then restore it
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0" > /dev/null
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+          set +e
+          gradle --no-daemon -q :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.SeedhostRemoteSeedingStopOnceTest > /dev/null 2>&1
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.SeedhostRemoteSeedingStopOnceTest.xml")
+          if not path.is_file():
+              print("CHUNKS_SEEDHOST_SEEDING: no executed receipt"); sys.exit(1)
+          root = ET.parse(path).getroot()
+          tests, skipped = int(root.get("tests", 0)), int(root.get("skipped", 0))
+          failed = int(root.get("failures", 0)) + int(root.get("errors", 0))
+          print(f"CHUNKS_SEEDHOST_SEEDING: tests={tests} skipped={skipped} failed={failed}")
+          # Only the test's own redacted outcome lines; never a failure message (it could name a path).
+          for line in (root.findtext("system-out") or "").splitlines():
+              if line.startswith("CHUNKS_SEEDHOST_SEEDING:"):
+                  print(line[:200])
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests == 1 and skipped == 0 and failed == 0 else 1)
+          PY

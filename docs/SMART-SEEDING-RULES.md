@@ -177,6 +177,18 @@ independent seeding duration or the behavior of numbered ruTorrent profiles.
 - JVM: `RemoteSeedingControllerTest` (6), the switch test in `SeedingRulesScreenTest`, and all existing seeding suites.
 - Real rTorrent 0.9.8, loopback, `RemoteSeedingInteropTest` (2 of 2 local runs): rTorrent downloads every piece from a Local seeder, with ratio 0 and no stop. A fresh Local leech pulls them back. rTorrent's own counters pass 0.5, and the controller sends exactly one verified Stop. A manual Start is never re-stopped.
 
+### Protected live Seedhost Stop gate (2026-11-19)
+
+`seedhost-remote-seeding-stop-once.yml` is manual and main-only. It requires the explicit `apply_seeding_stop` input, runs on the first attempt only, and is owner-authorized (2026-11-14) for Stop/Start of existing transfers. It runs `SeedhostRemoteSeedingStopOnceTest` against the **exact primary** endpoint:
+
+1. A read-only selection finds one started, complete transfer whose own server ratio is at least 1.0, choosing the lowest hash.
+2. The production `RTorrentSeedingPort` and `SeedingController` run behind a wrapper that exposes **only that hash**, so no other transfer is evaluated or touched.
+3. They send one rule Stop, verified by exact-hash readback.
+4. A second tick must send nothing.
+5. One restoring Start, with readback, returns the transfer to its original state.
+
+Logs carry only redacted outcomes. A local loopback rehearsal used a real rTorrent job with an actual 1.0 ratio. It showed a verified Stop and no second Stop, and a restored Start confirmed independently as `d.state=1 d.is_active=1`. The live run is recorded in QUALITY-LEDGER once dispatched.
+
 ### Transmission, qBittorrent and Deluge (same controller, 2026-11-19)
 
 **Port.** `ProtocolSeedingPort` reads each client's own counters through the optional read-only `TorrentClient.seedingFacts(hash)`:
