@@ -193,7 +193,15 @@ internal fun ProtocolAddScreen(
         else emptySet()
     val noFileChosen = layout != null && layout.none { it.index !in chosenSkips }
     val mine = attempt.profileId == null || attempt.profileId == profileId
+    // An unresolved earlier write on this client (uncertain, readback pending, Start
+    // unverified) blocks a new Add until the person dismisses it: never a blind retry.
+    val unresolved = attempt.coordinator(profileId).phase in setOf(
+        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.WRITE_ATTEMPTED,
+        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN,
+        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) && !attempt.busy
     val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine &&
+        !unresolved &&
         !noFileChosen
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
@@ -341,10 +349,23 @@ internal fun ProtocolAddScreen(
                     .testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS))
         }
         val outcome = attempt.outcome.takeIf { attempt.profileId == profileId }
+        // The one shared, engine-neutral receipt (as Local and rTorrent): the coordinator's
+        // evidence decides the heading; the client's own reason is a subordinate detail.
+        val receipt = if (attempt.profileId == profileId)
+            io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector.from(
+                phase = attempt.coordinator(profileId).phase, clientLabel = clientLabel,
+                submitting = attempt.busy,
+                knownNoWrite = outcome is ClientOperationOutcome.Refused) else null
+        if (receipt != null) UniversalAddReceiptCard(receipt,
+            modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS),
+            needsAttention = receipt.stage != io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.VERIFIED &&
+                receipt.stage != io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.SUBMITTING) {
+            outcome?.takeIf { it !is ClientOperationOutcome.Verified }?.let { result ->
+                Text(ProtocolOperationText.describe("Add", result, clientLabel),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
         outcome?.let { result ->
-            Text(ProtocolOperationText.describe("Add", result, clientLabel),
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    .testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS))
             if (result is ClientOperationOutcome.Verified || result is ClientOperationOutcome.Pending) {
                 OutlinedButton(onClick = { onViewTransfer(result.hash) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("View transfer") }

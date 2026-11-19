@@ -87,7 +87,9 @@ class ProtocolAddScreenTest {
             .assertIsEnabled().performClick()
         rule.waitUntil(5_000) { attempt.outcome != null }
         rule.waitForIdle()
-        rule.onNodeWithText("Add: confirmed on Box Deluge.").performScrollTo()
+        // The one shared receipt: verified by the coordinator's evidence, not prose.
+        rule.onNodeWithText("Added to Box Deluge").performScrollTo()
+        rule.onNode(androidx.compose.ui.test.hasStateDescription("Verified")).assertExists()
         assertEquals(1, fake.writes)
         assertFalse(fake.added!!.startNow)
         assertEquals(hash, (fake.added!!.source as ClientAddSource.Magnet).infoHash)
@@ -169,11 +171,11 @@ class ProtocolAddScreenTest {
         rule.waitUntil(5_000) { attempt.outcome != null }
         rule.waitForIdle()
         assertEquals(1, fake.writes)
-        // Tapping Add again: the shared admission refuses before any write.
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        // Add is unavailable while the uncertain write is unresolved: no blind second write.
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsNotEnabled().performClick()
         rule.waitForIdle()
         assertEquals("no blind second write after an uncertain Add", 1, fake.writes)
-        rule.onNodeWithText("Resolve or finish the previous exact Add first", substring = true).assertExists()
+        rule.onNodeWithText("Couldn't confirm Add on Box Deluge").assertExists()
         // The person dismisses the uncertain result; a new reviewed Add is admitted.
         rule.onNodeWithText("Add another").performScrollTo().performClick()
         rule.waitForIdle()
