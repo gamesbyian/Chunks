@@ -35,7 +35,7 @@
 
 ## R5. Approved advanced Android functionality (run before final R4)
 
-1. **Seeding and priorities:** rTorrent ratio enforcement is now opt-in while connected, using the shared at-most-once journal (2026-11-19, `RemoteSeeding`). Next:
+1. **Seeding and priorities:** Remote Smart Seeding is merged (#1898, `38291a4`): opt-in per server, while connected, on the shared at-most-once journal for rTorrent, Transmission, qBittorrent and Deluge. Next:
    - a protected live Seedhost Stop gate;
    - numbered-instance getter evidence;
    - Transmission ratio-Stop proof;
