@@ -70,8 +70,8 @@ internal data class UniversalAddClientCapabilities(
                 fileChoices = ClientCapability.FILE_PRIORITIES in caps && stopped,
                 priorityLevels = BOTH_LEVELS.filter { it in session?.filePriorities.orEmpty() }.toSet(),
                 finishInOrderAtAdd = false,
-                // Combined has no alias scope for these clients yet; a name would be dropped.
-                displayName = false,
+                // Stored under the exact profile's ProtocolAliasScope after a verified new Add.
+                displayName = true,
                 artworkChoice = false,
                 originalSourcePolicy = true)
         }

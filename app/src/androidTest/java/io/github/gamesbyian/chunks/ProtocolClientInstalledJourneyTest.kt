@@ -442,6 +442,13 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
             }
             stage("choices-kept-file-high")
+            // A Chunks-only display name for this Add: stored for this exact profile only
+            // after the verified NEW registration, never sent to the client.
+            val choicesAlias = "Chunks alias " + kind.name.lowercase()
+            scrollToNode(hasText("Optional display name"))
+            rule.onNodeWithText("Optional display name").performSemanticsAction(SemanticsActions.OnClick)
+            typeInto("Display name in Chunks", choicesAlias)
+            stage("choices-display-name-entered")
             ensureStartWhenAddedOff()
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
             stage("choices-add-dispatched-once")
@@ -465,6 +472,14 @@ class ProtocolClientInstalledJourneyTest {
             assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
                 runBlocking { independentRead(choicesHash) }?.runState)
             stage("choices-skip-and-high-verified-independently")
+            assertEquals("display name stored for this exact profile", choicesAlias,
+                TransferAliasStore(InstrumentationRegistry.getInstrumentation().targetContext)
+                    .get(ProtocolAliasScope.of(profileId), choicesHash))
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            waitFor("canonical Transfers shows the Chunks display name", 90_000) {
+                runCatching { scrollToNode(hasText(choicesAlias, substring = true)); true }.getOrDefault(false)
+            }
+            stage("choices-display-name-shown-in-transfers")
             runBlocking { witness.remove(choicesHash, deleteData = false) }
             // Restore only the test monitor's identity after all assertions (as the
             // Open With handoff tests do); the shared source is never redispatched.

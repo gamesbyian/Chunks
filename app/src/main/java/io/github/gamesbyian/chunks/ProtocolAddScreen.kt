@@ -137,7 +137,14 @@ internal fun ProtocolAddScreen(
     /** HTTPS .torrent links are fetched and validated on this device, never by the client. */
     fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
         withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
-    }
+    },
+    /** The shared Add draft's optional Chunks display name (the destination picker edits it). */
+    aliasState: MutableState<String>? = null,
+    /**
+     * Saves a Chunks-only display name for a verified NEW exact registration under this
+     * exact profile's alias scope; never overwrites an existing name, never calls the client.
+     */
+    saveVerifiedAlias: ((hash: String, alias: String) -> Boolean)? = null
 ) {
     val controller = attemptController ?: remember(attemptScope) { UniversalAddAttemptController { attemptScope } }
     val context = LocalContext.current
@@ -244,6 +251,7 @@ internal fun ProtocolAddScreen(
             it == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED
     } && !attempt.busy
     val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine &&
+        validUniversalAddAlias(aliasState?.value.orEmpty()) &&
         !unresolved &&
         !noFileChosen
 
@@ -349,6 +357,12 @@ internal fun ProtocolAddScreen(
                 // source may follow it (as before). Pending/uncertain results still block
                 // until the person dismisses them ("Add another"): never a blind retry.
                 if (!attempt.busy) coordinator.finishVerified()
+                // The display name is frozen with the click: a later draft edit cannot relabel it.
+                val frozenAlias = runCatching { normalizedUniversalAddAlias(aliasState?.value.orEmpty()) }
+                    .getOrElse {
+                        attempt.admissionRefusal = "Not added: that display name contains unsupported characters or exceeds 160 characters."
+                        return@Button
+                    }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
                     profileId, request, session?.defaultDownloadDirectory)
                 val decision = io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
@@ -375,6 +389,9 @@ internal fun ProtocolAddScreen(
                 attempt.originalDeletion = null
                 attempt.originalNote = null
                 val appContext = context.applicationContext
+                val aliasStore = saveVerifiedAlias ?: { h: String, value: String ->
+                    TransferAliasStore(appContext).saveVerifiedNewAddAlias(ProtocolAliasScope.of(profileId), h, value)
+                }
                 val hash = frozen.infoHash
                 // The one shared lifecycle (as Local and rTorrent): the app-owned
                 // controller runs the single write and settles the ticket.
@@ -393,6 +410,16 @@ internal fun ProtocolAddScreen(
                         is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed ->
                             if (run.writeMayHaveHappened) ClientOperationOutcome.Uncertain(hash, "unexpected failure")
                             else ClientOperationOutcome.Refused(hash, "The Add could not be prepared; nothing was sent")
+                    }
+                    // A display name only for this Add's positively verified NEW registration.
+                    val verifiedNewHash = (attempt.outcome as? ClientOperationOutcome.Verified)?.hash
+                        ?.takeIf { coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
+                    exactNewAddAlias(frozenAlias, hash, verifiedNewHash)?.let { alias ->
+                        val saved = withContext(Dispatchers.IO) {
+                            runCatching { aliasStore(hash.lowercase(java.util.Locale.ROOT), alias) }.getOrDefault(false)
+                        }
+                        if (saved) aliasState?.let { if (it.value.trim() == alias) it.value = "" }
+                        else attempt.checkNote = "Added, but its Chunks display name was not saved."
                     }
                     // The shared original-.torrent policy: only this Add's positively
                     // verified NEW registration may archive or ask to delete it.

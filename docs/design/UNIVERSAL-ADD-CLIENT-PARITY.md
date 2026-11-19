@@ -78,7 +78,7 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 - Transmission/qBittorrent/Deluge gained HTTPS `.torrent` links (fetched and validated on the device, never by the client), Paste and the canonical `MagnetDraftCheck` (base32 normalized to hex).
 - `OriginalSourceRetirement` applies the global original-`.torrent` Keep/Archive/Delete policy after a verified NEW registration for rTorrent **and** the protocol clients (previously not applied to protocol Adds at all). Uncertain results keep the original; Delete stays a separately confirmed request.
 - `RTorrentAddObserver` composes rTorrent's existing read-only Recheck evidence as a `UniversalAddObserver`; every client's unresolved write now gets the same app-owned follow-up.
-- The shared picker no longer offers a Chunks display name for protocol targets, where it was silently dropped (protocol aliases are not yet supported in Combined).
+- Protocol display names: each Transmission/qBittorrent/Deluge profile has its own `ProtocolAliasScope` (exact client identity), so Combined shows and renames its transfers' Chunks names, and an Add-time name is saved only after a verified NEW registration (#1903 had withdrawn the field while it was silently dropped).
 
 **Still separate:** the three bodies still own their Save to/Start/options controls and submit orchestration (each calling the shared admission and lifecycle with its own executor); `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
 

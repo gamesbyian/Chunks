@@ -925,6 +925,10 @@ internal fun CombinedTransfersScreen(
         if (serverId != null && server != null && serverPrivacy?.mayShow == true) {
             put(serverId, server.aliasScope)
         }
+        // Transmission/qBittorrent/Deluge: only while this exact profile's privacy gate allows it.
+        protocolProfiles.forEach { profile ->
+            if (profile.environment in protocolAllowed) put(profile.environment, profile.aliasScope)
+        }
         savedProfiles.forEach { profile ->
             val scope = profile.aliasScope ?: return@forEach
             val id = EnvironmentId(profile.id)

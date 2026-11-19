@@ -76,7 +76,8 @@ class ProtocolAddSourceParityTest {
 
     private fun render(fake: Fake, attempt: ProtocolAddAttempt, draft: androidx.compose.runtime.MutableState<String>,
                        torrent: androidx.compose.runtime.MutableState<PendingLocalAdd?>,
-                       fetched: MutableList<String> = mutableListOf()) {
+                       fetched: MutableList<String> = mutableListOf(),
+                       alias: androidx.compose.runtime.MutableState<String>? = null) {
         rule.setContent {
             ChunksTheme {
                 ProtocolAddScreen(
@@ -87,6 +88,7 @@ class ProtocolAddSourceParityTest {
                     startState = mutableStateOf(false), attempt = attempt,
                     attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
                     onViewTransfer = {},
+                    aliasState = alias,
                     fetchTorrentLink = { link ->
                         fetched += link.uri.toString()
                         TorrentLinkResult.Fetched(torrentBytes, TorrentMetainfoReader.preview(torrentBytes), "example.org")
@@ -171,5 +173,33 @@ class ProtocolAddSourceParityTest {
         assertTrue(archiveDirectory().listFiles().orEmpty().none { it.name.startsWith(torrentHash) })
         assertNull(attempt.originalDeletion)
         assertEquals(1, fake.writes)
+    }
+
+    private fun aliases() = TransferAliasStore(ApplicationProvider.getApplicationContext())
+
+    @Test fun aVerifiedNewProtocolAddSavesItsDisplayNameUnderTheExactProfileScope() {
+        val fake = Fake()
+        val attempt = ProtocolAddAttempt()
+        val alias = mutableStateOf("My Parity Show")
+        render(fake, attempt, mutableStateOf(""), mutableStateOf(
+            PendingLocalAdd(TorrentMetainfoReader.preview(torrentBytes), torrentBytes)), alias = alias)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null && alias.value.isEmpty() }
+        assertTrue(attempt.outcome is ClientOperationOutcome.Verified)
+        assertEquals("My Parity Show", aliases().get(ProtocolAliasScope.of("tr"), torrentHash))
+        assertNull("another exact profile never sees it", aliases().get(ProtocolAliasScope.of("other"), torrentHash))
+    }
+
+    @Test fun anUncertainProtocolAddSavesNoDisplayName() {
+        val fake = Fake().apply { loseReply = true }
+        val attempt = ProtocolAddAttempt()
+        val alias = mutableStateOf("Never Saved")
+        render(fake, attempt, mutableStateOf(""), mutableStateOf(
+            PendingLocalAdd(TorrentMetainfoReader.preview(torrentBytes), torrentBytes)), alias = alias)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null }
+        rule.waitForIdle()
+        assertNull(aliases().get(ProtocolAliasScope.of("tr"), torrentHash))
+        assertEquals("the draft is kept for the person", "Never Saved", alias.value)
     }
 }
