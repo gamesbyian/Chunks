@@ -12,6 +12,20 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-19 UTC: protocol Finish in Order (#1885), installed Add-time High (#1884), stopped-Add toggle diagnosis
+
+- **#1884** merged as `b1d2c6c` from exact head `d0a446f`. `installed-protocol-client` executed `choices-kept-file-high` and `choices-skip-and-high-verified-independently` on real Transmission, qBittorrent and Deluge: the installed app raised the kept file to High at Add, and an independent readback showed HIGH and SKIP with the job stopped.
+- **#1885** merged as `92ce4c9` from exact head `348c125`: Finish in Order for Transmission/qBittorrent/Deluge through `ClientFinishInOrderPort`.
+  - Integration-real-peer profile ACCEPTABLE, and every check run succeeded. `interop` executed `ClientFinishInOrderInteropTest` on the three real daemons.
+  - `installed-magnet-lifecycle` was dispatched on the head. It was red once at the first post-Connect wait, before any Add, and green on rerun of the unchanged head.
+  - `api29-downloads` waived by name.
+  - Local rig: Transmission/Deluge E01 High, E02 Normal, E03 Low; qBittorrent 5.1.4 and 4.6.3 High, Normal, Normal; a second step was Idle with no write. On the CI runner's **qBittorrent 5.1.4** the full shared-workflow suites also passed locally: core journey, Add-time file choices, Finish in Order and pending magnets.
+- **"Added stopped" intermittent, diagnosed as test-only.** Deluge on #1885 run 44428021753 and qBittorrent 5.1.4 on unchanged-main dispatch 44430524897 each showed a confirmed stopped Add, then Downloading or metaDL on readback.
+  - Real Deluge 2.1 and qBittorrent 5.1.4 kept a stopped magnet stopped for 90 s locally, alone and with a second polling client.
+  - Cause: the journey's coordinate tap on "Start when added" missed, so Start stayed ON and the app correctly started the job.
+  - `348c125` sets the toggle off through its semantics action and asserts it reads off. This is the same missed-tap class as the Add submit fixed in #1882.
+- **Negative result kept.** Re-hinting `connect_peer` every 3 s to fix the `LocalTorrentEngineTest` refetch flake made it fail 6 of 6, where the original passed 3 of 3; libtorrent likely drops the duplicate same-IP connection mid-transfer. The change was reverted, and the flake remains a follow-up.
+
 ## 2026-11-18 UTC: device-screen Add-time Low/High (#1882) and the second-remote-Add stall diagnosed
 
 - **#1882** merged as `2d6e390` from exact head `d6cc3ce`. Integration-real-peer profile ACCEPTABLE, and every check run on the head succeeded:
