@@ -318,8 +318,8 @@ internal fun ProtocolAddScreen(
         // 2. Exact target (the shared picker).
         destinationPicker()
         sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
-        // 3. Save to: client default, or one exact folder.
-        Text("Save to", style = MaterialTheme.typography.titleMedium)
+        // 3. Save to: client default or one exact folder, within the shared section.
+        UniversalAddSaveToSection {
         Text(if (useCustom) "A folder you enter on $clientLabel"
             else "$clientLabel's default folder" + (session?.defaultDownloadDirectory?.let { " ($it)" } ?: ""),
             style = MaterialTheme.typography.bodyMedium)
@@ -333,12 +333,13 @@ internal fun ProtocolAddScreen(
             isError = !folderValid, singleLine = true, enabled = !attempt.busy,
             modifier = Modifier.fillMaxWidth()
         )
+        }
         // 4. Start.
         UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
             onCheckedChange = { startState.value = it })
         if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
-        Button(
+        UniversalAddSubmitAction(
             onClick = {
                 val frozen = source ?: return@Button
                 // Frozen at the click: reviewed index → path for exactly these bytes.
@@ -444,7 +445,7 @@ internal fun ProtocolAddScreen(
             },
             enabled = canSubmit,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(ChunksSemantics.ADD_SUBMIT)
-        ) { Text(if (attempt.busy) "Adding to $clientLabel…" else "Add to $clientLabel") }
+        , label = if (attempt.busy) "Adding to $clientLabel…" else "Add transfer")
         // A refusal before any write (fixed admission vocabulary) shares the one status location.
         attempt.admissionRefusal?.takeIf { attempt.profileId == null || attempt.profileId == profileId }?.let { why ->
             Text(why, color = MaterialTheme.colorScheme.error,
