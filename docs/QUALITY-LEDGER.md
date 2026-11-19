@@ -21,7 +21,7 @@
     - Resume-death (29 and 35) failed once at the guard "PR synthetic merge differs from exact reviewed head": `main` had moved after the branch last merged it, and the guard correctly refused stale evidence. Merging `main` fixed it.
   - **Causes:** lazy rows not composed or disposed between lookup and action, and a coordinate tap that missed the Start toggle, so Start stayed on. None involved the engine change. After the engine fix the original `LocalTorrentClientTest` failure did not recur in any later CI run.
 - **#1892** merged as `94b111a` from exact head `39655e7`: `LazyComposeActions.activateOnce` / `replaceText` replace four per-test copies. Every check run on the head succeeded (native Add shards and verifier, atlas, magnet journey); the untriggered gates were waived by name (androidTest-only diff).
-- **Still open:** `LocalTorrentEngineTest.startAfterPayloadTruncated…` `repaired-download-flush` (about 1 run in 3 on CI; 3 of 3 local runs passed, and single-core pinning plus CPU load also failed to reproduce it). Re-hinting `connect_peer` made it worse and was reverted. Capture a failing CI run's evidence first.
+- **Still open:** `LocalTorrentEngineTest.startAfterPayloadTruncated…` `repaired-download-flush` (about 1 run in 3 on CI; locally it failed once inside a full suite run and passed alone, 3 of 3). The CPU-contention experiments (full CPU load, 5 of 5; a single-core pinned run that never reported) were on the stopped-Recheck test, not this one. Re-hinting `connect_peer` made it worse and was reverted. Capture a failing CI run's evidence first.
 
 ## 2026-11-19 UTC: protocol Add converges on the shared Universal Add attempt, admission and receipt
 
