@@ -49,31 +49,9 @@ class LocalAddHiddenInCombinedInstrumentedTest {
 
     private fun waitFor(ms: Long = 20_000, condition: () -> Boolean) = rule.waitUntil(ms, condition)
 
-    /**
-     * Find -> reveal -> re-find -> assert -> act (TEST-ARCHITECTURE lazy-container contract) in one
-     * bounded loop, dispatching the semantics click AT MOST once. Presence and enabled state come from
-     * the node's own semantics. The one Compose case with no dedicated type, a row disposed between
-     * that read and the action, is a plain IllegalStateException "unattached node" thrown BEFORE the
-     * action runs, so re-locating is safe; anything else propagates.
-     */
-    private fun activateOnce(target: androidx.compose.ui.test.SemanticsMatcher) {
-        var dispatched = false
-        waitFor(30_000) {
-            if (dispatched) return@waitFor true
-            val node = rule.onAllNodes(target).fetchSemanticsNodes().singleOrNull() ?: return@waitFor false
-            if (androidx.compose.ui.semantics.SemanticsActions.OnClick !in node.config ||
-                SemanticsProperties.Disabled in node.config) return@waitFor false
-            try {
-                rule.onNode(target).performScrollTo()
-                rule.onNode(target).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-                dispatched = true
-                true
-            } catch (failure: IllegalStateException) {
-                if (failure.message?.contains("unattached node") != true) throw failure
-                false
-            }
-        }
-    }
+    /** Semantics click at most once, via the shared lazy-container helper. */
+    private fun activateOnce(target: androidx.compose.ui.test.SemanticsMatcher) =
+        LazyComposeActions.activateOnce(rule, target)
 
     @Test fun anAcknowledgedLocalAddHiddenByTheCombinedSearchIsExplained() {
         // Test the ordinary All/All baseline before deliberately narrowing by

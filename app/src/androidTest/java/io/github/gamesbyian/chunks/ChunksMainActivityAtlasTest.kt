@@ -344,34 +344,9 @@ class ChunksMainActivityAtlasTest {
         // it as a child on API35. Accept either representation but still
         // require one unique click target; neither path issues a second RPC.
         val connectControl = androidx.compose.ui.test.hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
-        // Find -> reveal -> re-find -> assert -> act (TEST-ARCHITECTURE lazy-container contract),
-        // in ONE bounded loop so no lookup can go stale between "observed enabled" and the click:
-        // CI showed the node composed and enabled in the wait, then gone at the next lookup (IME
-        // re-layout recycling the row), failing BEFORE any click. Presence and enabled state are
-        // read from the node's own semantics (defined conditions, nothing caught). The one
-        // Compose case with no dedicated type, a row disposed between that read and the action, is
-        // a plain IllegalStateException "unattached node": it is thrown before the action runs, so
-        // re-locating is safe. Anything else propagates. The click is dispatched AT MOST once:
-        // after it returns, the loop ends and no second Connect can be sent.
-        var connectDispatched = false
-        rule.waitUntil(30_000) {
-            if (connectDispatched) return@waitUntil true
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(connectControl)
-            val node = rule.onAllNodes(connectControl, useUnmergedTree = true)
-                .fetchSemanticsNodes().singleOrNull() ?: return@waitUntil false
-            val clickable = SemanticsActions.OnClick in node.config &&
-                SemanticsProperties.Disabled !in node.config
-            if (!clickable) return@waitUntil false
-            try {
-                rule.onNode(connectControl, useUnmergedTree = true)
-                    .performSemanticsAction(SemanticsActions.OnClick)
-                connectDispatched = true
-                true
-            } catch (failure: IllegalStateException) {
-                if (failure.message?.contains("unattached node") != true) throw failure
-                false
-            }
-        }
+        // Unique, enabled Connect target, clicked through its semantics action AT MOST once by the
+        // shared helper (CI showed it composed and enabled, then gone at the next lookup).
+        LazyComposeActions.activateOnce(rule, connectControl, useUnmergedTree = true)
         try {
             // Verified Connect acknowledges and stays on Connections (#1515); the saved
             // profile then opens the one canonical Transfers browser.
