@@ -8,6 +8,7 @@ import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import java.io.File
 import java.security.SecureRandom
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -151,6 +152,78 @@ class LocalClientInteropTest {
             println("CHUNKS_INTEROP: MOVE $direction target_downloaded_from_source=true pieces=${fx.pieceCount} bytes_identical=true")
             verified("$direction retire", transfer.retireSource(hash, copied as ClientJobTransfer.CopyResult.Copied))
             assertTrue(files.keys.all { File(srcDir, "$name/$it").isFile })
+            dstOps.remove(hash, deleteData = false)
+        }
+    }
+
+    /**
+     * The open Local <-> Transmission finding: Transmission does not pick up a
+     * loopback peer from the tracker on this rig, so Local dials its fixed peer
+     * port (51513), as a real swarm peer would. The Move itself is the same
+     * production job-only Copy -> verified target -> separate source retirement.
+     */
+    @Test fun moveBetweenLocalAndRealTransmissionTransfersRealBytes() = runBlocking {
+        val url = System.getenv("CHUNKS_INTEROP_TRANSMISSION_URL").orEmpty()
+        val remoteDir = System.getenv("CHUNKS_INTEROP_TRANSMISSION_PAYLOAD_DIR").orEmpty()
+        assumeTrue("Needs the local Transmission daemon", url.isNotBlank() && remoteDir.isNotBlank())
+        val remote = TransmissionClient(RemoteCredentials(url,
+            System.getenv("CHUNKS_INTEROP_TRANSMISSION_USER").orEmpty(),
+            System.getenv("CHUNKS_INTEROP_TRANSMISSION_PASS").orEmpty()))
+        val engine = engine()
+        val place = temp.newFolder("place-tr")
+        val local = localClient(engine, place)
+        val localOps = ClientOperations(local, 60, 500)
+        val remoteOps = ClientOperations(remote, 60, 500)
+        val transmissionPeer = java.net.InetSocketAddress("127.0.0.1", 51513)
+
+        suspend fun waitSeeding(c: TorrentClient, hash: String, total: Long, poke: suspend () -> Unit): Boolean {
+            for (i in 0 until 240) {
+                val t = c.torrent(hash)
+                if (t?.runState == ClientRunState.SEEDING && t.completedBytes == total) return true
+                if (i % 10 == 3) poke()
+                delay(500)
+            }
+            return false
+        }
+
+        for (toRemote in listOf(true, false)) {
+            val direction = if (toRemote) "LOCAL->TRANSMISSION" else "TRANSMISSION->LOCAL"
+            val (fx, files) = fixture(null)
+            val hash = fx.infoHashV1
+            val name = TorrentMetainfoReader.preview(fx.torrent).name
+            val (src, srcOps, dst, dstOps) = if (toRemote) listOf(local, localOps, remote, remoteOps)
+                else listOf(remote, remoteOps, local, localOps)
+            src as TorrentClient; dst as TorrentClient
+            srcOps as ClientOperations; dstOps as ClientOperations
+            val srcDir = (if (toRemote) File(place, "src-" + hash.take(8)) else File(remoteDir, "src-" + hash.take(8))).apply { mkdirs() }
+            val dstDir = (if (toRemote) File(remoteDir, "dst-" + hash.take(8)) else File(place, "dst-" + hash.take(8))).apply { mkdirs() }
+            File(srcDir, name).mkdirs()
+            files.forEach { (f, b) -> File(srcDir, "$name/$f").writeBytes(b) }
+
+            verified("$direction source_add", srcOps.add(ClientAddRequest(ClientAddSource.TorrentFile(fx.torrent),
+                srcDir.absolutePath, startNow = true)))
+            assertTrue("$direction: source never seeded", waitSeeding(src, hash, fx.totalBytes) {
+                if (!toRemote) runCatching { srcOps.recheck(hash) }
+            })
+            val transfer = ClientJobTransfer(srcOps, src, dstOps, dst,
+                sourceClientId = "test-$direction-source", targetClientId = "test-$direction-target")
+            // A copied magnet needs metadata from a peer before Start can be observed:
+            // keep Local dialling Transmission while the copy's own readback runs.
+            val dialler = launch(kotlinx.coroutines.Dispatchers.IO) {
+                while (true) { runCatching { engine.connectPeer(hash, transmissionPeer) }; delay(1_000) }
+            }
+            val copied = try { transfer.copy(hash, dstDir.absolutePath, startOnTarget = true) }
+                finally { dialler.cancel() }
+            assertTrue("$direction copy: $copied", copied is ClientJobTransfer.CopyResult.Copied)
+            assertTrue("$direction: target never downloaded from the source", waitSeeding(dst, hash, fx.totalBytes) {
+                engine.connectPeer(hash, transmissionPeer)
+            })
+            files.forEach { (f, b) ->
+                assertTrue("$direction $f bytes", File(dstDir, "$name/$f").readBytes().contentEquals(b))
+            }
+            println("CHUNKS_INTEROP: MOVE $direction target_downloaded_from_source=true pieces=${fx.pieceCount} bytes_identical=true")
+            verified("$direction retire", transfer.retireSource(hash, copied as ClientJobTransfer.CopyResult.Copied))
+            assertTrue("source files kept", files.keys.all { File(srcDir, "$name/$it").isFile })
             dstOps.remove(hash, deleteData = false)
         }
     }

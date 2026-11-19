@@ -2,6 +2,16 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: Local ↔ Transmission job Move with real bytes
+
+- **Real daemons, this container** (Transmission 4.0.5 and real libtorrent): `LocalClientInteropTest.moveBetweenLocalAndRealTransmissionTransfersRealBytes` runs the production job-only Move both ways: Copy, verified target, then a separate source retirement. Each direction downloaded every piece from the source, the files were byte-identical, and the source files were kept.
+- This closes the open "Local → Transmission did not connect a peer" finding for the transfer itself. On this rig Transmission does not use tracker-announced loopback peers, so Local dials its fixed peer port (51513).
+- Runs:
+  - Before the dialler: one red. The copied magnet's Start was never observed, because a metadata-only Local job had no peer.
+  - With the dialler: one red straight after a daemon restart, then three consecutive greens.
+- That red is the product behaving honestly: a copied magnet whose metadata does not arrive within the copy's readback window is reported **Not copied, Start not yet observed**, and retirement stays unavailable.
+- CI interop now requires all three Local receipts.
+
 ## 2026-11-19 UTC: #1905 merged; live Seedhost per-transfer upload caps
 
 - **#1905 merged** as `e0c188d` from exact head `60e8991` (integration-real-peer acceptance report ACCEPTABLE; installed-protocol-client and real-client interop green).
