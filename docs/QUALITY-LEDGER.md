@@ -12,6 +12,17 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-19 UTC: protocol Add converges on the shared Universal Add attempt, admission and receipt
+
+- **#1888.** The Transmission/qBittorrent/Deluge `ProtocolAddAttempt` moved from composition `remember` into the app-owned `LocalAddAttemptOwner`, beside the Local and rTorrent attempts. Its write already ran in that owner's scope, so after recreation the receipt had been lost and Add re-enabled.
+  - `installed-protocol-client` executed `add-receipt-kept-across-recreation` on all three real clients: `ActivityScenario.recreate()` after a confirmed Add, and the receipt stayed.
+  - Negative control: reasoned from the code, not executed (no emulator here).
+- **CI observation, unresolved.** `build` on #1888's head was red once. `LocalTorrentClientTest.stoppedAddLifecyclePrioritiesRecheckExportAndRemoveKeepingFiles:142` got `Uncertain` from the stopped Recheck on real libtorrent. It was green on rerun of the unchanged head and 5 of 5 locally. `recheckStopped` waits up to 60 s, so an exception or handle change mapped to Uncertain is the likelier path. Uncertain is the honest outcome either way. Track it if it recurs.
+- **Admission and receipt (follow-up PR).**
+  - Protocol Adds pass `UniversalAddCoordinator` and `UniversalAddAdmission` with `UniversalAddTarget.ProtocolClient`, and render `UniversalAddReceiptCard` from the shared projector.
+  - Defect fixed, with an executed negative control: on the old screen, a second tap after an uncertain protocol Add sent a blind second write. Add now stays unavailable until the person dismisses the result.
+  - Full local JVM suite: 2,900 tests, with only the 3 known JDK 21 failures.
+
 ## 2026-11-19 UTC: live Seedhost Finish in Order and Add-time Low on merged main
 
 - **Source.** `seedhost-other-protocols-interop.yml` on trusted `main` `d85551c` (#1886): apply=true, first attempt, fixture-only.
