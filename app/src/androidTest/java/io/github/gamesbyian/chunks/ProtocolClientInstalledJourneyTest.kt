@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
@@ -390,6 +391,16 @@ class ProtocolClientInstalledJourneyTest {
             rule.onNodeWithText(skipped).performClick()
             waitFor("one of two files chosen") { visible("Files to download (1 of 2") }
             stage("choices-one-file-unticked")
+            // Add-time priority: raise the kept file to High (every client stores High).
+            val keptIndex = requireNotNull(AddFileChoices.declared(
+                io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(choices.first.torrent)))
+                .single { f -> f.path.endsWith(kept) }.index
+            val keptPriority = ChunksSemantics.ADD_FILE_PRIORITY + "." + keptIndex
+            clickOnce(keptPriority, "kept file priority", 30_000)
+            waitFor("kept file raised to High") {
+                runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
+            }
+            stage("choices-kept-file-high")
             scrollToNode(hasText("Start when added"))
             val startOn = rule.onNode(hasText("Start when added")).fetchSemanticsNode().config
                 .getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ToggleableState) { null } ==
@@ -410,13 +421,13 @@ class ProtocolClientInstalledJourneyTest {
                 files.size == 2 &&
                     files.single { f -> f.path.endsWith(skipped) }.priority ==
                         io.github.gamesbyian.chunks.rpc.ClientFilePriority.SKIP &&
-                    files.single { f -> f.path.endsWith(kept) }.priority !=
-                        io.github.gamesbyian.chunks.rpc.ClientFilePriority.SKIP
+                    files.single { f -> f.path.endsWith(kept) }.priority ==
+                        io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH
             }
             waitFor("Add receipt", 60_000) { visible("Add: confirmed") }
             assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
                 runBlocking { independentRead(choicesHash) }?.runState)
-            stage("choices-skip-verified-independently")
+            stage("choices-skip-and-high-verified-independently")
             runBlocking { witness.remove(choicesHash, deleteData = false) }
             // Restore only the test monitor's identity after all assertions (as the
             // Open With handoff tests do); the shared source is never redispatched.
