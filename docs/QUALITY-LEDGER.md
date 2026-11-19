@@ -3093,4 +3093,16 @@ Alpine 3.22 rTorrent 0.15.2 was separately attempted but **failed** on [40368041
 - **Remote rTorrent ratio enforcement (local evidence):**
   - `RemoteSeedingInteropTest`, real rTorrent 0.9.8 loopback, 2 of 2 runs: real counters, one verified Stop, a manual Start respected.
   - Seeding JVM suites: 61 tests, 0 failures.
-  - CI receipts come from its PR.
+- **#1898 merged `38291a4`** (exact head `ad12d4f`): 12 checks green.
+  - **Real-client interop**, run 44486846316, with the strict receipt gate:
+    - `UniversalAddLifecycleInteropTest`: 4 executed, 0 skipped, on Transmission, qBittorrent, Deluge and rTorrent. This closes #1895's per-case visibility gap.
+    - `RemoteSeedingInteropTest`: rTorrent ratio Stop, verified.
+    - `ProtocolSeedingInteropTest` (3):
+      - Deluge: time Stop.
+      - qBittorrent: ratio Stop after real traffic.
+      - Transmission **4.1.1**: its own counter reached 9 s, then a verified Stop. On 4.0.5 locally it stayed at 0 with no stop.
+  - **Other checks:** JVM build 44486846253, native Add shards with verifier 44486846338, installed protocol client 44486846202, two-server Combined 44486846208, remote delete-data 44486846132, minified smoke 44486846153 and native atlas 44486846276.
+- **Red attempts kept:**
+  - Head `9e0abad`: JVM `build` failed because the PR's Robolectric interop tests loaded the desktop libtorrent JNI library inside a sandbox, breaking later native tests. Fixed by making those tests plain JUnit.
+  - Head `fbd4ba3`: `interop` failed on a Transmission-version-specific assertion. Fixed by asserting the version-independent invariant.
+  - Head `fbd4ba3`: the native Add verifier was red only because its shards were cancelled when a newer commit was pushed.
