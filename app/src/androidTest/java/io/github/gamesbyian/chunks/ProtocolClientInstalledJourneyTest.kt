@@ -110,6 +110,26 @@ class ProtocolClientInstalledJourneyTest {
         throw AssertionError("Could not enter $label", last)
     }
 
+    /**
+     * Make "Start when added" OFF deterministically before a stopped Add: read the
+     * toggle's own state, activate it once through its click action only if it is
+     * on, then require it to read off. A missed coordinate tap previously left
+     * Start on, so the app correctly started the job (installed runs 44428021753,
+     * 44430524897: a confirmed Add, then Downloading/metaDL on readback).
+     */
+    private fun ensureStartWhenAddedOff() {
+        val toggle = hasText("Start when added")
+        fun state() = rule.onNode(toggle).fetchSemanticsNode().config
+            .getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ToggleableState) { null }
+        scrollToNode(toggle)
+        rule.waitForIdle()
+        if (state() == androidx.compose.ui.state.ToggleableState.On)
+            rule.onNode(toggle).performSemanticsAction(SemanticsActions.OnClick)
+        waitFor("Start when added is off", 10_000) {
+            runCatching { state() == androidx.compose.ui.state.ToggleableState.Off }.getOrDefault(false)
+        }
+    }
+
     /** One dispatch of a control, after polling only until it is enabled. */
     private fun clickOnce(tag: String, what: String, timeoutMs: Long = 30_000) {
         val matcher = hasTestTag(tag)
@@ -261,8 +281,7 @@ class ProtocolClientInstalledJourneyTest {
             }
             rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(magnet)
             rule.waitForIdle()
-            scrollToNode(hasText("Start when added"))
-            rule.onNodeWithText("Start when added").performClick()
+            ensureStartWhenAddedOff()
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
             stage("add-dispatched-once")
             waitFor("Add confirmed", 90_000) { visible("Add: confirmed") }
@@ -401,11 +420,7 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
             }
             stage("choices-kept-file-high")
-            scrollToNode(hasText("Start when added"))
-            val startOn = rule.onNode(hasText("Start when added")).fetchSemanticsNode().config
-                .getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ToggleableState) { null } ==
-                androidx.compose.ui.state.ToggleableState.On
-            if (startOn) rule.onNodeWithText("Start when added").performClick()
+            ensureStartWhenAddedOff()
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
             stage("choices-add-dispatched-once")
             val choicesHash = choices.first.infoHashV1
