@@ -19,7 +19,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
@@ -186,14 +185,14 @@ class VerifiedAddScreenAtlasTest {
             }
         }
 
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithTag(ChunksSemantics.ADD_BODY_RTORRENT).performScrollToNode(hasText("Add transfer"))
         rule.onNodeWithText("Add transfer").assertExists()
         // Source and effective Place are inline before Add, not a second
         // confirmation screen. Scroll each LazyColumn item into composition.
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onNodeWithTag(ChunksSemantics.ADD_BODY_RTORRENT).performScrollToNode(
             hasText("Infohash: " + "ab".repeat(20)))
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onNodeWithTag(ChunksSemantics.ADD_BODY_RTORRENT).performScrollToNode(
             hasText("Destination: /home/dev/chunks-public-test (custom parent folder)"))
         rule.onNodeWithText("Destination: /home/dev/chunks-public-test (custom parent folder)")
             .assertExists()
@@ -224,7 +223,7 @@ class VerifiedAddScreenAtlasTest {
                 }
             }
 
-            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Add transfer"))
+            rule.onNodeWithTag(ChunksSemantics.ADD_BODY_RTORRENT).performScrollToNode(hasText("Add transfer"))
             // LazyColumn composition does not guarantee its child button is
             // inside the touch viewport. Scroll the actual single Add control
             // and verify it is enabled before the one permitted mutation tap.
@@ -391,10 +390,10 @@ class VerifiedAddScreenAtlasTest {
         }
         // Requirement: an invalid folder can never be submitted. The one Add action stays
         // visible but disabled with the reason (UX: never silently omitted).
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onNodeWithTag(ChunksSemantics.ADD_BODY_RTORRENT).performScrollToNode(
             androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT))
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText(
+        rule.onNodeWithTag(ChunksSemantics.ADD_BODY_RTORRENT).performScrollToNode(hasText(
             "Invalid destination: remove repeated slashes, '.' and '..' path segments."
         ))
         rule.onNodeWithText("Invalid destination: remove repeated slashes, '.' and '..' path segments.").assertExists()

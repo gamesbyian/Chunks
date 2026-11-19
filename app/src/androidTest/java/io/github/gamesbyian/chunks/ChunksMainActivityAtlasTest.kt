@@ -72,7 +72,7 @@ class ChunksMainActivityAtlasTest {
     /** The dedicated Add destination retains the original review without submitting. */
     private fun assertLocalAddEntryIsReachable() {
         rule.onNodeWithText("Torrent source").assertExists()
-        rule.onNodeWithText("Magnet or HTTP(S) torrent URL").assertExists()
+        rule.onNodeWithText("Magnet or torrent link").assertExists()
     }
 
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")

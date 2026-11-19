@@ -77,8 +77,9 @@ internal interface StopTrackingPort : SeedingController.EnginePort {
  * One Transmission / qBittorrent / Deluge profile as a [SeedingController.EnginePort],
  * from the client's own counters ([io.github.gamesbyian.chunks.rpc.TorrentClient.seedingFacts]).
  * Unlike rTorrent these clients report accumulated seeding time, so time limits
- * are judged. No per-transfer cap is written here (each client's native limits
- * are not yet verified through readback). Stop is the shared verified
+ * are judged. A rule's upload cap uses the client's own per-transfer limit
+ * (never a shared throttle), written once and confirmed by an independent
+ * read; a cap the client cannot store exactly is not applied. Stop is the shared verified
  * [io.github.gamesbyian.chunks.rpc.ClientOperations.setStarted]. Blocking.
  */
 internal class ProtocolSeedingPort(
@@ -86,7 +87,13 @@ internal class ProtocolSeedingPort(
     private val activationBaseline: Boolean,
     private val nowMs: () -> Long = System::currentTimeMillis
 ) : StopTrackingPort {
-    override val supportsPerTransferUploadCap: Boolean get() = false
+    // The client's own per-transfer cap step, read once per tick; null = no per-transfer cap.
+    private val capStep: Long? by lazy {
+        runBlocking { try { operations.client.uploadCapStepBytes() } catch (_: Exception) { null } }
+    }
+    override val supportsPerTransferUploadCap: Boolean get() = capStep != null
+    override fun uploadCapRepresentable(bytesPerSecond: Long): Boolean =
+        capStep?.let { bytesPerSecond > 0 && bytesPerSecond % it == 0L } == true
     override var stopAttempted = false
         private set
 
@@ -109,8 +116,27 @@ internal class ProtocolSeedingPort(
             seedingSeconds = seen.seedingSeconds, seeding = seen.seeding ?: return@runBlocking null)
     }
 
-    override fun uploadLimit(infoHash: String): Int? = null
-    override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean = false
+    /** Independent readback of the exact transfer's own cap; null when unreadable or out of range. */
+    override fun uploadLimit(infoHash: String): Int? = runBlocking {
+        try { operations.client.uploadCapBytesPerSecond(infoHash) } catch (_: Exception) { null }
+    }?.takeIf { it in 0L..Int.MAX_VALUE.toLong() }?.toInt()
+
+    /**
+     * ONE write of this transfer's own cap, confirmed only by a separate read
+     * returning exactly [bytesPerSecond]. Clearing a cap is never managed.
+     * A sent write (even unconfirmed) needs a refresh before other changes.
+     */
+    override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean {
+        val bytes = bytesPerSecond ?: return false
+        if (!uploadCapRepresentable(bytes)) return false
+        stopAttempted = true
+        return runBlocking {
+            try { operations.client.setUploadCapBytesPerSecond(infoHash, bytes) }
+            catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+            catch (_: Exception) { return@runBlocking false }
+            (try { operations.client.uploadCapBytesPerSecond(infoHash) } catch (_: Exception) { null }) == bytes
+        }
+    }
 
     override fun pause(infoHash: String): Boolean {
         stopAttempted = true

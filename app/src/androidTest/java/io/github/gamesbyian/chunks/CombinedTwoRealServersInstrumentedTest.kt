@@ -541,7 +541,7 @@ class CombinedTwoRealServersInstrumentedTest {
             rule.onNodeWithText("+ Add").performClick()
             waitFor("source-first Universal Add") { visible("Add a transfer") }
             val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
-            typeInto("Magnet or HTTP(S) torrent URL", preservedDraft)
+            typeInto("Magnet or torrent link", preservedDraft)
             // Both saved profiles deliberately have the same custom name.
             // The direct Add chip must be distinct, and selecting saved A only
             // begins authentication: it cannot borrow B's current Add authority.
@@ -583,7 +583,9 @@ class CombinedTwoRealServersInstrumentedTest {
             requireEnabled("Connect to rTorrent")
             rule.onNodeWithText("Connect to rTorrent").performClick()
             waitFor("source-first draft resumes after exact authenticated A", 90_000) {
-                visible("Add a transfer") && visible("Magnet or torrent link")
+                // One shared source field for every client: the remote form is the rTorrent body.
+                visible("Add a transfer") && visible("Magnet or torrent link") &&
+                    rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_BODY_RTORRENT)).fetchSemanticsNodes().isNotEmpty()
             }
             scrollTo("Magnet or torrent link")
             assertTrue("Saved-profile auth must preserve exact source text", visible(preservedDraft))

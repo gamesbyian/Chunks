@@ -45,6 +45,12 @@ internal object ChunksSemantics {
 
     // Universal Add: one source, one submission action, one Start preference.
     const val ADD_SOURCE_FIELD = "chunks.add.source"
+    /** The shared Universal Add "Open .torrent" action. */
+    const val ADD_OPEN_TORRENT = "chunks.add.openTorrent"
+    /** Root of the rTorrent Add body (Save to / options / receipt for an authenticated server). */
+    const val ADD_BODY_RTORRENT = "chunks.add.body.rtorrent"
+    /** Root of the Transmission/qBittorrent/Deluge Add body. */
+    const val ADD_BODY_PROTOCOL = "chunks.add.body.protocol"
     const val ADD_SUBMIT = "chunks.add.submit"
     /** In-place remote Add status: submitting, verified, refused or uncertain. */
     const val ADD_REMOTE_OPERATION_STATUS = "chunks.add.remote.operationStatus"

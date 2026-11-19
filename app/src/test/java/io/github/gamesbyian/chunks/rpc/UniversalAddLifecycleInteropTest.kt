@@ -226,6 +226,45 @@ class UniversalAddLifecycleInteropTest {
             (dup.result as? RTorrentAddExecutor.Result.Executed)?.existingWithoutWrite == true)
         assertEquals(UniversalAddCoordinator.Phase.REVIEWED, dupCoordinator.phase)
         stage("duplicate=known_no_write")
+
+        // A load whose reply is lost after rTorrent accepted it: the shared lifecycle keeps
+        // the fence, and the app-owned RTorrentAddObserver follow-up confirms the exact
+        // session (origin unknown) without a second load.
+        val lost = fixture()
+        val lostFolder = placed(lost)
+        val lostIntent = UniversalAddIntent(
+            UniversalAddSource.metainfo(lost.result.torrent, lost.result.infoHashV1),
+            UniversalAddTarget.AuthenticatedServer(remote.addAccountScope()),
+            UniversalAddPlace.ServerCustom(lostFolder), startWhenAdded = false, allowArtwork = true)
+        val (lostCoordinator, lostTicket) = admit(lostIntent)
+        val inner = RTorrentAddExecutor(remote, false, null)
+        var loads = 0
+        val losing = object : UniversalAddExecutor<RTorrentAddExecutor.Result> {
+            override suspend fun execute(ticket: UniversalAddCoordinator.Ticket,
+                                         boundary: io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary):
+                RTorrentAddExecutor.Result {
+                loads++
+                inner.execute(ticket, boundary)
+                error("reply lost after the load")
+            }
+            override suspend fun settle(ticket: UniversalAddCoordinator.Ticket, result: RTorrentAddExecutor.Result) =
+                inner.settle(ticket, result)
+        }
+        val scope = kotlinx.coroutines.CoroutineScope(coroutineContext + kotlinx.coroutines.Job())
+        val controller = io.github.gamesbyian.chunks.UniversalAddAttemptController { scope }
+        assertTrue(controller.launch(lostCoordinator, lostTicket, losing,
+            followUp = RTorrentAddObserver(remote) { lostCoordinator.phase },
+            followUpSchedule = List(60) { 500L }))
+        for (i in 0 until 80) {
+            if (lostCoordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED) break
+            delay(500)
+        }
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED, lostCoordinator.phase)
+        assertEquals(1, loads)
+        assertEquals(1, client.torrents().count { it.hash.equals(lost.result.infoHashV1, ignoreCase = true) })
+        stage("lost_reply=retained_follow_up_session_confirmed_without_resend")
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         removeWithData(client, fx, folder)
+        removeWithData(client, lost, lostFolder)
     }
 }

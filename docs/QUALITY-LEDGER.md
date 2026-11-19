@@ -2,6 +2,25 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: #1902 merged; #1903 red attempts kept
+
+- **#1902** merged as `c4ee439` from exact head `e09677d`. `pr_acceptance_report.py --profile integration-real-peer` ACCEPTABLE: check, build (JVM), build-once, both native Add shards + verifier, minified-smoke, api29-downloads, installed-magnet-lifecycle, installed-protocol-client, interop, and dispatched android-native-atlas [44512560662](https://github.com/gamesbyian/Chunks/actions/runs/44512560662), two-server-combined [44512575554](https://github.com/gamesbyian/Chunks/actions/runs/44512575554), remote-delete-data [44512580190](https://github.com/gamesbyian/Chunks/actions/runs/44512580190) all green on first attempt.
+- **#1903 head `82cf987` (red, kept):**
+  - installed-magnet-lifecycle [44515043997](https://github.com/gamesbyian/Chunks/actions/runs/44515043997): `MainActivityRealMagnetJourney.kt:338` after `native-place-awaits-metadata`. Cause: this branch's test rewrite identified the rTorrent form by the selected Add-to chip, which the rTorrent body hides once an attempt exists. Test-contract drift introduced here, not a product failure. Fixed on `3786b54` with always-composed body root ids (`ADD_BODY_RTORRENT` / `ADD_BODY_PROTOCOL`).
+  - two-server-combined (dispatched) [44515055156](https://github.com/gamesbyian/Chunks/actions/runs/44515055156): timed out in `connect()` → `enterConnectedCanonicalTransfers` (Connections → View transfers), before any Add step; the PR-triggered two-server run on the same head passed [44515043834](https://github.com/gamesbyian/Chunks/actions/runs/44515043834). Classified intermittent; not rerun to claim green.
+
+## 2026-11-19 UTC: Smart Seeding native per-transfer upload caps (protocol clients)
+
+- **Real daemons, this container (loopback):** `ProtocolUploadCapInteropTest` 3/3. Transmission 4.0.5 (step 1000 B), qBittorrent 4.6.3 (exact bytes), Deluge distro (1024 B): a rule cap of 128 000 B/s was written once and confirmed by an independent read; the next tick sent nothing; a pre-existing transfer added before activation kept its cap; on Transmission and Deluge an inexact cap (step + 1 B) was never written and was noted "outside the client's supported range".
+- All `*Seeding*` JVM suites passed alongside. Not yet: installed switch journey, live Seedhost protocol cap, physical device.
+
+## 2026-11-19 UTC: one source-first intake for five clients; rTorrent observer; protocol source parity (follow-up branch)
+
+- **Real daemons, this container (loopback):** `UniversalAddLifecycleInteropTest` 4/4. New rTorrent 0.9.8 stage: load whose reply is lost → fence kept → app-owned `RTorrentAddObserver` follow-up reached SESSION_CONFIRMED with exactly one load and one job; cleanup verified. Protocol follow-up stages repeated green on Transmission 4.0.5, qBittorrent 4.6.3, Deluge.
+- **Robolectric:** `ProtocolAddSourceParityTest` 4/4 (HTTPS link fetched only on tap, then one TorrentFile Add; base32 magnet normalized to hex; verified NEW Add archives the person's original `.torrent`; uncertain Add keeps it and archives nothing). Add/Remote/Protocol/VerifiedAdd suites 752/752. Roborazzi `ChunksAddReviewRenderTest`, `ProtocolSurfacesRenderTest` (11), `LocalAddLargeTextAuditTest` green; renders inspected: identical Torrent source block on rTorrent and protocol forms; Local at 320dp/200% fits (footer label wrap is pre-existing).
+- **Contract reconciliation:** installed tests that used the two old source labels to tell Local and rTorrent forms apart now check the selected `ADD_TARGET_REMOTE` chip (`MainActivityRealMagnetJourney.remoteAddShowing`, `CombinedTwoRealServersInstrumentedTest`); label-only references updated to "Magnet or torrent link". No assertion removed.
+- **Local-only known failures:** `LocalCheckedPayloadReservationsTest` (container path encoding) and an SDK-29 Robolectric artifact download; untouched code.
+
 ## 2026-11-19 UTC: Local Add readback becomes the shared app-owned observer (branch `ccr-92d59cb4-nptvoi`)
 
 - **Change:** `LocalNativeAddObserver` (the Local `UniversalAddObserver`) and `UniversalAddAttemptController.followUp` replace `LocalEngineScreen`'s own post-Add reconcile. Local (magnet, .torrent) and protocol Adds keep being observed read-only from the app-owned scope after leaving Add; Local gains the read-only Check status.

@@ -1260,6 +1260,11 @@ internal fun ChunksApp(
             routingSuggestionSelected = routingSuggestionIsSelected,
             onUseRoutingSuggestion = { useRoutingSuggestion() },
             selectedProtocolId = addProtocolTargetId,
+            displayNameSupported = when {
+                addProtocolTargetId != null -> UniversalAddClientCapabilities.protocol(null).displayName
+                addTargetIsAuthenticated -> UniversalAddClientCapabilities.RTORRENT.displayName
+                else -> UniversalAddClientCapabilities.LOCAL.displayName
+            },
             onProtocol = { id ->
                 routingPersonChoiceFor = routingSourceKey
                 if (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) {

@@ -345,3 +345,37 @@ internal class RTorrentAddExecutor(
             ?: io.github.gamesbyian.chunks.model.UniversalAddSettlement.ReadbackRequired
     }
 }
+
+/**
+ * rTorrent's read-only [io.github.gamesbyian.chunks.model.UniversalAddObserver],
+ * composed of the same exact-hash reads as the Add screen's Recheck, in the
+ * same order: full exact-session proof (hash, reviewed Place, requested
+ * Start); else, for a requested Start, the guarded registered-at-Place
+ * witness; else, only once a job was positively confirmed, the exact
+ * contradiction read. Each read is stamped before it starts. It never
+ * attributes origin (a lost ACK stays "origin unknown") and never writes.
+ */
+internal class RTorrentAddObserver(
+    private val remote: RTorrentRemote,
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** The coordinator's current phase, deciding whether a contradiction read applies. */
+    private val phase: () -> UniversalAddCoordinator.Phase
+) : io.github.gamesbyian.chunks.model.UniversalAddObserver {
+    override suspend fun observe(ticket: UniversalAddCoordinator.Ticket): ExactSessionObservation? {
+        val adapter = RemoteUniversalAddAdapter(remote)
+        return try {
+            val readStartedAt = clock()
+            val checked = adapter.reconcile(ticket)
+            adapter.exactObservation(ticket, checked, newRegistrationVerified = false,
+                observedAtEpochMillis = readStartedAt)
+                ?: (if (checked is RemoteAddAndStart.StartNotVerified)
+                    adapter.registeredJobWithUnverifiedStart(ticket, observedAtEpochMillis = readStartedAt)
+                else null)
+                ?: if (io.github.gamesbyian.chunks.shouldProbeContradictoryRecheck(phase()))
+                    adapter.contradictoryExactSession(ticket, observedAtEpochMillis = clock())
+                else null
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { null }
+    }
+}

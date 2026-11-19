@@ -197,6 +197,36 @@ internal class DelugeClient(
         else -> ClientFilePriority.NORMAL
     }
 
+    // Deluge's per-torrent max_upload_speed is KiB/s (a float; -1 = unlimited),
+    // set with core.set_torrent_options. 1024-byte steps are stored exactly.
+    override suspend fun uploadCapStepBytes(): Long? {
+        connect()
+        return 1024L.takeIf { "core.set_torrent_options" in daemonMethods.orEmpty() }
+    }
+
+    override suspend fun uploadCapBytesPerSecond(hash: String): Long? {
+        val exact = ClientHashes.requireHash(hash)
+        connect()
+        val result = call("core.get_torrents_status",
+            JSONArray().put(JSONObject().put("id", JSONArray().put(exact))).put(JSONArray().put("max_upload_speed"))) as? JSONObject
+            ?: return null
+        if (result.length() != 1) return null
+        val row = result.keys().asSequence().firstOrNull { it.equals(exact, ignoreCase = true) }
+            ?.let(result::getJSONObject) ?: return null
+        if (!row.has("max_upload_speed")) return null
+        val kib = row.optDouble("max_upload_speed", Double.NaN).takeIf { !it.isNaN() } ?: return null
+        return if (kib <= 0.0) 0L else Math.round(kib * 1024.0)
+    }
+
+    override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+        require(bytesPerSecond > 0 && bytesPerSecond % 1024L == 0L)
+        connect()
+        if ("core.set_torrent_options" !in daemonMethods.orEmpty())
+            throw ClientRefusedException("Deluge cannot set a per-torrent upload limit")
+        call("core.set_torrent_options", JSONArray().put(JSONArray().put(ClientHashes.requireHash(hash)))
+            .put(JSONObject().put("max_upload_speed", (bytesPerSecond / 1024L).toDouble())), mutating = true)
+    }
+
     override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
         val exact = ClientHashes.requireHash(hash)
         connect()

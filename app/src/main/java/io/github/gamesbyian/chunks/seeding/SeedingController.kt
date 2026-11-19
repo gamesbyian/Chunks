@@ -34,6 +34,8 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         fun observe(infoHash: String): SeedingObservation?
         fun uploadLimit(infoHash: String): Int?
         fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean
+        /** Whether this exact cap can be stored without rounding (else it is never written). */
+        fun uploadCapRepresentable(bytesPerSecond: Long): Boolean = true
         /** True only after the engine confirms the transfer is paused. */
         fun pause(infoHash: String): Boolean
     }
@@ -97,7 +99,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 // Never emulate a per-transfer cap with a shared throttle group.
                 if (assignment.note == null) store.put(hash, assignment.copy(
                     note = "This client has no per-transfer upload limit; the rule's limit was not applied."))
-            } else if (bytes !in 1L..Int.MAX_VALUE.toLong()) {
+            } else if (bytes !in 1L..Int.MAX_VALUE.toLong() || !engine.uploadCapRepresentable(bytes)) {
                 // A persisted uncertain Pause is the stronger operational
                 // warning. Never erase it while reporting a separate cap
                 // fault. The policy remains unchanged and no cap is written.
