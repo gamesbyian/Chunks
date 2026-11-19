@@ -84,6 +84,9 @@ class ProtocolSeedingInteropTest {
     /** qBittorrent: a ratio Stop from its own counters after real piece traffic both ways. */
     @Test fun qbittorrent() = ratioJourney(RemoteBackendKind.QBITTORRENT, peerPort = 51514)
 
+    /** Transmission: the same ratio Stop from its own counters, the Local peers dialling its peer port. */
+    @Test fun transmissionRatio() = ratioJourney(RemoteBackendKind.TRANSMISSION, peerPort = 51513)
+
     private fun timeJourney(backend: RemoteBackendKind, expectStop: Boolean = true) = runBlocking {
         kind = backend
         val root = File(env("PAYLOAD_DIR"))

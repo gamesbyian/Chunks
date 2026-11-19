@@ -39,7 +39,8 @@ class UniversalAddClientCapabilitiesTest {
     @Test fun displayNamesAreOfferedOnlyWhereChunksStoresAndShowsThem() {
         assertTrue(UniversalAddClientCapabilities.LOCAL.displayName)
         assertTrue(UniversalAddClientCapabilities.RTORRENT.displayName)
-        assertFalse(UniversalAddClientCapabilities.protocol(session(ClientCapability.entries.toSet())).displayName)
+        // Protocol profiles store names under their exact ProtocolAliasScope (shown in Combined).
+        assertTrue(UniversalAddClientCapabilities.protocol(session(ClientCapability.entries.toSet())).displayName)
     }
 
     @Test fun aMissingSourceKindIsExplainedNotRerouted() {

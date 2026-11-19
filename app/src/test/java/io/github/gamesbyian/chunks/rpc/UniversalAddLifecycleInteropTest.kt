@@ -122,6 +122,32 @@ class UniversalAddLifecycleInteropTest {
         File(folder).deleteRecursively()
     }
 
+    /**
+     * A new process: fresh coordinator and controller, nothing retained, so no
+     * follow-up and no replay. The person's own new tap goes through the shared
+     * submit step and is a known no-write for the already-landed job.
+     */
+    private suspend fun <R : Any> afterProcessDeath(
+        client: TorrentClient, hash: String, intent: UniversalAddIntent,
+        executor: UniversalAddExecutor<R>, knownNoWrite: (R) -> Boolean
+    ) = kotlinx.coroutines.coroutineScope {
+        val scope = kotlinx.coroutines.CoroutineScope(coroutineContext + kotlinx.coroutines.Job())
+        val controller = io.github.gamesbyian.chunks.UniversalAddAttemptController { scope }
+        val coordinator = UniversalAddCoordinator()
+        assertEquals("nothing retained to replay or observe", false,
+            controller.followUp(coordinator, ProtocolAddObserver(client)))
+        assertEquals(1, client.torrents().count { it.hash.equals(hash, ignoreCase = true) })
+        val submitted = io.github.gamesbyian.chunks.UniversalAddSubmission.admitAndRun(controller, coordinator,
+            intent, EnvironmentCapabilities.unprobed(intent.target.environment), EnvironmentAvailability.LIVE,
+            { true }, System.currentTimeMillis(), freeze = { executor }, followUpSchedule = emptyList())
+        val run = (submitted as io.github.gamesbyian.chunks.UniversalAddSubmission.RunResult.Ran).run
+        assertTrue("$run", run is UniversalAddRun.Completed && knownNoWrite(run.result))
+        assertEquals("a re-tap is a known no-write", UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+        assertEquals(1, client.torrents().count { it.hash.equals(hash, ignoreCase = true) })
+        stage("process_death=nothing_replayed_retap_known_no_write")
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+    }
+
     @Test fun transmission() = protocolJourney(RemoteBackendKind.TRANSMISSION)
     @Test fun qbittorrent() = protocolJourney(RemoteBackendKind.QBITTORRENT)
     @Test fun deluge() = protocolJourney(RemoteBackendKind.DELUGE)
@@ -194,6 +220,14 @@ class UniversalAddLifecycleInteropTest {
         stage("lost_reply=retained_follow_up_session_confirmed_without_resend")
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
 
+        // 5. Process death after a lost reply: the in-RAM ticket is gone and nothing
+        // replays it. A fresh process has nothing to follow up, and only the person's
+        // own new tap reaches the shared submit step, which is a known no-write.
+        afterProcessDeath(client, lost.result.infoHashV1, ProtocolUniversalAddAdapter.intent(profile, lostRequest, null),
+            ProtocolAddExecutor(ClientOperations(client, readbackAttempts = 40, readbackDelayMillis = 500), lostRequest)) {
+            it is ClientOperationOutcome.Refused
+        }
+
         removeWithData(client, fx, folder)
         removeWithData(client, lost, lostFolder)
         removeWithData(client, later, laterFolder)
@@ -264,6 +298,9 @@ class UniversalAddLifecycleInteropTest {
         assertEquals(1, client.torrents().count { it.hash.equals(lost.result.infoHashV1, ignoreCase = true) })
         stage("lost_reply=retained_follow_up_session_confirmed_without_resend")
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        afterProcessDeath(client, lost.result.infoHashV1, lostIntent, RTorrentAddExecutor(remote, false, null)) {
+            (it as? RTorrentAddExecutor.Result.Executed)?.existingWithoutWrite == true
+        }
         removeWithData(client, fx, folder)
         removeWithData(client, lost, lostFolder)
     }

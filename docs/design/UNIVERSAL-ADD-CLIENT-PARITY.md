@@ -78,9 +78,13 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 - Transmission/qBittorrent/Deluge gained HTTPS `.torrent` links (fetched and validated on the device, never by the client), Paste and the canonical `MagnetDraftCheck` (base32 normalized to hex).
 - `OriginalSourceRetirement` applies the global original-`.torrent` Keep/Archive/Delete policy after a verified NEW registration for rTorrent **and** the protocol clients (previously not applied to protocol Adds at all). Uncertain results keep the original; Delete stays a separately confirmed request.
 - `RTorrentAddObserver` composes rTorrent's existing read-only Recheck evidence as a `UniversalAddObserver`; every client's unresolved write now gets the same app-owned follow-up.
-- The shared picker no longer offers a Chunks display name for protocol targets, where it was silently dropped (protocol aliases are not yet supported in Combined).
+- Protocol display names: each Transmission/qBittorrent/Deluge profile has its own `ProtocolAliasScope` (exact client identity), so Combined shows and renames its transfers' Chunks names, and an Add-time name is saved only after a verified NEW registration (#1903 had withdrawn the field while it was silently dropped).
 
-**Still separate:** the three bodies still own their Save to/Start/options controls and submit orchestration (each calling the shared admission and lifecycle with its own executor); `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
+**Shared submit and capabilities (follow-up, 2026-11-19).** `UniversalAddSubmission.admitAndLaunch` is the one post-tap step for rTorrent and protocol Adds: shared admission, a `freeze` callback recording the reviewed state against the minted ticket and returning its single executor, then exactly one launch with its read-only follow-up; it reports `Launched`, `Refused` (and whether the caller's gate was taken) or `ClientBusy`. `UniversalAddClientCapabilities` decides what the form offers per client. Display names now work for every client (protocol names under each profile's exact `ProtocolAliasScope`), and job-only Copy/Move carries the Chunks name to the target without overwriting one already there.
+
+**Local on the same step.** Local's magnet and `.torrent` Adds now use `UniversalAddSubmission.admitAndRun`: the identical admission and freeze (Place bound to the minted ticket before any write), awaited inside the native mutation lane that already holds the process-wide native gate. The separate `authorizeLocalTicket` admission is gone, so all five clients pass through one admission and one freeze contract.
+
+**Still separate:** Save to / options controls per body; `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
 
 Step 3 below (one capability-driven source-first route) remains the finish line.
 

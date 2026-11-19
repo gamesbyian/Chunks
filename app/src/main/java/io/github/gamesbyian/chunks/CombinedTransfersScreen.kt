@@ -925,6 +925,10 @@ internal fun CombinedTransfersScreen(
         if (serverId != null && server != null && serverPrivacy?.mayShow == true) {
             put(serverId, server.aliasScope)
         }
+        // Transmission/qBittorrent/Deluge: only while this exact profile's privacy gate allows it.
+        protocolProfiles.forEach { profile ->
+            if (profile.environment in protocolAllowed) put(profile.environment, profile.aliasScope)
+        }
         savedProfiles.forEach { profile ->
             val scope = profile.aliasScope ?: return@forEach
             val id = EnvironmentId(profile.id)
@@ -1181,12 +1185,13 @@ internal fun CombinedTransfersScreen(
                 LocalTorrentClient.forApp(context, startForExplicitUse = true)) }
         }
         val localMoveTarget = if (localPrivacy?.mayShow != false && !(localRunning && localFrame.stale))
-            ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device", localTargetOperations) else null
+            ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device",
+                aliasScopes[EnvironmentSnapshots.LOCAL], localTargetOperations) else null
         val rtorrentMoveTarget = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
             serverId != null && serverPrivacy?.mayShow == true && server.stale == false
         }?.let { remote ->
             ProtocolMoveTarget(requireNotNull(serverId).value,
-                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
+                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent", aliasScopes[serverId]) {
                 io.github.gamesbyian.chunks.rpc.ClientOperations(
                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
             }
@@ -1208,7 +1213,9 @@ internal fun CombinedTransfersScreen(
             )?.let { it.environmentId to (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") }
         val protocolMoveTargets = protocolProfiles.filter {
             it.operations != null && it.environment in protocolAllowed
-        }.distinctBy { it.id }.map { ProtocolMoveTarget(it.id, it.label, requireNotNull(it.operations)) }
+        }.distinctBy { it.id }.map {
+            ProtocolMoveTarget(it.id, it.label, aliasScopes[it.environment], requireNotNull(it.operations))
+        }
         // Transmission / qBittorrent / Deluge: the exact typed profile's own
         // write-capable session, through the ONE shared operation workflow.
         val focusedProtocol = protocolProfiles.firstOrNull { it.environment == focusedKey.environment }
@@ -1232,7 +1239,8 @@ internal fun CombinedTransfersScreen(
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
                     moveTargets = protocolTargets,
-                    suggestedTarget = moveSuggestionFor(protocolTargets)
+                    suggestedTarget = moveSuggestionFor(protocolTargets),
+                    sourceAliasScope = aliasScopes[focusedKey.environment]
                 )
             }
         }
@@ -1291,7 +1299,8 @@ internal fun CombinedTransfersScreen(
                             onChanged = {},
                             moveTargets = outbound,
                             moveOnly = true,
-                            suggestedTarget = moveSuggestionFor(outbound)
+                            suggestedTarget = moveSuggestionFor(outbound),
+                            sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
                     }
                 }
@@ -1361,7 +1370,8 @@ internal fun CombinedTransfersScreen(
                             onChanged = mutation.settled,
                             moveTargets = connectedTargets,
                             moveOnly = true,
-                            suggestedTarget = moveSuggestionFor(connectedTargets)
+                            suggestedTarget = moveSuggestionFor(connectedTargets),
+                            sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
                     }
                 }

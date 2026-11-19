@@ -789,34 +789,16 @@ internal fun LocalEngineScreen(
     // local mutation gate has been acquired, before any IO/native call.
     // Null sessions are used only by standalone UI test harnesses until the
     // app owner injects its one process-only local coordinator.
-    fun authorizeLocalTicket(
-        source: io.github.gamesbyian.chunks.model.UniversalAddIntent,
-        selectedPlace: LocalDownloadPlace,
-        inventoryReadyAtClick: Boolean
-    ): io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket? {
-        val session = localAddAttemptSession ?: return null
-        // performLocalMutation already acquired the process-wide native gate.
-        // The same pure admission decision now authorizes both client types;
-        // only the adapter-specific capability/freshness evidence differs.
-        val decision = io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
-            coordinator = session.coordinator,
-            intent = source,
-            capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.local(),
-            availability = if (inventoryReadyAtClick)
-                io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE
-                else io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE,
-            acquireMutationGate = { true },
-            submittedAtEpochMillis = System.currentTimeMillis()
-        )
-        val ticket = decision.ticket
-        if (ticket == null) {
-            noteProblem("This local Add cannot be authorized: " +
-                decision.explanation + " Nothing was sent.")
-            return null
-        }
-        session.bindPlace(ticket, selectedPlace)
-        return ticket
-    }
+    // performLocalMutation already acquired the process-wide native gate; the
+    // shared UniversalAddSubmission.admitAndRun step makes the same pure
+    // admission decision as for every client, from Local's own evidence.
+    fun localAddCapabilities() = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.local()
+    fun localAddAvailability(inventoryReadyAtClick: Boolean) = if (inventoryReadyAtClick)
+        io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE
+        else io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE
+    fun noteLocalAdmissionRefused(decision: io.github.gamesbyian.chunks.model.UniversalAddAdmission.Decision) =
+        noteProblem("This local Add cannot be authorized: " +
+            decision.explanation.removeSuffix(" Nothing was sent.") + " Nothing was sent.")
     val addFolderNameInvalid = remember(addFolderDraft) {
         LocalOwnedAddFolder.normalizedName(addFolderDraft) == null
     }
@@ -1366,16 +1348,13 @@ internal fun LocalEngineScreen(
                         return@localMagnet
                     }
                     val session = localAddAttemptSession
-                    val ticket = if (session == null) null else try {
-                        authorizeLocalTicket(
-                            LocalUniversalAddAdapter.magnetIntent(checkedMagnet, selected,
-                                selectedDraft, autoStart, allowArtwork),
-                            selected, inventoryReadyAtClick)
+                    val frozenIntent = if (session == null) null else try {
+                        LocalUniversalAddAdapter.magnetIntent(checkedMagnet, selected,
+                            selectedDraft, autoStart, allowArtwork)
                     } catch (_: IllegalArgumentException) {
                         noteProblem("This local Add source or subfolder is invalid. Nothing was sent.")
                         return@localMagnet
                     }
-                    if (session != null && ticket == null) return@localMagnet
                     // The one shared Add lifecycle (as rTorrent and the protocol clients):
                     // Place/artwork checks before the boundary are known no-writes; once the
                     // native call is entered, any failure keeps the attempted-write fence.
@@ -1405,18 +1384,33 @@ internal fun LocalEngineScreen(
                             }
                         } }
                     var wroteNative = false
+                    var ticket: io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket? = null
                     try {
-                        val result: LocalAddResult = if (session != null && ticket != null) {
-                            val run = localAttemptController.run(session.coordinator, ticket,
-                                LocalNativeAddExecutor(session, selected, { it }, nativeAdd),
+                        val result: LocalAddResult = if (session != null && frozenIntent != null) {
+                            // The ONE shared submit step (as rTorrent and the protocol clients),
+                            // awaited inside the native lane that already holds the native gate.
+                            val submitted = UniversalAddSubmission.admitAndRun(localAttemptController,
+                                session.coordinator, frozenIntent, localAddCapabilities(),
+                                localAddAvailability(inventoryReadyAtClick), acquireMutationGate = { true },
+                                submittedAtEpochMillis = System.currentTimeMillis(),
+                                freeze = { minted ->
+                                    session.bindPlace(minted, selected)
+                                    LocalNativeAddExecutor(session, selected, { it }, nativeAdd)
+                                },
                                 // App-owned read-only follow-up: Place/Start verification
                                 // continues after leaving Add or Activity recreation.
                                 followUp = LocalNativeAddObserver(session))
-                            when (run) {
-                                null -> {
+                            val run = when (submitted) {
+                                is UniversalAddSubmission.RunResult.Refused -> {
+                                    noteLocalAdmissionRefused(submitted.decision); return@localMagnet
+                                }
+                                is UniversalAddSubmission.RunResult.ClientBusy -> {
                                     noteProblem("Another local Add is still settling. Nothing was sent.")
                                     return@localMagnet
                                 }
+                                is UniversalAddSubmission.RunResult.Ran -> { ticket = submitted.ticket; submitted.run }
+                            }
+                            when (run) {
                                 is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> {
                                     wroteNative = run.writeMayHaveHappened; run.result
                                 }
@@ -1813,20 +1807,20 @@ internal fun LocalEngineScreen(
                         return@localDocument
                     }
                     val session = localAddAttemptSession
-                    val ticket = if (session == null) null else try {
+                    val frozenIntent = if (session == null) null else try {
                         // Read-only validation can parse up to 2 MiB of metainfo.
                         // Keep it off the UI thread; authorization remains on
                         // the UI lane after one immutable byte snapshot is ready.
-                        val frozenIntent = withContext(Dispatchers.Default) {
+                        withContext(Dispatchers.Default) {
                             LocalUniversalAddAdapter.torrentIntent(add, selected,
                                 selectedDraft, autoStart, allowArtwork)
                         }
-                        authorizeLocalTicket(frozenIntent, selected, inventoryReadyAtClick)
                     } catch (_: IllegalArgumentException) {
                         noteProblem("This .torrent source or subfolder is invalid. Nothing was sent.")
                         return@localDocument
                     }
-                    if (session != null && ticket == null) return@localDocument
+                    // Set once by the shared submit step's freeze, before the native call.
+                    var admitted: io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket? = null
                     // The one shared Add lifecycle (as rTorrent and the protocol clients):
                     // Place/artwork/partial-file checks before the boundary are known
                     // no-writes; after the native call, any failure keeps the fence.
@@ -1851,7 +1845,7 @@ internal fun LocalEngineScreen(
                                     // The shared ticket freezes the exact reviewed
                                     // bytes: never execute with the mutable screen
                                     // holder after authorization and a suspend gap.
-                                    val authorizedBytes = ticket?.intent?.source?.metainfoForSubmission()
+                                    val authorizedBytes = admitted?.intent?.source?.metainfoForSubmission()
                                         ?: add.bytes
                                     // Explicitly approved foreign partial files are renamed
                                     // (never replaced) before the checked Add verifies pieces.
@@ -1911,16 +1905,30 @@ internal fun LocalEngineScreen(
                             }
                         } }
                     var wroteNative = false
+                    var ticket: io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket? = null
                     try {
-                        val result = if (session != null && ticket != null) {
-                            val run = localAttemptController.run(session.coordinator, ticket,
-                                LocalNativeAddExecutor(session, selected, { it.first }, nativeAdd),
+                        val result = if (session != null && frozenIntent != null) {
+                            val submitted = UniversalAddSubmission.admitAndRun(localAttemptController,
+                                session.coordinator, frozenIntent, localAddCapabilities(),
+                                localAddAvailability(inventoryReadyAtClick), acquireMutationGate = { true },
+                                submittedAtEpochMillis = System.currentTimeMillis(),
+                                freeze = { minted ->
+                                    session.bindPlace(minted, selected)
+                                    admitted = minted
+                                    LocalNativeAddExecutor(session, selected, { it.first }, nativeAdd)
+                                },
                                 followUp = LocalNativeAddObserver(session))
-                            when (run) {
-                                null -> {
+                            val run = when (submitted) {
+                                is UniversalAddSubmission.RunResult.Refused -> {
+                                    noteLocalAdmissionRefused(submitted.decision); return@localDocument
+                                }
+                                is UniversalAddSubmission.RunResult.ClientBusy -> {
                                     noteProblem("Another local Add is still settling. Nothing was sent.")
                                     return@localDocument
                                 }
+                                is UniversalAddSubmission.RunResult.Ran -> { ticket = submitted.ticket; submitted.run }
+                            }
+                            when (run) {
                                 is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> {
                                     wroteNative = run.writeMayHaveHappened; run.result
                                 }

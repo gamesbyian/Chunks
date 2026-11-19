@@ -14,6 +14,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -57,7 +61,10 @@ class RemoteDeleteDataInstalledInstrumentedTest {
 
     private fun waitFor(what: String, timeoutMs: Long = 60_000, condition: () -> Boolean) {
         try { rule.waitUntil(timeoutMs, condition) } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
-            throw AssertionError("Timed out: $what", failure)
+            // Print what was on screen so an intermittent timeout can be diagnosed.
+            val ui = runCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
+                .getOrDefault("semantics unavailable")
+            throw AssertionError("Timed out: $what\n$ui", failure)
         }
     }
 
@@ -119,7 +126,10 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             waitFor("connected server in Connections", 60_000) {
                 visible("View transfers")
             }
-            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
+            // The control's own click action, not a coordinate tap right after a scroll
+            // (the canonical-Transfers timeouts on 82cf987, c4a3624 and 6ddbda8).
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo()
+                .performSemanticsAction(SemanticsActions.OnClick)
             // The canonical Transfers search is below the inventory header
             // in a LazyColumn. A not-yet-composed offscreen item is not a
             // missing screen: scroll to the lazy item BEFORE asserting it

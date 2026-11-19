@@ -158,7 +158,7 @@ internal fun UniversalAddDestinationPicker(
         // typed for a Transmission/qBittorrent/Deluge Add would be silently dropped,
         // so the capability is explained instead of offered.
         if (!displayNameSupported) {
-            Text("Display names are not yet available for this client; Chunks shows the torrent's own name.",
+            Text("Display names are not available for this client; Chunks shows the torrent's own name.",
                 style = MaterialTheme.typography.bodySmall)
             return@Column
         }

@@ -44,6 +44,8 @@ internal data class CombinedReadOnlyProtocolProfile(
     val environment: EnvironmentId get() = EnvironmentId(id)
     val identityWitness: String get() = "chunks-readonly-protocol-v1:" +
         backend.name + ":" + id + ":" + verifiedAtMillis
+    /** This exact client principal's Chunks display-alias scope (never a label or endpoint text). */
+    val aliasScope: String get() = ProtocolAliasScope.of(id)
     override fun toString(): String = "Read-only remote client (<redacted>)"
 }
 
@@ -227,4 +229,18 @@ internal fun rememberCombinedProtocolSources(
         }
     }
     return CombinedProtocolSources(sources, listings, latestRefresh.value)
+}
+
+/**
+ * Chunks display aliases for a Transmission/qBittorrent/Deluge profile are
+ * keyed by its exact client identity (backend, endpoint, principal, daemon:
+ * RemoteBackendIdentity), so two accounts on one host never share names.
+ * TransferAliasStore fingerprints the scope; nothing is sent to the client.
+ */
+internal object ProtocolAliasScope {
+    private const val PREFIX = "chunks-protocol-alias-v1:"
+    fun of(profileId: String): String {
+        require(profileId.isNotBlank()) { "A protocol alias scope needs the exact client identity" }
+        return PREFIX + profileId
+    }
 }

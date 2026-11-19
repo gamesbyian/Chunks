@@ -1329,6 +1329,7 @@ internal fun ChunksApp(
             attempt = protocolAddAttempt,
             attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
             attemptController = retainedAddOwner?.attempts,
+            aliasState = addAliasDraft,
             onViewTransfer = { hash ->
                 consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                 savedProfileCatalogFocus = profile.id

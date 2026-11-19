@@ -93,6 +93,40 @@ class RemoteSeedingTickTest {
             RemoteSeeding.EnforcementSwitch(context).enabled(RemoteSeeding.protocolEnvironment("other")))
     }
 
+    /** The installed switch journey's exact production path: a saved default cap, applied once. */
+    @Test fun theSavedDefaultCapIsWrittenOnceOnANewJobThroughTheProductionTick() {
+        val client = object : TorrentClient by FakeClient() {
+            val caps = HashMap<String, Long>()
+            var capWrites = 0
+            val inner = FakeClient()
+            override val kind = TorrentClientKind.TRANSMISSION
+            override suspend fun torrents() = inner.torrents()
+            override suspend fun torrent(hash: String) = inner.torrent(hash)
+            override suspend fun seedingFacts(hash: String) = inner.seedingFacts(hash)
+            override suspend fun uploadCapStepBytes(): Long = 1000L
+            override suspend fun uploadCapBytesPerSecond(hash: String): Long = caps[hash] ?: 0L
+            override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+                capWrites++; caps[hash] = bytesPerSecond
+            }
+        }
+        val ops = ClientOperations(client, 2, 1)
+        val profile = "tr-cap-profile"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val capped = "c".repeat(40)
+        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to SeedingPolicy(uploadLimit = io.github.gamesbyian.chunks.seeding.RateLimit(
+                128_000, io.github.gamesbyian.chunks.seeding.RateLimit.Unit.KB))))))
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        assertEquals("activation", RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000))
+        client.inner.jobs[capped] = false
+        client.inner.facts[capped] = ClientSeedingFacts(capped, 0, 0, 0, false, false,
+            listOf("http://127.0.0.1:1/announce"))
+        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000)
+        assertEquals(128_000L, client.caps[capped])
+        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 4_000)
+        assertEquals("never rewritten when it already matches", 1, client.capWrites)
+    }
+
     @Test fun aPrivateOrUnprovenTransferNeverHasItsTrackersUsed() {
         val client = FakeClient()
         val port = ProtocolSeedingPort(ClientOperations(client, 2, 1), activationBaseline = false)

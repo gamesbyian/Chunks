@@ -429,7 +429,9 @@ class ProtocolClientInstalledJourneyTest {
             waitFor("both reviewed files listed") {
                 runCatching { scrollToNode(hasText(skipped)); true }.getOrDefault(false) && visible(kept)
             }
-            rule.onNodeWithText(skipped).performClick()
+            // The row's own toggle action, not a coordinate tap: clearing the source
+            // field above can move the list while the keyboard settles (e56c116).
+            rule.onNodeWithText(skipped).performSemanticsAction(SemanticsActions.OnClick)
             waitFor("one of two files chosen") { visible("Files to download (1 of 2") }
             stage("choices-one-file-unticked")
             // Add-time priority: raise the kept file to High (every client stores High).
@@ -442,6 +444,13 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
             }
             stage("choices-kept-file-high")
+            // A Chunks-only display name for this Add: stored for this exact profile only
+            // after the verified NEW registration, never sent to the client.
+            val choicesAlias = "Chunks alias " + kind.name.lowercase()
+            scrollToNode(hasText("Optional display name"))
+            rule.onNodeWithText("Optional display name").performSemanticsAction(SemanticsActions.OnClick)
+            typeInto("Display name in Chunks", choicesAlias)
+            stage("choices-display-name-entered")
             ensureStartWhenAddedOff()
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
             stage("choices-add-dispatched-once")
@@ -465,6 +474,14 @@ class ProtocolClientInstalledJourneyTest {
             assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
                 runBlocking { independentRead(choicesHash) }?.runState)
             stage("choices-skip-and-high-verified-independently")
+            assertEquals("display name stored for this exact profile", choicesAlias,
+                TransferAliasStore(InstrumentationRegistry.getInstrumentation().targetContext)
+                    .get(ProtocolAliasScope.of(profileId), choicesHash))
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            waitFor("canonical Transfers shows the Chunks display name", 90_000) {
+                runCatching { scrollToNode(hasText(choicesAlias, substring = true)); true }.getOrDefault(false)
+            }
+            stage("choices-display-name-shown-in-transfers")
             runBlocking { witness.remove(choicesHash, deleteData = false) }
             // Restore only the test monitor's identity after all assertions (as the
             // Open With handoff tests do); the shared source is never redispatched.
@@ -521,6 +538,67 @@ class ProtocolClientInstalledJourneyTest {
                 runBlocking { independentRead(episodesHash) }?.runState)
             stage("fio-e01-high-verified-independently")
             runBlocking { witness.remove(episodesHash, deleteData = false) }
+
+            // Smart Seeding through the installed UI: this client's default upload limit and its
+            // explicit "Apply while Chunks is open" switch. A transfer added after activation gets
+            // the client's own per-transfer cap, read back from the real daemon (no peers needed).
+            val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val profileLabel = RememberedRemoteProtocolProfiles(targetContext).list().single { p -> p.backend == kind }.label
+            val seedingEnvironment = io.github.gamesbyian.chunks.seeding.RemoteSeeding.protocolEnvironment(profileId)
+            val switch = io.github.gamesbyian.chunks.seeding.RemoteSeeding.EnforcementSwitch(targetContext)
+            try {
+                rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+                clickOnce(OptionsCategory.SEEDING.tag, "Seeding options category")
+                val seedingRules = hasText("Seeding rules…") and androidx.compose.ui.test.hasClickAction()
+                waitFor("Seeding rules entry") { runCatching { scrollToNode(seedingRules); true }.getOrDefault(false) }
+                rule.onNode(seedingRules).performSemanticsAction(SemanticsActions.OnClick)
+                val reviewDefaults = hasText("Review defaults", substring = true)
+                waitFor("Seeding rules screen") { runCatching { scrollToNode(reviewDefaults); true }.getOrDefault(false) }
+                rule.onNode(reviewDefaults).performSemanticsAction(SemanticsActions.OnClick)
+                if (visible("Find client defaults")) typeInto("Find client defaults", profileLabel)
+                waitFor("this client's default") { runCatching { scrollToNode(hasText("Change default")); true }.getOrDefault(false) }
+                assertEquals("only this client's default is shown", 1,
+                    rule.onAllNodesWithText("Change default").fetchSemanticsNodes().size)
+                rule.onNodeWithText("Change default").performSemanticsAction(SemanticsActions.OnClick)
+                typeInto("Upload limit per transfer (blank: none), e.g. 24 KiB/s", "128 kB/s")
+                scrollToNode(hasText("Save default"))
+                rule.onNodeWithText("Save default").performSemanticsAction(SemanticsActions.OnClick)
+                waitFor("default saved") { visible("Saved.") }
+                assertEquals(false, switch.enabled(seedingEnvironment))
+                clickOnce(ChunksSemantics.SEEDING_REMOTE_ENFORCEMENT, "Apply while Chunks is open")
+                waitFor("switch saved on") { switch.enabled(seedingEnvironment) }
+                stage("seeding-switch-on-via-ui")
+                // The app's 30 s Smart Seeding loop is a LaunchedEffect delay, which under this
+                // (v2) Compose rule runs on the virtual main clock: advance it explicitly, one
+                // tick at a time, and let each tick's real client IO finish before the next.
+                fun oneTick() {
+                    rule.mainClock.advanceTimeBy(31_000)
+                    rule.waitForIdle()
+                    Thread.sleep(2_000)
+                }
+                val assignments = io.github.gamesbyian.chunks.seeding.PreferencesAssignmentStore(targetContext, seedingEnvironment)
+                // The first tick records activation: transfers present then stay unmanaged.
+                for (attempt in 0 until 10) { if (assignments.epoch() != null) break; oneTick() }
+                assertTrue("the activation tick ran", assignments.epoch() != null)
+                stage("seeding-activation-recorded")
+                val capped = fixture("seeding-cap")
+                assertTrue(runBlocking {
+                    witness.add(ClientAddRequest(ClientAddSource.TorrentFile(capped.torrent), null, startNow = false))
+                } is ClientOperationOutcome.Verified)
+                fun cap() = runBlocking {
+                    runCatching {
+                        io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
+                            .uploadCapBytesPerSecond(capped.infoHashV1)
+                    }.getOrNull()
+                }
+                for (attempt in 0 until 10) { if (cap() == 128_000L) break; oneTick() }
+                assertEquals("the client's own per-transfer cap set by the rule", 128_000L, cap())
+                stage("seeding-cap-applied-and-read-back")
+                runBlocking { witness.remove(capped.infoHashV1, deleteData = false) }
+            } finally {
+                // Leave the disposable profile's opt-in off for any later run.
+                switch.set(seedingEnvironment, false)
+            }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
