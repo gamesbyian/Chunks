@@ -1,5 +1,6 @@
 """Offline contract tests for the protected, redacted remote seeding getter probe."""
 import unittest
+import seedhost_seeding_readonly_matrix as matrix
 from seedhost_seeding_readonly_matrix import (
     ALLOWED, GETTERS, ProbeRefused, UnsupportedGetter, inspect,
     read_response, xml_request,
@@ -45,6 +46,14 @@ class RemoteSeedingReadOnlyMatrixTest(unittest.TestCase):
                 raise value
             return value
         return rpc
+
+    def test_only_the_named_instances_map_to_exact_endpoints(self):
+        self.assertTrue(matrix.endpoint_for("primary").endswith("/rutorrent/plugins/httprpc/action.php"))
+        self.assertTrue(matrix.endpoint_for("2").endswith("/rutorrent2/plugins/httprpc/action.php"))
+        self.assertTrue(matrix.endpoint_for("3").endswith("/rutorrent3/plugins/httprpc/action.php"))
+        for bad in ("", "4", "../x", "2/", "primary2"):
+            with self.assertRaises(matrix.ProbeRefused):
+                matrix.endpoint_for(bad)
 
     def test_only_hardcoded_read_only_methods_and_exact_hash_can_be_serialized(self):
         for name in ("d.stop", "d.close", "d.erase", "execute.throw",

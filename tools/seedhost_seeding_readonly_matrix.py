@@ -17,7 +17,18 @@ from dataclasses import dataclass
 from xml.sax.saxutils import escape
 
 HOST = "ianseeds.wood.seedhost.eu"
-ENDPOINT = "https://" + HOST + "/rutorrent/plugins/httprpc/action.php"
+# The primary ruTorrent mount and the owner's numbered development instances.
+INSTANCES = {"primary": "", "2": "2", "3": "3"}
+
+
+def endpoint_for(instance: str) -> str:
+    """The exact HTTPS RPC endpoint of one named instance; anything else is refused."""
+    if instance not in INSTANCES:
+        raise ProbeRefused("Unknown Seedhost instance")
+    return "https://" + HOST + "/rutorrent" + INSTANCES[instance] + "/plugins/httprpc/action.php"
+
+
+ENDPOINT = endpoint_for("primary")
 GETTERS = ("d.up.total", "d.down.total", "d.complete", "d.is_active",
            "d.timestamp.finished", "d.throttle_name")
 ALLOWED = set(GETTERS) | {"d.hash", "d.multicall2"}
@@ -116,11 +127,12 @@ def read_response(body: bytes):
 
 
 class Client:
-    def __init__(self, username: str, password: str):
+    def __init__(self, username: str, password: str, endpoint: str = ENDPOINT):
         if not username or not password:
             raise ProbeRefused("Missing protected credential")
+        self.endpoint = endpoint
         auth = urllib.request.HTTPPasswordMgrWithDefaultRealm()
-        auth.add_password(None, ENDPOINT, username, password)
+        auth.add_password(None, endpoint, username, password)
         self.opener = urllib.request.build_opener(
             NoRedirect(),
             urllib.request.HTTPDigestAuthHandler(auth),
@@ -129,7 +141,7 @@ class Client:
         # Must first observe a challenge on THIS exact protected endpoint.
         # No anonymous 200 can prove a principal; no automatic redirect.
         req = urllib.request.Request(
-            ENDPOINT, data=xml_request("d.multicall2", ("", "main", "d.hash=")),
+            endpoint, data=xml_request("d.multicall2", ("", "main", "d.hash=")),
             headers={"Content-Type": "text/xml"}, method="POST")
         anonymous = urllib.request.build_opener(NoRedirect())
         try:
@@ -145,11 +157,11 @@ class Client:
 
     def __call__(self, method: str, *args: str):
         req = urllib.request.Request(
-            ENDPOINT, data=xml_request(method, args),
+            self.endpoint, data=xml_request(method, args),
             headers={"Content-Type": "text/xml"}, method="POST")
         try:
             with self.opener.open(req, timeout=12) as response:
-                if response.status != 200 or response.url != ENDPOINT:
+                if response.status != 200 or response.url != self.endpoint:
                     raise ProbeRefused("Wrong endpoint or response")
                 data = response.read(MAX_XML_BYTES + 1)
             return read_response(data)
@@ -229,11 +241,13 @@ def main():
     # Run only as an explicitly opt-in step of trusted-main manual workflow.
     if os.environ.get("CHUNKS_APPROVED_SEEDING_READONLY") != "true":
         raise ProbeRefused("No manual consent")
+    # The instance label is public (no URL is printed); an unknown one is refused.
+    instance = os.environ.get("RT_INSTANCE", "primary") or "primary"
     try:
         report = inspect(Client(
             os.environ.get("RT_USER", ""),
-            os.environ.get("RT_PASS", "")))
-        print(report.public_line())
+            os.environ.get("RT_PASS", ""), endpoint_for(instance)))
+        print(report.public_line() + " instance=" + instance)
     except Exception as error:
         # Never print exception text: endpoints, hash and auth headers can be
         # carried inside urllib/HTTP errors or unexpected parser failures.
