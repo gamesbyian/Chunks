@@ -566,20 +566,31 @@ class ProtocolClientInstalledJourneyTest {
                 clickOnce(ChunksSemantics.SEEDING_REMOTE_ENFORCEMENT, "Apply while Chunks is open")
                 waitFor("switch saved on") { switch.enabled(seedingEnvironment) }
                 stage("seeding-switch-on-via-ui")
-                // The first 30 s tick records activation: transfers present then stay unmanaged.
-                Thread.sleep(45_000)
+                // The app's 30 s Smart Seeding loop is a LaunchedEffect delay, which under this
+                // (v2) Compose rule runs on the virtual main clock: advance it explicitly, one
+                // tick at a time, and let each tick's real client IO finish before the next.
+                fun oneTick() {
+                    rule.mainClock.advanceTimeBy(31_000)
+                    rule.waitForIdle()
+                    Thread.sleep(2_000)
+                }
+                val assignments = io.github.gamesbyian.chunks.seeding.PreferencesAssignmentStore(targetContext, seedingEnvironment)
+                // The first tick records activation: transfers present then stay unmanaged.
+                for (attempt in 0 until 10) { if (assignments.epoch() != null) break; oneTick() }
+                assertTrue("the activation tick ran", assignments.epoch() != null)
+                stage("seeding-activation-recorded")
                 val capped = fixture("seeding-cap")
                 assertTrue(runBlocking {
                     witness.add(ClientAddRequest(ClientAddSource.TorrentFile(capped.torrent), null, startNow = false))
                 } is ClientOperationOutcome.Verified)
-                waitFor("the client's own per-transfer cap set by the rule", 150_000) {
-                    runBlocking {
-                        runCatching {
-                            io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
-                                .uploadCapBytesPerSecond(capped.infoHashV1)
-                        }.getOrNull()
-                    } == 128_000L
+                fun cap() = runBlocking {
+                    runCatching {
+                        io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
+                            .uploadCapBytesPerSecond(capped.infoHashV1)
+                    }.getOrNull()
                 }
+                for (attempt in 0 until 10) { if (cap() == 128_000L) break; oneTick() }
+                assertEquals("the client's own per-transfer cap set by the rule", 128_000L, cap())
                 stage("seeding-cap-applied-and-read-back")
                 runBlocking { witness.remove(capped.infoHashV1, deleteData = false) }
             } finally {
