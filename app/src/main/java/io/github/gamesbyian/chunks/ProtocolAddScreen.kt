@@ -365,46 +365,41 @@ internal fun ProtocolAddScreen(
                     }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
                     profileId, request, session?.defaultDownloadDirectory)
-                val decision = io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
-                    coordinator = coordinator, intent = intent,
-                    capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(intent.target.environment),
-                    availability = io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
-                    acquireMutationGate = { attempt.claim(profileId, frozen.infoHash) },
-                    submittedAtEpochMillis = System.currentTimeMillis())
-                val ticket = decision.ticket
-                if (ticket == null) {
-                    if (decision.mutationGateAcquired) attempt.releaseUnwritten(frozen.infoHash)
-                    attempt.admissionRefusal = "Not added: " + decision.explanation
-                    return@Button
-                }
-                attempt.admissionRefusal = null
-                attempt.checkNote = null
-                // Frozen with this ticket: a later draft edit cannot redirect it.
-                attempt.frozenOriginal = (frozen as? ClientAddSource.TorrentFile)?.let { file ->
-                    originalDocument?.let { document ->
-                        RemoteAddSession.FrozenOriginalHandling(document,
-                            originalHandling ?: OriginalTorrentHandling.KEEP, originalDeletable, file.bytes.copyOf())
-                    }
-                }
-                attempt.originalDeletion = null
-                attempt.originalNote = null
                 val appContext = context.applicationContext
                 val aliasStore = saveVerifiedAlias ?: { h: String, value: String ->
                     TransferAliasStore(appContext).saveVerifiedNewAddAlias(ProtocolAliasScope.of(profileId), h, value)
                 }
                 val hash = frozen.infoHash
-                // The one shared lifecycle (as Local and rTorrent): the app-owned
-                // controller runs the single write and settles the ticket.
-                val launched = controller.launch(coordinator, ticket,
-                    io.github.gamesbyian.chunks.rpc.ProtocolAddExecutor(operations, request),
+                // The one shared submit step (as rTorrent): admission, then exactly one
+                // launch in the app-owned controller, which settles the ticket.
+                val submitted = UniversalAddSubmission.admitAndLaunch(
+                    controller = controller, coordinator = coordinator, intent = intent,
+                    capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(intent.target.environment),
+                    availability = io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
+                    acquireMutationGate = { attempt.claim(profileId, frozen.infoHash) },
+                    submittedAtEpochMillis = System.currentTimeMillis(),
+                    freeze = {
+                        attempt.admissionRefusal = null
+                        attempt.checkNote = null
+                        // Frozen with this ticket: a later draft edit cannot redirect it.
+                        attempt.frozenOriginal = (frozen as? ClientAddSource.TorrentFile)?.let { file ->
+                            originalDocument?.let { document ->
+                                RemoteAddSession.FrozenOriginalHandling(document,
+                                    originalHandling ?: OriginalTorrentHandling.KEEP, originalDeletable, file.bytes.copyOf())
+                            }
+                        }
+                        attempt.originalDeletion = null
+                        attempt.originalNote = null
+                        io.github.gamesbyian.chunks.rpc.ProtocolAddExecutor(operations, request)
+                    },
+                    // A Pending/Uncertain write keeps being observed read-only from the
+                    // app-owned scope after leaving Add; never a second write.
+                    followUp = io.github.gamesbyian.chunks.rpc.ProtocolAddObserver(operations.client),
                     onInterrupted = { mayHaveWritten ->
                         attempt.outcome = if (mayHaveWritten) ClientOperationOutcome.Uncertain(hash,
                             "The Add was interrupted after it was sent; check its status")
                         else ClientOperationOutcome.Refused(hash, "Interrupted before anything was sent")
-                    },
-                    // A Pending/Uncertain write keeps being observed read-only from the
-                    // app-owned scope after leaving Add; never a second write.
-                    followUp = io.github.gamesbyian.chunks.rpc.ProtocolAddObserver(operations.client)) { run ->
+                    }) { run ->
                     attempt.outcome = when (run) {
                         is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> run.result
                         is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed ->
@@ -430,14 +425,21 @@ internal fun ProtocolAddScreen(
                             ?.takeIf { it.equals(hash, ignoreCase = true) &&
                                 coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
                         val retirement = OriginalSourceRetirement.afterAdd(appContext, original,
-                            ticket.intent.target.environment.value, verifiedNew?.lowercase(java.util.Locale.ROOT))
+                            intent.target.environment.value, verifiedNew?.lowercase(java.util.Locale.ROOT))
                         attempt.originalDeletion = retirement.deletion
                         attempt.originalNote = retirement.note
                     }
                 }
-                if (!launched) {
-                    attempt.releaseUnwritten(hash)
-                    attempt.admissionRefusal = "Not added: another Add to $clientLabel is still settling."
+                when (submitted) {
+                    is UniversalAddSubmission.Result.Launched -> Unit
+                    is UniversalAddSubmission.Result.Refused -> {
+                        if (submitted.decision.mutationGateAcquired) attempt.releaseUnwritten(hash)
+                        attempt.admissionRefusal = "Not added: " + submitted.decision.explanation
+                    }
+                    is UniversalAddSubmission.Result.ClientBusy -> {
+                        attempt.releaseUnwritten(hash)
+                        attempt.admissionRefusal = "Not added: another Add to $clientLabel is still settling."
+                    }
                 }
             },
             enabled = canSubmit,

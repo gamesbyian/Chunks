@@ -1057,7 +1057,7 @@ internal fun VerifiedAddScreen(
                             }
                             val prioritiesFirst = orderScope != null || skippedAtClick.isNotEmpty() ||
                                 highAtClick.isNotEmpty()
-                            val admission = runCatching {
+                            val intent = runCatching {
                                 val reviewedSource = if (bytes != null)
                                     UniversalAddSource.metainfo(bytes, requireNotNull(selectedTorrent).infoHashV1)
                                 else UniversalAddSource.magnet(plan.source, plan.expectedInfoHash)
@@ -1068,18 +1068,20 @@ internal fun VerifiedAddScreen(
                                 else UniversalAddPlace.ServerCustom(plan.destination)
                                 val intent = UniversalAddIntent(
                                     reviewedSource, target, reviewedPlace, requestedStart, allowArtwork)
-                                io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
+                                intent
+                            }.getOrNull()
+                            // The one shared submit step (as the protocol clients): admission,
+                            // then exactly one launch in the app-owned controller.
+                            val submitted = intent?.let { reviewedIntent ->
+                                UniversalAddSubmission.admitAndLaunch(
+                                    controller = attemptController,
                                     coordinator = draft.coordinator,
-                                    intent = intent,
-                                    capabilities = EnvironmentCapabilities.unprobed(target.environment),
+                                    intent = reviewedIntent,
+                                    capabilities = EnvironmentCapabilities.unprobed(reviewedIntent.target.environment),
                                     availability = EnvironmentAvailability.LIVE,
                                     acquireMutationGate = onMutationStarted,
-                                    submittedAtEpochMillis = System.currentTimeMillis()
-                                )
-                            }.getOrNull()
-                            val ticket = admission?.ticket
-                            val mutationGateAcquired = admission?.mutationGateAcquired == true
-                            if (ticket != null) {
+                                    submittedAtEpochMillis = System.currentTimeMillis(),
+                                    freeze = { ticket ->
                             awaitingConfirmation = false
                             submitting = true
                             alreadyAttempted = true
@@ -1127,9 +1129,8 @@ internal fun VerifiedAddScreen(
                                                 artworkEnvironment, plan.expectedInfoHash), false) == true
                                     }
                                 })
-                            // The one shared lifecycle (as Local and the protocol clients) runs the
-                            // single write in the app-owned scope and settles the ticket from evidence.
-                            val launched = attemptController.launch(draft.coordinator, ticket, executor,
+                                        executor
+                                    },
                                 // An unresolved write keeps being observed read-only from the
                                 // app-owned scope after leaving Add; never a second load.
                                 followUp = io.github.gamesbyian.chunks.rpc.RTorrentAddObserver(remote) {
@@ -1146,6 +1147,7 @@ internal fun VerifiedAddScreen(
                                 // Also request readback after a timeout/exception.
                                 // The write might have happened without an RPC reply.
                                 onFinished = { submitting = false; onMutationSettled() }) { run ->
+                                    val ticket = run.ticket
                                 val execution = (run as? io.github.gamesbyian.chunks.model.UniversalAddRun.Completed)?.result
                                 if (run is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed) {
                                     if (run.writeMayHaveHappened) {
@@ -1158,7 +1160,7 @@ internal fun VerifiedAddScreen(
                                         uncertain = false
                                         outcome = "The Add could not be prepared. Nothing was added. Review it again."
                                     }
-                                    return@launch
+                                    return@admitAndLaunch
                                 }
                                 when (execution) {
                                     io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor.Result.PreparationRefused -> {
@@ -1166,7 +1168,7 @@ internal fun VerifiedAddScreen(
                                         // without weakening the uncertain-command retry latch.
                                         draft.refusedBeforeAdd()
                                         outcome = "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata."
-                                        return@launch
+                                        return@admitAndLaunch
                                     }
                                     io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor.Result.PreWriteRefused -> {
                                         // The engine adapter proved no load was sent. Release
@@ -1175,7 +1177,7 @@ internal fun VerifiedAddScreen(
                                         verifiedHash = null
                                         uncertain = false
                                         outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
-                                        return@launch
+                                        return@admitAndLaunch
                                     }
                                     else -> Unit
                                 }
@@ -1243,22 +1245,28 @@ internal fun VerifiedAddScreen(
                                     uncertain = true
                                     outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
                                 }
+                            
+                                }
                             }
-                            if (!launched) {
-                                // Another write for this exact server is still settling; this
-                                // ticket never reached a write and was disarmed by the controller.
-                                draft.refusedBeforeAdd()
-                                submitting = false
-                                onMutationSettled()
-                                outcome = "Another Add to this exact server is still settling. Nothing was submitted."
-                            }
-                            } else {
-                                if (mutationGateAcquired) onMutationSettled()
-                                awaitingConfirmation = false
-                                // The admission reasons are fixed app vocabulary
-                                // (never server or source text); name the exact one.
-                                val why = admission?.explanation?.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
-                                outcome = "Add could not be authorized for this exact server.$why Refresh the connection and review again; nothing was submitted."
+                            when (submitted) {
+                                is UniversalAddSubmission.Result.Launched -> Unit
+                                is UniversalAddSubmission.Result.ClientBusy -> {
+                                    // Another write for this exact server is still settling; this
+                                    // ticket never reached a write and was disarmed by the controller.
+                                    draft.refusedBeforeAdd()
+                                    submitting = false
+                                    onMutationSettled()
+                                    outcome = "Another Add to this exact server is still settling. Nothing was submitted."
+                                }
+                                is UniversalAddSubmission.Result.Refused, null -> {
+                                    val decision = (submitted as? UniversalAddSubmission.Result.Refused)?.decision
+                                    if (decision?.mutationGateAcquired == true) onMutationSettled()
+                                    awaitingConfirmation = false
+                                    // The admission reasons are fixed app vocabulary
+                                    // (never server or source text); name the exact one.
+                                    val why = decision?.explanation?.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
+                                    outcome = "Add could not be authorized for this exact server.$why Refresh the connection and review again; nothing was submitted."
+                                }
                             }
                         },
                         enabled = plan != null && !submitting && !choosing && !externalSourceReading &&
