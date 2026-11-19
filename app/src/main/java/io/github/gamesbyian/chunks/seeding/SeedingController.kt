@@ -23,7 +23,14 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
     )
 
     interface EnginePort {
+        /** False for engines with no per-transfer upload cap (rTorrent only has shared throttles). */
+        val supportsPerTransferUploadCap: Boolean get() = true
         fun transfers(): List<Facts>
+        /**
+         * Tracker/private facts for a transfer not yet assigned, when [transfers]
+         * leaves them unknown to avoid a per-transfer read every tick.
+         */
+        fun details(facts: Facts): Facts = facts
         fun observe(infoHash: String): SeedingObservation?
         fun uploadLimit(infoHash: String): Int?
         fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean
@@ -64,9 +71,11 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                     // Never durably snapshot a provisional fallback as if the
                     // rule were resolved: assignments do not auto-rematch after
                     // later metadata arrives.
-                    if (facts.trackerUrls == null) continue
+                    val described = if (facts.trackerUrls == null)
+                        runCatching { engine.details(facts) }.getOrNull() ?: continue else facts
+                    if (described.trackerUrls == null) continue
                     val r = SeedingRuleEngine.resolve(
-                        TransferFacts(environment, facts.trackerUrls, facts.isPrivate), rules, default)
+                        TransferFacts(environment, described.trackerUrls, described.isPrivate), rules, default)
                     if (r.source == SeedingResolution.Source.PENDING) continue
                     Assignment(r.policy, r.source, r.ruleId, r.reasons)
                 }
@@ -84,7 +93,11 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         // before checking it: overflow used to produce negative readbacks
         // and could throw from the foreground service's periodic tick.
         policy.uploadLimit?.bytesPerSecond?.let { bytes ->
-            if (bytes !in 1L..Int.MAX_VALUE.toLong()) {
+            if (!engine.supportsPerTransferUploadCap) {
+                // Never emulate a per-transfer cap with a shared throttle group.
+                if (assignment.note == null) store.put(hash, assignment.copy(
+                    note = "This client has no per-transfer upload limit; the rule's limit was not applied."))
+            } else if (bytes !in 1L..Int.MAX_VALUE.toLong()) {
                 // A persisted uncertain Pause is the stronger operational
                 // warning. Never erase it while reporting a separate cap
                 // fault. The policy remains unchanged and no cap is written.

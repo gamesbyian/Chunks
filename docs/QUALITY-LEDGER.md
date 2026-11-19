@@ -3085,3 +3085,12 @@ Alpine 3.22 rTorrent 0.15.2 was separately attempted but **failed** on [40368041
   - `installed-magnet-lifecycle`'s first attempt failed before any Add, at the Connections hostname text entry (`MainActivityRealMagnetJourney.kt:134`). That signature also appeared in pre-PR run 44459147277.
   - Each job passed on one unchanged-head re-run.
 - **Not established:** physical Pixel, live Seedhost and release signing.
+
+## 2026-11-19 Live Seedhost getter matrix; remote rTorrent ratio enforcement; installed Connect helper fix
+
+- **Live read-only Seedhost probe** (`seedhost-readonly-probe.yml`, `inspect_seeding_capabilities`): trusted `main` `9ffc532`, run 44481003865. Result: `sample=1 d.up.total=supported d.down.total=supported d.complete=supported d.is_active=supported d.timestamp.finished=supported d.throttle_name=supported policy_mutations=disabled independent_per_torrent_cap=unproven`. Primary account only; no mutation.
+- **#1897 merged `61452bd`:** fixes the shared lazy-action helper. It no longer calls `performScrollTo` on a transiently duplicated match, which was the immediate first-field failure in installed Connect. All 8 exact-head checks passed: Android/JVM build, both native Add shards and the verifier, minified smoke, and the installed real-peer magnet lifecycle. `LazyComposeActionsTest` has 5 cases; with the old helper 4 of them fail with the installed signature.
+- **Remote rTorrent ratio enforcement (local evidence):**
+  - `RemoteSeedingInteropTest`, real rTorrent 0.9.8 loopback, 2 of 2 runs: real counters, one verified Stop, a manual Start respected.
+  - Seeding JVM suites: 61 tests, 0 failures.
+  - CI receipts come from its PR.

@@ -51,6 +51,8 @@ internal object ChunksSemantics {
     /** Read-only exact-hash status check of an unresolved Add; never a second write. */
     const val ADD_CHECK_STATUS = "chunks.add.checkStatus"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
+    /** Per-server opt-in for remote Smart Seeding rules (default off). */
+    const val SEEDING_REMOTE_ENFORCEMENT = "chunks.seeding.remoteEnforcement"
     const val ADD_ORIGINAL_HANDLING = "chunks.add.original_handling"
     /** Read-only effective policy line on Add; the choice itself lives in Options. */
     const val ADD_ORIGINAL_HANDLING_SUMMARY = "chunks.add.original_handling.summary"

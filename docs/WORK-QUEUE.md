@@ -35,7 +35,12 @@
 
 ## R5. Approved advanced Android functionality (run before final R4)
 
-1. **Seeding and priorities:** Finish client-specific effective ratio/upload/tracker rules and remote application only with typed supported capabilities and stop-at-most-once persistence. Finish in Order and Add-time levels already exist across clients; test per-client restart and unknown states instead of reimplementing basic selectors.
+1. **Seeding and priorities:** rTorrent ratio enforcement is now opt-in while connected, using the shared at-most-once journal (2026-11-19, `RemoteSeeding`). Next:
+   - a protected live Seedhost Stop gate;
+   - numbered-instance getter evidence;
+   - Transmission/qBittorrent/Deluge seeding ports. Prefer each client's native ratio limit once its readback is verified.
+
+   Apply rules remotely only with typed supported capabilities and stop-at-most-once persistence. Finish in Order and Add-time levels already exist across clients; test per-client restart and unknown states instead of reimplementing basic selectors.
 2. **Smart Routing:** build on saved ordered rules and opt-in source-time suggestions. Integrate checked metadata-late routing and multi-client choices without automatic unreviewed Add, payload movement or cross-client identity confusion. Test all five clients with disposable same-payload jobs where feasible.
 3. **Snapshots:** extend locally bounded definition export/restore, read-only interrupted journal recovery, settings remap and safe provider batch handling; remote definition export/restore only where exact engine capability/bytes and consent permit.
 4. **File/identity management:** keep job-only Copy/Move independently verified before source-job retirement, enforce exact Place and active-client fences; finish safe archive, renamed filenames and storage accounting without enabling unproved writers.

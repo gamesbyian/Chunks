@@ -1380,6 +1380,37 @@ internal fun ChunksApp(
                 }
             }
         }
+        // Remote Smart Seeding (opt-in per exact server, default off): while this server is
+        // connected, every 30 s evaluate its rules against rTorrent's own counters under the
+        // same mutation gate as every other server change. A sent Stop is journaled before the
+        // call, never retried, and is followed by a fresh read. Nothing runs when disabled.
+        LaunchedEffect(server, aliasScope) {
+            val connectedRemote = server ?: return@LaunchedEffect
+            while (true) {
+                kotlinx.coroutines.delay(30_000L)
+                val enabled = withContext(Dispatchers.IO) {
+                    io.github.gamesbyian.chunks.seeding.RemoteSeeding.enabledFor(context, connectedRemote)
+                }
+                if (!enabled) continue
+                if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) continue
+                var tick: io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick? = null
+                try {
+                    tick = withContext(Dispatchers.IO) {
+                        io.github.gamesbyian.chunks.seeding.RemoteSeeding.tick(context, connectedRemote)
+                    }
+                } finally {
+                    if (tick == io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick.NO_WRITE ||
+                        tick == io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick.NOT_RUN) {
+                        mutationGate.abandonKnownNoWrite()
+                    } else {
+                        // A Stop was sent, or cancellation may have followed one: keep the
+                        // readback latch until a fresh read, never another blind write.
+                        mutationGate.settled()
+                        if (server === connectedRemote) { stale = true; refresh() }
+                    }
+                }
+            }
+        }
         // Finish in Order on Transmission/qBittorrent/Deluge advances the same way: every
         // 30 s, at most one journaled, verified step per enabled policy of a started
         // transfer, serialized with every other policy edit. One client instance per

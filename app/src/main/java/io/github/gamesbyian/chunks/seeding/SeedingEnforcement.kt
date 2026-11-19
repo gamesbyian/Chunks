@@ -7,8 +7,13 @@ import java.math.RoundingMode
 data class SeedingObservation(
     val uploadedBytes: Long,
     val downloadedBytes: Long,
-    /** Time spent seeding as reported by the engine, in seconds. */
-    val seedingSeconds: Long,
+    /**
+     * Time spent seeding as reported by the engine, in seconds. Null when the
+     * engine keeps no such counter (rTorrent: d.timestamp.finished is the
+     * completion instant, not accumulated seed time). A time condition can
+     * then never be judged, so it never stops a transfer.
+     */
+    val seedingSeconds: Long?,
     val seeding: Boolean
 )
 
@@ -27,6 +32,17 @@ object SeedingEnforcement {
         data class CannotJudge(val reason: String) : Decision()
     }
 
+    private fun unjudged(conditions: List<Pair<String, Boolean?>>): String {
+        val unknown = conditions.filter { it.second == null }.map { it.first }
+        return when {
+            unknown == listOf("ratio") ->
+                "Nothing was downloaded here, so a ratio goal can't be measured; seeding continues."
+            unknown == listOf("time") ->
+                "This client doesn't report seeding time, so the time limit can't be checked; seeding continues."
+            else -> "Neither the ratio goal nor the seeding time can be measured here; seeding continues."
+        }
+    }
+
     fun ratio(o: SeedingObservation): BigDecimal? =
         if (o.downloadedBytes <= 0) null
         else BigDecimal(o.uploadedBytes).divide(BigDecimal(o.downloadedBytes), 4, RoundingMode.DOWN)
@@ -34,9 +50,13 @@ object SeedingEnforcement {
     fun decide(policy: SeedingPolicy, o: SeedingObservation): Decision {
         if (!o.seeding) return Decision.KeepSeeding
         if (policy.seedsForever) return Decision.KeepSeeding
-        if (o.uploadedBytes < 0 || o.downloadedBytes < 0 || o.seedingSeconds < 0)
+        if (o.uploadedBytes < 0 || o.downloadedBytes < 0 || (o.seedingSeconds ?: 0) < 0)
             return Decision.CannotJudge("The engine reported invalid counters.")
-        if (policy.minSeedSeconds != null && o.seedingSeconds < policy.minSeedSeconds) return Decision.KeepSeeding
+        if (policy.minSeedSeconds != null) {
+            val seconds = o.seedingSeconds ?: return Decision.CannotJudge(
+                "This client doesn't report seeding time, so the minimum seeding time can't be checked; seeding continues.")
+            if (seconds < policy.minSeedSeconds) return Decision.KeepSeeding
+        }
 
         // Comparing a ratio rounded down to four decimals can miss a
         // legitimately reached goal (for example 1,000,001 / 1,000,000
@@ -51,7 +71,7 @@ object SeedingEnforcement {
                 BigDecimal(o.uploadedBytes) >= goal.multiply(BigDecimal(o.downloadedBytes))
             else null
         }
-        val timeMet: Boolean? = policy.maxSeedSeconds?.let { o.seedingSeconds >= it }
+        val timeMet: Boolean? = policy.maxSeedSeconds?.let { max -> o.seedingSeconds?.let { it >= max } }
         val goalText = policy.ratioGoal?.let {
             it.setScale(maxOf(2, it.scale()), RoundingMode.HALF_UP).toPlainString()
         }
@@ -69,12 +89,13 @@ object SeedingEnforcement {
                     met.isNotEmpty() -> Decision.Stop(reasonFor(met).replaceFirstChar { it.uppercase() } + ".")
                     conditions.all { it.first == "ratio" && it.second == null } -> Decision.CannotJudge(
                         "Nothing was downloaded here, so a ratio goal can't be measured; seeding continues.")
+                    conditions.isNotEmpty() && conditions.all { it.second == null } -> Decision.CannotJudge(
+                        unjudged(conditions))
                     else -> Decision.KeepSeeding
                 }
             }
             SeedingPolicy.Combine.ALL -> when {
-                conditions.any { it.second == null } -> Decision.CannotJudge(
-                    "Nothing was downloaded here, so a ratio goal can't be measured; seeding continues.")
+                conditions.any { it.second == null } -> Decision.CannotJudge(unjudged(conditions))
                 conditions.all { it.second == true } ->
                     Decision.Stop(reasonFor(conditions.map { it.first }).replaceFirstChar { it.uppercase() } + ".")
                 else -> Decision.KeepSeeding

@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
@@ -69,6 +70,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     // A view-only filter over the same default editors, not a second settings system.
     var defaultEnvironmentSearch by rememberSaveable { mutableStateOf("") }
     var explanationOpen by rememberSaveable { mutableStateOf(false) }
+    val enforcement = remember { io.github.gamesbyian.chunks.seeding.RemoteSeeding.EnforcementSwitch(context) }
     var defaultsOpen by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val labels = environments.associate { it.id to it.label }
@@ -84,7 +86,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Seeding rules", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Rules on this device apply only to new transfers. Server rules are saved but aren't active yet.",
+            "Rules apply only to new transfers. On a server they apply only after you turn them on for it.",
             style = MaterialTheme.typography.bodySmall
         )
         OutlinedButton(
@@ -99,7 +101,10 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 "New transfers on this device get any matching upload limit while Chunks is running. " +
                     "When a stop condition is reached, Chunks pauses the transfer once. " +
                     "Existing transfers won't change when you edit a rule. " +
-                    "Server rules are saved for later but aren't active yet. Nothing is deleted.", ChunksTone.PAUSED)
+                    "On a server, rules apply only if you turn on \"Apply while Chunks is open\" for it, and only to " +
+                    "transfers added after that, while Chunks is open and connected. A server's ratio is measured " +
+                    "from its own counters; it can't measure seeding time or set a per-transfer upload limit. " +
+                    "Nothing is deleted.", ChunksTone.PAUSED)
         }
         if (snapshot.quarantinedRemoteRules.isNotEmpty() ||
             snapshot.quarantinedRemoteDefaults.isNotEmpty()) {
@@ -226,8 +231,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                         Text((if (explicitDefault == null) "Automatic default" else "Using your saved preference") +
                             " · " + (explicitDefault ?: SeedingPolicy()).describe(),
                             style = MaterialTheme.typography.bodySmall)
-                        Text(if (env.server) "Saved for future server support. Nothing was sent to this server."
-                            else "Applies to new transfers on this device. Existing downloads won't change.",
+                        if (env.server) RemoteSeedingEnforcementRow(env, enforcement)
+                        else Text("Applies to new transfers on this device. Existing downloads won't change.",
                             style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = {
                             editingDefault = env; pendingResetDefault = null; message = null
@@ -414,4 +419,34 @@ private fun SeedingPolicyEditor(
         ActionTile("Save default", ChunksColors.Green, { policy?.let(onSave) }, Modifier.weight(1f), enabled = policy != null, stacked = false)
         OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f).heightIn(min = 56.dp)) { Text("Cancel") }
     }
+}
+
+/**
+ * The explicit per-server opt-in for remote Smart Seeding (default off). The
+ * switch shows only the saved value; a failed save is reported, never assumed.
+ */
+@Composable
+private fun RemoteSeedingEnforcementRow(
+    env: SeedingEnvironment,
+    enforcement: io.github.gamesbyian.chunks.seeding.RemoteSeeding.EnforcementSwitch
+) {
+    var on by remember(env.id) { mutableStateOf(enforcement.enabled(env.id)) }
+    var failed by remember(env.id) { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = on, role = Role.Switch) { wanted ->
+                failed = !enforcement.set(env.id, wanted)
+                on = enforcement.enabled(env.id)
+            }
+            .testTag(ChunksSemantics.SEEDING_REMOTE_ENFORCEMENT),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Apply while Chunks is open", modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(checked = on, onCheckedChange = null)
+    }
+    Text(if (on) "Transfers added to this server from now on follow these rules while Chunks is open and " +
+            "connected. Chunks stops a transfer at most once and never deletes anything."
+        else "Off: nothing is sent to this server.", style = MaterialTheme.typography.bodySmall)
+    if (failed) Text("The setting could not be saved; it is unchanged.",
+        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
 }
