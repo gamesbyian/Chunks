@@ -214,11 +214,12 @@ internal fun ProtocolAddScreen(
     }
     val folder = if (useCustom) customFolder.trim() else null
     val folderValid = folder == null || runCatching { ClientHashes.requireDirectory(folder) }.isSuccess
-    val caps = session?.capabilities.orEmpty()
-    val supported = source != null && when (source) {
-        is ClientAddSource.Magnet -> ClientCapability.ADD_MAGNET in caps
-        is ClientAddSource.TorrentFile -> ClientCapability.ADD_TORRENT_FILE in caps
-    } && (startState.value || ClientCapability.ADD_STOPPED in caps)
+    // The one engine-neutral capability descriptor decides what this form offers.
+    val capabilities = UniversalAddClientCapabilities.protocol(session)
+    val sourceRefusal = source?.let {
+        capabilities.refusal(isMagnet = it is ClientAddSource.Magnet, startNow = startState.value, clientLabel = clientLabel)
+    }
+    val supported = source != null && sourceRefusal == null
     // Files to download: the same shared component and reviewed-layout rule as
     // every Add; skips belong only to the exact reviewed .torrent identity.
     val layout = remember(torrent) {
@@ -230,7 +231,7 @@ internal fun ProtocolAddScreen(
         mutableStateOf<Map<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>>(emptyMap())
     }
     var fileChoiceOpen by remember(torrent?.preview?.infoHashV1) { mutableStateOf(false) }
-    val canChooseFiles = ClientCapability.FILE_PRIORITIES in caps && ClientCapability.ADD_STOPPED in caps
+    val canChooseFiles = capabilities.fileChoices
     val chosenSkips = if (layout != null && canChooseFiles) skipped.filter { i -> layout.any { it.index == i } }.toSet()
         else emptySet()
     val noFileChosen = layout != null && layout.none { it.index !in chosenSkips }
@@ -299,7 +300,7 @@ internal fun ProtocolAddScreen(
             // Only the levels this exact client stores (never a silent Low → Normal).
             priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
                 io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
-                .filter { it in session?.filePriorities.orEmpty() },
+                .filter { it in capabilities.priorityLevels },
             priorities = levels.filterKeys { it !in chosenSkips },
             onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
             onSkippedChange = { skipped = it; levels = levels - it })
@@ -313,7 +314,7 @@ internal fun ProtocolAddScreen(
         Text(if (useCustom) "A folder you enter on $clientLabel"
             else "$clientLabel's default folder" + (session?.defaultDownloadDirectory?.let { " ($it)" } ?: ""),
             style = MaterialTheme.typography.bodyMedium)
-        if (ClientCapability.ADD_TO_DIRECTORY in caps) OutlinedButton(onClick = { useCustom = !useCustom },
+        if (capabilities.customFolder) OutlinedButton(onClick = { useCustom = !useCustom },
             enabled = !attempt.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text(if (useCustom) "Use the default folder" else "Change folder")
         }
@@ -326,8 +327,7 @@ internal fun ProtocolAddScreen(
         // 4. Start.
         UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
             onCheckedChange = { startState.value = it })
-        if (source != null && session != null && !supported) Text(
-            "$clientLabel cannot add this kind of source" + if (!startState.value) " stopped." else ".",
+        if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
         Button(
             onClick = {

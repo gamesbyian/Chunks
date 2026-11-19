@@ -85,6 +85,8 @@ internal fun UniversalAddDestinationPicker(
     /** Connected Transmission / qBittorrent / Deluge clients (exact typed profiles). */
     protocolDestinations: List<UniversalAddSavedDestination> = emptyList(),
     selectedProtocolId: String? = null,
+    /** From the selected client's UniversalAddClientCapabilities; false explains instead of offering a name. */
+    displayNameSupported: Boolean = selectedProtocolId == null,
     onProtocol: (String) -> Unit = {},
     /** Smart Routing's proposal (label + reason); never applied without a tap. */
     routingSuggestion: Pair<String, String>? = null,
@@ -155,7 +157,7 @@ internal fun UniversalAddDestinationPicker(
         // Chunks display names exist for Local and rTorrent transfers only. A name
         // typed for a Transmission/qBittorrent/Deluge Add would be silently dropped,
         // so the capability is explained instead of offered.
-        if (selectedProtocolId != null) {
+        if (!displayNameSupported) {
             Text("Display names are not yet available for this client; Chunks shows the torrent's own name.",
                 style = MaterialTheme.typography.bodySmall)
             return@Column
