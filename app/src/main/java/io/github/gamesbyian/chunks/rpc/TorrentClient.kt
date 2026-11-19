@@ -61,6 +61,25 @@ internal interface TorrentClient {
      * "force reannounce"). Changes no job state; unsupported clients ignore it.
      */
     suspend fun reannounce(hash: String) {}
+
+    /**
+     * The smallest exactly storable step of this client's own per-transfer
+     * upload cap, in bytes per second; null when the client has none (or it
+     * cannot be determined). Read-only. Never a shared/global throttle.
+     */
+    suspend fun uploadCapStepBytes(): Long? = null
+
+    /** This exact transfer's own upload cap in bytes/s: 0 = none; null = unreadable. Read-only. */
+    suspend fun uploadCapBytesPerSecond(hash: String): Long? = null
+
+    /**
+     * Write ONLY this transfer's own upload cap ([bytesPerSecond] > 0, a
+     * multiple of [uploadCapStepBytes]). One write; the caller verifies it by
+     * an independent [uploadCapBytesPerSecond] read and never replays it.
+     */
+    suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+        throw ClientRefusedException("This client has no per-transfer upload cap")
+    }
 }
 
 /** Which engine an adapter drives; Local is the device's own libtorrent. */

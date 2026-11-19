@@ -167,6 +167,31 @@ internal class TransmissionClient(
 
     private fun ids(hash: String) = JSONObject().put("ids", JSONArray().put(ClientHashes.requireHash(hash)))
 
+    // Transmission's per-torrent uploadLimit is in its speed unit ("units"."speed-bytes",
+    // 1000 by default), enabled by uploadLimited.
+    override suspend fun uploadCapStepBytes(): Long? {
+        val units = call("session-get", JSONObject().put("fields", JSONArray().put("units")), mutating = false)
+            .optJSONObject("units") ?: return null
+        return units.optLong("speed-bytes", 0L).takeIf { it == 1000L || it == 1024L }
+    }
+
+    override suspend fun uploadCapBytesPerSecond(hash: String): Long? {
+        val exact = ClientHashes.requireHash(hash)
+        val step = uploadCapStepBytes() ?: return null
+        val rows = call("torrent-get", JSONObject().put("fields", JSONArray(listOf("hashString", "uploadLimit", "uploadLimited")))
+            .put("ids", JSONArray().put(exact)), mutating = false).optJSONArray("torrents") ?: return null
+        if (rows.length() != 1) return null
+        val r = rows.getJSONObject(0).takeIf { it.optString("hashString").equals(exact, ignoreCase = true) } ?: return null
+        if (!r.has("uploadLimited") || !r.has("uploadLimit")) return null
+        return if (!r.optBoolean("uploadLimited")) 0L else r.optLong("uploadLimit") * step
+    }
+
+    override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+        val step = uploadCapStepBytes() ?: throw ClientRefusedException("Transmission speed unit unknown")
+        require(bytesPerSecond > 0 && bytesPerSecond % step == 0L)
+        call("torrent-set", ids(hash).put("uploadLimit", bytesPerSecond / step).put("uploadLimited", true), mutating = true)
+    }
+
     private suspend fun get(hashes: List<String>?): List<JSONObject> {
         val args = JSONObject().put("fields", JSONArray(FIELDS))
         hashes?.let { args.put("ids", JSONArray(it)) }

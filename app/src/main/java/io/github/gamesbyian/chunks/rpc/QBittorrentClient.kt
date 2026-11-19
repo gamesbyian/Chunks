@@ -241,6 +241,23 @@ internal class QBittorrentClient(
         }
     }
 
+    // qBittorrent stores a per-torrent upload limit in exact bytes/s (torrents/uploadLimit).
+    override suspend fun uploadCapStepBytes(): Long = 1L
+
+    override suspend fun uploadCapBytesPerSecond(hash: String): Long? {
+        val exact = ClientHashes.requireHash(hash)
+        val body = request("POST", "torrents/uploadLimit", "hashes=$exact".toByteArray(Charsets.UTF_8))
+        val limits = runCatching { JSONObject(body) }.getOrNull() ?: return null
+        val key = limits.keys().asSequence().singleOrNull { it.equals(exact, ignoreCase = true) } ?: return null
+        val value = limits.optLong(key, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE } ?: return null
+        return if (value <= 0) 0L else value
+    }
+
+    override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+        require(bytesPerSecond > 0)
+        form("torrents/setUploadLimit", "hashes" to ClientHashes.requireHash(hash), "limit" to bytesPerSecond.toString())
+    }
+
     private suspend fun form(method: String, vararg fields: Pair<String, String>) {
         val body = fields.joinToString("&") { (k, v) -> k + "=" + URLEncoder.encode(v, "UTF-8") }
         request("POST", method, body.toByteArray(Charsets.UTF_8),
