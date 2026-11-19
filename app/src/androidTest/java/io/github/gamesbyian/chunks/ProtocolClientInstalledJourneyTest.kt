@@ -296,6 +296,11 @@ class ProtocolClientInstalledJourneyTest {
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
             stage("add-dispatched-once")
             waitFor("Add confirmed", 90_000) { visible("Add: confirmed") }
+            // The attempt is app-owned like Local and rTorrent: Activity recreation must
+            // keep this exact receipt and must not re-enable a second Add of the same source.
+            it.recreate()
+            waitFor("receipt kept across recreation", 30_000) { visible("Add: confirmed") }
+            stage("add-receipt-kept-across-recreation")
             // Newly registered magnets may briefly report a queue/check state while
             // the daemon settles the explicitly requested Start-off option. Never
             // accept QUEUED as STOPPED: it can become runnable without permission.

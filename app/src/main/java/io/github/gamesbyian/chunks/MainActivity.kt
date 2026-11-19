@@ -136,6 +136,8 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val readingSharedDocument = mutableStateOf<Uri?>(null)
     val artworkChoices = AddArtworkDraftChoices()
     val remoteSessions = RemoteAddSessions()
+    // One Transmission/qBittorrent/Deluge Add attempt; RAM only, never persisted.
+    val protocolAttempt = ProtocolAddAttempt()
     // External Share/Open With arrives before Compose necessarily consumes it.
     // Keep these unconsumed, one-shot handoffs in the Activity-retained owner,
     // not the ephemeral Activity. Recreation must resume review without
@@ -463,7 +465,10 @@ internal fun ChunksApp(
     // Exact typed profile id (non-secret) of a Transmission/qBittorrent/Deluge
     // Add target. Selecting Local or the rTorrent session clears it.
     var addProtocolTargetId by rememberSaveable { mutableStateOf<String?>(null) }
-    val protocolAddAttempt = remember { ProtocolAddAttempt() }
+    // The Transmission/qBittorrent/Deluge attempt lives in the same app-owned owner as
+    // Local and rTorrent: its write already runs in that owner's scope, so the receipt,
+    // busy state and one-Add claim must survive Activity recreation with it.
+    val protocolAddAttempt = retainedAddOwner?.protocolAttempt ?: remember { ProtocolAddAttempt() }
     var combinedFromLocal by rememberSaveable { mutableStateOf(false) }
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
