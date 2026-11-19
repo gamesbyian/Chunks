@@ -1,6 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.engine.DesktopLibtorrent
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
@@ -12,10 +11,10 @@ import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
-import io.github.gamesbyian.chunks.seeding.PreferencesAssignmentStore
+import io.github.gamesbyian.chunks.seeding.RTorrentSeedingPort
+import io.github.gamesbyian.chunks.seeding.SeedingController
 import io.github.gamesbyian.chunks.seeding.RemoteSeeding
 import io.github.gamesbyian.chunks.seeding.SeedingPolicy
-import io.github.gamesbyian.chunks.seeding.SeedingRuleStore
 import java.io.File
 import java.math.BigDecimal
 import java.net.InetSocketAddress
@@ -32,10 +31,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import org.junit.runner.RunWith
 import org.libtorrent4j.TorrentBuilder
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * Remote Smart Seeding against a REAL rTorrent: its own d.up.total/d.down.total
@@ -47,11 +43,13 @@ import org.robolectric.annotation.Config
  * the goal. Jobs present before activation are never touched. Only the exact
  * disposable fixture job and its files are removed afterwards.
  *
+ * Plain JUnit (never Robolectric): the desktop libtorrent JNI library binds to one
+ * classloader, and loading it in a Robolectric sandbox breaks later native tests in
+ * the same fork. The opt-in gate and persistence are covered by RemoteSeedingTickTest.
+ *
  * Skipped unless the loopback rig is configured (tools/interop/start_local_clients.sh
  * + local_env.sh): CHUNKS_INTEROP_RTORRENT_URL/_PASS/_PAYLOAD_DIR and CHUNKS_INTEROP_TRACKER.
  */
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class RemoteSeedingInteropTest {
     @get:Rule val temp = TemporaryFolder()
     private val engines = mutableListOf<LocalTorrentEngine>()
@@ -78,21 +76,20 @@ class RemoteSeedingInteropTest {
         val payloadDir = env("PAYLOAD_DIR")
         assumeTrue("Real rTorrent not configured", env("URL").isNotBlank() && env("PASS").isNotBlank() &&
             tracker.isNotBlank() && File(payloadDir).isDirectory)
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val remote = RTorrentRemote(RemoteCredentials(env("URL"), env("USER"), env("PASS")))
         val client = RTorrentClientAdapter(remote)
         val ops = ClientOperations(client, 60, 500)
         val environment = requireNotNull(RemoteSeeding.environmentOf(remote))
-
-        // Off by default: nothing is read or changed.
-        assertEquals(RemoteSeeding.Tick.NOT_RUN, RemoteSeeding.tick(context, remote))
-        // The person enables enforcement for this exact server, with a ratio-0.5 default.
-        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
-            mapOf(environment to SeedingPolicy(ratioGoal = BigDecimal("0.5"))))))
-        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        val store = InteropAssignmentStore()
+        val default = SeedingPolicy(ratioGoal = BigDecimal("0.5"))
+        // Exactly what RemoteSeeding.tick does once its per-server switch is on.
+        fun tick(): RemoteSeeding.Tick {
+            val port = RTorrentSeedingPort(remote, store.epoch() == null)
+            SeedingController(port, store).tick(environment, emptyList(), default, System.currentTimeMillis())
+            return if (port.stopAttempted) RemoteSeeding.Tick.STOP_ATTEMPTED else RemoteSeeding.Tick.NO_WRITE
+        }
         val existing = remote.listTransfers().map { it.hash.lowercase() }
-        assertEquals("activation tick", RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tick(context, remote))
-        val store = PreferencesAssignmentStore(context, environment)
+        assertEquals("activation tick", RemoteSeeding.Tick.NO_WRITE, tick())
         assertTrue("every pre-existing job stays unmanaged", existing.all { store.get(it)?.policy == null })
         stage("activated pre_existing=${existing.size}")
 
@@ -124,7 +121,7 @@ class RemoteSeedingInteropTest {
                     "local=${seeder.status(hash)?.let { "${it.state} peers=${it.peers} up=${it.payloadUploadedBytes}" }}")
                 client.torrent(hash)?.let { it.completedBytes == it.totalBytes && it.totalBytes != null } == true
             }
-            RemoteSeeding.tick(context, remote)
+            tick()
             assertEquals("ratio 0 is below the goal: still running", true, client.torrent(hash)?.runState?.started)
             assertNull(store.get(hash)?.stopAttemptedReason)
             val evidence = remote.readSeedingEvidence(hash)
@@ -141,8 +138,8 @@ class RemoteSeedingInteropTest {
 
             // 4. The real ratio passes 0.5: exactly one verified automatic Stop.
             waitFor("rTorrent's own counters pass the ratio and the rule stops the job", 60_000) {
-                val tick = RemoteSeeding.tick(context, remote)
-                if (store.get(hash)?.stoppedByRule != null) assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED, tick)
+                val result = tick()
+                if (store.get(hash)?.stoppedByRule != null) assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED, result)
                 store.get(hash)?.stoppedByRule != null || store.get(hash)?.stopAttemptedReason != null
             }
             val assignment = requireNotNull(store.get(hash))
@@ -155,7 +152,7 @@ class RemoteSeedingInteropTest {
 
             // 5. A manual Start is the person's choice: the rule never stops it again.
             assertTrue(ops.setStarted(hash, true) is ClientOperationOutcome.Verified)
-            repeat(3) { assertEquals("no further Stop", RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tick(context, remote)) }
+            repeat(3) { assertEquals("no further Stop", RemoteSeeding.Tick.NO_WRITE, tick()) }
             assertEquals(true, client.torrent(hash)?.runState?.started)
             stage("manual_start_respected=true")
             // Pre-existing jobs were never stopped by the controller.
@@ -166,7 +163,18 @@ class RemoteSeedingInteropTest {
                 ops.remove(hash, deleteData = false)
             }
             File(payloadDir, name).deleteRecursively()
-            RemoteSeeding.EnforcementSwitch(context).set(environment, false)
         }
+    }
+}
+
+/** In-memory assignment journal for plain-JUnit interop (no Android Context, no Robolectric sandbox). */
+internal class InteropAssignmentStore : io.github.gamesbyian.chunks.seeding.SeedingController.AssignmentStore {
+    private var epochMs: Long? = null
+    private val map = HashMap<String, io.github.gamesbyian.chunks.seeding.SeedingController.Assignment>()
+    override fun epoch() = epochMs
+    override fun setEpoch(ms: Long): Boolean { if (epochMs != null) return false; epochMs = ms; return true }
+    override fun get(infoHash: String) = map[infoHash]
+    override fun put(infoHash: String, assignment: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment): Boolean {
+        map[infoHash] = assignment; return true
     }
 }

@@ -102,8 +102,9 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                     "When a stop condition is reached, Chunks pauses the transfer once. " +
                     "Existing transfers won't change when you edit a rule. " +
                     "On a server, rules apply only if you turn on \"Apply while Chunks is open\" for it, and only to " +
-                    "transfers added after that, while Chunks is open and connected. A server's ratio is measured " +
-                    "from its own counters; it can't measure seeding time or set a per-transfer upload limit. " +
+                    "transfers added after that, while Chunks is open and connected. Each server's own counters are used: " +
+                    "rTorrent has no seeding-time counter, and other clients may count seeding time only while a " +
+                    "transfer is active. Rules don't set per-transfer upload limits on servers. " +
                     "Nothing is deleted.", ChunksTone.PAUSED)
         }
         if (snapshot.quarantinedRemoteRules.isNotEmpty() ||

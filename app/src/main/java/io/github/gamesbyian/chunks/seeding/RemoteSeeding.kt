@@ -31,7 +31,7 @@ internal class RTorrentSeedingPort(
     /** True on the activation tick: every current transfer predates it and stays unmanaged. */
     private val activationBaseline: Boolean,
     private val nowMs: () -> Long = System::currentTimeMillis
-) : SeedingController.EnginePort {
+) : StopTrackingPort {
     override val supportsPerTransferUploadCap: Boolean get() = false
 
     override fun transfers(): List<SeedingController.Facts> = runBlocking {
@@ -59,12 +59,64 @@ internal class RTorrentSeedingPort(
     override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean = false
 
     /** Whether this tick sent (or may have sent) a Stop: the caller must then refresh before other writes. */
-    var stopAttempted = false
+    override var stopAttempted = false
         private set
 
     override fun pause(infoHash: String): Boolean {
         stopAttempted = true
         return runBlocking { remote.setStarted(infoHash, desiredStarted = false) == LifecycleOutcome.Verified(false) }
+    }
+}
+
+/** A port that records whether a tick sent (or may have sent) a Stop. */
+internal interface StopTrackingPort : SeedingController.EnginePort {
+    val stopAttempted: Boolean
+}
+
+/**
+ * One Transmission / qBittorrent / Deluge profile as a [SeedingController.EnginePort],
+ * from the client's own counters ([io.github.gamesbyian.chunks.rpc.TorrentClient.seedingFacts]).
+ * Unlike rTorrent these clients report accumulated seeding time, so time limits
+ * are judged. No per-transfer cap is written here (each client's native limits
+ * are not yet verified through readback). Stop is the shared verified
+ * [io.github.gamesbyian.chunks.rpc.ClientOperations.setStarted]. Blocking.
+ */
+internal class ProtocolSeedingPort(
+    private val operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
+    private val activationBaseline: Boolean,
+    private val nowMs: () -> Long = System::currentTimeMillis
+) : StopTrackingPort {
+    override val supportsPerTransferUploadCap: Boolean get() = false
+    override var stopAttempted = false
+        private set
+
+    override fun transfers(): List<SeedingController.Facts> = runBlocking {
+        val at = if (activationBaseline) 0L else nowMs()
+        operations.client.torrents().map { SeedingController.Facts(it.hash.lowercase(), at, null, null) }
+    }
+
+    override fun details(facts: SeedingController.Facts): SeedingController.Facts = runBlocking {
+        val seen = operations.client.seedingFacts(facts.infoHash) ?: return@runBlocking facts
+        // Not provably public: no tracker URL is read, so only the default can apply.
+        val urls = seen.publicTrackerUrls?.takeIf { seen.isPrivate == false } ?: emptyList()
+        facts.copy(trackerUrls = urls, isPrivate = seen.isPrivate ?: true)
+    }
+
+    override fun observe(infoHash: String): SeedingObservation? = runBlocking {
+        val seen = operations.client.seedingFacts(infoHash) ?: return@runBlocking null
+        SeedingObservation(seen.uploadedBytes ?: return@runBlocking null,
+            seen.downloadedBytes ?: return@runBlocking null,
+            seedingSeconds = seen.seedingSeconds, seeding = seen.seeding ?: return@runBlocking null)
+    }
+
+    override fun uploadLimit(infoHash: String): Int? = null
+    override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean = false
+
+    override fun pause(infoHash: String): Boolean {
+        stopAttempted = true
+        return runBlocking {
+            operations.setStarted(infoHash, false) is io.github.gamesbyian.chunks.rpc.ClientOperationOutcome.Verified
+        }
     }
 }
 
@@ -105,19 +157,35 @@ internal object RemoteSeeding {
     /** One controller step for [remote]. Blocking; call off main, holding the server's mutation gate. */
     fun tick(context: Context, remote: RTorrentRemote, nowMs: Long = System.currentTimeMillis()): Tick {
         val environment = environmentOf(remote) ?: return Tick.NOT_RUN
+        return run(context, environment, nowMs) { baseline -> RTorrentSeedingPort(remote, baseline) { nowMs } }
+    }
+
+    /** The seeding-rule environment ID of a Transmission/qBittorrent/Deluge profile. */
+    fun protocolEnvironment(profileId: String): String = "remote:$profileId"
+
+    /** One controller step for a protocol profile. Blocking; call off main, serialized with its other changes. */
+    fun tickProtocol(
+        context: Context, profileId: String,
+        operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
+        nowMs: Long = System.currentTimeMillis()
+    ): Tick = run(context, protocolEnvironment(profileId), nowMs) { baseline ->
+        ProtocolSeedingPort(operations, baseline) { nowMs }
+    }
+
+    private fun run(context: Context, environment: String, nowMs: Long,
+                    port: (activationBaseline: Boolean) -> StopTrackingPort): Tick {
         if (!EnforcementSwitch(context).enabled(environment)) return Tick.NOT_RUN
         val snapshot = SeedingRuleStore(context).load()
         if (snapshot.unreadable) return Tick.NOT_RUN
         val store = PreferencesAssignmentStore(context, environment)
-        val baseline = store.epoch() == null
-        val port = RTorrentSeedingPort(remote, baseline) { nowMs }
+        val engine = port(store.epoch() == null)
         try {
-            SeedingController(port, store)
+            SeedingController(engine, store)
                 .tick(environment, snapshot.rules, snapshot.defaults[environment] ?: SeedingPolicy(), nowMs)
         } catch (_: Exception) {
             // A read fault ends this tick; a fault after a Stop still needs a refresh.
-            if (!port.stopAttempted) return Tick.NO_WRITE
+            if (!engine.stopAttempted) return Tick.NO_WRITE
         }
-        return if (port.stopAttempted) Tick.STOP_ATTEMPTED else Tick.NO_WRITE
+        return if (engine.stopAttempted) Tick.STOP_ATTEMPTED else Tick.NO_WRITE
     }
 }

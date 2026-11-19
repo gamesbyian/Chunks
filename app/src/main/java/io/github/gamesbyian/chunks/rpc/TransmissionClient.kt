@@ -142,6 +142,29 @@ internal class TransmissionClient(
         call("torrent-verify", ids(hash), mutating = true)
     }
 
+    override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
+        val exact = ClientHashes.requireHash(hash)
+        suspend fun row(fields: List<String>): JSONObject? {
+            val rows = call("torrent-get", JSONObject().put("fields", JSONArray(fields + "hashString"))
+                .put("ids", JSONArray().put(exact)), mutating = false).optJSONArray("torrents")
+                ?: throw IOException("Transmission seeding facts unavailable")
+            if (rows.length() > 1) throw IOException("Ambiguous Transmission identity")
+            return rows.optJSONObject(0)?.takeIf { it.optString("hashString").equals(exact, ignoreCase = true) }
+        }
+        val r = row(listOf("uploadedEver", "downloadedEver", "secondsSeeding", "status", "leftUntilDone", "isPrivate"))
+            ?: return null
+        val private = if (r.has("isPrivate")) r.optBoolean("isPrivate") else null
+        // Tracker URLs only for a reported-public transfer, re-checked after the read.
+        val trackers = if (private == false) row(listOf("trackers", "isPrivate"))?.let { t ->
+            if (t.optBoolean("isPrivate", true)) null
+            else t.optJSONArray("trackers")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("announce")?.takeIf(String::isNotBlank) } }
+        } else null
+        fun count(key: String) = if (r.has(key)) r.optLong(key, -1).takeIf { it >= 0 } else null
+        return ClientSeedingFacts(exact, count("uploadedEver"), count("downloadedEver"), count("secondsSeeding"),
+            seeding = if (r.has("status")) r.optInt("status") == 6 && r.optLong("leftUntilDone", 1) == 0L else null,
+            isPrivate = private, publicTrackerUrls = trackers)
+    }
+
     private fun ids(hash: String) = JSONObject().put("ids", JSONArray().put(ClientHashes.requireHash(hash)))
 
     private suspend fun get(hashes: List<String>?): List<JSONObject> {

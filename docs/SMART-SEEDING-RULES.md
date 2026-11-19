@@ -177,7 +177,36 @@ independent seeding duration or the behavior of numbered ruTorrent profiles.
 - JVM: `RemoteSeedingControllerTest` (6), the switch test in `SeedingRulesScreenTest`, and all existing seeding suites.
 - Real rTorrent 0.9.8, loopback, `RemoteSeedingInteropTest` (2 of 2 local runs): rTorrent downloads every piece from a Local seeder, with ratio 0 and no stop. A fresh Local leech pulls them back. rTorrent's own counters pass 0.5, and the controller sends exactly one verified Stop. A manual Start is never re-stopped.
 
-**Not established:** a live Seedhost Stop (no protected mutation was dispatched); numbered instances; background enforcement while Chunks is closed; an installed-UI switch journey.
+### Transmission, qBittorrent and Deluge (same controller, 2026-11-19)
+
+**Port.** `ProtocolSeedingPort` reads each client's own counters through the optional read-only `TorrentClient.seedingFacts(hash)`:
+- **Transmission:** `uploadedEver`, `downloadedEver`, `secondsSeeding`, `isPrivate`.
+- **qBittorrent:** `uploaded`, `downloaded`, `seeding_time`, and `private` (else `torrents/properties` `is_private`).
+- **Deluge:** `total_uploaded`, `all_time_download`, `seeding_time`, `private`.
+
+**Behavior:**
+- **Trackers:** tracker URLs are read only for a transfer the client reports as public. A transfer that is private, or whose privacy is unknown, gets only the default.
+- **Stop:** the shared verified `ClientOperations.setStarted(false)`.
+- **Upload caps:** no per-transfer cap is written yet. Each client's native limits need verified readback first, so a rule's cap is reported as not applied.
+- **Opt-in:** the same per-profile switch (`remote:` + the exact client identity).
+- **When it runs:** in each profile's existing 30 s loop, alongside its Finish in Order steps.
+
+**Real-daemon evidence**, loopback rig, `ProtocolSeedingInteropTest`. These are plain JUnit tests, because the desktop libtorrent JNI library must not load in a Robolectric sandbox:
+- **Deluge 2.1.2:** its own `seeding_time` for an idle seed passed 8 s, then exactly one verified Stop. A manual Start was respected.
+- **qBittorrent 4.6.3:** real pieces both ways, then its own `uploaded`/`downloaded` passed a ratio of 0.5 and exactly one verified Stop followed. A manual Start was respected.
+- **Transmission 4.0.5:** `secondsSeeding` stayed **0** for an idle seed verified at Add. qBittorrent's `seeding_time` likewise stalled (at 2 s) while idle. A time limit therefore never fabricated a Stop across 12 ticks. Loopback Transmission peering is a known rig limit, so a Transmission ratio Stop is unproved.
+
+**Product consequence:** on these clients, seeding time may count only while a transfer is active. A time limit can then stop later than wall-clock time, never earlier.
+
+The gate and persistence are covered by `RemoteSeedingTickTest` (Robolectric, fake client).
+
+**Not established:**
+- a live Seedhost Stop (no protected mutation was dispatched);
+- numbered instances;
+- background enforcement while Chunks is closed;
+- an installed-UI switch journey;
+- a Transmission ratio Stop;
+- native per-client upload caps.
 
 ## Runtime and capabilities
 

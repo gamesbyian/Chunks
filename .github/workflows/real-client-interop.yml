@@ -21,6 +21,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/seeding/**"
       - "app/src/test/java/io/github/gamesbyian/chunks/RemoteSeedingInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/ProtocolSeedingInteropTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
   push:
     branches: [main]
@@ -84,6 +85,7 @@ jobs:
             --tests io.github.gamesbyian.chunks.rpc.ClientFinishInOrderInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.UniversalAddLifecycleInteropTest \
             --tests io.github.gamesbyian.chunks.RemoteSeedingInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.ProtocolSeedingInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
@@ -141,7 +143,8 @@ jobs:
           # The shared Add lifecycle (four daemons) and remote ratio enforcement must execute too.
           for receipt, expected, marker in (
                   ("TEST-io.github.gamesbyian.chunks.rpc.UniversalAddLifecycleInteropTest.xml", 4, "CHUNKS_LIFECYCLE_INTEROP:"),
-                  ("TEST-io.github.gamesbyian.chunks.RemoteSeedingInteropTest.xml", 1, "CHUNKS_REMOTE_SEEDING_INTEROP:")):
+                  ("TEST-io.github.gamesbyian.chunks.RemoteSeedingInteropTest.xml", 1, "CHUNKS_REMOTE_SEEDING_INTEROP:"),
+                  ("TEST-io.github.gamesbyian.chunks.rpc.ProtocolSeedingInteropTest.xml", 3, "CHUNKS_PROTOCOL_SEEDING_INTEROP:")):
               rpath = pathlib.Path("app/build/test-results/testDebugUnitTest") / receipt
               if not rpath.is_file():
                   print(f"CHUNKS_INTEROP: no receipt {receipt}"); sys.exit(1)

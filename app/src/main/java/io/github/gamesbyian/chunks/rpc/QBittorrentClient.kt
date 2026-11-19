@@ -188,6 +188,33 @@ internal class QBittorrentClient(
         form("torrents/recheck", "hashes" to ClientHashes.requireHash(hash))
     }
 
+    override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
+        val exact = ClientHashes.requireHash(hash)
+        val rows = try { JSONArray(request("GET", "torrents/info?hashes=$exact")) } catch (_: Exception) {
+            throw IOException("Invalid qBittorrent seeding facts")
+        }
+        if (rows.length() > 1) throw IOException("Ambiguous qBittorrent identity")
+        val r = rows.optJSONObject(0)?.takeIf { it.optString("hash").equals(exact, ignoreCase = true) } ?: return null
+        // The private flag: in torrents/info on newer Web APIs, else torrents/properties.
+        val private: Boolean? = when {
+            r.has("private") -> r.optBoolean("private")
+            else -> runCatching { JSONObject(request("GET", "torrents/properties?hash=$exact")) }.getOrNull()
+                ?.let { p -> if (p.has("is_private")) p.optBoolean("is_private") else null }
+        }
+        val trackers = if (private == false) runCatching {
+            JSONArray(request("GET", "torrents/trackers?hash=$exact"))
+        }.getOrNull()?.let { a ->
+            // DHT/PeX/LSD pseudo-rows are not announce URLs.
+            (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("url") }
+                .filter { it.contains("://") }
+        } else null
+        fun count(key: String) = if (r.has(key)) r.optLong(key, -1).takeIf { it >= 0 } else null
+        val state = r.optString("state")
+        return ClientSeedingFacts(exact, count("uploaded"), count("downloaded"), count("seeding_time"),
+            seeding = if (state.isBlank()) null else state in setOf("uploading", "stalledUP", "forcedUP"),
+            isPrivate = private, publicTrackerUrls = trackers)
+    }
+
     private suspend fun info(hash: String?): List<ClientTorrent> {
         val body = request("GET", "torrents/info" + (hash?.let { "?hashes=$it" } ?: ""))
         val rows = try { JSONArray(body) } catch (_: Exception) {

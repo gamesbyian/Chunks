@@ -905,12 +905,17 @@ internal fun ChunksApp(
         }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
-    val seedingEnvironments = remember(savedProfiles, aliasScope, server) {
+    val seedingEnvironments = remember(savedProfiles, aliasScope, server, combinedProtocolProfiles) {
         buildList {
             add(SeedingEnvironment.local())
             savedProfiles.forEach { add(SeedingEnvironment.server(it.credentials.endpoint, it.credentials.username)) }
             if (server != null && aliasScope.isNotBlank())
                 add(SeedingEnvironment.server(aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000', "")))
+            // Transmission / qBittorrent / Deluge profiles, by their exact client identity.
+            combinedProtocolProfiles.forEach {
+                add(SeedingEnvironment(io.github.gamesbyian.chunks.seeding.RemoteSeeding.protocolEnvironment(it.id),
+                    it.label, server = true))
+            }
         }.distinctBy { it.id }
     }
     var createRequest by (retainedAddOwner?.createReviewRequest
@@ -1423,6 +1428,11 @@ internal fun ChunksApp(
                     val factory = profile.operations ?: continue
                     val ops = clients.getOrPut(profile.id) { factory() }
                     try {
+                        // Opt-in Smart Seeding for this exact profile (default off), serialized
+                        // with its Finish in Order steps; a Stop is journaled first, never retried.
+                        withContext(Dispatchers.IO) {
+                            io.github.gamesbyian.chunks.seeding.RemoteSeeding.tickProtocol(context, profile.id, ops)
+                        }
                         val session = ops.session()
                         if (io.github.gamesbyian.chunks.rpc.ClientCapability.FILE_PRIORITIES !in session.capabilities) continue
                         val store = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile.id))
