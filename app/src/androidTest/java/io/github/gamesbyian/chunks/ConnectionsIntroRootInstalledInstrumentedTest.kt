@@ -92,32 +92,8 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             assertTrue(roster.saveVerified(requireNotNull(vault.load()), "Saved account"))
             connectionsFooter().performClick()
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
-            // Find -> reveal -> re-find -> act (TEST-ARCHITECTURE lazy-container contract).
-            // Presence is a defined condition (fetchSemanticsNodes), not a caught assertion.
-            // Compose exposes no dedicated type for a row disposed between lookup and its
-            // focus request: it is a plain IllegalStateException, so that one case alone is
-            // matched by message. It fails before any text is entered, and replacement is
-            // idempotent, so re-locating is safe. Anything else propagates.
-            fun enter(field: SemanticsMatcher, value: String) {
-                var detached: IllegalStateException? = null
-                repeat(5) {
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(field)
-                    rule.waitForIdle()
-                    if (rule.onAllNodes(field).fetchSemanticsNodes().isEmpty()) {
-                        Thread.sleep(300)
-                        return@repeat
-                    }
-                    try {
-                        rule.onNode(field).performTextReplacement(value)
-                        return
-                    } catch (failure: IllegalStateException) {
-                        if (failure.message?.contains("unattached node") != true) throw failure
-                        detached = failure
-                        Thread.sleep(300)
-                    }
-                }
-                throw AssertionError("Could not enter a draft field (never composed, or detached each time)", detached)
-            }
+            // Each field goes through the shared find/reveal/re-find/act helper (idempotent).
+            fun enter(field: SemanticsMatcher, value: String) = LazyComposeActions.replaceText(rule, field, value)
             enter(hasTestTag(ChunksSemantics.CONNECTION_NAME), "Studio")
             enter(hasText("Seedbox hostname, ruTorrent URL or RPC address"), "https://draft.invalid/RPC2")
             enter(hasText("Password"), "unsaved-secret")
