@@ -891,17 +891,8 @@ internal fun VerifiedAddScreen(
             if (trackers == 0) ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
         }
         if (!alreadyAttempted) item {
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .testTag(ChunksSemantics.ADD_START_PREFERENCE).toggleable(
-                    value = startAfterAdd, enabled = !submitting && !choosing,
-                    role = Role.Checkbox,
-                    onValueChange = { startAfterAdd = it; awaitingConfirmation = false }),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(checked = startAfterAdd, onCheckedChange = null)
-                Text("Start when added", modifier = Modifier.padding(start = 8.dp))
-            }
+            UniversalAddStartChoice(startAfterAdd, enabled = !submitting && !choosing,
+                onCheckedChange = { startAfterAdd = it; awaitingConfirmation = false })
         }
         // Existing choices are suggestions, never permission/write probes. Keep
         // the effective default and manually editable custom Place above.

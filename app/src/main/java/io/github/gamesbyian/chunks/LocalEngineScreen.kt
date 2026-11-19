@@ -1312,17 +1312,9 @@ internal fun LocalEngineScreen(
         else if (proposedAddDestination != null)
             Text("Planned local Place: " + proposedAddDestination.absolutePath,
                 style = MaterialTheme.typography.bodySmall)
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .testTag(ChunksSemantics.ADD_START_PREFERENCE)
-            .toggleable(value = startAfterAdd,
-                enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-                role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
-            verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = startAfterAdd,
-                enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-                onCheckedChange = null)
-            Text("Start when added", modifier = Modifier.padding(start = 8.dp))
-        }
+        UniversalAddStartChoice(startAfterAdd,
+            enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
+            onCheckedChange = { startAfterAdd = it })
         AddArtworkChoice(automaticArtwork,
             enabled = !busy && localAddAttemptSession?.attemptedTicket == null) { automaticArtwork = it }
         if (magnet.isNotEmpty() && !isLink) {

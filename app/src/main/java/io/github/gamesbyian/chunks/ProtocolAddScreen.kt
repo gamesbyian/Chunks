@@ -324,12 +324,8 @@ internal fun ProtocolAddScreen(
             modifier = Modifier.fillMaxWidth()
         )
         // 4. Start.
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
-            value = startState.value, enabled = !attempt.busy, role = Role.Checkbox,
-            onValueChange = { startState.value = it }), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = startState.value, onCheckedChange = null)
-            Text("Start when added", modifier = Modifier.padding(start = 8.dp))
-        }
+        UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
+            onCheckedChange = { startState.value = it })
         if (source != null && session != null && !supported) Text(
             "$clientLabel cannot add this kind of source" + if (!startState.value) " stopped." else ".",
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)

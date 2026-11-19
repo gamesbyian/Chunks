@@ -4,6 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -90,5 +93,29 @@ internal fun UniversalAddSourceSection(
                 onFetch = onFetchLink)
             else MagnetDraftSummary(magnetCheck)
         }
+    }
+}
+
+/**
+ * The one "Start when added" choice of Universal Add, identical for every
+ * client (48dp row, checkbox semantics, ChunksSemantics.ADD_START_PREFERENCE).
+ * It edits the draft only; the frozen ticket carries the reviewed value.
+ */
+@Composable
+internal fun UniversalAddStartChoice(
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.foundation.layout.Row(
+        modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .testTag(ChunksSemantics.ADD_START_PREFERENCE)
+            .toggleable(value = checked, enabled = enabled,
+                role = androidx.compose.ui.semantics.Role.Checkbox, onValueChange = onCheckedChange),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        androidx.compose.material3.Checkbox(checked = checked, enabled = enabled, onCheckedChange = null)
+        Text("Start when added", modifier = Modifier.padding(start = 8.dp))
     }
 }
