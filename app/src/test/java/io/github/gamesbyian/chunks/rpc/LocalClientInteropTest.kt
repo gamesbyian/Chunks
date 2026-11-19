@@ -162,19 +162,31 @@ class LocalClientInteropTest {
      * port (51513), as a real swarm peer would. The Move itself is the same
      * production job-only Copy -> verified target -> separate source retirement.
      */
-    @Test fun moveBetweenLocalAndRealTransmissionTransfersRealBytes() = runBlocking {
-        val url = System.getenv("CHUNKS_INTEROP_TRANSMISSION_URL").orEmpty()
-        val remoteDir = System.getenv("CHUNKS_INTEROP_TRANSMISSION_PAYLOAD_DIR").orEmpty()
-        assumeTrue("Needs the local Transmission daemon", url.isNotBlank() && remoteDir.isNotBlank())
-        val remote = TransmissionClient(RemoteCredentials(url,
-            System.getenv("CHUNKS_INTEROP_TRANSMISSION_USER").orEmpty(),
-            System.getenv("CHUNKS_INTEROP_TRANSMISSION_PASS").orEmpty()))
+    @Test fun moveBetweenLocalAndRealTransmissionTransfersRealBytes() =
+        moveWithDialledPeer(io.github.gamesbyian.chunks.model.RemoteBackendKind.TRANSMISSION, 51513)
+
+    /** Deluge's interop daemon listens on a fixed 51516 (tools/interop/start_local_clients.sh). */
+    @Test fun moveBetweenLocalAndRealDelugeTransfersRealBytes() =
+        moveWithDialledPeer(io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE, 51516)
+
+    private fun moveWithDialledPeer(kind: io.github.gamesbyian.chunks.model.RemoteBackendKind, peerPort: Int) = runBlocking {
+        fun env(name: String) = System.getenv("CHUNKS_INTEROP_" + kind.name + "_" + name).orEmpty()
+        val url = env("URL")
+        val remoteDir = env("PAYLOAD_DIR")
+        assumeTrue("Needs the local ${kind.name} daemon", url.isNotBlank() && remoteDir.isNotBlank())
+        val credentials = RemoteCredentials(url, env("USER"), env("PASS"))
+        val remote: TorrentClient = when (kind) {
+            io.github.gamesbyian.chunks.model.RemoteBackendKind.TRANSMISSION -> TransmissionClient(credentials)
+            io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE -> DelugeClient(credentials, env("DAEMON_ID").ifBlank {
+                DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds().single() })
+            else -> error("unsupported")
+        }
         val engine = engine()
-        val place = temp.newFolder("place-tr")
+        val place = temp.newFolder("place-" + kind.name.lowercase())
         val local = localClient(engine, place)
         val localOps = ClientOperations(local, 60, 500)
         val remoteOps = ClientOperations(remote, 60, 500)
-        val transmissionPeer = java.net.InetSocketAddress("127.0.0.1", 51513)
+        val transmissionPeer = java.net.InetSocketAddress("127.0.0.1", peerPort)
 
         suspend fun waitSeeding(c: TorrentClient, hash: String, total: Long, poke: suspend () -> Unit): Boolean {
             for (i in 0 until 240) {
@@ -186,8 +198,10 @@ class LocalClientInteropTest {
             return false
         }
 
-        for (toRemote in listOf(true, false)) {
-            val direction = if (toRemote) "LOCAL->TRANSMISSION" else "TRANSMISSION->LOCAL"
+        // Remote -> Local first: a copied magnet must fetch its metadata before Start
+        // is observable, so it runs before any other connection between the two.
+        for (toRemote in listOf(false, true)) {
+            val direction = if (toRemote) "LOCAL->" + kind.name else kind.name + "->LOCAL"
             val (fx, files) = fixture(null)
             val hash = fx.infoHashV1
             val name = TorrentMetainfoReader.preview(fx.torrent).name

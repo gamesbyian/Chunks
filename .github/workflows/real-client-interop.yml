@@ -113,8 +113,8 @@ jobs:
           for line in (lroot.findtext("system-out") or "").splitlines():
               if line.startswith("CHUNKS_INTEROP:"):
                   print(line[:240])
-          # Local journey, Local <-> qBittorrent Move and Local <-> Transmission Move: all must execute.
-          if lfail or int(lroot.get("skipped", 0)) or int(lroot.get("tests", 0)) != 3:
+          # Local journey and Local <-> qBittorrent / Transmission / Deluge Move: all must execute.
+          if lfail or int(lroot.get("skipped", 0)) or int(lroot.get("tests", 0)) != 4:
               sys.exit(1)
           choices = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest.xml")
           if not choices.is_file():
