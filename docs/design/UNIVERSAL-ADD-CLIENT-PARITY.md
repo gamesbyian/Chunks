@@ -60,7 +60,7 @@ Client labels are **Local** and saved connection names (Wood, etc). Avoid protoc
 
 A blind second write after an uncertain protocol Add is now prevented, with an executed negative control.
 
-**One execution/observation lifecycle (2026-11-19, this branch).** Every client's Add now runs through the same app-owned path:
+**One execution/observation lifecycle (#1895, merged `b24980b`, 2026-11-19).** Every client's Add now runs through the same app-owned path:
 - **Contract:** `model/UniversalAddLifecycle.kt` defines `UniversalAddExecutor` (one write per ticket), `UniversalAddWriteBoundary`, `UniversalAddSettlement` and the read-only `UniversalAddObserver`.
 - **Settlement rules:** `UniversalAddLifecycle.run` settles the shared coordinator identically for every engine:
   - a result or failure before the boundary is a known no-write;
