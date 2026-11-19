@@ -71,9 +71,9 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 - **Executors:** `LocalNativeAddExecutor` (native magnet and `.torrent`, recording this Add's native token), `RTorrentAddExecutor` (the existing stopped-first/priority and Place-readback steps) and `ProtocolAddExecutor`. The engine writers themselves are unchanged.
 - **Check status:** protocol Adds gain a read-only **Check status** (`ProtocolAddObserver`, `ChunksSemantics.ADD_CHECK_STATUS`). It can confirm an exact landed job (Found on [client]) without attributing or resending it.
 
-**Still separate:**
-- three Add screens (`LocalEngineScreen`, `VerifiedAddScreen`, `ProtocolAddScreen`) with their own form, source intake and post-Add messaging;
-- Local's native list/readback observation, which remains screen-owned through its JNI-safe poll pump.
+**Local readback joins the shared observer (2026-11-19, branch after #1901).** `LocalNativeAddObserver` is Local's `UniversalAddObserver`: one fence-checked, JNI-safe native list read gives the existing exact hash / reviewed Place / payload Start / this-Add native-token evidence. `UniversalAddAttemptController.followUp` keeps observing an unresolved ticket read-only from the app-owned scope (bounded schedule; never overlapping a write or a manual Check status; stopping once the ticket is resolved or replaced), so verification continues after leaving Add or recreation. Local and protocol Adds pass their observer to the shared run; Local gains the same read-only **Check status**. The Local screen only explains each new phase once.
+
+**Still separate:** three Add screens (`LocalEngineScreen`, `VerifiedAddScreen`, `ProtocolAddScreen`) with their own form, source intake and post-Add messaging; rTorrent's post-Add readback inside `VerifiedAddScreen`.
 
 Step 3 below (one capability-driven source-first route) remains the finish line.
 

@@ -100,6 +100,14 @@ internal class LocalScreenObservationRevision {
 
     @Synchronized fun blocksMutations(): Boolean = commandPending || awaitingReadback
 
+    /**
+     * Read-only: a sample taken at [sampleRevision] is still current (no
+     * command is pending and none began or settled since). Unlike
+     * [acceptObservation] this never releases the mutation readback latch.
+     */
+    @Synchronized fun isCurrent(sampleRevision: Long): Boolean =
+        !commandPending && sampleRevision == revision
+
     /** Read in composition: recomposes when the lock is taken or released. */
     val blockingState: androidx.compose.runtime.State<Boolean> get() = blocking
 }

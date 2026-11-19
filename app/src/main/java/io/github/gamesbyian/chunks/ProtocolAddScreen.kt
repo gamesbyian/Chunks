@@ -319,7 +319,10 @@ internal fun ProtocolAddScreen(
                         attempt.outcome = if (mayHaveWritten) ClientOperationOutcome.Uncertain(hash,
                             "The Add was interrupted after it was sent; check its status")
                         else ClientOperationOutcome.Refused(hash, "Interrupted before anything was sent")
-                    }) { run ->
+                    },
+                    // A Pending/Uncertain write keeps being observed read-only from the
+                    // app-owned scope after leaving Add; never a second write.
+                    followUp = io.github.gamesbyian.chunks.rpc.ProtocolAddObserver(operations.client)) { run ->
                     attempt.outcome = when (run) {
                         is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> run.result
                         is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed ->
@@ -344,6 +347,8 @@ internal fun ProtocolAddScreen(
         val outcome = attempt.outcome.takeIf { attempt.profileId == profileId }
         // The one shared, engine-neutral receipt (as Local and rTorrent): the coordinator's
         // evidence decides the heading; the client's own reason is a subordinate detail.
+        // Recompose when the retained follow-up or a Check status applied new evidence.
+        controller.observationRevision(intentEnvironment(profileId))
         val receipt = if (attempt.profileId == profileId)
             io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector.from(
                 phase = attempt.coordinator(profileId).phase, clientLabel = clientLabel,

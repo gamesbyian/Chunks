@@ -10,6 +10,8 @@ import io.github.gamesbyian.chunks.model.UniversalAddRun
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -29,10 +31,18 @@ import kotlinx.coroutines.launch
 internal class UniversalAddAttemptController(private val scope: () -> CoroutineScope) {
     private val writing = mutableStateMapOf<EnvironmentId, UniversalAddCoordinator.Ticket>()
     private val checking = mutableStateMapOf<EnvironmentId, Boolean>()
+    // Compose-observable count of read-only observations applied per client, so
+    // any screen showing a receipt recomposes when retained evidence changes.
+    private val observations = mutableStateMapOf<EnvironmentId, Int>()
+    private val following = mutableMapOf<EnvironmentId, Job>()
 
     /** A write for this exact client is between admission and settlement. */
     fun isSubmitting(environment: EnvironmentId): Boolean = writing.containsKey(environment)
     fun isChecking(environment: EnvironmentId): Boolean = checking[environment] == true
+    /** Changes whenever a read-only observation for this client was applied. */
+    fun observationRevision(environment: EnvironmentId): Int = observations[environment] ?: 0
+    /** A bounded app-owned read-only follow-up is scheduled for this client. */
+    fun isFollowingUp(environment: EnvironmentId): Boolean = following[environment]?.isActive == true
 
     /**
      * Execute [ticket] once in the app-owned scope. A second ticket for a
@@ -51,6 +61,13 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
         onInterrupted: (writeMayHaveHappened: Boolean) -> Unit = {},
         /** Always runs last, after settlement or interruption (e.g. releasing a screen gate). */
         onFinished: () -> Unit = {},
+        /**
+         * Optional read-only observer. When the ticket is still unresolved after
+         * settlement, the app-owned scope keeps observing it on a bounded
+         * schedule ([followUp]); never a write.
+         */
+        followUp: UniversalAddObserver? = null,
+        followUpSchedule: List<Long> = REMOTE_FOLLOW_UP_MILLIS,
         onSettled: suspend (UniversalAddRun<R>) -> Unit = {}
     ): Boolean {
         val environment = ticket.intent.target.environment
@@ -77,6 +94,7 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
                 release(environment, ticket)
                 onFinished()
             }
+            if (followUp != null) followUp(coordinator, followUp, followUpSchedule)
         }
         return true
     }
@@ -90,15 +108,61 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
     suspend fun <R : Any> run(
         coordinator: UniversalAddCoordinator,
         ticket: UniversalAddCoordinator.Ticket,
-        executor: UniversalAddExecutor<R>
+        executor: UniversalAddExecutor<R>,
+        /** As for [launch]: bounded read-only observation of an unresolved settlement. */
+        followUp: UniversalAddObserver? = null,
+        followUpSchedule: List<Long> = LOCAL_FOLLOW_UP_MILLIS
     ): UniversalAddRun<R>? {
         val environment = ticket.intent.target.environment
         if (!claim(environment, coordinator, ticket)) return null
-        try {
-            return UniversalAddLifecycle.run(coordinator, ticket, executor)
+        val run = try {
+            UniversalAddLifecycle.run(coordinator, ticket, executor)
         } finally {
             release(environment, ticket)
         }
+        if (followUp != null) followUp(coordinator, followUp, followUpSchedule)
+        return run
+    }
+
+    /**
+     * Keep observing the client's retained, unresolved ticket from the
+     * app-owned scope: one read-only [UniversalAddLifecycle.recheck] after each
+     * delay in [schedule], until the ticket is resolved, replaced, or the
+     * schedule ends. It survives leaving Add and Activity recreation (not
+     * process death). It never overlaps a write or a manual recheck for the
+     * same client, and never writes. A newer follow-up for the same client
+     * replaces an older one. Returns false when nothing is unresolved.
+     */
+    fun followUp(
+        coordinator: UniversalAddCoordinator,
+        observer: UniversalAddObserver,
+        schedule: List<Long> = REMOTE_FOLLOW_UP_MILLIS,
+        onResult: (UniversalAddCoordinator.Readback?) -> Unit = {}
+    ): Boolean {
+        val ticket = coordinator.retainedTicket ?: return false
+        if (coordinator.phase !in UniversalAddLifecycle.UNRESOLVED) return false
+        val environment = ticket.intent.target.environment
+        following.remove(environment)?.cancel()
+        following[environment] = scope().launch {
+            for (wait in schedule) {
+                delay(wait)
+                if (coordinator.retainedTicket !== ticket ||
+                    coordinator.phase !in UniversalAddLifecycle.UNRESOLVED) break
+                // Never alongside a write or a person's own Check status.
+                if (writing.containsKey(environment) || checking[environment] == true) continue
+                checking[environment] = true
+                val readback = try {
+                    UniversalAddLifecycle.recheck(coordinator, observer)
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) { null } finally {
+                    checking.remove(environment)
+                }
+                if (readback != null) observations[environment] = observationRevision(environment) + 1
+                onResult(readback)
+            }
+        }
+        return true
     }
 
     /**
@@ -125,6 +189,7 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (_: Exception) { null }
+                if (readback != null) observations[environment] = observationRevision(environment) + 1
                 onResult(readback)
             } finally {
                 checking.remove(environment)
@@ -149,5 +214,16 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
 
     private fun release(environment: EnvironmentId, ticket: UniversalAddCoordinator.Ticket) {
         if (writing[environment] === ticket) writing.remove(environment)
+    }
+
+    companion object {
+        /**
+         * Local: a cheap native list. Every second at first, then every 5 s for
+         * about ten minutes, so a magnet whose metadata arrives later can still
+         * prove its deferred payload Start without the Add screen being shown.
+         */
+        val LOCAL_FOLLOW_UP_MILLIS: List<Long> = List(10) { 1_000L } + List(118) { 5_000L }
+        /** Remote: one exact-hash getter at a modest, bounded cadence (about two minutes). */
+        val REMOTE_FOLLOW_UP_MILLIS: List<Long> = listOf(2_000L, 3_000L, 5_000L, 10_000L) + List(10) { 10_000L }
     }
 }
