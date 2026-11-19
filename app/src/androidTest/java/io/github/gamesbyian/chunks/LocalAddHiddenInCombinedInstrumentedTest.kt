@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.performTextReplacement
@@ -48,6 +49,32 @@ class LocalAddHiddenInCombinedInstrumentedTest {
 
     private fun waitFor(ms: Long = 20_000, condition: () -> Boolean) = rule.waitUntil(ms, condition)
 
+    /**
+     * Find -> reveal -> re-find -> assert -> act (TEST-ARCHITECTURE lazy-container contract) in one
+     * bounded loop, dispatching the semantics click AT MOST once. Presence and enabled state come from
+     * the node's own semantics. The one Compose case with no dedicated type, a row disposed between
+     * that read and the action, is a plain IllegalStateException "unattached node" thrown BEFORE the
+     * action runs, so re-locating is safe; anything else propagates.
+     */
+    private fun activateOnce(target: androidx.compose.ui.test.SemanticsMatcher) {
+        var dispatched = false
+        waitFor(30_000) {
+            if (dispatched) return@waitFor true
+            val node = rule.onAllNodes(target).fetchSemanticsNodes().singleOrNull() ?: return@waitFor false
+            if (androidx.compose.ui.semantics.SemanticsActions.OnClick !in node.config ||
+                SemanticsProperties.Disabled in node.config) return@waitFor false
+            try {
+                rule.onNode(target).performScrollTo()
+                rule.onNode(target).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+                dispatched = true
+                true
+            } catch (failure: IllegalStateException) {
+                if (failure.message?.contains("unattached node") != true) throw failure
+                false
+            }
+        }
+    }
+
     @Test fun anAcknowledgedLocalAddHiddenByTheCombinedSearchIsExplained() {
         // Test the ordinary All/All baseline before deliberately narrowing by
         // search. A previous test may have persisted STARTED while this test
@@ -63,12 +90,16 @@ class LocalAddHiddenInCombinedInstrumentedTest {
             "magnet:?xt=urn:btih:$hash&dn=" + name.replace(" ", "%20"))
         // Metadata only: nothing would download even if a peer appeared.
         val start = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_START_PREFERENCE)
-        if (rule.onNode(start).fetchSemanticsNode().config
-                .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name == "On")
-            rule.onNode(start).performScrollTo().performClick()
+        fun startState() = rule.onNode(start).fetchSemanticsNode().config
+            .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name
+        // Start OFF through the toggle's own click action, then REQUIRE it to read Off: a missed
+        // coordinate tap left Start on, so the Add was not metadata-only and the expected
+        // message never appeared (the same class as the protocol journey's Start toggle).
+        waitFor { rule.onAllNodes(start).fetchSemanticsNodes().isNotEmpty() }
+        if (startState() == "On") activateOnce(start)
+        waitFor { startState() == "Off" }
         val addTile = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT)
-        waitFor { rule.onAllNodes(addTile).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNode(addTile).performScrollTo().performClick()
+        activateOnce(addTile)
         // The engine acknowledged and read back the Add.
         waitFor(30_000) {
             rule.onAllNodes(hasText("Magnet added in metadata-only mode", substring = true)).fetchSemanticsNodes().isNotEmpty()

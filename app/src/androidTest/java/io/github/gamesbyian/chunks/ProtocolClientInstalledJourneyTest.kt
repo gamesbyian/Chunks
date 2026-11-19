@@ -130,6 +130,12 @@ class ProtocolClientInstalledJourneyTest {
         }
     }
 
+    /** The shared Universal Add receipt's fixed accessibility state (Local, rTorrent and protocol). */
+    private fun receiptVerified() =
+        rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified")).fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified"), useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty()
+
     /** One dispatch of a control, after polling only until it is enabled. */
     private fun clickOnce(tag: String, what: String, timeoutMs: Long = 30_000) {
         val matcher = hasTestTag(tag)
@@ -295,11 +301,11 @@ class ProtocolClientInstalledJourneyTest {
             ensureStartWhenAddedOff()
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
             stage("add-dispatched-once")
-            waitFor("Add confirmed", 90_000) { visible("Add: confirmed") }
+            waitFor("Add verified (shared receipt)", 90_000) { receiptVerified() }
             // The attempt is app-owned like Local and rTorrent: Activity recreation must
             // keep this exact receipt and must not re-enable a second Add of the same source.
             it.recreate()
-            waitFor("receipt kept across recreation", 30_000) { visible("Add: confirmed") }
+            waitFor("receipt kept across recreation", 30_000) { receiptVerified() }
             stage("add-receipt-kept-across-recreation")
             // Newly registered magnets may briefly report a queue/check state while
             // the daemon settles the explicitly requested Start-off option. Never
@@ -455,7 +461,7 @@ class ProtocolClientInstalledJourneyTest {
                     files.single { f -> f.path.endsWith(kept) }.priority ==
                         io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH
             }
-            waitFor("Add receipt", 60_000) { visible("Add: confirmed") }
+            waitFor("Add receipt verified", 60_000) { receiptVerified() }
             assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
                 runBlocking { independentRead(choicesHash) }?.runState)
             stage("choices-skip-and-high-verified-independently")

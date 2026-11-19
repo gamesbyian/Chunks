@@ -12,6 +12,27 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-19 UTC: protocol Add converges on the shared Universal Add attempt, admission and receipt
+
+- **#1888.** The Transmission/qBittorrent/Deluge `ProtocolAddAttempt` moved from composition `remember` into the app-owned `LocalAddAttemptOwner`, beside the Local and rTorrent attempts. Its write already ran in that owner's scope, so after recreation the receipt had been lost and Add re-enabled.
+  - `installed-protocol-client` executed `add-receipt-kept-across-recreation` on all three real clients: `ActivityScenario.recreate()` after a confirmed Add, and the receipt stayed.
+  - Negative control: reasoned from the code, not executed (no emulator here).
+- **Stopped-Recheck ordering defect: root-caused and fixed.** `LocalTorrentClientTest.stoppedAddLifecycle…:142` failed in CI on #1888 and #1889 with `Uncertain` from the stopped Recheck, after exactly the 60 s deadline (62.2 s / 62.3 s); local runs passed (10 of 10, including under full CPU load).
+  - **Cause**, read from libtorrent RC_2_0 `torrent.cpp`:
+    - `force_recheck` posts its disk job immediately, even while paused. With no payload on disk it finishes at once and leaves the torrent in a downloading, finished or seeding state, still paused.
+    - Setting `stop_when_ready` while the torrent is already in such a state takes libtorrent's "avoid race condition" shortcut: it pauses immediately and clears the flag.
+    - The engine ran `forceRecheck`, then arm, then `resume()`. The `resume()` therefore undid that pause. The job ran with the flag consumed, so the wait for "paused, not armed, not checking" could never succeed: a stopped job was left running.
+  - **Fix.** One shared `StoppedCheck.begin`: `forceRecheck`, then `resume`, then arm. This converges to paused and disarmed whichever side of the check completion the flag lands on. Four engine sites use it: `recheckStopped`, `beginStoppedVerification`, `armRestoredRecheck` and the magnet "stopped after verification" path.
+    - Failure path: any native failure puts the job back to stopped.
+    - Deadline path: only a *lost* stop (running, not armed, not checking) is paused again; a slow legitimate check is left to stop itself.
+  - **Proof.** `StoppedCheckTest` models libtorrent's documented semantics and places the check completion at every point in the command sequence, with and without payload and with a pre-queued check, and injects a failure at every step. Its negative control shows the old order ends with the job running. No threads, timers or sleeps.
+    - Honest limit: on the old code the real-libtorrent test passed 4 of 4 locally, because the interleaving needs CI timing. The model, not a local repro, is the evidence. The two new engine tests guard the contracts.
+
+- **Admission and receipt (follow-up PR).**
+  - Protocol Adds pass `UniversalAddCoordinator` and `UniversalAddAdmission` with `UniversalAddTarget.ProtocolClient`, and render `UniversalAddReceiptCard` from the shared projector.
+  - Defect fixed, with an executed negative control: on the old screen, a second tap after an uncertain protocol Add sent a blind second write. Add now stays unavailable until the person dismisses the result.
+  - Full local JVM suite: 2,900 tests, with only the 3 known JDK 21 failures.
+
 ## 2026-11-19 UTC: live Seedhost Finish in Order and Add-time Low on merged main
 
 - **Source.** `seedhost-other-protocols-interop.yml` on trusted `main` `d85551c` (#1886): apply=true, first attempt, fixture-only.
