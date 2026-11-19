@@ -97,6 +97,10 @@ android {
         kotlin.srcDir("src/debug/java")
         manifest.srcFile("src/debug/AndroidManifest.xml")
     }
+    // Test helpers shared by Robolectric JVM tests and installed instrumentation
+    // (e.g. LazyComposeActions), so the same interaction contract is tested once on the JVM.
+    sourceSets.getByName("test") { kotlin.srcDir("src/sharedTest/java") }
+    sourceSets.getByName("androidTest") { kotlin.srcDir("src/sharedTest/java") }
     // Instrumented tests normally target debug; the minified smoke workflow
     // passes -Pchunks.testBuildType=qaMinified.
     testBuildType = providers.gradleProperty("chunks.testBuildType").getOrElse("debug")
