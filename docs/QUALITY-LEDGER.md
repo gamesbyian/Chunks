@@ -12,6 +12,17 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-19 UTC: #1889 and #1892 merged, CI evidence and the lazy-list hardening
+
+- **#1889** merged as `df5ca9a` from exact head `705105e` (contains `main` `76d2abf`). Every check run on the head succeeded, including both native Add shards and the verifier, `installed-magnet-lifecycle` and the native atlas (both dispatched on the head), the API 29 and 35 resume-death tests and the real-engine checks. `two-server-combined` and `remote-delete-data` were waived by name: none of their trigger paths is in the diff.
+  - **Red attempts kept:**
+    - Native Add shard 0 failed on three different tests across attempts (`ConnectionsIntroRootInstalledInstrumentedTest` at the Password input, `ChunksMainActivityAtlasTest:366` Connect, `LocalAddHiddenInCombinedInstrumentedTest:73` metadata-only message).
+    - `installed-magnet-lifecycle` failed once at its first field entry, before Connect.
+    - Resume-death (29 and 35) failed once at the guard "PR synthetic merge differs from exact reviewed head": `main` had moved after the branch last merged it, and the guard correctly refused stale evidence. Merging `main` fixed it.
+  - **Causes:** lazy rows not composed or disposed between lookup and action, and a coordinate tap that missed the Start toggle, so Start stayed on. None involved the engine change. After the engine fix the original `LocalTorrentClientTest` failure did not recur in any later CI run.
+- **#1892** merged as `94b111a` from exact head `39655e7`: `LazyComposeActions.activateOnce` / `replaceText` replace four per-test copies. Every check run on the head succeeded (native Add shards and verifier, atlas, magnet journey); the untriggered gates were waived by name (androidTest-only diff).
+- **Still open:** `LocalTorrentEngineTest.startAfterPayloadTruncated…` `repaired-download-flush` (about 1 run in 3 on CI; locally it failed once inside a full suite run and passed alone, 3 of 3). The CPU-contention experiments (full CPU load, 5 of 5; a single-core pinned run that never reported) were on the stopped-Recheck test, not this one. Re-hinting `connect_peer` made it worse and was reverted. Capture a failing CI run's evidence first.
+
 ## 2026-11-19 UTC: protocol Add converges on the shared Universal Add attempt, admission and receipt
 
 - **#1888.** The Transmission/qBittorrent/Deluge `ProtocolAddAttempt` moved from composition `remember` into the app-owned `LocalAddAttemptOwner`, beside the Local and rTorrent attempts. Its write already ran in that owner's scope, so after recreation the receipt had been lost and Add re-enabled.
