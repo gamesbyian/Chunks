@@ -1331,6 +1331,10 @@ internal fun ChunksApp(
             attemptController = retainedAddOwner?.attempts,
             aliasState = addAliasDraft,
             onViewTransfer = { hash ->
+                // Carry both exact client and hash to the canonical browser.
+                // Scope-only navigation could leave the new transfer invisible.
+                // This is read-only navigation, never another Add or Start.
+                combinedSearch.value = hash
                 consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                 savedProfileCatalogFocus = profile.id
                 combinedFromConnections = true

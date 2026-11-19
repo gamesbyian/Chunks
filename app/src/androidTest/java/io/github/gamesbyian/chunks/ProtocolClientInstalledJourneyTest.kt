@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
@@ -326,9 +327,24 @@ class ProtocolClientInstalledJourneyTest {
                 settled?.runState == ClientRunState.STOPPED)
             stage("add-stopped-verified-independently")
 
+            // View transfer from Add must locate the exact hash on the selected
+            // protocol client, rather than merely opening that client's inventory.
+            val viewTransfer = hasText("View transfer")
+            waitFor("View transfer after Add", 30_000) {
+                runCatching { scrollToNode(viewTransfer); true }.getOrDefault(false)
+            }
+            rule.onNodeWithText("View transfer").performClick()
+            waitFor("exact added-hash search in canonical Transfers", 30_000) {
+                runCatching {
+                    rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SEARCH)
+                        .assertTextContains(second.infoHashV1, substring = true)
+                    true
+                }.getOrDefault(false)
+            }
+            stage("add-view-exact-hash-navigation")
+
             // Job-only Move of that exact job to This device (Local engine).
             val secondName = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(second.torrent).name
-            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
             val secondDetails = hasContentDescription("Details for $secondName", substring = true)
             waitFor("added job row", 90_000) {
                 runCatching { scrollToNode(secondDetails); true }.getOrDefault(false)
