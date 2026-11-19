@@ -583,11 +583,9 @@ class CombinedTwoRealServersInstrumentedTest {
             requireEnabled("Connect to rTorrent")
             rule.onNodeWithText("Connect to rTorrent").performClick()
             waitFor("source-first draft resumes after exact authenticated A", 90_000) {
-                // One shared source field for every client: the remote form is the one whose
-                // Add-to target is the authenticated server.
+                // One shared source field for every client: the remote form is the rTorrent body.
                 visible("Add a transfer") && visible("Magnet or torrent link") &&
-                    rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE) and
-                        androidx.compose.ui.test.isSelected()).fetchSemanticsNodes().isNotEmpty()
+                    rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_BODY_RTORRENT)).fetchSemanticsNodes().isNotEmpty()
             }
             scrollTo("Magnet or torrent link")
             assertTrue("Saved-profile auth must preserve exact source text", visible(preservedDraft))

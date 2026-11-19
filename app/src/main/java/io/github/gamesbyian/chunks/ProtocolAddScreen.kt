@@ -247,7 +247,8 @@ internal fun ProtocolAddScreen(
         !unresolved &&
         !noFileChosen
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+    Column(Modifier.fillMaxSize().testTag(ChunksSemantics.ADD_BODY_PROTOCOL)
+        .verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Add a transfer", style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
