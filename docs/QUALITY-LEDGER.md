@@ -12,6 +12,16 @@
 - **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
 - **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
+## 2026-11-19 UTC: live Seedhost Finish in Order and Add-time Low on merged main
+
+- **Source.** `seedhost-other-protocols-interop.yml` on trusted `main` `d85551c` (#1886): apply=true, first attempt, fixture-only.
+- **Runs.** Transmission [44438688040](https://github.com/gamesbyian/Chunks/actions/runs/44438688040), qBittorrent [44438691935](https://github.com/gamesbyian/Chunks/actions/runs/44438691935) and Deluge [44438695847](https://github.com/gamesbyian/Chunks/actions/runs/44438695847) all **passed**. Each executed exactly its own case of:
+  - the full mutation journey;
+  - `SharedAddFileChoicesInteropTest`: skip + High, plus Low stored on Transmission and Deluge (`low=true`), with qBittorrent `low=false`;
+  - `ClientFinishInOrderInteropTest`: `first=Applied`, then `second=Idle`.
+- **Installed proof.** #1886 (exact head `cffeb84`) executed `fio-e01-high-verified-independently` on the three disposable daemons.
+- **Evidence tier.** Live is registration and priority level; no payload bytes are observed remotely.
+
 ## 2026-11-19 UTC: protocol Finish in Order (#1885), installed Add-time High (#1884), stopped-Add toggle diagnosis
 
 - **#1884** merged as `b1d2c6c` from exact head `d0a446f`. `installed-protocol-client` executed `choices-kept-file-high` and `choices-skip-and-high-verified-independently` on real Transmission, qBittorrent and Deluge: the installed app raised the kept file to High at Add, and an independent readback showed HIGH and SKIP with the job stopped.
