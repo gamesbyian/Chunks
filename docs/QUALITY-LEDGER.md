@@ -2,6 +2,18 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: #1905 merged; live Seedhost per-transfer upload caps
+
+- **#1905 merged** as `e0c188d` from exact head `60e8991` (integration-real-peer acceptance report ACCEPTABLE; installed-protocol-client and real-client interop green).
+- **Live protected Seedhost, trusted main `e0c188d`, apply=true, first attempt, fixture-only:** `seedhost-other-protocols-interop.yml` now requires exactly one executed upload-cap case with zero failures.
+  - Transmission [44611873555](https://github.com/gamesbyian/Chunks/actions/runs/44611873555) **passed**.
+  - qBittorrent [44611881362](https://github.com/gamesbyian/Chunks/actions/runs/44611881362) **passed**.
+  - Deluge [44611888140](https://github.com/gamesbyian/Chunks/actions/runs/44611888140):
+    - Its live cap case **passed**: step 1024 B; a 128,000 B/s cap was written once and read back; the second tick did not rewrite it; the bystander was untouched; an inexact cap was never sent.
+    - File choices and Finish in Order also passed.
+    - The run is red only because the main journey test never started: Robolectric's `android-all-instrumented` runtime could not be fetched (infrastructure, no write). The workflow refuses reruns, so one new dispatch follows.
+  - Live tier: each client's own per-transfer limit, set and read back on the disposable fixture jobs. Upload throughput under the cap is not measured.
+
 ## 2026-11-19 UTC: #1905 red attempts kept
 
 - `c4a3624`: two-server-combined [44528779457](https://github.com/gamesbyian/Chunks/actions/runs/44528779457) and remote-delete-data [44528779442](https://github.com/gamesbyian/Chunks/actions/runs/44528779442) timed out waiting for canonical Transfers after Connections → View transfers (no crash in logcat). The same stage timed out on `82cf987` (before this change); both passed on the next head, and a new JVM guard (`RepeatedAndroidIntakeTest.connectThenViewTransfersOpensCanonicalServerScopedTransfers`) drives the route on the real MainActivity at this code. Classified intermittent. android-native-atlas [44528779632](https://github.com/gamesbyian/Chunks/actions/runs/44528779632): Maven Central could not serve two dependency JARs; no test executed (infrastructure).
