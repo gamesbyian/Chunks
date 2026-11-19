@@ -13,7 +13,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
-import java.io.File
 import java.security.SecureRandom
 
 /**
@@ -47,30 +46,29 @@ class ProtocolUploadCapInteropTest {
 
     private fun journey(backend: RemoteBackendKind) = runBlocking {
         kind = backend
-        val root = File(env("PAYLOAD_DIR"))
+        // A cap needs no payload: stopped fixture jobs at the client's own default folder, so the
+        // same journey runs against a loopback daemon or a protected live Seedhost client.
         assumeTrue("Only with an explicitly configured real client",
-            env("URL").isNotBlank() && env("PASS").isNotBlank() && root.isDirectory)
+            env("URL").isNotBlank() && env("PASS").isNotBlank())
         val client = client()
         val ops = ClientOperations(client, readbackAttempts = 40, readbackDelayMillis = 500)
         val environment = RemoteSeeding.protocolEnvironment("upload-cap-interop-" + kind.name.lowercase())
         val step = requireNotNull(client.uploadCapStepBytes()) { "this client exposes a per-transfer cap" }
         stage("step_bytes=$step")
 
-        fun fixture(): Pair<TorrentMetainfoBuilder.Result, File> {
+        fun fixture(): TorrentMetainfoBuilder.Result {
             val random = SecureRandom()
-            val name = "chunks-cap-" + System.nanoTime().toString(36)
+            val name = "chunks-cap-fixture-" + System.nanoTime().toString(36)
             val bytes = ByteArray(40 * 1024 + 3).also(random::nextBytes)
-            val fx = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
+            return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
                 listOf(TorrentMetainfoBuilder.Entry(listOf("a.bin"), bytes.size.toLong()) { bytes.inputStream() }),
                 trackerTiers = emptyList(), pieceLength = 16 * 1024))
-            val folder = File(root, "chunks-cap-" + fx.infoHashV1.take(12)).apply { mkdirs() }
-            File(folder, "$name/a.bin").apply { parentFile.mkdirs(); writeBytes(bytes) }
-            return fx to folder
         }
+        suspend fun addStopped(fx: TorrentMetainfoBuilder.Result) = ops.add(
+            ClientAddRequest(ClientAddSource.TorrentFile(fx.torrent), null, startNow = false))
         // An unrelated job added BEFORE Smart Seeding was enabled: must stay unmanaged.
-        val (bystander, bystanderFolder) = fixture()
-        assertTrue(ops.add(ClientAddRequest(ClientAddSource.TorrentFile(bystander.torrent),
-            bystanderFolder.absolutePath, startNow = false)) is ClientOperationOutcome.Verified)
+        val bystander = fixture()
+        assertTrue(addStopped(bystander) is ClientOperationOutcome.Verified)
         val bystanderCapBefore = client.uploadCapBytesPerSecond(bystander.infoHashV1)
 
         // 128 000 B/s is exactly storable in bytes, KiB and kB.
@@ -84,11 +82,10 @@ class ProtocolUploadCapInteropTest {
         }
         assertEquals("activation tick writes nothing", false, tick())
 
-        val (fx, folder) = fixture()
+        val fx = fixture()
         val hash = fx.infoHashV1
         try {
-            assertTrue(ops.add(ClientAddRequest(ClientAddSource.TorrentFile(fx.torrent), folder.absolutePath,
-                startNow = false)) is ClientOperationOutcome.Verified)
+            assertTrue(addStopped(fx) is ClientOperationOutcome.Verified)
             assertEquals("no cap before the rule", 0L, client.uploadCapBytesPerSecond(hash))
             assertEquals("one cap write", true, tick())
             assertEquals("independent readback", cap, client.uploadCapBytesPerSecond(hash))
@@ -99,14 +96,14 @@ class ProtocolUploadCapInteropTest {
             assertEquals("bystander untouched", bystanderCapBefore, client.uploadCapBytesPerSecond(bystander.infoHashV1))
             stage("bystander=untouched")
         } finally {
-            ops.remove(hash, deleteData = true)
-            ops.remove(bystander.infoHashV1, deleteData = true)
-            folder.deleteRecursively(); bystanderFolder.deleteRecursively()
+            // Only these exact disposable fixture jobs; no payload was ever written.
+            ops.remove(hash, deleteData = false)
+            ops.remove(bystander.infoHashV1, deleteData = false)
         }
 
         // A cap the client cannot store exactly is never written (no rounding).
         if (step > 1) {
-            val (odd, oddFolder) = fixture()
+            val odd = fixture()
             try {
                 val oddStore = InteropAssignmentStore()
                 val oddPolicy = SeedingPolicy(uploadLimit = RateLimit(step + 1, RateLimit.Unit.BYTES))
@@ -116,14 +113,13 @@ class ProtocolUploadCapInteropTest {
                     return port.stopAttempted
                 }
                 oddTick()
-                assertTrue(ops.add(ClientAddRequest(ClientAddSource.TorrentFile(odd.torrent), oddFolder.absolutePath,
-                    startNow = false)) is ClientOperationOutcome.Verified)
+                assertTrue(addStopped(odd) is ClientOperationOutcome.Verified)
                 assertEquals("nothing sent for an inexact cap", false, oddTick())
                 assertEquals(0L, client.uploadCapBytesPerSecond(odd.infoHashV1))
                 assertTrue(oddStore.get(odd.infoHashV1)?.note.orEmpty().contains("supported range"))
                 stage("inexact_cap=not_written")
             } finally {
-                ops.remove(odd.infoHashV1, deleteData = true); oddFolder.deleteRecursively()
+                ops.remove(odd.infoHashV1, deleteData = false)
             }
         }
     }
