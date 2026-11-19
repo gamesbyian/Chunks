@@ -2,6 +2,13 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: Local Add readback becomes the shared app-owned observer (branch `ccr-92d59cb4-nptvoi`)
+
+- **Change:** `LocalNativeAddObserver` (the Local `UniversalAddObserver`) and `UniversalAddAttemptController.followUp` replace `LocalEngineScreen`'s own post-Add reconcile. Local (magnet, .torrent) and protocol Adds keep being observed read-only from the app-owned scope after leaving Add; Local gains the read-only Check status.
+- **Real-engine JVM, this container:** `LocalUniversalAddRealEngineTest` 1/1 on real libtorrent4j: stopped Add verified by the follow-up; started Add verified only after the engine reported payload Start; reply lost after the native write kept the fence and was then verified from this Add's own native token without a resend; duplicate source settled as exact session (not a new Add), one job. `UniversalAddLifecycleInteropTest` 4/4 against real daemons on loopback: Transmission 4.0.5, qBittorrent 4.6.3, Deluge 2.1.x (distro), rTorrent 0.9.8. New stage `lost_reply=retained_follow_up_session_confirmed_without_resend` passed on the three protocol clients; one job each, cleanup verified.
+- **Units:** `LocalNativeAddObserverTest` 8/8 (fence straddle, failed list, other ticket, duplicate rows, hung native read occupies one slot, follow-up stops on resolution and never overlaps a manual check). Existing Add suites (coordinator, lifecycle, admission, adapters, screen gate, ProtocolAddScreen) 146/146.
+- **Not evidence yet:** exact-head CI, installed emulator journeys, physical Pixel. The follow-up does not survive process death (by design: nothing is resent).
+
 ## 2026-11-18 UTC (later): Local on the port, Local ↔ remote Move, capability-aware routing (#1873)
 
 - **Real libtorrent, plain JVM:** `LocalClientInteropTest` 2/2 — shared journey on the bundled engine (stopped Add at a Place, duplicate refused, files, priorities incl. un-skip, Start → engine verified every piece → seeding, Stop, metainfo export, out-of-Place Add refused, Remove keeping files) and **job-only Move Local → real qBittorrent 4.6.3 and qBittorrent → Local**, each target downloading from the other over real BitTorrent via a loopback tracker (11 pieces each way, byte-identical files, source files kept after session-only retirement).
