@@ -39,7 +39,7 @@
    - a protected live Seedhost Stop gate;
    - numbered-instance getter evidence;
    - Transmission ratio-Stop proof;
-   - native per-client upload caps with readback. The Transmission/qBittorrent/Deluge ports exist.
+   - native per-client upload caps with readback: implemented for Transmission/qBittorrent/Deluge (2026-11-19, real-daemon proof); next is an installed switch journey and a live Seedhost cap check.
 
    Apply rules remotely only with typed supported capabilities and stop-at-most-once persistence. Finish in Order and Add-time levels already exist across clients; test per-client restart and unknown states instead of reimplementing basic selectors.
 2. **Smart Routing:** build on saved ordered rules and opt-in source-time suggestions. Integrate checked metadata-late routing and multi-client choices without automatic unreviewed Add, payload movement or cross-client identity confusion. Test all five clients with disposable same-payload jobs where feasible.

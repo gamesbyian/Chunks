@@ -2,6 +2,11 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: Smart Seeding native per-transfer upload caps (protocol clients)
+
+- **Real daemons, this container (loopback):** `ProtocolUploadCapInteropTest` 3/3. Transmission 4.0.5 (step 1000 B), qBittorrent 4.6.3 (exact bytes), Deluge distro (1024 B): a rule cap of 128 000 B/s was written once and confirmed by an independent read; the next tick sent nothing; a pre-existing transfer added before activation kept its cap; on Transmission and Deluge an inexact cap (step + 1 B) was never written and was noted "outside the client's supported range".
+- All `*Seeding*` JVM suites passed alongside. Not yet: installed switch journey, live Seedhost protocol cap, physical device.
+
 ## 2026-11-19 UTC: one source-first intake for five clients; rTorrent observer; protocol source parity (follow-up branch)
 
 - **Real daemons, this container (loopback):** `UniversalAddLifecycleInteropTest` 4/4. New rTorrent 0.9.8 stage: load whose reply is lost → fence kept → app-owned `RTorrentAddObserver` follow-up reached SESSION_CONFIRMED with exactly one load and one job; cleanup verified. Protocol follow-up stages repeated green on Transmission 4.0.5, qBittorrent 4.6.3, Deluge.
