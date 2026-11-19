@@ -152,6 +152,14 @@ internal fun UniversalAddDestinationPicker(
             "Saved connections need authentication before Add; selecting one keeps this draft.",
             style = MaterialTheme.typography.bodySmall)
 
+        // Chunks display names exist for Local and rTorrent transfers only. A name
+        // typed for a Transmission/qBittorrent/Deluge Add would be silently dropped,
+        // so the capability is explained instead of offered.
+        if (selectedProtocolId != null) {
+            Text("Display names are not yet available for this client; Chunks shows the torrent's own name.",
+                style = MaterialTheme.typography.bodySmall)
+            return@Column
+        }
         OutlinedButton(onClick = { showAlias = !showAlias }, enabled = enabled,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                 stateDescription = if (showAlias) "Expanded" else "Collapsed"
