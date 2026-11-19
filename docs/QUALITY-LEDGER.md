@@ -2,6 +2,11 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: #1903 merged; numbered Seedhost seeding getters
+
+- **#1903** merged as `f9a29e0` from exact head `bd939b9`. `pr_acceptance_report.py --profile integration-real-peer` ACCEPTABLE on that head: check, JVM build, build-once, both native Add shards + verifier, android-native-atlas, minified-smoke, api29-downloads, two-server-combined, remote-delete-data, installed-magnet-lifecycle; also installed-protocol-client and four-engine interop green. Earlier reds on this PR are recorded below and in the PR body; additionally on `3786b54` the JVM `RepeatedAndroidIntakeTest.openWithDuringASettlingAddIsOfferedAfterItVerifies` timed out at its 30 s wait (5/5 local isolated passes, classified intermittent; watch it).
+- **Protected live read-only, trusted main `f9a29e0`:** `seedhost-readonly-probe.yml` with the new `seeding_instance` input. Instance 2 [44522849316](https://github.com/gamesbyian/Chunks/actions/runs/44522849316) and instance 3 [44522862676](https://github.com/gamesbyian/Chunks/actions/runs/44522862676): `sample=1`, all six getters (`d.up.total`, `d.down.total`, `d.complete`, `d.is_active`, `d.timestamp.finished`, `d.throttle_name`) supported; `policy_mutations=disabled`, `independent_per_torrent_cap=unproven`. No identifier, value, path or credential printed; nothing written.
+
 ## 2026-11-19 UTC: #1902 merged; #1903 red attempts kept
 
 - **#1902** merged as `c4ee439` from exact head `e09677d`. `pr_acceptance_report.py --profile integration-real-peer` ACCEPTABLE: check, build (JVM), build-once, both native Add shards + verifier, minified-smoke, api29-downloads, installed-magnet-lifecycle, installed-protocol-client, interop, and dispatched android-native-atlas [44512560662](https://github.com/gamesbyian/Chunks/actions/runs/44512560662), two-server-combined [44512575554](https://github.com/gamesbyian/Chunks/actions/runs/44512575554), remote-delete-data [44512580190](https://github.com/gamesbyian/Chunks/actions/runs/44512580190) all green on first attempt.
