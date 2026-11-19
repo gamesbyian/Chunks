@@ -12,6 +12,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteAddProgress.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/SeedhostAndroidAddUiInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
+      - "app/src/sharedTest/**"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
       - "tools/real_magnet_peer.py"
       - "tools/disposable_tracker_isolation.py"

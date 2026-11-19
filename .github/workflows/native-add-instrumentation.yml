@@ -8,6 +8,7 @@ on:
       # without this suite ever running on those PRs.
       - "app/src/main/**"
       - "app/src/androidTest/**"
+      - "app/src/sharedTest/**"
       # These two opt-in real-fixture journeys are skipped by the native Add
       # shards. Their own installed workflows select them and execute their
       # complete assertions; compiling skipped methods here costs two more
