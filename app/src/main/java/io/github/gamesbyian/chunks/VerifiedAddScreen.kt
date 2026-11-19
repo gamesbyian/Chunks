@@ -486,6 +486,27 @@ internal fun VerifiedAddScreen(
         canCloseRemoteAddReview(it, verifiedHash, uncertain)
     } == true
 
+    // The app-owned read-only follow-up may confirm the exact job after a lost
+    // acknowledgement while this screen is away. Explain that evidence here in
+    // the same words as Recheck; it never attributes origin or resends anything.
+    val followedTicket = draft.attemptTicket
+    val followUpRevision = followedTicket?.let {
+        attemptController.observationRevision(it.intent.target.environment) } ?: 0
+    LaunchedEffect(followUpRevision, followedTicket) {
+        val ticket = followedTicket ?: return@LaunchedEffect
+        if (followUpRevision == 0 || submitting || rechecking || draft.attemptTicket !== ticket) return@LaunchedEffect
+        when (draft.coordinator.phase) {
+            UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> if (verifiedHash == null) {
+                verifiedHash = ticket.intent.source.expectedInfoHash
+                outcome = "Server now confirms this exact hash, destination and requested Start. " +
+                    "Which client originally registered it remains unknown; no Start or Add was resent."
+            }
+            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
+                outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
+            else -> Unit
+        }
+    }
+
     // #1786: a held Open With must not vanish behind a finishing attempt. Presentation-only
     // trigger; the parent re-runs its own verified-release and occupancy checks.
     LaunchedEffect(addedByThisAttempt && canAcknowledge, externalSourceWaiting) {
@@ -1118,6 +1139,10 @@ internal fun VerifiedAddScreen(
                             // The one shared lifecycle (as Local and the protocol clients) runs the
                             // single write in the app-owned scope and settles the ticket from evidence.
                             val launched = attemptController.launch(draft.coordinator, ticket, executor,
+                                // An unresolved write keeps being observed read-only from the
+                                // app-owned scope after leaving Add; never a second load.
+                                followUp = io.github.gamesbyian.chunks.rpc.RTorrentAddObserver(remote) {
+                                    draft.coordinator.phase },
                                 onInterrupted = { mayHaveWritten ->
                                     if (mayHaveWritten) {
                                         uncertain = true
