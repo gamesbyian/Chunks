@@ -602,7 +602,12 @@ class CombinedTwoRealServersInstrumentedTest {
             // Restore B as the remembered current profile so the existing
             // process-death/relaunch and source-isolation tests are unchanged.
             typeInto("Magnet or torrent link", "")
-            rule.onNodeWithText("Connections").performClick()
+            // The stable footer id, not text; navigation is non-mutating, so a tap
+            // swallowed while the keyboard is dismissing (seen on 494c543) is repeated.
+            waitFor("Connections opened from the footer") {
+                runCatching { rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick() }
+                rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_BODY_RTORRENT)).fetchSemanticsNodes().isEmpty()
+            }
             rule.openConnectionFormIfNeeded(allowConnected = false)
             rule.openConnectedManageIfNeeded()
             waitFor("A authenticated Connections management") { visible("Disconnect") }
