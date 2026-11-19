@@ -296,4 +296,32 @@ class ProtocolClientOperationsPanelTest {
         assertEquals("a suggestion never copies anything", 0, destination.adds)
         org.junit.Assert.assertTrue(source.present)
     }
+
+    @Test fun openingMoveRefinesTheSuggestionFromTheJobsOwnFilesWithoutWriting() {
+        val source = Fake(); val destination = Target()
+        val evaluated = mutableListOf<List<String>>()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
+                    current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
+                        ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
+                    moveOnly = true, suggestedTarget = null,
+                    suggestForFiles = { names -> evaluated += names; "de" to "book rule" })
+            }
+        }
+        rule.waitForIdle()
+        assertEquals("nothing is read before Copy/Move is opened", 0, evaluated.size)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.waitForIdle()
+        rule.waitUntil(5_000) { evaluated.isNotEmpty() }
+        rule.waitForIdle()
+        assertEquals(listOf(listOf("a")), evaluated)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
+            .assertTextContains("Seedbox Deluge (book rule)", substring = true)
+        assertEquals("reading files writes nothing", 0, source.writes)
+        assertEquals(0, destination.adds)
+    }
 }

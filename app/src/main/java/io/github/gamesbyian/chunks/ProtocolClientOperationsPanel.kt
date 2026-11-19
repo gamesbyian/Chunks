@@ -87,6 +87,11 @@ internal fun ProtocolClientOperationsPanel(
     moveOnly: Boolean = false,
     /** Smart Routing's advisory Move suggestion (target id to "why"); never acts by itself. */
     suggestedTarget: Pair<String, String>? = null,
+    /**
+     * The same advisory rule evaluation with the job's own file paths, read once
+     * (read-only) when Copy/Move is opened; replaces the name-only [suggestedTarget].
+     */
+    suggestForFiles: ((List<String>) -> Pair<String, String>?)? = null,
     /** The source's exact Chunks display-alias scope; null when none applies. */
     sourceAliasScope: String? = null
 ) {
@@ -104,6 +109,17 @@ internal fun ProtocolClientOperationsPanel(
     var deleteData by remember(hash) { mutableStateOf(false) }
     var files by remember(hash) { mutableStateOf<List<ClientFile>?>(null) }
     var showMove by remember(hash) { mutableStateOf(false) }
+    // null = not yet read; the file-informed suggestion replaces the name-only one.
+    var fileInformedSuggestion by remember(hash) { mutableStateOf<Pair<String, String>?>(null) }
+    var fileInformedRead by remember(hash) { mutableStateOf(false) }
+    LaunchedEffect(hash, showMove) {
+        val evaluate = suggestForFiles
+        if (!showMove || evaluate == null || fileInformedRead) return@LaunchedEffect
+        val names = try { filesOf(operations, hash).map { it.path } }
+            catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
+        if (!names.isNullOrEmpty()) { fileInformedSuggestion = evaluate(names); fileInformedRead = true }
+    }
+    val routingSuggestion = if (fileInformedRead) fileInformedSuggestion else suggestedTarget
     var copiedTo by remember(hash, sourceClientId) { mutableStateOf<ProtocolMoveTarget?>(null) }
     var copiedTransfer by remember(hash, sourceClientId) { mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer?>(null) }
     var copiedReceipt by remember(hash, sourceClientId) {
@@ -218,14 +234,14 @@ internal fun ProtocolClientOperationsPanel(
             Text("Copies only the torrent job. The other client downloads its files itself; " +
                 "nothing on $clientLabel is changed unless you then remove it here.",
                 style = MaterialTheme.typography.bodySmall)
-            suggestedTarget?.let { (id, why) ->
+            routingSuggestion?.let { (id, why) ->
                 moveTargets.firstOrNull { it.id == id }?.let { target ->
                     Text("Smart Routing suggests ${target.label} ($why). Nothing moves until you copy and finish.",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION))
                 }
             }
-            moveTargets.sortedByDescending { it.id == suggestedTarget?.first }.forEach { target ->
+            moveTargets.sortedByDescending { it.id == routingSuggestion?.first }.forEach { target ->
                 OutlinedButton(onClick = {
                     if (busy || latched) return@OutlinedButton
                     busy = true

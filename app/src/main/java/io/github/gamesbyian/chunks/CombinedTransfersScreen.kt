@@ -1205,11 +1205,12 @@ internal fun CombinedTransfersScreen(
                     as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
             }
         }
-        fun moveSuggestionFor(targets: List<ProtocolMoveTarget>): Pair<String, String>? =
+        fun moveSuggestionFor(targets: List<ProtocolMoveTarget>, fileNames: List<String> = emptyList()): Pair<String, String>? =
             io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.moveSuggestion(
                 routingPolicy, details.observation?.originalName, details.observation?.metadataPending,
                 focusedKey.environment.value,
-                targets.map { io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true) }
+                targets.map { io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true) },
+                fileNames
             )?.let { it.environmentId to (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") }
         val protocolMoveTargets = protocolProfiles.filter {
             it.operations != null && it.environment in protocolAllowed
@@ -1240,6 +1241,7 @@ internal fun CombinedTransfersScreen(
                     onChanged = { protocolSources.reload(profile.environment) },
                     moveTargets = protocolTargets,
                     suggestedTarget = moveSuggestionFor(protocolTargets),
+                    suggestForFiles = { names -> moveSuggestionFor(protocolTargets, names) },
                     sourceAliasScope = aliasScopes[focusedKey.environment]
                 )
             }
@@ -1300,6 +1302,7 @@ internal fun CombinedTransfersScreen(
                             moveTargets = outbound,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(outbound),
+                    suggestForFiles = { names -> moveSuggestionFor(outbound, names) },
                             sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
                     }
@@ -1371,6 +1374,7 @@ internal fun CombinedTransfersScreen(
                             moveTargets = connectedTargets,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(connectedTargets),
+                    suggestForFiles = { names -> moveSuggestionFor(connectedTargets, names) },
                             sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
                     }

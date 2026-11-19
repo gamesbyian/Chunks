@@ -2,6 +2,18 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: #1905 merged; live Seedhost per-transfer upload caps
+
+- **#1905 merged** as `e0c188d` from exact head `60e8991` (integration-real-peer acceptance report ACCEPTABLE; installed-protocol-client and real-client interop green).
+- **Live protected Seedhost, trusted main `e0c188d`, apply=true, first attempt, fixture-only:** `seedhost-other-protocols-interop.yml` now requires exactly one executed upload-cap case with zero failures.
+  - Transmission [44611873555](https://github.com/gamesbyian/Chunks/actions/runs/44611873555) **passed**.
+  - qBittorrent [44611881362](https://github.com/gamesbyian/Chunks/actions/runs/44611881362) **passed**.
+  - Deluge [44611888140](https://github.com/gamesbyian/Chunks/actions/runs/44611888140):
+    - Its live cap case **passed**: step 1024 B; a 128,000 B/s cap was written once and read back; the second tick did not rewrite it; the bystander was untouched; an inexact cap was never sent.
+    - File choices and Finish in Order also passed.
+    - The run is red only because the main journey test never started: Robolectric's `android-all-instrumented` runtime could not be fetched (infrastructure, no write). The workflow refuses reruns, so one new dispatch was made: [44612860282](https://github.com/gamesbyian/Chunks/actions/runs/44612860282) **passed** the full Deluge journey, including the cap case.
+  - Live tier: each client's own per-transfer limit, set and read back on the disposable fixture jobs. Upload throughput under the cap is not measured.
+
 ## 2026-11-19 UTC: #1905 red attempts kept
 
 - `c4a3624`: two-server-combined [44528779457](https://github.com/gamesbyian/Chunks/actions/runs/44528779457) and remote-delete-data [44528779442](https://github.com/gamesbyian/Chunks/actions/runs/44528779442) timed out waiting for canonical Transfers after Connections → View transfers (no crash in logcat). The same stage timed out on `82cf987` (before this change); both passed on the next head, and a new JVM guard (`RepeatedAndroidIntakeTest.connectThenViewTransfersOpensCanonicalServerScopedTransfers`) drives the route on the real MainActivity at this code. Classified intermittent. android-native-atlas [44528779632](https://github.com/gamesbyian/Chunks/actions/runs/44528779632): Maven Central could not serve two dependency JARs; no test executed (infrastructure).
@@ -10,6 +22,7 @@
 - `494c543`: installed-protocol-client [44596189816](https://github.com/gamesbyian/Chunks/actions/runs/44596189816) **passed** with the installed Smart Seeding journey on real Transmission, qBittorrent and Deluge (`seeding-switch-on-via-ui` → `seeding-activation-recorded` → `seeding-cap-applied-and-read-back`: the switch is turned on from Options, a saved 128 kB/s default reaches a job added after activation and is read back from the client). two-server-combined [44596189807](https://github.com/gamesbyian/Chunks/actions/runs/44596189807) timed out at "A authenticated Connections management": after clearing the Add field the text-located `Connections` tap left the screen on Add (same stage passed on `0770c48`, no code change in that path). The test now taps the stable `FOOTER_CONNECTIONS` id and repeats the non-mutating navigation until Add closes.
 - `e56c116`: every integration-real-peer gate passed (acceptance report ACCEPTABLE; two-server green with the footer-id fix). installed-protocol-client [44599136164](https://github.com/gamesbyian/Chunks/actions/runs/44599136164): qBittorrent and Deluge passed every stage including Smart Seeding; Transmission timed out at "one of two files chosen" — the skipped file's coordinate tap came right after the source field was cleared (keyboard settling) and did not toggle; the same stage passed on `494c543` with no change in that UI. The test now invokes the row's own toggle action once.
 - `6ddbda8`: remote-delete-data [44602589393](https://github.com/gamesbyian/Chunks/actions/runs/44602589393) timed out at "canonical server-scoped Transfers" — the third occurrence (also `82cf987`, `c4a3624`) of the same wait right after a coordinate tap on View transfers that follows a scroll, the same class as the two swallowed taps above. The installed tests now invoke View transfers by its click action, and this test's timeout prints the screen tree, so a recurrence is diagnosable rather than reclassified.
+- `60e8991` native Add [44605439684](https://github.com/gamesbyian/Chunks/actions/runs/44605439684) attempt 1: shard 0 `ConnectionsIntroRootInstalledInstrumentedTest.restoredNewProfileNeverBorrowsAnotherRememberedAccountsPassword`, shard 1 `LocalToolFocusReturnInstrumentedTest.keyboardFocusReturnsToZipReview` — both previously recorded intermittents (see the `cdc994d` and #1499-era entries), on production code identical to `6ddbda8`, whose shards passed. One failed-jobs retry on unchanged source; both receipts preserved by the workflow. Attempt 2: shard 0 passed; shard 1 never started a test (emulator system-image download `Premature EOF`, infrastructure), so attempt 3 reran only that shard.
 
 ## 2026-11-19 UTC: Transmission ratio Stop proved; protocol display names and Move name carry
 
