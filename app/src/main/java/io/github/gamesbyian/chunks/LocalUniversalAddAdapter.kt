@@ -276,6 +276,22 @@ internal class LocalAddAttemptSession(
     fun reconcileInventory(transfers: List<LocalTransferStatus>, observedAtEpochMillis: Long):
         UniversalAddCoordinator.Readback? {
         val ticket = attemptedTicket ?: return null
+        val observation = observationFor(ticket, transfers, observedAtEpochMillis) ?: return null
+        return coordinator.reconcileExactSession(ticket, observation)
+    }
+
+    /**
+     * The exact-session evidence one complete native list gives for [ticket],
+     * without settling anything ([LocalNativeAddObserver] feeds it to the
+     * shared lifecycle). Null when this is not the current ticket or its
+     * frozen Place is unknown: no proof, never a write.
+     */
+    fun observationFor(
+        ticket: UniversalAddCoordinator.Ticket,
+        transfers: List<LocalTransferStatus>,
+        observedAtEpochMillis: Long
+    ): UniversalAddCoordinator.ExactSessionObservation? {
+        if (attemptedTicket !== ticket) return null
         val place = frozenPlace?.takeIf { ticketWithPlace === ticket } ?: return null
         val matching = transfers.filter {
             it.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true)
@@ -285,17 +301,33 @@ internal class LocalAddAttemptSession(
         // as present-but-ambiguous so newer evidence revokes any obsolete
         // acknowledgment without falsely reporting the job absent.
         if (matching.size > 1)
-            return coordinator.reconcileExactSession(ticket,
-                UniversalAddCoordinator.ExactSessionObservation(
-                    environment = ticket.intent.target.environment,
-                    infoHash = ticket.intent.source.expectedInfoHash,
-                    observedAtEpochMillis = observedAtEpochMillis,
-                    registered = true,
-                    reviewedPlaceVerified = false,
-                    started = null,
-                    newRegistrationVerified = false
-                ))
-        return reconcile(ticket, matching.singleOrNull(), place, observedAtEpochMillis)
+            return UniversalAddCoordinator.ExactSessionObservation(
+                environment = ticket.intent.target.environment,
+                infoHash = ticket.intent.source.expectedInfoHash,
+                observedAtEpochMillis = observedAtEpochMillis,
+                registered = true,
+                reviewedPlaceVerified = false,
+                started = null,
+                newRegistrationVerified = false
+            )
+        return LocalUniversalAddAdapter.exactObservation(
+            ticket, matching.singleOrNull(), place,
+            nativeGenerationReceipt.takeIf { ticketWithReceipt === ticket },
+            observedAtEpochMillis)
+    }
+
+    // The last (ticket, phase) the screen explained, so a recreated or
+    // returning screen does not repeat an outcome note. Process RAM only.
+    private var notedTicket: UniversalAddCoordinator.Ticket? = null
+    private var notedPhase: UniversalAddCoordinator.Phase? = null
+
+    /** True once per new phase of the current ticket (presentation only, never authority). */
+    fun notePhaseOnce(ticket: UniversalAddCoordinator.Ticket, phase: UniversalAddCoordinator.Phase): Boolean {
+        if (coordinator.retainedTicket !== ticket) return false
+        if (notedTicket === ticket && notedPhase == phase) return false
+        notedTicket = ticket
+        notedPhase = phase
+        return true
     }
 
     /**

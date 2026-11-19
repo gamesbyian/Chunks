@@ -173,8 +173,30 @@ class UniversalAddLifecycleInteropTest {
         assertEquals(1, client.torrents().count { it.hash.equals(lost.result.infoHashV1, ignoreCase = true) })
         stage("lost_reply=fenced_then_session_confirmed_without_resend")
 
+        // 4. The same lost reply through the app-owned controller: its retained
+        // read-only follow-up (no screen, no Check status tap) confirms the exact
+        // session on the real client and never sends a second Add.
+        val later = fixture()
+        val laterFolder = placed(later)
+        val laterRequest = ClientAddRequest(ClientAddSource.TorrentFile(later.result.torrent), laterFolder, startNow = false)
+        val (laterCoordinator, laterTicket) = admit(ProtocolUniversalAddAdapter.intent(profile, laterRequest, null))
+        val scope = kotlinx.coroutines.CoroutineScope(coroutineContext + kotlinx.coroutines.Job())
+        val controller = io.github.gamesbyian.chunks.UniversalAddAttemptController { scope }
+        val laterOps = ClientOperations(LoseReplyAfterWrite(client), readbackAttempts = 40, readbackDelayMillis = 500)
+        assertTrue(controller.launch(laterCoordinator, laterTicket, ProtocolAddExecutor(laterOps, laterRequest),
+            followUp = ProtocolAddObserver(client), followUpSchedule = List(60) { 500L }))
+        for (i in 0 until 80) {
+            if (laterCoordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED) break
+            delay(500)
+        }
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED, laterCoordinator.phase)
+        assertEquals(1, client.torrents().count { it.hash.equals(later.result.infoHashV1, ignoreCase = true) })
+        stage("lost_reply=retained_follow_up_session_confirmed_without_resend")
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+
         removeWithData(client, fx, folder)
         removeWithData(client, lost, lostFolder)
+        removeWithData(client, later, laterFolder)
     }
 
     private fun rtorrentJourney() = runBlocking {

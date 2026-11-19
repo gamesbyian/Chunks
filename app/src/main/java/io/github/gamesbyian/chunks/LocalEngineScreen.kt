@@ -735,22 +735,21 @@ internal fun LocalEngineScreen(
     val addPlaceResolution = placeResolution?.let { LocalAddPlacePolicy.resolve(it, currentAddPlaceId) }
     val place = addPlaceResolution?.selected
     val destination = place?.root
-    // A completed native observation after the frozen ticket, rather than a
-    // matching row in an old filter, resolves its exact local Add identity.
-    LaunchedEffect(lastAcceptedInventoryAt, inventoryFrame, busy) {
-        // An inventory sample may finish while a native Add is still inside
-        // its suspend boundary. Do not let an early matching hash classify
-        // the ticket before noteNativeResult has captured this Add's actual
-        // generation receipt. Re-run after the mutation settles.
+    // The app-owned LocalNativeAddObserver follow-up (UniversalAddAttemptController)
+    // resolves the exact local Add identity, not this screen. The screen only
+    // explains each new retained phase once, whenever it is shown.
+    val localAddObservations = localAttemptController.observationRevision(
+        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
+    LaunchedEffect(localAddObservations, localAddAttemptSession?.attemptedTicket, busy) {
+        // Before noteNativeResult has captured this Add's generation receipt
+        // the phase is still the write's own; explain only settled evidence.
         if (busy) return@LaunchedEffect
         val session = localAddAttemptSession ?: return@LaunchedEffect
         val ticket = session.attemptedTicket ?: return@LaunchedEffect
-        if (!hasConfirmedLocalInventory || inventoryStale ||
-            lastAcceptedInventoryAt < ticket.submittedAtEpochMillis) return@LaunchedEffect
-        val before = session.coordinator.phase
-        val result = session.reconcileInventory(transfers, lastAcceptedInventoryAt)
-        if (session.coordinator.phase != before) when (result) {
-            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.VERIFIED -> {
+        val phase = session.coordinator.phase
+        if (!session.notePhaseOnce(ticket, phase)) return@LaunchedEffect
+        when (phase) {
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED -> {
                 message = "The new local transfer was verified in a fresh native list. Review the next Add when ready."
                 // A positive native registration may already have been
                 // announced to Combined. Independent readback upgrades only
@@ -758,14 +757,12 @@ internal fun LocalEngineScreen(
                 if (session.announceVerifiedRegistrationOnce(ticket))
                     rememberAdded(ticket.intent.source.expectedInfoHash, message)
             }
-            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED ->
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
                 noteProblem("This torrent exists on the local device at the reviewed location, but its Add origin is uncertain. No retry occurred.")
-            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED -> {
-                if (session.coordinator.phase ==
-                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
-                    noteProblem("The local job exists at the reviewed location, but the requested payload Start is unverified. No retry occurred.")
-                else noteProblem("A matching local torrent was observed, but its Place, Start or new-Add identity is unverified. No retry occurred.")
-            }
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
+                noteProblem("The local job exists at the reviewed location, but the requested payload Start is unverified. No retry occurred.")
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN ->
+                noteProblem("A matching local torrent was observed, but its Place, Start or new-Add identity is unverified. No retry occurred.")
             else -> Unit
         }
     }
@@ -1132,6 +1129,26 @@ internal fun LocalEngineScreen(
                     io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.START_UNVERIFIED
                 )
             )
+            // The same read-only Check status as the protocol clients: one exact
+            // native list read of this ticket, never a second Add.
+            val localEnvironment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
+            if (!busy && phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED &&
+                !localAttemptController.isFollowingUp(localEnvironment)) {
+                val checkingNow = localAttemptController.isChecking(localEnvironment)
+                OutlinedButton(onClick = {
+                    localAttemptController.recheck(localAddAttemptSession.coordinator,
+                        LocalNativeAddObserver(localAddAttemptSession)) { readback ->
+                        if (readback == null) noteProblem(
+                            "The local transfer list could not be read. Nothing was sent; check again later.")
+                        else if (readback == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.NOT_OBSERVED)
+                            noteProblem("Local does not list this transfer yet. Nothing was resent.")
+                    }
+                }, enabled = !checkingNow,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .testTag(ChunksSemantics.ADD_CHECK_STATUS)) {
+                    Text(if (checkingNow) "Checking Local…" else "Check status")
+                }
+            }
             if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ||
                 phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
                 phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) {
@@ -1407,7 +1424,10 @@ internal fun LocalEngineScreen(
                     try {
                         val result: LocalAddResult = if (session != null && ticket != null) {
                             val run = localAttemptController.run(session.coordinator, ticket,
-                                LocalNativeAddExecutor(session, selected, { it }, nativeAdd))
+                                LocalNativeAddExecutor(session, selected, { it }, nativeAdd),
+                                // App-owned read-only follow-up: Place/Start verification
+                                // continues after leaving Add or Activity recreation.
+                                followUp = LocalNativeAddObserver(session))
                             when (run) {
                                 null -> {
                                     noteProblem("Another local Add is still settling. Nothing was sent.")
@@ -1910,7 +1930,8 @@ internal fun LocalEngineScreen(
                     try {
                         val result = if (session != null && ticket != null) {
                             val run = localAttemptController.run(session.coordinator, ticket,
-                                LocalNativeAddExecutor(session, selected, { it.first }, nativeAdd))
+                                LocalNativeAddExecutor(session, selected, { it.first }, nativeAdd),
+                                followUp = LocalNativeAddObserver(session))
                             when (run) {
                                 null -> {
                                     noteProblem("Another local Add is still settling. Nothing was sent.")
