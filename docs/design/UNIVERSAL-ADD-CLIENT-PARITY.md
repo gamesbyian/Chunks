@@ -52,6 +52,21 @@ Client labels are **Local** and saved connection names (Wood, etc). Avoid protoc
 
 **Shared admission milestone merged (#1845, 2026-11-17, main `35349a3`):** `UniversalAddAdmission` now owns capability-bound review → explicit approval → existing engine mutation-gate acquisition → immutable one-shot ticket for both Local and authenticated rTorrent. Seven exact-head workflows passed: Android/JVM, R8, native Add, installed remote magnet lifecycle and disposable remove/data, API29 shared Downloads and docs. Tests cover exact client account, freshness, refusal, one-ticket and duplicate-write fences. The original native/RPC writers, readback, source lifecycle and no-replay latches are unchanged. **This is control-path convergence, not yet a unified retained readback controller or form.** Local still freezes a verified `.torrent` intent after an off-UI source check, while remote builds it at the explicit tap. Finish that architecture and test the same installed journey for both clients before closing parity.
 
+**Protocol clients join the shared path (#1888–#1889 and the adapter follow-up, 2026-11-19).** The Transmission/qBittorrent/Deluge Add path now uses the same pieces as Local and rTorrent:
+- **Attempt ownership:** `ProtocolAddAttempt` lives in the app-owned `LocalAddAttemptOwner`, beside the Local and rTorrent attempts. A recreation-kept receipt is proven installed on all three real clients.
+- **Admission:** Adds pass `UniversalAddCoordinator` + `UniversalAddAdmission` with `UniversalAddTarget.ProtocolClient`.
+- **Ticket execution:** `rpc/ProtocolUniversalAddAdapter` executes the ticket through `ClientOperations` and records positive provenance only for a verified single write.
+- **Receipt:** the screen renders the shared `UniversalAddReceiptCard`.
+
+A blind second write after an uncertain protocol Add is now prevented, with an executed negative control.
+
+**Still separate:**
+- three Add screens (`LocalEngineScreen`, `VerifiedAddScreen`, `ProtocolAddScreen`);
+- three adapter shapes with no common executor interface yet;
+- Local's native list/readback observation, which remains screen-owned.
+
+Steps 2–3 below remain the finish line.
+
 ## Implementation ownership: converge incrementally
 
 **Current baseline at adoption:** `UniversalAddCoordinator` in `model/UniversalAddCoordinator.kt` already owns source/target/Place intent, review, one-shot submission ticket, readback fence, exact-session reconciliation and acknowledgment states. `LocalUniversalAddAdapter` and `RemoteUniversalAddAdapter` bridge real different engines correctly. However, `LocalEngineScreen` and `VerifiedAddScreen` still independently own large Add orchestration, outcome presentation and navigation paths. This separation is the owner-observed UX discrepancy.
