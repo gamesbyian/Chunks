@@ -461,14 +461,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     // at its exact paths: libtorrent's own check (peers disconnected while
                     // checking) stops the job itself before any transfer. Never a Start.
                     stopAfterMagnetCheck[key] = handle
-                    try {
-                        handle.forceRecheck()
-                        handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
-                        handle.resume()
-                    } catch (_: Exception) {
+                    if (!StoppedCheck.begin(handle.stoppedCheck(), queueCheck = true))
                         stopAfterMagnetCheck.remove(key, handle)
-                        runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
-                    }
                 } else {
                     stopAfterMagnetCheck.remove(key, handle)
                     handle.pause()
@@ -648,16 +642,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 if (!stoppedVerificationRequests.add(key)) return false
                 val pendingCheck = state.state() == TorrentStatus.State.CHECKING_FILES ||
                     state.state() == TorrentStatus.State.CHECKING_RESUME_DATA
-                try {
-                    // Same order as recheckStopped: check queued, then auto-stop, then run.
-                    if (!pendingCheck) handle.forceRecheck()
-                    handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
-                    handle.resume()
-                    true
-                } catch (_: Exception) {
-                    runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
-                    false
-                }
+                // Same ordered start as recheckStopped (see StoppedCheck).
+                StoppedCheck.begin(handle.stoppedCheck(), queueCheck = !pendingCheck)
             }
         }
     } catch (_: Exception) { false }
@@ -1285,16 +1271,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // unpaused; let that one run rather than queueing another.
                 val pendingCheck = state.state() == TorrentStatus.State.CHECKING_FILES ||
                     state.state() == TorrentStatus.State.CHECKING_RESUME_DATA
-                try {
-                    // Order matters: once CHECKING, stop_when_ready waits for the
-                    // transition out of checking instead of pausing immediately.
-                    if (!pendingCheck) exact.forceRecheck()
-                    exact.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
-                    exact.resume()
-                } catch (_: Exception) {
-                    runCatching { exact.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); exact.pause() }
+                // One ordered, restop-on-failure start shared with every stopped check.
+                if (!StoppedCheck.begin(exact.stoppedCheck(), queueCheck = !pendingCheck))
                     return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, exact))
-                }
                 exact
             }
         }
@@ -1315,8 +1294,22 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 if (paused && !armed && !checking)
                     return LocalCommandResult(LocalCommandOutcome.VERIFIED, snapshot(key, handle))
             }
-            if (System.nanoTime() >= deadline)
+            if (System.nanoTime() >= deadline) {
+                // A stopped job never stays running because its recheck ran out of time. Only a
+                // LOST stop (running, unarmed, not checking) is repaired; a slow legitimate check
+                // is still armed or checking and stops itself when it ends.
+                val lost = try {
+                    val last = handle.status(TorrentHandle.QUERY_NAME)
+                    val flags = last.flags()
+                    StoppedCheck.stopWasLost(
+                        paused = flags.and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero(),
+                        armed = flags.and_(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY).non_zero(),
+                        checking = last.state() == TorrentStatus.State.CHECKING_FILES ||
+                            last.state() == TorrentStatus.State.CHECKING_RESUME_DATA)
+                } catch (_: Exception) { false }
+                if (lost) StoppedCheck.restop(handle.stoppedCheck())
                 return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+            }
             Thread.sleep(50)
         }
     }
@@ -2352,15 +2345,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * peer or payload traffic. Progress then reflects only verified bytes.
      */
     private fun armRestoredRecheck(key: String, handle: TorrentHandle) {
-        try {
-            handle.forceRecheck()
-            handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
-            handle.resume()
-            restoredPayloadRechecks += key
-        } catch (_: Exception) {
-            runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
-            checkedStartProblems[key] = "Restored files are shorter than their saved progress and could not be rechecked"
-        }
+        if (StoppedCheck.begin(handle.stoppedCheck(), queueCheck = true)) restoredPayloadRechecks += key
+        else checkedStartProblems[key] = "Restored files are shorter than their saved progress and could not be rechecked"
     }
 
     /** Append through an exclusive original descriptor; never replace a known path. */

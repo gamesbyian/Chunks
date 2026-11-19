@@ -1707,6 +1707,46 @@ class LocalTorrentEngineTest {
         }
     }
 
+    @Test fun recheckOfAStartedThenStoppedJobWithNoPayloadOnDiskEndsStoppedNotRunning() {
+        // The exact CI failure: with nothing on disk the check finishes at once, before the
+        // auto-stop flag is set. The job must still end stopped (never running with the flag
+        // consumed), within a bounded wait that a lost stop would exhaust.
+        val fixture = fixture()
+        val destination = temp.newFolder("empty recheck destination")
+        val engine = engine()
+        val job = added(engine.addStopped(fixture.torrent, destination))
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(job.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.pause(job.infoHash).outcome)
+        repeat(5) { round ->
+            val result = engine.recheckStopped(job.infoHash, timeoutMs = 20_000)
+            assertEquals("round $round: $result", LocalCommandOutcome.VERIFIED, result.outcome)
+            val after = requireNotNull(engine.status(job.infoHash))
+            assertTrue("round $round: must be stopped, not running: $after", after.stopped)
+            assertFalse("round $round: the auto-stop must be consumed: $after", after.stopsAfterCheck)
+        }
+    }
+
+    @Test fun aRecheckThatOutlastsItsDeadlineNeverLeavesAStoppedJobRunning() {
+        // timeoutMs = 0: the deadline is already past on the first poll, so the outcome is
+        // decided by the engine's own contract rather than by waiting. Either the check had
+        // already finished (VERIFIED) or the call gives up (UNCERTAIN); in BOTH cases the job
+        // is stopped, or still checking with its stop armed so it stops itself. It never runs.
+        val fixture = fixture()
+        val destination = temp.newFolder("deadline destination")
+        fixture.root.copyRecursively(File(destination, fixture.root.name))
+        val engine = engine()
+        val job = added(engine.addStopped(fixture.torrent, destination))
+        val result = engine.recheckStopped(job.infoHash, timeoutMs = 0)
+        assertTrue(result.toString(), result.outcome == LocalCommandOutcome.VERIFIED ||
+            result.outcome == LocalCommandOutcome.UNCERTAIN)
+        val now = requireNotNull(engine.status(job.infoHash))
+        assertTrue("stopped, or still checking and armed: $now",
+            now.stopped || (now.state == LocalTransferState.CHECKING && now.stopsAfterCheck))
+        // Whatever it was, it ends stopped by itself with no payload traffic.
+        waitFor { engine.status(job.infoHash)?.stopped == true }
+        assertEquals(0L, requireNotNull(engine.status(job.infoHash)).payloadDownloadedBytes)
+    }
+
     @Test fun recheckOfAStoppedJobReadsPiecesAndStaysStoppedUntilAnOrdinaryStart() {
         val fixture = fixture()
         val seeder = engine()

@@ -129,8 +129,9 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText(text).performClick()
     }
     private fun type(label: String, text: String) {
-        scroll(label)
-        rule.onNodeWithText(label).performTextReplacement(text)
+        // First interaction of the journey: the shared helper finds, reveals, re-finds and replaces
+        // (idempotent), re-locating only for a row not yet composed or disposed before the focus request.
+        LazyComposeActions.replaceText(rule, hasText(label), text)
         if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
             // Exercise the same Done IME action available to a real local user
             // instead of leaving the URL editor focused under an unseen IME.

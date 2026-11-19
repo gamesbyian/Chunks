@@ -206,4 +206,39 @@ class ProtocolSurfacesRenderTest {
         assertTouchTargetsAndWidth(320)
         rule.onRoot().captureRoboImage("build/chunks-visual/protocol-finish-in-order-320-200pct.png")
     }
+    private fun addReceipt(name: String, lose: Boolean) {
+        val written = mutableListOf<ClientAddRequest>()
+        val client = object : TorrentClient by Fake() {
+            override suspend fun add(request: ClientAddRequest) {
+                if (lose) throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost")
+                written += request
+            }
+            override suspend fun torrent(hash: String) = written.lastOrNull()?.let {
+                ClientTorrent(hash, "Example", ClientRunState.STOPPED, null, 0, 0, 0, "/home/user/downloads")
+            }
+        }
+        val attempt = ProtocolAddAttempt()
+        show(320, 2f) {
+            ProtocolAddScreen(
+                profileId = "qb", clientLabel = "Seedbox qBittorrent",
+                createOperations = { ClientOperations(client, 3, 1) },
+                destinationPicker = {},
+                sourceDraft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=Example"),
+                reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null),
+                startState = mutableStateOf(false), attempt = attempt,
+                attemptScope = androidx.compose.runtime.rememberCoroutineScope(), onViewTransfer = {}
+            )
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null }
+        rule.waitForIdle()
+        assertTouchTargetsAndWidth(320)
+        rule.onRoot().captureRoboImage("build/chunks-visual/protocol-add-receipt-$name-320-200pct.png")
+    }
+
+    @Config(sdk = [35], qualifiers = "w320dp-h2000dp-mdpi")
+    @Test fun protocolAddVerifiedReceipt320At200Percent() = addReceipt("verified", lose = false)
+
+    @Config(sdk = [35], qualifiers = "w320dp-h2000dp-mdpi")
+    @Test fun protocolAddUncertainReceipt320At200Percent() = addReceipt("uncertain", lose = true)
 }

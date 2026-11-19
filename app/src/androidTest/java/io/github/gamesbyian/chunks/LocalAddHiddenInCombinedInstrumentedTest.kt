@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.performTextReplacement
@@ -48,6 +49,10 @@ class LocalAddHiddenInCombinedInstrumentedTest {
 
     private fun waitFor(ms: Long = 20_000, condition: () -> Boolean) = rule.waitUntil(ms, condition)
 
+    /** Semantics click at most once, via the shared lazy-container helper. */
+    private fun activateOnce(target: androidx.compose.ui.test.SemanticsMatcher) =
+        LazyComposeActions.activateOnce(rule, target)
+
     @Test fun anAcknowledgedLocalAddHiddenByTheCombinedSearchIsExplained() {
         // Test the ordinary All/All baseline before deliberately narrowing by
         // search. A previous test may have persisted STARTED while this test
@@ -63,12 +68,16 @@ class LocalAddHiddenInCombinedInstrumentedTest {
             "magnet:?xt=urn:btih:$hash&dn=" + name.replace(" ", "%20"))
         // Metadata only: nothing would download even if a peer appeared.
         val start = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_START_PREFERENCE)
-        if (rule.onNode(start).fetchSemanticsNode().config
-                .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name == "On")
-            rule.onNode(start).performScrollTo().performClick()
+        fun startState() = rule.onNode(start).fetchSemanticsNode().config
+            .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name
+        // Start OFF through the toggle's own click action, then REQUIRE it to read Off: a missed
+        // coordinate tap left Start on, so the Add was not metadata-only and the expected
+        // message never appeared (the same class as the protocol journey's Start toggle).
+        waitFor { rule.onAllNodes(start).fetchSemanticsNodes().isNotEmpty() }
+        if (startState() == "On") activateOnce(start)
+        waitFor { startState() == "Off" }
         val addTile = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT)
-        waitFor { rule.onAllNodes(addTile).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNode(addTile).performScrollTo().performClick()
+        activateOnce(addTile)
         // The engine acknowledged and read back the Add.
         waitFor(30_000) {
             rule.onAllNodes(hasText("Magnet added in metadata-only mode", substring = true)).fetchSemanticsNodes().isNotEmpty()

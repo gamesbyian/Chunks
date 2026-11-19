@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -90,11 +92,11 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             assertTrue(roster.saveVerified(requireNotNull(vault.load()), "Saved account"))
             connectionsFooter().performClick()
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
-            rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).performTextInput("Studio")
-            rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
-                .performTextInput("https://draft.invalid/RPC2")
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Password"))
-            rule.onNodeWithText("Password").performTextInput("unsaved-secret")
+            // Each field goes through the shared find/reveal/re-find/act helper (idempotent).
+            fun enter(field: SemanticsMatcher, value: String) = LazyComposeActions.replaceText(rule, field, value)
+            enter(hasTestTag(ChunksSemantics.CONNECTION_NAME), "Studio")
+            enter(hasText("Seedbox hostname, ruTorrent URL or RPC address"), "https://draft.invalid/RPC2")
+            enter(hasText("Password"), "unsaved-secret")
 
             rule.activityRule.scenario.recreate()
 

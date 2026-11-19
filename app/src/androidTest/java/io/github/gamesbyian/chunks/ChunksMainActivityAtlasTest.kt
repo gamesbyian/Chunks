@@ -12,6 +12,7 @@ import android.provider.MediaStore
 import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.captureToImage
@@ -343,27 +344,9 @@ class ChunksMainActivityAtlasTest {
         // it as a child on API35. Accept either representation but still
         // require one unique click target; neither path issues a second RPC.
         val connectControl = androidx.compose.ui.test.hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
-        // Stable capability semantics survive both merged/unmerged tree changes.
-        // The last password field can resize the LazyColumn as its IME closes:
-        // re-scroll while looking up the node, but click only once after its
-        // enabled state is observed. No second Connect is ever submitted.
-        rule.waitUntil(30_000) {
-            runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(connectControl)
-                // The node may be composed before the asynchronous address
-                // validation and IME re-layout enable it. Wait for both
-                // uniqueness AND enabled state, without sending a Connect.
-                val single = rule.onAllNodes(connectControl, useUnmergedTree = true)
-                    .fetchSemanticsNodes().size == 1
-                if (single) {
-                    rule.onNode(connectControl, useUnmergedTree = true).assertIsEnabled()
-                }
-                single
-            }.getOrDefault(false)
-        }
-        // The actual RPC Connect is still clicked exactly once.
-        rule.onNode(connectControl, useUnmergedTree = true)
-            .assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
+        // Unique, enabled Connect target, clicked through its semantics action AT MOST once by the
+        // shared helper (CI showed it composed and enabled, then gone at the next lookup).
+        LazyComposeActions.activateOnce(rule, connectControl, useUnmergedTree = true)
         try {
             // Verified Connect acknowledges and stays on Connections (#1515); the saved
             // profile then opens the one canonical Transfers browser.

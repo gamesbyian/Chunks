@@ -139,7 +139,9 @@ class LocalTorrentClientTest {
         assertTrue("$stop", stop is ClientOperationOutcome.Verified)
         d.observe()
         val rechecked = d.ops.recheck(p.hash)
-        assertTrue("$rechecked", rechecked is ClientOperationOutcome.Verified)
+        // On a miss, name the engine's own state (state, stopped, progress): a recheck that
+        // times out after 60 s with the job still running would be a real engine defect.
+        assertTrue("$rechecked engine=${d.engine.status(p.hash)}", rechecked is ClientOperationOutcome.Verified)
         d.observe()
 
         val exported = d.client.transferSource(p.hash)

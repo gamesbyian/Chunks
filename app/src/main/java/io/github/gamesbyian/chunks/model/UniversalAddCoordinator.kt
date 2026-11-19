@@ -78,6 +78,12 @@ internal sealed class UniversalAddTarget {
 
         override fun toString(): String = "AuthenticatedServer(private)"
     }
+
+    /** One exact Transmission/qBittorrent/Deluge client profile (stable identity, never a label). */
+    class ProtocolClient(override val environment: EnvironmentId) : UniversalAddTarget() {
+        init { require(environment != EnvironmentSnapshots.LOCAL) { "A protocol client is never the local device" } }
+        override fun toString(): String = "ProtocolClient(private)"
+    }
 }
 
 /**
