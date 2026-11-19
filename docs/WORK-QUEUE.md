@@ -36,8 +36,8 @@
 ## R5. Approved advanced Android functionality (run before final R4)
 
 1. **Seeding and priorities:** Remote Smart Seeding is merged (#1898, `38291a4`): opt-in per server, while connected, on the shared at-most-once journal for rTorrent, Transmission, qBittorrent and Deluge. Next:
-   - a protected live Seedhost Stop gate;
-   - numbered-instance getter evidence;
+   - a protected live Seedhost Stop gate (done on the primary, #1900/#1901);
+   - numbered-instance getter evidence: done for instances 2 and 3 (2026-11-19, read-only);
    - Transmission ratio-Stop proof;
    - native per-client upload caps with readback: implemented for Transmission/qBittorrent/Deluge (2026-11-19, real-daemon proof); next is an installed switch journey and a live Seedhost cap check.
 

@@ -21,7 +21,8 @@
    - **Clients:** rTorrent, Transmission, qBittorrent and Deluge, on the shared at-most-once controller.
    - **Opt-in:** per server, only while connected. Ratio comes from each client's own counters. Seeding time is judged where the client reports it; rTorrent reports none. No per-transfer caps.
    - **Live gate:** `seedhost-remote-seeding-stop-once.yml` (#1900) is the protected live Stop with restore; its receipt is in QUALITY-LEDGER.
-   - **Next seeding steps:** numbered instances, native per-client caps with readback, and a Transmission ratio proof.
+   - **Done 2026-11-19:** numbered-instance getter matrix (instances 2 and 3, all six getters) and native per-transfer upload caps with readback for Transmission/qBittorrent/Deluge (#1903, real daemons).
+   - **Next seeding steps:** an installed switch journey, a live protocol cap check and a Transmission ratio proof (blocked by loopback peering).
    - **Shared test infrastructure:** `LazyComposeActions` now lives in `app/src/sharedTest` (#1897) and never scrolls an ambiguous match.
    - **Other advanced core work: metadata-late Smart Routing, stopped safe snapshot/provider recovery, job-only Move and exact-file safety, and declarative Settings ownership. Use the current five clients as distinct real test targets. Preserve safe unsupported/refusal states and disabled unsafe ZIP/library writers.
 5. **Final UX is coordinated:** use existing owner-approved Transfer list, Details, Connections, Add, Options and category-ratio artwork designs in one assembly campaign after foundational functionality. Functional/accessibility corrections are always allowed when they unblock testing or safety.
