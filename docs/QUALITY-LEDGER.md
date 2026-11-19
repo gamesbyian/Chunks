@@ -3106,3 +3106,10 @@ Alpine 3.22 rTorrent 0.15.2 was separately attempted but **failed** on [40368041
   - Head `9e0abad`: JVM `build` failed because the PR's Robolectric interop tests loaded the desktop libtorrent JNI library inside a sandbox, breaking later native tests. Fixed by making those tests plain JUnit.
   - Head `fbd4ba3`: `interop` failed on a Transmission-version-specific assertion. Fixed by asserting the version-independent invariant.
   - Head `fbd4ba3`: the native Add verifier was red only because its shards were cancelled when a newer commit was pushed.
+
+## 2026-11-19 Live primary Seedhost remote Smart Seeding Stop (#1900)
+
+- **Run:** `seedhost-remote-seeding-stop-once.yml`, trusted `main` `3131d51`, run 44496130679, attempt 1, with the owner-authorized Stop/Start of an existing transfer.
+- **Redacted receipt:** `started_complete=44 eligible=true`, `stop=verified reason_ratio=true`, `second_tick=no_write`, `restore=verified`; 1 test, 0 skipped, 0 failed.
+- **What it proves:** the production `RTorrentSeedingPort` and `SeedingController`, narrowed to one chosen hash, stopped one existing transfer from the server's own ratio. The exact-hash readback verified the Stop, the journal refused a second one, and one Start restored the original state with readback. No other transfer was evaluated, and no Add/Remove/priority/path/file operation ran.
+- **Not established:** numbered instances, enforcement while Chunks is closed, and the in-app switch on an installed APK or physical Pixel.

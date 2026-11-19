@@ -17,7 +17,13 @@
 - **Fix:** a test-only `LocalEngineConfig.minReconnectSeconds = 1`; the app keeps libtorrent's default. 8 of 8 loaded local runs then passed, each about 6.4 s.
 - **Still to do:** record CI pass rates after merge. Apply the same reasoning to any other same-host stop/resume reconnect test.
 3. **Owner Pixel intake:** [#1786](https://github.com/gamesbyian/Chunks/issues/1786) needs real Files/Downloads/Drive `Open with` .torrent, cold/warm/task recreation, opaque grants and manual Add path. API35 emulator evidence cannot replace physical Pixel acceptance. Preserve private URI/token redaction.
-4. **Finish advanced core:** execute remote seeding policy only with typed capability/readback; metadata-late Smart Routing, stopped safe snapshot/provider recovery, job-only Move and exact-file safety, and declarative Settings ownership. Use the current five clients as distinct real test targets. Preserve safe unsupported/refusal states and disabled unsafe ZIP/library writers.
+4. **Finish advanced core:** remote Smart Seeding is merged (#1898).
+   - **Clients:** rTorrent, Transmission, qBittorrent and Deluge, on the shared at-most-once controller.
+   - **Opt-in:** per server, only while connected. Ratio comes from each client's own counters. Seeding time is judged where the client reports it; rTorrent reports none. No per-transfer caps.
+   - **Live gate:** `seedhost-remote-seeding-stop-once.yml` (#1900) is the protected live Stop with restore; its receipt is in QUALITY-LEDGER.
+   - **Next seeding steps:** numbered instances, native per-client caps with readback, and a Transmission ratio proof.
+   - **Shared test infrastructure:** `LazyComposeActions` now lives in `app/src/sharedTest` (#1897) and never scrolls an ambiguous match.
+   - **Other advanced core work: metadata-late Smart Routing, stopped safe snapshot/provider recovery, job-only Move and exact-file safety, and declarative Settings ownership. Use the current five clients as distinct real test targets. Preserve safe unsupported/refusal states and disabled unsafe ZIP/library writers.
 5. **Final UX is coordinated:** use existing owner-approved Transfer list, Details, Connections, Add, Options and category-ratio artwork designs in one assembly campaign after foundational functionality. Functional/accessibility corrections are always allowed when they unblock testing or safety.
 
 ## 2. Run real-engine and Android acceptance honestly
