@@ -82,7 +82,9 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 
 **Shared submit and capabilities (follow-up, 2026-11-19).** `UniversalAddSubmission.admitAndLaunch` is the one post-tap step for rTorrent and protocol Adds: shared admission, a `freeze` callback recording the reviewed state against the minted ticket and returning its single executor, then exactly one launch with its read-only follow-up; it reports `Launched`, `Refused` (and whether the caller's gate was taken) or `ClientBusy`. `UniversalAddClientCapabilities` decides what the form offers per client. Display names now work for every client (protocol names under each profile's exact `ProtocolAliasScope`), and job-only Copy/Move carries the Chunks name to the target without overwriting one already there.
 
-**Still separate:** Save to / options controls per body; Local still admits inside its native mutation lane (`authorizeLocalTicket` + `UniversalAddAttemptController.run`); `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
+**Local on the same step.** Local's magnet and `.torrent` Adds now use `UniversalAddSubmission.admitAndRun`: the identical admission and freeze (Place bound to the minted ticket before any write), awaited inside the native mutation lane that already holds the process-wide native gate. The separate `authorizeLocalTicket` admission is gone, so all five clients pass through one admission and one freeze contract.
+
+**Still separate:** Save to / options controls per body; `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
 
 Step 3 below (one capability-driven source-first route) remains the finish line.
 
