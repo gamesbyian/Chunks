@@ -207,7 +207,7 @@ One existing primary-account transfer was stopped once by the production rule pa
 **Behavior:**
 - **Trackers:** tracker URLs are read only for a transfer the client reports as public. A transfer that is private, or whose privacy is unknown, gets only the default.
 - **Stop:** the shared verified `ClientOperations.setStarted(false)`.
-- **Upload caps:** no per-transfer cap is written yet. Each client's native limits need verified readback first, so a rule's cap is reported as not applied.
+- **Upload caps (2026-11-19, #1903):** each client's own per-transfer limit — qBittorrent `torrents/setUploadLimit` (bytes), Transmission `torrent-set uploadLimit`+`uploadLimited` (its session speed unit), Deluge `core.set_torrent_options max_upload_speed` (KiB). Read first, written once only when different, confirmed by an independent read; a cap the client cannot store exactly is reported as not applied and never rounded. Proved on real daemons (`ProtocolUploadCapInteropTest`); no live Seedhost protocol cap check yet.
 - **Opt-in:** the same per-profile switch (`remote:` + the exact client identity).
 - **When it runs:** in each profile's existing 30 s loop, alongside its Finish in Order steps.
 

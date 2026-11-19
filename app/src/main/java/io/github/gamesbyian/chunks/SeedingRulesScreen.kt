@@ -104,7 +104,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                     "On a server, rules apply only if you turn on \"Apply while Chunks is open\" for it, and only to " +
                     "transfers added after that, while Chunks is open and connected. Each server's own counters are used: " +
                     "rTorrent has no seeding-time counter, and other clients may count seeding time only while a " +
-                    "transfer is active. Rules don't set per-transfer upload limits on servers. " +
+                    "transfer is active. A rule's upload limit is set on each matching transfer on Transmission, " +
+                    "qBittorrent and Deluge (checked by reading it back); rTorrent has no per-transfer limit. " +
                     "Nothing is deleted.", ChunksTone.PAUSED)
         }
         if (snapshot.quarantinedRemoteRules.isNotEmpty() ||
