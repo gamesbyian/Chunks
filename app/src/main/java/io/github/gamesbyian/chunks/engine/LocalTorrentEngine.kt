@@ -75,6 +75,13 @@ data class LocalEngineConfig(
     /** Required for same-host tests where every peer is 127.0.0.1. */
     val allowMultipleConnectionsPerIp: Boolean = false,
     /**
+     * libtorrent `min_reconnect_time` in seconds; null keeps its default (60).
+     * A peer that disconnected is not retried for (failcount + 1) times this,
+     * and `connect_peer` only re-adds it to that peer list. Same-host tests
+     * that stop and resume a peer set this low; the app keeps the default.
+     */
+    val minReconnectSeconds: Int? = null,
+    /**
      * App-private directory for per-transfer resume files. When set, transfers
      * survive engine restart and process death; restored transfers come back stopped.
      */
@@ -713,6 +720,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         pack.setBoolean(settings_pack.bool_types.enable_natpmp.swigValue(), config.enablePortMapping)
         pack.setBoolean(settings_pack.bool_types.allow_multiple_connections_per_ip.swigValue(),
             config.allowMultipleConnectionsPerIp)
+        config.minReconnectSeconds?.let {
+            pack.setInteger(settings_pack.int_types.min_reconnect_time.swigValue(), it)
+        }
         val params = SessionParams(pack)
         if (config.diskIoMode == LocalDiskIoMode.POSIX) params.setPosixDiskIO()
         session.addListener(engineListener)

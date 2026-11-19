@@ -24,8 +24,9 @@ class LocalTorrentEngineTest {
 
     @After fun stop() { engines.forEach { it.close() } }
 
-    private fun engine(): LocalTorrentEngine = LocalTorrentEngine(LocalEngineConfig(
-        listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true
+    private fun engine(minReconnectSeconds: Int? = null): LocalTorrentEngine = LocalTorrentEngine(LocalEngineConfig(
+        listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
+        minReconnectSeconds = minReconnectSeconds
     )).also { it.start(); engines += it }
 
     private class Fixture(val root: File, val torrent: ByteArray, val files: Map<String, ByteArray>)
@@ -936,7 +937,14 @@ class LocalTorrentEngineTest {
                 throw AssertionError("Truncated-payload fixture timed out at $stage", timeout)
             }
         }
-        val seeder = engine()
+        // The seeder is paused and resumed below, which closes the loopback
+        // connection. libtorrent then withholds a reconnect to that peer for
+        // min_reconnect_time (default 60 s) unless the close happened in the
+        // session's first second (last_connected == 0 means "never"), and
+        // connect_peer only re-adds the peer to that list. That was the
+        // intermittent repaired-download-flush timeout (reproduced locally:
+        // zero peers for the whole 60 s wait). Shorten only that backoff.
+        val seeder = engine(minReconnectSeconds = 1)
         val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
         seeder.resume(seed.infoHash)
         awaitStage("initial-seeder-ready") {
@@ -944,7 +952,7 @@ class LocalTorrentEngineTest {
         }
 
         val destination = temp.newFolder("truncated while running")
-        val local = engine()
+        val local = engine(minReconnectSeconds = 1)
         val leech = added(local.addStoppedChecked(fixture.torrent, destination)).infoHash
         assertEquals(LocalCommandOutcome.VERIFIED, local.resume(leech).outcome)
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))

@@ -122,6 +122,8 @@ internal fun VerifiedAddScreen(
      * Process death is still uncertain; never replay the submitted command.
      * Standalone screen tests without a supplied scope remain screen-scoped. */
     attemptScope: CoroutineScope? = null,
+    /** The app-owned Add lifecycle owner; a standalone screen uses its own over [attemptScope]. */
+    sharedAttemptController: UniversalAddAttemptController? = null,
     /** Inline shared Add-to selector; never grants remote admission. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
     externalSourceReading: Boolean = false,
@@ -155,6 +157,8 @@ internal fun VerifiedAddScreen(
     // process death) cancels the task without authorizing a duplicate write.
     // A standalone screen still uses the composition-local fallback.
     val submitScope = UniversalAddExecutionScope.select(attemptScope, scope)
+    val attemptController = sharedAttemptController
+        ?: remember(submitScope) { UniversalAddAttemptController { submitScope } }
     val draft = session ?: remember(remote, finishInOrderScope) { RemoteAddSession(finishInOrderScope) }
     require(draft.accountScope == finishInOrderScope) { "Add review belongs to another server account" }
     var selectedTorrent by draft::selectedTorrent
@@ -1112,69 +1116,84 @@ internal fun VerifiedAddScreen(
                             draft.attemptSource = magnet
                             draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
-                            submitScope.launch {
-                                var engineOutcomeRecorded = false
-                                try {
-                                    if (!allowArtwork && withContext(Dispatchers.IO) {
-                                        artworkEnvironment == null || mediaController?.prepareForAdd(
+                            // No alternate RPC executor: the remote port invokes the existing
+                            // native/stopped-first engine operations.
+                            // Give the callback its suspend type *before* passing it through
+                            // the optional parameter. A nested let infers Function1 instead.
+                            val priorityCallback: (suspend (String) -> RemotePreStartSetup)? =
+                                if (skippedAtClick.isNotEmpty() || highAtClick.isNotEmpty()) { hash: String ->
+                                    // Start follows only if every choice reads back exactly.
+                                    RemoteAddFileSkips.apply(remote, hash, skippedAtClick, requestedStart,
+                                        high = highAtClick)
+                                } else if (orderScope == null) null
+                                else { hash: String ->
+                                    RemotePreStartSetup(enableRemoteFinishInOrderAfterAdd(
+                                        context, remote, orderScope, hash))
+                                }
+                            val executor = io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor(
+                                remote, prioritiesFirst, priorityCallback,
+                                prepareBeforeWrite = {
+                                    // The artwork exclusion is saved locally before any RPC.
+                                    allowArtwork || withContext(Dispatchers.IO) {
+                                        mediaController?.prepareForAdd(
                                             io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
-                                                artworkEnvironment, plan.expectedInfoHash), false) != true
-                                    }) {
+                                                artworkEnvironment, plan.expectedInfoHash), false) == true
+                                    }
+                                })
+                            // The one shared lifecycle (as Local and the protocol clients) runs the
+                            // single write in the app-owned scope and settles the ticket from evidence.
+                            val launched = attemptController.launch(draft.coordinator, ticket, executor,
+                                onInterrupted = { mayHaveWritten ->
+                                    if (mayHaveWritten) {
+                                        uncertain = true
+                                        outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                                    } else {
+                                        draft.refusedBeforeAdd()
+                                        outcome = "Add was interrupted before anything was sent. Nothing was added."
+                                    }
+                                },
+                                // Also request readback after a timeout/exception.
+                                // The write might have happened without an RPC reply.
+                                onFinished = { submitting = false; onMutationSettled() }) { run ->
+                                val execution = (run as? io.github.gamesbyian.chunks.model.UniversalAddRun.Completed)?.result
+                                if (run is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed) {
+                                    if (run.writeMayHaveHappened) {
+                                        verifiedHash = null
+                                        uncertain = true
+                                        outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
+                                    } else {
+                                        draft.refusedBeforeAdd()
+                                        verifiedHash = null
+                                        uncertain = false
+                                        outcome = "The Add could not be prepared. Nothing was added. Review it again."
+                                    }
+                                    return@launch
+                                }
+                                when (execution) {
+                                    io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor.Result.PreparationRefused -> {
                                         // No RPC was sent. This known refusal can be corrected
                                         // without weakening the uncertain-command retry latch.
                                         draft.refusedBeforeAdd()
                                         outcome = "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata."
                                         return@launch
                                     }
-                                    // No alternate RPC executor: the remote port invokes
-                                    // the existing native/stopped-first engine operations.
-                                    val adapter = RemoteUniversalAddAdapter(remote)
-                                    // Give the callback its suspend type *before*
-                                    // passing it through the optional parameter. A
-                                    // nested let infers Function1 instead and fails
-                                    // the Kotlin compile despite compatible bodies.
-                                    val priorityCallback: (suspend (String) -> RemotePreStartSetup)? =
-                                        if (skippedAtClick.isNotEmpty() || highAtClick.isNotEmpty()) { hash: String ->
-                                            // Start follows only if every choice reads back exactly.
-                                            RemoteAddFileSkips.apply(remote, hash, skippedAtClick, requestedStart,
-                                                high = highAtClick)
-                                        } else if (orderScope == null) null
-                                        else { hash: String ->
-                                            RemotePreStartSetup(enableRemoteFinishInOrderAfterAdd(
-                                                context, remote, orderScope, hash))
-                                        }
-                                    // Record the evidence's acquisition order
-                                    // before any suspend/RPC. Translating a late
-                                    // response with the completion time could
-                                    // make an older read overwrite a newer one.
-                                    val submissionReadStartedAt = System.currentTimeMillis()
-                                    val execution = adapter.submit(
-                                        ticket, prioritiesBeforeStart = prioritiesFirst,
-                                        onVerifiedStoppedBeforeStart = priorityCallback)
-                                    // A second Start in priority mode verifies active
-                                    // state, but only this read-only pass verifies Place
-                                    // after that second mutation as well.
-                                    val (result, evidenceReadStartedAt) = if (prioritiesFirst &&
-                                        execution.result is RemoteAddAndStart.Started) {
-                                        val at = System.currentTimeMillis()
-                                        adapter.reconcile(ticket) to at
-                                    } else execution.result to submissionReadStartedAt
-                                    val orderNote = execution.orderNote
-                                    val existingWithoutWrite = result is RemoteAddAndStart.AddedStopped &&
-                                        result.result is RemoteAddOutcome.AlreadyPresent
-                                    if (existingWithoutWrite) draft.refusedBeforeAdd()
-                                    else {
-                                        draft.coordinator.requireReadback(ticket)
-                                        // The existing engine's bounded exact-hash
-                                        // getters have proved the command's result,
-                                        // even for a job hidden from the main view.
-                                        adapter.exactObservation(
-                                            ticket, result, newRegistrationVerified = true,
-                                            observedAtEpochMillis = evidenceReadStartedAt
-                                        )?.let { exact ->
-                                            draft.coordinator.reconcileExactSession(ticket, exact)
-                                        }
+                                    io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor.Result.PreWriteRefused -> {
+                                        // The engine adapter proved no load was sent. Release
+                                        // only this exact ticket; a later attempt needs a new click.
+                                        draft.refusedBeforeAdd()
+                                        verifiedHash = null
+                                        uncertain = false
+                                        outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
+                                        return@launch
                                     }
+                                    else -> Unit
+                                }
+                                val executed = execution as io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor.Result.Executed
+                                try {
+                                    val result = executed.result
+                                    val orderNote = executed.orderNote
+                                    val existingWithoutWrite = executed.existingWithoutWrite
+                                    if (existingWithoutWrite) draft.refusedBeforeAdd()
                                     uncertain = !existingWithoutWrite && result !is RemoteAddAndStart.Started &&
                                         (result !is RemoteAddAndStart.AddedStopped ||
                                             result.result !is RemoteAddOutcome.VerifiedStopped)
@@ -1198,7 +1217,6 @@ internal fun VerifiedAddScreen(
                                                 "Add uncertain; no Start was sent. Check the server before another operation."
                                         }
                                     }
-                                    engineOutcomeRecorded = true
                                     // Continue the newly verified job into Transfers
                                     // even when this Add composable is no longer mounted.
                                     verifiedHash?.let(::publishVerifiedAdd)
@@ -1224,36 +1242,24 @@ internal fun VerifiedAddScreen(
                                         if (!saved) outcome = outcome.orEmpty() +
                                             " This folder was used but its Recent shortcut could not be saved."
                                     }
-                                } catch (_: RemotePreWriteRefusal) {
-                                    // The engine adapter proved no load was
-                                    // sent. Release only this exact ticket;
-                                    // a later attempt still needs a new click.
-                                    draft.refusedBeforeAdd()
-                                    verifiedHash = null
-                                    uncertain = false
-                                    outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                    // Navigating away during the optional read-only
-                                    // diagnosis does not invalidate the engine result
-                                    // already recorded above. Cancellation before
-                                    // that point still requires uncertain recovery.
-                                    if (!engineOutcomeRecorded) {
-                                        draft.coordinator.requireReadback(ticket)
-                                        uncertain = true
-                                        outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
-                                    }
+                                    // Navigating away during the optional read-only follow-up does
+                                    // not invalidate the engine result already recorded above.
                                     throw cancel
                                 } catch (_: Exception) {
                                     draft.coordinator.requireReadback(ticket)
                                     verifiedHash = null
                                     uncertain = true
                                     outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
-                                } finally {
-                                    submitting = false
-                                    // Also request readback after a timeout/exception.
-                                    // The write might have happened without an RPC reply.
-                                    onMutationSettled()
                                 }
+                            }
+                            if (!launched) {
+                                // Another write for this exact server is still settling; this
+                                // ticket never reached a write and was disarmed by the controller.
+                                draft.refusedBeforeAdd()
+                                submitting = false
+                                onMutationSettled()
+                                outcome = "Another Add to this exact server is still settling. Nothing was submitted."
                             }
                             } else {
                                 if (mutationGateAcquired) onMutationSettled()

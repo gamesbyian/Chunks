@@ -82,6 +82,10 @@ internal class ProtocolAddAttempt {
     fun coordinator(profile: String) =
         coordinators.getOrPut(profile) { io.github.gamesbyian.chunks.model.UniversalAddCoordinator() }
 
+    /** The latest read-only Check status result, in fixed app vocabulary. */
+    var checkNote by mutableStateOf<String?>(null)
+        internal set
+
     /** The fixed admission reason when an Add was refused before any write; null otherwise. */
     var admissionRefusal by mutableStateOf<String?>(null)
         internal set
@@ -95,7 +99,7 @@ internal class ProtocolAddAttempt {
             val retired = c.finishVerified() || c.acknowledgeExactSession() || c.acknowledgeObservedJob()
             if (!retired) coordinators[id] = io.github.gamesbyian.chunks.model.UniversalAddCoordinator()
         }
-        attemptedHash = null; outcome = null; profileId = null; admissionRefusal = null
+        attemptedHash = null; outcome = null; profileId = null; admissionRefusal = null; checkNote = null
     }
 }
 
@@ -117,8 +121,11 @@ internal fun ProtocolAddScreen(
     startState: MutableState<Boolean>,
     attempt: ProtocolAddAttempt,
     attemptScope: CoroutineScope,
-    onViewTransfer: (String) -> Unit
+    onViewTransfer: (String) -> Unit,
+    /** The app-owned Add lifecycle owner; a standalone screen uses its own. */
+    attemptController: UniversalAddAttemptController? = null
 ) {
+    val controller = attemptController ?: remember(attemptScope) { UniversalAddAttemptController { attemptScope } }
     val context = LocalContext.current
     val operations = remember(profileId, createOperations) { createOperations() }
     var session by remember(operations) { mutableStateOf<ClientSessionInfo?>(null) }
@@ -195,11 +202,11 @@ internal fun ProtocolAddScreen(
     val mine = attempt.profileId == null || attempt.profileId == profileId
     // An unresolved earlier write on this client (uncertain, readback pending, Start
     // unverified) blocks a new Add until the person dismisses it: never a blind retry.
-    val unresolved = attempt.coordinator(profileId).phase in setOf(
-        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.WRITE_ATTEMPTED,
-        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.READBACK_REQUIRED,
-        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN,
-        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) && !attempt.busy
+    // A session found by Check status also needs the person's acknowledgement first.
+    val unresolved = attempt.coordinator(profileId).phase.let {
+        it in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED ||
+            it == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+    } && !attempt.busy
     val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine &&
         !unresolved &&
         !noFileChosen
@@ -302,9 +309,27 @@ internal fun ProtocolAddScreen(
                     return@Button
                 }
                 attempt.admissionRefusal = null
-                attemptScope.launch {
-                    attempt.outcome = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.submit(
-                        coordinator, ticket, operations, request)
+                attempt.checkNote = null
+                val hash = frozen.infoHash
+                // The one shared lifecycle (as Local and rTorrent): the app-owned
+                // controller runs the single write and settles the ticket.
+                val launched = controller.launch(coordinator, ticket,
+                    io.github.gamesbyian.chunks.rpc.ProtocolAddExecutor(operations, request),
+                    onInterrupted = { mayHaveWritten ->
+                        attempt.outcome = if (mayHaveWritten) ClientOperationOutcome.Uncertain(hash,
+                            "The Add was interrupted after it was sent; check its status")
+                        else ClientOperationOutcome.Refused(hash, "Interrupted before anything was sent")
+                    }) { run ->
+                    attempt.outcome = when (run) {
+                        is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> run.result
+                        is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed ->
+                            if (run.writeMayHaveHappened) ClientOperationOutcome.Uncertain(hash, "unexpected failure")
+                            else ClientOperationOutcome.Refused(hash, "The Add could not be prepared; nothing was sent")
+                    }
+                }
+                if (!launched) {
+                    attempt.releaseUnwritten(hash)
+                    attempt.admissionRefusal = "Not added: another Add to $clientLabel is still settling."
                 }
             },
             enabled = canSubmit,
@@ -338,10 +363,54 @@ internal fun ProtocolAddScreen(
                 OutlinedButton(onClick = { onViewTransfer(result.hash) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("View transfer") }
             }
+            // Read-only recovery of an unresolved write: one exact-hash read on
+            // this client, never a second Add.
+            val coordinatorNow = attempt.coordinator(profileId)
+            if (result !is ClientOperationOutcome.Verified && result !is ClientOperationOutcome.Refused &&
+                coordinatorNow.phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED) {
+                val checkingNow = controller.isChecking(intentEnvironment(profileId))
+                OutlinedButton(onClick = {
+                    controller.recheck(coordinatorNow,
+                        io.github.gamesbyian.chunks.rpc.ProtocolAddObserver(operations.client)) { readback ->
+                        attempt.checkNote = ProtocolAddCheckText.describe(readback, coordinatorNow.phase, clientLabel)
+                    }
+                }, enabled = !checkingNow,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .testTag(ChunksSemantics.ADD_CHECK_STATUS)) {
+                    Text(if (checkingNow) "Checking $clientLabel…" else "Check status")
+                }
+            }
+            attempt.checkNote?.let { note ->
+                Text(note, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
             OutlinedButton(onClick = {
                 attempt.clearSettled()
                 if (result is ClientOperationOutcome.Verified) { sourceDraft.value = ""; reviewedTorrent.value = null }
             }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add another") }
+        }
+    }
+}
+
+private fun intentEnvironment(profileId: String) = io.github.gamesbyian.chunks.model.EnvironmentId(profileId)
+
+/** Fixed, engine-neutral text for a read-only protocol Add status check. */
+internal object ProtocolAddCheckText {
+    fun describe(
+        readback: io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback?,
+        phase: io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase,
+        clientLabel: String
+    ): String {
+        return when {
+            readback == null -> "$clientLabel could not be read. Nothing was sent; check again later."
+            phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
+                "$clientLabel has this exact transfer in the reviewed folder with the requested Start. " +
+                    "Chunks cannot prove this Add registered it. Nothing was resent."
+            phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
+                "$clientLabel has this exact transfer in the reviewed folder, but the requested Start is not confirmed. Nothing was resent."
+            phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN ->
+                "$clientLabel has this hash, but not in the reviewed folder. Nothing was resent."
+            else -> "$clientLabel does not list this transfer yet. Nothing was resent; it may still appear."
         }
     }
 }

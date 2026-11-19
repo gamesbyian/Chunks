@@ -60,12 +60,22 @@ Client labels are **Local** and saved connection names (Wood, etc). Avoid protoc
 
 A blind second write after an uncertain protocol Add is now prevented, with an executed negative control.
 
-**Still separate:**
-- three Add screens (`LocalEngineScreen`, `VerifiedAddScreen`, `ProtocolAddScreen`);
-- three adapter shapes with no common executor interface yet;
-- Local's native list/readback observation, which remains screen-owned.
+**One execution/observation lifecycle (2026-11-19, this branch).** Every client's Add now runs through the same app-owned path:
+- **Contract:** `model/UniversalAddLifecycle.kt` defines `UniversalAddExecutor` (one write per ticket), `UniversalAddWriteBoundary`, `UniversalAddSettlement` and the read-only `UniversalAddObserver`.
+- **Settlement rules:** `UniversalAddLifecycle.run` settles the shared coordinator identically for every engine:
+  - a result or failure before the boundary is a known no-write;
+  - a failure or cancellation after the boundary keeps the attempted-write fence;
+  - only executor-supplied exact-session evidence verifies the Add;
+  - nothing is retried.
+- **Owner:** `UniversalAddAttemptController`, held as `LocalAddAttemptOwner.attempts`, owns the retained coroutine. It allows one in-flight write and one in-flight read-only recheck per exact client.
+- **Executors:** `LocalNativeAddExecutor` (native magnet and `.torrent`, recording this Add's native token), `RTorrentAddExecutor` (the existing stopped-first/priority and Place-readback steps) and `ProtocolAddExecutor`. The engine writers themselves are unchanged.
+- **Check status:** protocol Adds gain a read-only **Check status** (`ProtocolAddObserver`, `ChunksSemantics.ADD_CHECK_STATUS`). It can confirm an exact landed job (Found on [client]) without attributing or resending it.
 
-Steps 2–3 below remain the finish line.
+**Still separate:**
+- three Add screens (`LocalEngineScreen`, `VerifiedAddScreen`, `ProtocolAddScreen`) with their own form, source intake and post-Add messaging;
+- Local's native list/readback observation, which remains screen-owned through its JNI-safe poll pump.
+
+Step 3 below (one capability-driven source-first route) remains the finish line.
 
 ## Implementation ownership: converge incrementally
 

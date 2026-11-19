@@ -17,6 +17,8 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/SharedAddFileChoicesInteropTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/PendingMagnetInventoryInteropTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/ClientFinishInOrderInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/UniversalAddLifecycleInteropTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
   push:
     branches: [main]
@@ -78,6 +80,7 @@ jobs:
             --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.PendingMagnetInventoryInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientFinishInOrderInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.UniversalAddLifecycleInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
