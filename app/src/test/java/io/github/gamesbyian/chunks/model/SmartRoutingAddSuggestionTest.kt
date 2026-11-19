@@ -89,4 +89,15 @@ class SmartRoutingAddSuggestionTest {
         assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", false, "local",
             listOf(c(qb, "Seedbox qB", live = false))))
     }
+
+    @Test fun theJobsOwnFilesDecideWhenItsNameIsAmbiguous() {
+        val targets = listOf(c(qb, "Seedbox qB"), c(deluge, "Deluge"))
+        // A bare name says nothing; its files are books.
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Collection", false, "local", targets))
+        assertEquals(deluge, SmartRoutingAddSuggestion.moveSuggestion(policy, "Collection", false, "local", targets,
+            fileNames = listOf("Collection/One.epub", "Collection/Two.epub"))?.environmentId)
+        // Mixed files ask rather than guess, even with a confident-looking name.
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02", false, "local", targets,
+            fileNames = listOf("Show.S01E02.mkv", "Guide.epub")))
+    }
 }

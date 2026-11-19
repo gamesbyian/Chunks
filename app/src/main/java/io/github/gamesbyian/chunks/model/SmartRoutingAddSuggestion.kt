@@ -124,11 +124,13 @@ internal object SmartRoutingAddSuggestion {
         originalName: String?,
         metadataPending: Boolean?,
         currentEnvironmentId: String,
-        targets: List<Candidate>
+        targets: List<Candidate>,
+        /** The job's own file paths when already read (read-only); empty = name only. */
+        fileNames: List<String> = emptyList()
     ): Suggestion? {
         if (metadataPending == true || originalName.isNullOrBlank()) return null
         val here = Candidate(currentEnvironmentId, "current", live = true, acceptsAdd = true, placeKnown = true)
-        val result = evaluate(policy, originalName, emptyList(), targets.filter { it.environmentId != currentEnvironmentId } + here)
+        val result = evaluate(policy, originalName, fileNames, targets.filter { it.environmentId != currentEnvironmentId } + here)
         val suggestion = (result as? Result.Suggested)?.suggestion ?: return null
         return suggestion.takeIf { it.environmentId != currentEnvironmentId }
     }

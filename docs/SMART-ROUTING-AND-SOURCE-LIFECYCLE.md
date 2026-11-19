@@ -69,7 +69,7 @@ The pure, read-only `SmartRoutingPreview` classifies supported file types offlin
 
 ### Metadata-late Move suggestion in Details (2026-11-18)
 
-Once a job's real name is known (never while `metadataPending`), Details evaluates the saved rules (`SmartRoutingAddSuggestion.moveSuggestion`). If a confident rule points at a **different** connected client among the job-only Move targets, the Copy/Move panel shows "Smart Routing suggests <client> (<kind> rule)" and lists that target first. A rule pointing at the job's current client means stay (no suggestion). It is advisory: no Copy, Move or retirement happens without the person's two explicit taps, and the policy store is only read. Files are not yet part of this evaluation (name-only); automatic Move remains unimplemented.
+Once a job's real name is known (never while `metadataPending`), Details evaluates the saved rules (`SmartRoutingAddSuggestion.moveSuggestion`). If a confident rule points at a **different** connected client among the job-only Move targets, the Copy/Move panel shows "Smart Routing suggests <client> (<kind> rule)" and lists that target first. A rule pointing at the job's current client means stay (no suggestion). It is advisory: no Copy, Move or retirement happens without the person's two explicit taps, and the policy store is only read. When the person opens Copy/Move, the panel reads the job's own file list once (read-only, never before that tap) and re-evaluates the same rules with those paths, so extensions decide an ambiguous name and mixed content asks instead of guessing; if the list cannot be read, the name-only suggestion stays. Automatic Move remains unimplemented.
 
 ### Delivery dependencies
 
