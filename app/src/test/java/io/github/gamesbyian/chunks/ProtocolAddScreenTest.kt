@@ -44,9 +44,12 @@ class ProtocolAddScreenTest {
         var added: ClientAddRequest? = null
         var writes = 0
         var loseNextWrite = false
+        /** The write lands on the client, but its reply is lost. */
+        var landThenLoseNextWrite = false
+        var reads = 0
         override suspend fun session() = ClientSessionInfo(kind, "2.1", "/srv/dl", ClientCapability.entries.toSet(), levels)
         override suspend fun torrents() = listOfNotNull(torrent(hash))
-        override suspend fun torrent(hash: String): ClientTorrent? = added?.takeIf { hash == this@ProtocolAddScreenTest.hash }?.let {
+        override suspend fun torrent(hash: String): ClientTorrent? = also { reads++ }.added?.takeIf { hash == this@ProtocolAddScreenTest.hash }?.let {
             ClientTorrent(hash, "x", if (it.startNow) ClientRunState.DOWNLOADING else ClientRunState.STOPPED,
                 null, null, null, null, it.directory ?: "/srv/dl")
         }
@@ -55,6 +58,7 @@ class ProtocolAddScreenTest {
             writes++
             if (loseNextWrite) { loseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
             added = request
+            if (landThenLoseNextWrite) { landThenLoseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
         }
         override suspend fun setStarted(hash: String, started: Boolean) = Unit
         override suspend fun remove(hash: String, deleteData: Boolean) = Unit
@@ -215,5 +219,49 @@ class ProtocolAddScreenTest {
         }
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test fun checkStatusReadsOnceAndConfirmsALandedJobWithoutASecondWrite() {
+        val fake = Fake().apply { landThenLoseNextWrite = true }
+        val attempt = ProtocolAddAttempt()
+        val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=x")
+        renderMagnetAdd(fake, attempt, draft)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null }
+        rule.waitForIdle()
+        rule.onNodeWithText("Couldn't confirm Add on Box Deluge").assertExists()
+        val readsBefore = fake.reads
+        rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.checkNote != null }
+        rule.waitForIdle()
+        // Exact job, folder and stopped state are confirmed, never attributed to this Add.
+        rule.onNodeWithText("Found on Box Deluge").performScrollTo()
+        assertEquals("one read-only exact-hash read", readsBefore + 1, fake.reads)
+        assertEquals("never a second write", 1, fake.writes)
+        rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS).assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsNotEnabled()
+        // Acknowledging the confirmed session retires the ticket without resending.
+        rule.onNodeWithText("Add another").performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.EMPTY,
+            attempt.coordinator("p").phase)
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun checkStatusOfAJobThatNeverLandedKeepsTheFence() {
+        val fake = Fake().apply { loseNextWrite = true }
+        val attempt = ProtocolAddAttempt()
+        val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=x")
+        renderMagnetAdd(fake, attempt, draft)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null }
+        rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.checkNote != null }
+        rule.waitForIdle()
+        rule.onNodeWithText("Couldn't confirm Add on Box Deluge").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsNotEnabled()
+        assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+            attempt.coordinator("p").phase)
+        assertEquals(1, fake.writes)
     }
 }

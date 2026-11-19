@@ -275,3 +275,73 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
     suspend fun progress(ticket: UniversalAddCoordinator.Ticket): RemoteAddProgress =
         remote.readAddProgress(planFor(ticket))
 }
+
+/**
+ * The rTorrent executor for the shared [io.github.gamesbyian.chunks.model.UniversalAddLifecycle].
+ * It composes the existing [RemoteUniversalAddAdapter] steps exactly as the
+ * Add screen did: optional pre-write artwork exclusion, ONE load (stopped
+ * first when file choices or Finish in Order must precede Start), and a
+ * read-only Place pass after a priority-first Start. It never retries.
+ */
+internal class RTorrentAddExecutor(
+    private val remote: RTorrentRemote,
+    private val prioritiesFirst: Boolean,
+    private val onVerifiedStoppedBeforeStart: (suspend (String) -> RemotePreStartSetup)?,
+    /** Local-only preparation before any RPC; false refuses the Add without a write. */
+    private val prepareBeforeWrite: suspend () -> Boolean = { true },
+    private val clock: () -> Long = System::currentTimeMillis
+) : io.github.gamesbyian.chunks.model.UniversalAddExecutor<RTorrentAddExecutor.Result> {
+    sealed interface Result {
+        /** The local preparation failed; no RPC was sent. */
+        data object PreparationRefused : Result
+        /** RTorrentRemote proved no load command was sent. */
+        data object PreWriteRefused : Result
+        data class Executed(
+            val result: RemoteAddAndStart,
+            val orderNote: String?,
+            /** Sampled before the evidence read started, never at completion. */
+            val evidenceReadStartedAt: Long
+        ) : Result {
+            val existingWithoutWrite: Boolean get() =
+                result is RemoteAddAndStart.AddedStopped && result.result is RemoteAddOutcome.AlreadyPresent
+        }
+    }
+
+    private val adapter = RemoteUniversalAddAdapter(remote)
+
+    override suspend fun execute(
+        ticket: UniversalAddCoordinator.Ticket,
+        boundary: io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary
+    ): Result {
+        if (!prepareBeforeWrite()) return Result.PreparationRefused
+        // Record the evidence's acquisition order before any suspend/RPC.
+        val submissionReadStartedAt = clock()
+        boundary.enter()
+        val execution = try {
+            adapter.submit(ticket, prioritiesBeforeStart = prioritiesFirst,
+                onVerifiedStoppedBeforeStart = onVerifiedStoppedBeforeStart)
+        } catch (_: RemotePreWriteRefusal) {
+            return Result.PreWriteRefused
+        }
+        // A second Start in priority mode verifies active state, but only this
+        // read-only pass verifies Place after that second mutation as well.
+        return if (prioritiesFirst && execution.result is RemoteAddAndStart.Started) {
+            val at = clock()
+            Result.Executed(adapter.reconcile(ticket), execution.orderNote, at)
+        } else Result.Executed(execution.result, execution.orderNote, submissionReadStartedAt)
+    }
+
+    override suspend fun settle(
+        ticket: UniversalAddCoordinator.Ticket,
+        result: Result
+    ): io.github.gamesbyian.chunks.model.UniversalAddSettlement = when (result) {
+        Result.PreparationRefused, Result.PreWriteRefused ->
+            io.github.gamesbyian.chunks.model.UniversalAddSettlement.KnownNoWrite
+        is Result.Executed -> if (result.existingWithoutWrite)
+            io.github.gamesbyian.chunks.model.UniversalAddSettlement.KnownNoWrite
+        else adapter.exactObservation(ticket, result.result, newRegistrationVerified = true,
+            observedAtEpochMillis = result.evidenceReadStartedAt)
+            ?.let { io.github.gamesbyian.chunks.model.UniversalAddSettlement.Observed(it) }
+            ?: io.github.gamesbyian.chunks.model.UniversalAddSettlement.ReadbackRequired
+    }
+}

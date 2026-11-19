@@ -157,6 +157,9 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     // This never persists an attempted command across process death.
     val addAttemptScope get() = viewModelScope
     val remoteAttemptScope get() = addAttemptScope
+    // The one app-owned execution/observation owner for every client's Add
+    // write and read-only recheck: Local, rTorrent and the protocol clients.
+    val attempts = UniversalAddAttemptController { viewModelScope }
 }
 
 class MainActivity : ComponentActivity() {
@@ -1315,6 +1318,7 @@ internal fun ChunksApp(
             startState = localAddStart,
             attempt = protocolAddAttempt,
             attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
+            attemptController = retainedAddOwner?.attempts,
             onViewTransfer = { hash ->
                 consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                 savedProfileCatalogFocus = profile.id
@@ -1660,6 +1664,7 @@ internal fun ChunksApp(
                     pendingAddState = localReviewedTorrent,
                     localAddAttemptSession = activeLocalAddAttempt,
                     addAttemptScope = retainedAddOwner?.addAttemptScope,
+                    addAttemptController = retainedAddOwner?.attempts,
                     onBack = { leaveLocal() },
                     onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -2339,6 +2344,7 @@ internal fun ChunksApp(
                         pendingAddState = localReviewedTorrent,
                         localAddAttemptSession = activeLocalAddAttempt,
                         addAttemptScope = retainedAddOwner?.addAttemptScope,
+                    addAttemptController = retainedAddOwner?.attempts,
                         onBack = { leaveLocal() },
                         onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -2787,6 +2793,7 @@ internal fun ChunksApp(
                         // returning to Transfers cannot cancel a sent Add.
                         // Process death remains uncertain and never auto-retries.
                         attemptScope = retainedAddOwner?.remoteAttemptScope ?: scope,
+                        sharedAttemptController = retainedAddOwner?.attempts,
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         initialTorrentDocument = serverHandoffDocument,

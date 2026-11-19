@@ -48,6 +48,8 @@ internal object ChunksSemantics {
     const val ADD_SUBMIT = "chunks.add.submit"
     /** In-place remote Add status: submitting, verified, refused or uncertain. */
     const val ADD_REMOTE_OPERATION_STATUS = "chunks.add.remote.operationStatus"
+    /** Read-only exact-hash status check of an unresolved Add; never a second write. */
+    const val ADD_CHECK_STATUS = "chunks.add.checkStatus"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
     const val ADD_ORIGINAL_HANDLING = "chunks.add.original_handling"
     /** Read-only effective policy line on Add; the choice itself lives in Options. */

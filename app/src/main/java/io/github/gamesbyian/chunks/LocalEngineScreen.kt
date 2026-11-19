@@ -369,6 +369,8 @@ internal fun LocalEngineScreen(
      * Add writes use it; screen-only list and other mutations stay screen-scoped.
      * Process death cancels it and never authorizes automatic replay. */
     addAttemptScope: kotlinx.coroutines.CoroutineScope? = null,
+    /** The app-owned Add lifecycle owner shared with remote Adds; standalone screens use their own. */
+    addAttemptController: UniversalAddAttemptController? = null,
     /** Read-only HTTPS metadata intake, injectable for source-replacement regression tests. */
     fetchTorrentDocument: (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { TorrentLinkFetcher().fetch(it) }
 ) {
@@ -601,6 +603,9 @@ internal fun LocalEngineScreen(
                 busy = false
             }
         }
+    }
+    val localAttemptController = addAttemptController ?: remember(addAttemptScope, scope) {
+        UniversalAddAttemptController { UniversalAddExecutionScope.select(addAttemptScope, scope) }
     }
     val addKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val addFocus = androidx.compose.ui.platform.LocalFocusManager.current
@@ -1370,16 +1375,12 @@ internal fun LocalEngineScreen(
                         return@localMagnet
                     }
                     if (session != null && ticket == null) return@localMagnet
-                    val enteredNative = java.util.concurrent.atomic.AtomicBoolean(false)
-                    val nativeResult = java.util.concurrent.atomic.AtomicReference<LocalAddResult?>(null)
-                    fun settleTicket() {
-                        if (session == null || ticket == null) return
-                        if (!enteredNative.get()) session.coordinator.refusedBeforeAnyWrite(ticket)
-                        else nativeResult.get()?.let { session.noteNativeResult(ticket, it, selected) }
-                            ?: session.coordinator.requireReadback(ticket)
-                    }
-                    try {
-                        val result = withContext(Dispatchers.IO) {
+                    // The one shared Add lifecycle (as rTorrent and the protocol clients):
+                    // Place/artwork checks before the boundary are known no-writes; once the
+                    // native call is entered, any failure keeps the attempted-write fence.
+                    val nativeAdd: suspend (io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary,
+                        java.util.concurrent.atomic.AtomicReference<LocalAddResult?>) -> LocalAddResult =
+                        { boundary, returned -> withContext(Dispatchers.IO) {
                             val preflight = prepareLocalAddPlaceAndArtwork(
                                 root = LocalDownloadPlaces.materialize(selected),
                                 subfolder = selectedDraft, allowArtwork = allowArtwork,
@@ -1396,13 +1397,35 @@ internal fun LocalEngineScreen(
                                     val engine = LocalEngineHolder.get(context)
                                     // Only after Place AND exclusion are ready can
                                     // the frozen ticket cross the native write fence.
-                                    enteredNative.set(true)
+                                    boundary.enter()
                                     engine.addMagnet(selectedMagnet, preflight.folder,
-                                        autoStartAfterMetadata = autoStart).also(nativeResult::set)
+                                        autoStartAfterMetadata = autoStart).also(returned::set)
                                 }
                             }
-                        }
-                        settleTicket()
+                        } }
+                    var wroteNative = false
+                    try {
+                        val result: LocalAddResult = if (session != null && ticket != null) {
+                            val run = localAttemptController.run(session.coordinator, ticket,
+                                LocalNativeAddExecutor(session, selected, { it }, nativeAdd))
+                            when (run) {
+                                null -> {
+                                    noteProblem("Another local Add is still settling. Nothing was sent.")
+                                    return@localMagnet
+                                }
+                                is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> {
+                                    wroteNative = run.writeMayHaveHappened; run.result
+                                }
+                                is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed -> {
+                                    inventoryFrame = inventoryFrame.copy(stale = true)
+                                    noteProblem(if (run.writeMayHaveHappened)
+                                        "Magnet Add may have reached the native engine. Wait for a fresh exact transfer list; no retry occurred."
+                                        else "The magnet could not be prepared for Add. Nothing was sent.")
+                                    return@localMagnet
+                                }
+                            }
+                        } else LocalNativeAddExecutor.unfenced(nativeAdd).let { (r, entered) -> wroteNative = entered; r }
+                        val enteredNative = java.util.concurrent.atomic.AtomicBoolean(wroteNative)
                         if (orderLater && result is LocalAddResult.FetchingMetadata) withContext(Dispatchers.IO) {
                             finishInOrderStore.requestAfterMetadata(result.status.infoHash)
                         }
@@ -1456,10 +1479,10 @@ internal fun LocalEngineScreen(
                             addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        settleTicket()
                         throw cancel
                     } catch (_: Exception) {
-                        settleTicket()
+                        // Only post-Add bookkeeping can fail here: the lifecycle already
+                        // settled the ticket from what the native engine returned.
                         inventoryFrame = inventoryFrame.copy(stale = true)
                         noteProblem("Magnet Add may have reached the native engine. Wait for a fresh exact transfer list; no retry occurred.")
                     }
@@ -1800,16 +1823,13 @@ internal fun LocalEngineScreen(
                         return@localDocument
                     }
                     if (session != null && ticket == null) return@localDocument
-                    val enteredNative = java.util.concurrent.atomic.AtomicBoolean(false)
-                    val nativeResult = java.util.concurrent.atomic.AtomicReference<LocalAddResult?>(null)
-                    fun settleTicket() {
-                        if (session == null || ticket == null) return
-                        if (!enteredNative.get()) session.coordinator.refusedBeforeAnyWrite(ticket)
-                        else nativeResult.get()?.let { session.noteNativeResult(ticket, it, selected) }
-                            ?: session.coordinator.requireReadback(ticket)
-                    }
-                    try {
-                        val result = withContext(Dispatchers.IO) {
+                    // The one shared Add lifecycle (as rTorrent and the protocol clients):
+                    // Place/artwork/partial-file checks before the boundary are known
+                    // no-writes; after the native call, any failure keeps the fence.
+                    val nativeAdd: suspend (io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary,
+                        java.util.concurrent.atomic.AtomicReference<LocalAddResult?>) ->
+                        Pair<LocalAddResult, io.github.gamesbyian.chunks.engine.LocalCommandResult?> =
+                        { boundary, returned -> withContext(Dispatchers.IO) {
                             val preflight = prepareLocalAddPlaceAndArtwork(
                                 root = LocalDownloadPlaces.materialize(selected),
                                 subfolder = selectedDraft, allowArtwork = allowArtwork,
@@ -1837,7 +1857,7 @@ internal fun LocalEngineScreen(
                                         return@withContext LocalAddResult.Refused(
                                             "Partial files were not reused: " + adoption.problem +
                                                 ". Nothing was added. Review the folder and try again.") to null
-                                    enteredNative.set(true)
+                                    boundary.enter()
                                     submittedBytes = authorizedBytes
                                     // The ONE native Local Add sequence (shared with the
                                     // shared-port LocalTorrentClient): checked stopped Add →
@@ -1859,7 +1879,7 @@ internal fun LocalEngineScreen(
                                         beforeStart = { hash ->
                                             if (orderAfterAdd) orderNote = enableFinishInOrderAfterAdd(context, engine, hash)
                                         },
-                                        onAdded = nativeResult::set)
+                                        onAdded = returned::set)
                                     val added = execution.added
                                     if (adoption is io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Adoption.Renamed) {
                                         val count = adoption.receipt.renames.size
@@ -1885,8 +1905,30 @@ internal fun LocalEngineScreen(
                                     added to execution.start
                                 }
                             }
-                        }
-                        settleTicket()
+                        } }
+                    var wroteNative = false
+                    try {
+                        val result = if (session != null && ticket != null) {
+                            val run = localAttemptController.run(session.coordinator, ticket,
+                                LocalNativeAddExecutor(session, selected, { it.first }, nativeAdd))
+                            when (run) {
+                                null -> {
+                                    noteProblem("Another local Add is still settling. Nothing was sent.")
+                                    return@localDocument
+                                }
+                                is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> {
+                                    wroteNative = run.writeMayHaveHappened; run.result
+                                }
+                                is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed -> {
+                                    inventoryFrame = inventoryFrame.copy(stale = true)
+                                    noteProblem(if (run.writeMayHaveHappened)
+                                        "Torrent Add may have reached the native engine. Check the next fresh exact transfer list; no retry occurred."
+                                        else "The .torrent could not be prepared for Add. Nothing was sent.")
+                                    return@localDocument
+                                }
+                            }
+                        } else LocalNativeAddExecutor.unfenced(nativeAdd).let { (r, entered) -> wroteNative = entered; r }
+                        val enteredNative = java.util.concurrent.atomic.AtomicBoolean(wroteNative)
                         val (added, started) = result
                         message = when (added) {
                             is LocalAddResult.Refused -> if (enteredNative.get())
@@ -1982,10 +2024,10 @@ internal fun LocalEngineScreen(
                             addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        settleTicket()
                         throw cancel
                     } catch (_: Exception) {
-                        settleTicket()
+                        // Only post-Add bookkeeping can fail here: the lifecycle already
+                        // settled the ticket from what the native engine returned.
                         inventoryFrame = inventoryFrame.copy(stale = true)
                         noteProblem("Torrent Add may have reached the native engine. Check the next fresh exact transfer list; no retry occurred.")
                     }

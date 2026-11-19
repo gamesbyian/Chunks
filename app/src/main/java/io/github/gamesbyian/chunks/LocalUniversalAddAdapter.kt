@@ -319,3 +319,51 @@ internal class LocalAddAttemptSession(
         return done
     }
 }
+
+/**
+ * Local (libtorrent4j) executor for the shared Universal Add lifecycle. [body]
+ * runs the existing pre-write Place/artwork checks, enters the boundary right
+ * before the native engine call, and performs the existing ONE native Add
+ * sequence. Settlement records only this Add's own native registration
+ * token; independent Place/Start verification still comes from a later
+ * fresh native list ([LocalAddAttemptSession.reconcileInventory]).
+ */
+internal class LocalNativeAddExecutor<R : Any>(
+    private val session: LocalAddAttemptSession,
+    private val place: LocalDownloadPlace,
+    /** The native result inside [R], or null when none was produced. */
+    private val nativeOf: (R) -> LocalAddResult?,
+    private val body: suspend (io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary,
+                               java.util.concurrent.atomic.AtomicReference<LocalAddResult?>) -> R
+) : io.github.gamesbyian.chunks.model.UniversalAddExecutor<R> {
+    /** Set by the native sequence as soon as libtorrent returns, even if a later step fails. */
+    private val returned = java.util.concurrent.atomic.AtomicReference<LocalAddResult?>(null)
+
+    override suspend fun execute(
+        ticket: UniversalAddCoordinator.Ticket,
+        boundary: io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary
+    ): R = body(boundary, returned)
+
+    override suspend fun settle(
+        ticket: UniversalAddCoordinator.Ticket,
+        result: R
+    ): io.github.gamesbyian.chunks.model.UniversalAddSettlement {
+        (nativeOf(result) ?: returned.get())?.let { session.noteNativeResult(ticket, it, place) }
+        return io.github.gamesbyian.chunks.model.UniversalAddSettlement.ReadbackRequired
+    }
+
+    override fun recordInterrupted(ticket: UniversalAddCoordinator.Ticket) {
+        returned.get()?.let { session.noteNativeResult(ticket, it, place) }
+    }
+
+    /** A standalone harness without an attempt session runs the same body unfenced. */
+    companion object {
+        suspend fun <R : Any> unfenced(
+            body: suspend (io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary,
+                           java.util.concurrent.atomic.AtomicReference<LocalAddResult?>) -> R
+        ): Pair<R, Boolean> {
+            val boundary = io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary()
+            return body(boundary, java.util.concurrent.atomic.AtomicReference(null)) to boundary.entered
+        }
+    }
+}
