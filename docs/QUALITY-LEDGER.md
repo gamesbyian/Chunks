@@ -3066,4 +3066,22 @@ Alpine 3.22 rTorrent 0.15.2 was separately attempted but **failed** on [40368041
     - exact-fixture cleanup verified.
   - The full container JVM run was 2909 tests, 4 failed, 95 skipped. The 4 failures are environmental: JDK 21 Security Manager, a non-UTF-8 locale path and an offline Robolectric artifact.
 - **Truncated-repair flake:** reproduced locally 1 in 6. The leech had zero peers for the whole 60 s `repaired-download-flush` wait, consistent with libtorrent `min_reconnect_time` (60 s) after the seeder's pause closed the connection. Upstream `peer_list.cpp` shows `connect_peer` cannot bypass it. With the test-only 1 s backoff, 8 of 8 runs under CPU load passed, each about 6.4 s.
-- **Not established:** installed APK, emulator, physical Pixel, live Seedhost and CI receipts. These come from the PR's checks.
+- **CI (#1895 merged `b24980b`, exact head `a3a4677`):** 19 checks green, each with a run ID:
+  - Android/JVM build: 44475146426.
+  - Native Add both shards and the complete verifier: 44475146364.
+  - Installed protocol client (three real clients): 44475146439.
+  - Real-client interop with all four daemons: 44475149210. The new lifecycle test was on its command line; per-case lines were not printed.
+  - Remote delete-data: 44475146461.
+  - API29 Downloads: 44475146435.
+  - Minified smoke: 44475146427.
+  - Native atlas: 44475146352.
+  - Resume-death on API 29 and 35: 44475146512.
+  - API35 FGS timeout: 44475146596.
+  - Legacy and modern real engine: 44475146495.
+  - Installed real-peer magnet lifecycle: 44475146428.
+  - Two-server Combined: 44475146540.
+- **Red attempts kept:**
+  - `two-server-combined`'s first attempt never ran a test (apt mirror outage).
+  - `installed-magnet-lifecycle`'s first attempt failed before any Add, at the Connections hostname text entry (`MainActivityRealMagnetJourney.kt:134`). That signature also appeared in pre-PR run 44459147277.
+  - Each job passed on one unchanged-head re-run.
+- **Not established:** physical Pixel, live Seedhost and release signing.
