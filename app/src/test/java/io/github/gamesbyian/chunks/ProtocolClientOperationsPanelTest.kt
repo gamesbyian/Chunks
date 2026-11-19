@@ -113,6 +113,38 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(1, target.adds)
     }
 
+    @Test fun aConfirmedCopyCarriesTheChunksNameButNeverOverwritesTheTargets() {
+        val aliases = TransferAliasStore(androidx.test.core.app.ApplicationProvider.getApplicationContext())
+        val sourceScope = ProtocolAliasScope.of("source-qb")
+        val targetScope = ProtocolAliasScope.of("t")
+        assertEquals(true, aliases.save(sourceScope, hash, "Named On Source"))
+        aliases.save(targetScope, hash, null)
+        val fake = Fake()
+        val target = Target()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
+                    current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge", targetScope) { ClientOperations(target, 3, 1) }),
+                    sourceAliasScope = sourceScope
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".t").performClick()
+        rule.waitUntil(5_000) { aliases.get(targetScope, hash) != null }
+        assertEquals("Named On Source", aliases.get(targetScope, hash))
+        assertEquals("the source keeps its name", "Named On Source", aliases.get(sourceScope, hash))
+        // A name already on the target is the person's own: a later carry never replaces it.
+        assertEquals(true, aliases.save(targetScope, hash, "Target's Own"))
+        assertEquals(TransferAliasStore.MoveAliasCarry.TARGET_ALREADY_SET,
+            aliases.carryVerifiedMoveAlias(sourceScope, targetScope, hash))
+        assertEquals("Target's Own", aliases.get(targetScope, hash))
+    }
+
     @Test fun rtorrentSourceUsesSameMoveReceiptWithoutDuplicateLifecycleControls() {
         val source = Fake()
         val destination = Target()

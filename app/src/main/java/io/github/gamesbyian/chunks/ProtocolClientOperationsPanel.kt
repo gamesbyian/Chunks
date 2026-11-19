@@ -37,11 +37,15 @@ import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Another connected client a job may be copied or moved to. */
 internal data class ProtocolMoveTarget(
     val id: String,
     val label: String,
+    /** The target's exact Chunks display-alias scope; null when it is not privacy-visible. */
+    val aliasScope: String? = null,
     val createOperations: () -> ClientOperations
 )
 
@@ -82,9 +86,12 @@ internal fun ProtocolClientOperationsPanel(
     /** The rTorrent Details surface already owns its verified lifecycle/file controls. */
     moveOnly: Boolean = false,
     /** Smart Routing's advisory Move suggestion (target id to "why"); never acts by itself. */
-    suggestedTarget: Pair<String, String>? = null
+    suggestedTarget: Pair<String, String>? = null,
+    /** The source's exact Chunks display-alias scope; null when none applies. */
+    sourceAliasScope: String? = null
 ) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val operations = remember(hash, createOperations) { createOperations() }
     var session by remember(operations) { mutableStateOf<ClientSessionInfo?>(null) }
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
@@ -239,6 +246,18 @@ internal fun ProtocolClientOperationsPanel(
                             is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied -> {
                                 copiedTo = target; copiedTransfer = transfer; copiedReceipt = result
                                 notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
+                                // The Chunks name follows the confirmed copy, never overwriting a
+                                // name the target already has. Nothing is sent to either client.
+                                val from = sourceAliasScope
+                                val to = target.aliasScope
+                                if (from != null && to != null) {
+                                    val carried = withContext(Dispatchers.IO) {
+                                        runCatching { TransferAliasStore(context).carryVerifiedMoveAlias(from, to, hash) }
+                                            .getOrDefault(TransferAliasStore.MoveAliasCarry.FAILED)
+                                    }
+                                    if (carried == TransferAliasStore.MoveAliasCarry.FAILED)
+                                        notice = notice + " Its Chunks display name was not copied."
+                                }
                             }
                             is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.NotCopied -> {
                                 notice = ProtocolOperationText.describe("Copy to ${target.label}", result.outcome, target.label)
