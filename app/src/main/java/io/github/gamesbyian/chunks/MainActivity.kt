@@ -1371,6 +1371,34 @@ internal fun ChunksApp(
                 }
             }
         }
+        // Finish in Order on Transmission/qBittorrent/Deluge advances the same way: every
+        // 30 s, at most one journaled, verified step per enabled policy of a started
+        // transfer, serialized with every other policy edit. One client instance per
+        // profile, so a periodic step never forces a fresh login.
+        LaunchedEffect(combinedProtocolProfiles.map { it.id }) {
+            val clients = mutableMapOf<String, io.github.gamesbyian.chunks.rpc.ClientOperations>()
+            while (true) {
+                kotlinx.coroutines.delay(30_000L)
+                for (profile in combinedProtocolProfiles) {
+                    val factory = profile.operations ?: continue
+                    val ops = clients.getOrPut(profile.id) { factory() }
+                    try {
+                        val session = ops.session()
+                        if (io.github.gamesbyian.chunks.rpc.ClientCapability.FILE_PRIORITIES !in session.capabilities) continue
+                        val store = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile.id))
+                        for (transfer in ops.client.torrents().filter { it.runState.started == true }) {
+                            val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
+                            if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
+                            stepClientFinishInOrder(ops, session.filePriorities, store, transfer.hash)
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        // Unreachable or refused: nothing is retried; the next tick reads afresh.
+                    }
+                }
+            }
+        }
         if (presentationSection == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,

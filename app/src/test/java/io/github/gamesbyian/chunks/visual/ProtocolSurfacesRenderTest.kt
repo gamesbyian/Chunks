@@ -18,6 +18,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Column
 import io.github.gamesbyian.chunks.ChunksSemantics
 import io.github.gamesbyian.chunks.ChunksTheme
 import io.github.gamesbyian.chunks.PendingLocalAdd
@@ -178,4 +183,27 @@ class ProtocolSurfacesRenderTest {
 
     @Config(sdk = [35], qualifiers = "w320dp-h1800dp-mdpi")
     @Test fun protocolAddFilePriorities320At200Percent() = addWithFileChoices(320, 2f, "320-200pct")
+    @Config(sdk = [35], qualifiers = "w320dp-h2400dp-mdpi")
+    @Test fun protocolFinishInOrderReview320At200Percent() {
+        val episodes = object : TorrentClient by Fake() {
+            override suspend fun files(hash: String) = listOf(
+                ClientFile(0, "Example/Example S01E02.mkv", 1_000_000, 0, ClientFilePriority.NORMAL),
+                ClientFile(1, "Example/Example S01E01.mkv", 1_000_000, 0, ClientFilePriority.NORMAL),
+                ClientFile(2, "Example/Example S01E03.mkv", 1_000_000, 0, ClientFilePriority.NORMAL))
+        }
+        show(320, 2f) {
+            Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qBittorrent", sourceClientId = "qb-render",
+                    observedStarted = true, current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(episodes, 3, 1) }, onChanged = {})
+            }
+        }
+        rule.onNodeWithText("Files").performScrollTo().performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Finish in Order…").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Finish in Order…").performScrollTo().performClick()
+        rule.waitForIdle()
+        assertTouchTargetsAndWidth(320)
+        rule.onRoot().captureRoboImage("build/chunks-visual/protocol-finish-in-order-320-200pct.png")
+    }
 }

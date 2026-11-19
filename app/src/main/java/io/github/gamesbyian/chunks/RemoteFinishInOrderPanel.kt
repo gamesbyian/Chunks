@@ -44,6 +44,27 @@ internal suspend fun stepRemoteFinishInOrder(
     }
 }
 
+/** One runner step for a shared-port client transfer, serialized with every other policy edit. */
+internal suspend fun stepClientFinishInOrder(
+    operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
+    storedLevels: Set<io.github.gamesbyian.chunks.rpc.ClientFilePriority>,
+    store: FinishInOrderStore, hash: String
+): FinishInOrderRunner.Step? = FinishInOrderController.exclusive {
+    store.get(hash)?.let { record ->
+        FinishInOrderRunner(io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort(operations, storedLevels) { h, r ->
+            store.update(h, r)
+        }).step(hash, record)
+    }
+}
+
+/** Finish in Order storage scopes: one per exact authenticated client identity. */
+internal object FinishInOrderScopes {
+    fun protocol(clientId: String): String {
+        require(clientId.isNotBlank())
+        return "protocol:$clientId"
+    }
+}
+
 /** Server files in the planner's terms: index = rTorrent file index, priority mapped to bands. */
 internal fun remoteFilesAsLocal(files: List<RemoteFile>): List<LocalTransferFile> =
     files.mapIndexed { index, file ->
@@ -93,17 +114,50 @@ internal fun RemoteFinishInOrderPanel(
     onSettled: () -> Unit
 ) {
     if (files.size < 2 || !Regex("[0-9a-fA-F]{40}").matches(transfer.hash)) return
+    val asLocal = remember(files) { remoteFilesAsLocal(files) }
+    ServerFinishInOrderPanel(
+        hash = transfer.hash, scope = scope, asLocal = asLocal, stale = stale,
+        intro = "On rTorrent the current file gets High and the rest stay Normal. The server " +
+            "only moves on while Chunks is open and connected to this account.",
+        isActive = { index -> files.getOrNull(index)?.priority == 2 },
+        twoBands = true,
+        step = { store -> stepRemoteFinishInOrder(remote, store, transfer.hash) },
+        onMutationStarted = onMutationStarted, onSettled = onSettled)
+}
+
+/**
+ * Finish in Order controls for one server-side transfer (rTorrent or any
+ * shared-port client). Every policy edit is serialized with the runner; each
+ * write is one guarded, verified step and is never retried.
+ */
+@Composable
+internal fun ServerFinishInOrderPanel(
+    hash: String,
+    scope: String,
+    /** The transfer's files in the planner's terms. */
+    asLocal: List<LocalTransferFile>,
+    stale: Boolean,
+    /** Shown before the order review: how this client's levels and advancing work. */
+    intro: String,
+    /** True for the file the client currently has at its highest Finish in Order level. */
+    isActive: (Int) -> Boolean,
+    /** The client stores no distinct Low, so no mode that promises Low is offered. */
+    twoBands: Boolean,
+    step: suspend (FinishInOrderStore) -> FinishInOrderRunner.Step?,
+    onMutationStarted: () -> Boolean,
+    onSettled: () -> Unit
+) {
+    if (asLocal.size < 2) return
     val context = LocalContext.current
     val coroutines = rememberCoroutineScope()
     val store = remember(scope) { FinishInOrderStore(context, scope) }
-    var record by remember(transfer.hash, scope) { mutableStateOf<FinishInOrderRecord?>(null) }
-    var reviewing by remember(transfer.hash) { mutableStateOf(false) }
-    var working by remember(transfer.hash) { mutableStateOf(false) }
-    var message by remember(transfer.hash) { mutableStateOf<String?>(null) }
-    val asLocal = remember(files) { remoteFilesAsLocal(files) }
-    val names = remember(files) { files.mapIndexed { i, f -> i to f.path.substringAfterLast('/') }.toMap() }
-    LaunchedEffect(transfer.hash, scope, files) {
-        record = withContext(Dispatchers.IO) { store.get(transfer.hash) }
+    var record by remember(hash, scope) { mutableStateOf<FinishInOrderRecord?>(null) }
+    var reviewing by remember(hash) { mutableStateOf(false) }
+    var working by remember(hash) { mutableStateOf(false) }
+    var message by remember(hash) { mutableStateOf<String?>(null) }
+    val names = remember(asLocal) { asLocal.associate { it.index to it.path.substringAfterLast('/') } }
+    LaunchedEffect(hash, scope, asLocal) {
+        record = withContext(Dispatchers.IO) { store.get(hash) }
     }
 
     fun act(block: suspend () -> String?) {
@@ -119,7 +173,7 @@ internal fun RemoteFinishInOrderPanel(
                 } catch (_: Exception) {
                     "The server did not confirm this change. Refresh before trying again; nothing is retried."
                 }
-                record = withContext(Dispatchers.IO) { store.get(transfer.hash) }
+                record = withContext(Dispatchers.IO) { store.get(hash) }
             } finally {
                 working = false
                 onSettled()
@@ -145,19 +199,18 @@ internal fun RemoteFinishInOrderPanel(
                 val suggestion = remember(asLocal) { FinishInOrderPlanner.suggest(asLocal) }
                 val initial = suggestion?.order ?: asLocal.filter { it.wanted }
                     .sortedWith { a, b -> FinishInOrderPlanner.naturalCompare(a.path, b.path) }.map { it.index }
-                Text("On rTorrent the current file gets High and the rest stay Normal. The server " +
-                    "only moves on while Chunks is open and connected to this account.",
-                    style = MaterialTheme.typography.bodySmall)
+                Text(intro, style = MaterialTheme.typography.bodySmall)
                 if (initial.size >= 2) FinishInOrderReview(asLocal, initial, suggestion?.source, stale || working,
+                    twoBands = twoBands,
                     onConfirm = { mode, order ->
                         reviewing = false
                         act {
                             val policy = FinishInOrderPlanner.policyFor(mode, asLocal, order)
                             val saved = FinishInOrderController.exclusive {
-                                withContext(Dispatchers.IO) { store.save(transfer.hash, FinishInOrderRecord(policy)) }
+                                withContext(Dispatchers.IO) { store.save(hash, FinishInOrderRecord(policy)) }
                             }
                             if (!saved) "Chunks could not save Finish in Order. Nothing changed."
-                            else describe(stepRemoteFinishInOrder(remote, store, transfer.hash))
+                            else describe(step(store))
                         }
                     }, onCancel = { reviewing = false })
                 else Text("Finish in Order needs at least two selected files.", style = MaterialTheme.typography.bodySmall)
@@ -169,7 +222,7 @@ internal fun RemoteFinishInOrderPanel(
             // order after the file it currently has at High; a finished file
             // chosen anyway is simply skipped by the next verified step.
             val order = current.policy.order.map { it.index }
-            val activePosition = order.indexOfFirst { files.getOrNull(it)?.priority == 2 }.coerceAtLeast(0)
+            val activePosition = order.indexOfFirst(isActive).coerceAtLeast(0)
             val upNext = order.drop(activePosition + 1).take(4)
             if (current.pending.isEmpty() && current.suspendedReason == null && upNext.isNotEmpty()) {
                 Text("Up next", style = MaterialTheme.typography.labelLarge)
@@ -181,12 +234,12 @@ internal fun RemoteFinishInOrderPanel(
                             act {
                                 val saved = FinishInOrderController.exclusive {
                                     withContext(Dispatchers.IO) {
-                                        val next = store.get(transfer.hash)?.finishNext(index)
-                                        next != null && store.save(transfer.hash, next)
+                                        val next = store.get(hash)?.finishNext(index)
+                                        next != null && store.save(hash, next)
                                     }
                                 }
                                 if (!saved) "This file could not be moved first now. Nothing changed."
-                                else describe(stepRemoteFinishInOrder(remote, store, transfer.hash))
+                                else describe(step(store))
                                     ?: "$name is next."
                             }
                         }, enabled = !stale && !working, modifier = Modifier.heightIn(min = 48.dp)
@@ -198,18 +251,18 @@ internal fun RemoteFinishInOrderPanel(
                 if (current.suspendedReason != null) Button(onClick = {
                     act {
                         val resumed = FinishInOrderController.exclusive {
-                            store.get(transfer.hash)?.let { store.save(transfer.hash, it.copy(suspendedReason = null)) } == true
+                            store.get(hash)?.let { store.save(hash, it.copy(suspendedReason = null)) } == true
                         }
                         if (!resumed) "Chunks could not save the change. Nothing changed."
-                        else describe(stepRemoteFinishInOrder(remote, store, transfer.hash))
+                        else describe(step(store))
                     }
                 }, enabled = !stale && !working, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Resume") }
                 OutlinedButton(onClick = {
                     coroutines.launch {
-                        val removed = FinishInOrderController.exclusive { store.remove(transfer.hash) }
+                        val removed = FinishInOrderController.exclusive { store.remove(hash) }
                         message = if (removed) "Finish in Order is off. Server file priorities were left as they are."
                             else "Chunks could not turn Finish in Order off. Try again."
-                        record = store.get(transfer.hash)
+                        record = store.get(hash)
                     }
                 }, enabled = !working, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Turn off") }
             }
