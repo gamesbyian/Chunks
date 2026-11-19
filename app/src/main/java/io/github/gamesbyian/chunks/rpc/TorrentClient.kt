@@ -50,6 +50,13 @@ internal interface TorrentClient {
     suspend fun transferSource(hash: String): ClientAddSource? = null
 
     /**
+     * Read-only seeding counters and tracker facts for Smart Seeding, or null
+     * when this client does not provide them. Tracker URLs of a private (or
+     * not-provably-public) transfer are never read: they carry passkeys.
+     */
+    suspend fun seedingFacts(hash: String): ClientSeedingFacts? = null
+
+    /**
      * Ask the client to contact this job's trackers now (the ordinary
      * "force reannounce"). Changes no job state; unsupported clients ignore it.
      */
@@ -298,4 +305,23 @@ internal object RemoteTorrentClients {
         })
         RemoteBackendKind.RTORRENT -> throw IllegalArgumentException("rTorrent uses its established adapter")
     }
+}
+
+/**
+ * One client's own seeding counters for one exact hash. Unknown values stay
+ * null (never zero). [publicTrackerUrls] is non-null only when the client
+ * reported the transfer as public; never log or persist it.
+ */
+internal data class ClientSeedingFacts(
+    val hash: String,
+    val uploadedBytes: Long?,
+    val downloadedBytes: Long?,
+    /** Accumulated seeding time reported by the client itself. */
+    val seedingSeconds: Long?,
+    /** Complete and currently seeding (not stopped, checking or queued). */
+    val seeding: Boolean?,
+    val isPrivate: Boolean?,
+    val publicTrackerUrls: List<String>?
+) {
+    override fun toString() = "ClientSeedingFacts(private transfer)"
 }

@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
@@ -41,7 +42,7 @@ class SeedingRulesScreenTest {
             } }
         }
         rule.onNodeWithText(
-            "Rules on this device apply only to new transfers. Server rules are saved but aren't active yet."
+            "Rules apply only to new transfers. On a server they apply only after you turn them on for it."
         ).assertExists()
         rule.onNodeWithText("New transfers on this device get any matching upload limit", substring = true)
             .assertDoesNotExist()
@@ -88,6 +89,29 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("1. Iptorrents · Ratio 1.00 · 24 kbit/s").assertExists()
         assertEquals(1, matchingSeedingRules(listOf(stored), "ipt", mapOf(box.id to box.label)).size)
         rule.onRoot().captureRoboImage("build/chunks-visual/seeding-list.png")
+    }
+
+    @Test fun remoteEnforcementIsOffByDefaultAndTheSwitchShowsOnlyTheSavedValue() {
+        val switch = io.github.gamesbyian.chunks.seeding.RemoteSeeding.EnforcementSwitch(context)
+        assertFalse(switch.enabled(box.id))
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } }
+        }
+        rule.onNodeWithText("Review defaults", substring = true).performClick()
+        rule.onNodeWithText("Off: nothing is sent to this server.").performScrollTo().assertExists()
+        val toggle = rule.onNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.SEEDING_REMOTE_ENFORCEMENT))
+        toggle.performScrollTo().assertIsEnabled()
+            .assert(androidx.compose.ui.test.SemanticsMatcher.expectValue(
+                androidx.compose.ui.semantics.SemanticsProperties.ToggleableState,
+                androidx.compose.ui.state.ToggleableState.Off))
+        toggle.performClick()
+        rule.waitForIdle()
+        assertTrue("persisted for this exact server only", switch.enabled(box.id))
+        assertFalse(switch.enabled(SeedingEnvironment.LOCAL_ID))
+        rule.onNodeWithText("Transfers added to this server from now on follow these rules", substring = true).assertExists()
+        toggle.performClick()
+        rule.waitForIdle()
+        assertFalse(switch.enabled(box.id))
     }
 
     @Test fun savedDefaultExplainsItsScopeAndCanBeResetWithoutChangingOtherPolicies() {

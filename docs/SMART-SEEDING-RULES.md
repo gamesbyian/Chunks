@@ -93,7 +93,7 @@ The Android Local controller persists a stop-attempt marker **before** issuing a
 
 If the write-ahead preference commit fails, Chunks must not send Pause. If the engine call fails, throws, loses its response or the confirmed result cannot be persisted, Chunks preserves the attempted marker and does not retry in the background. The user may inspect the transfer and use ordinary explicit Stop/Start operations; no automatically re-armed controller is authorized by a later inventory observation. Old assignments without the new field preserve their prior confirmed-stop semantics. An occupied but unreadable assignment is quarantined from automatic enforcement, not mistaken for a new job. No tracker URLs, private passkeys or credentials enter the stop journal.
 
-This protection is **Local-only until a separately accepted rTorrent adapter exists**. It does not grant remote stop capabilities, promise background enforcement after Android terminates the service, or prove that every engine has matching stopped-state semantics.
+The same journal now also protects rTorrent accounts through `RTorrentSeedingPort` (see **Remote rTorrent enforcement** below). It does not promise background enforcement after Android terminates the service, or prove that every engine has matching stopped-state semantics.
 
 **Local read-fault isolation, merged #1828 (2026-11-17):** A failed per-torrent upload-limit read (including `null` from the native adapter) never authorizes a cap write; a bad counter read never triggers an unverified automatic Pause; either failure is confined to that exact transfer so healthy jobs continue. A transient read-failure note must not overwrite an earlier uncertain Pause warning. Similarly, a failed cap setter or unsupported cap size must preserve any existing safety warning instead of overwriting the durable uncertain-Pause explanation; this does not prevent a cap error from being recorded when no earlier warning exists. For native inventory, snapshot handle pairs under the synchronized map lock and then read each handle independently under the engine lock; one invalid handle must not make the whole fact inventory appear empty. This is JVM fault-injection plus source-exact Android/lifecycle/real-engine compatibility evidence, **not** a claim of an induced invalid-handle fault on the owner's Pixel.
 
@@ -155,6 +155,63 @@ supports any getter; an actual authenticated run is a separate tier. The
 probe carries **no Stop, Start, throttle setter or automatic policy
 enforcement authority**. It does not prove per-transfer upload limits,
 independent seeding duration or the behavior of numbered ruTorrent profiles.
+
+## Remote rTorrent enforcement (opt-in, while connected; 2026-11-19)
+
+**Live getter evidence.** The protected probe ran on trusted `main` `9ffc532` (run 44481003865) against the exact primary account. It reported `d.up.total`, `d.down.total`, `d.complete`, `d.is_active`, `d.timestamp.finished` and `d.throttle_name` as all **supported**, with `policy_mutations=disabled` and `independent_per_torrent_cap=unproven`. Numbered instances were not probed.
+
+**Execution.** `seeding/RemoteSeeding.kt` runs the same `SeedingController`, rules, snapshots and write-ahead Stop journal as Local. The account is a `SeedingController.EnginePort`; there is no second engine.
+- **Opt-in:** per exact server (`remote:` + endpoint/principal ID), switched by **Apply while Chunks is open** in the server's Defaults entry. It is off by default; when off, nothing is read.
+- **When it runs:** only while that exact server is connected in the app. The tick runs every 30 s, under the same `RemoteMutationReadbackGate` as every other server change. A tick that sent a Stop is followed by a fresh read before any other write.
+- **What it manages:** the activation tick records every current main-view transfer as pre-existing, and those are never managed. Only transfers first seen after it are snapshotted.
+- **Per-account journal:** one assignment store per exact account. The preference file name is a digest; no endpoint or user is stored in names.
+
+**Capability limits, enforced in code:**
+- **Ratio:** from rTorrent's own `d.up.total` / `d.down.total`. A zero denominator cannot be judged.
+- **No seed time:** rTorrent has no accumulated seeding-time counter (`d.timestamp.finished` is completion). Minimum and maximum seed times are therefore **cannot judge**, never a Stop. With `ANY`, a ratio that is met still stops; with `ALL`, it never does.
+- **No per-transfer upload cap:** rTorrent has only shared throttle groups. A rule's cap is reported as not applied, never emulated.
+- **Private transfers:** their tracker URLs (passkeys) are never read, so only the server default can apply to them.
+- **Stop:** the existing exact-hash `setStarted(false)` with verified readback. An unconfirmed Stop is never retried, and a later manual Start is respected.
+
+**Evidence:**
+- JVM: `RemoteSeedingControllerTest` (6), the switch test in `SeedingRulesScreenTest`, and all existing seeding suites.
+- Real rTorrent 0.9.8, loopback, `RemoteSeedingInteropTest` (2 of 2 local runs): rTorrent downloads every piece from a Local seeder, with ratio 0 and no stop. A fresh Local leech pulls them back. rTorrent's own counters pass 0.5, and the controller sends exactly one verified Stop. A manual Start is never re-stopped.
+
+### Transmission, qBittorrent and Deluge (same controller, 2026-11-19)
+
+**Port.** `ProtocolSeedingPort` reads each client's own counters through the optional read-only `TorrentClient.seedingFacts(hash)`:
+- **Transmission:** `uploadedEver`, `downloadedEver`, `secondsSeeding`, `isPrivate`.
+- **qBittorrent:** `uploaded`, `downloaded`, `seeding_time`, and `private` (else `torrents/properties` `is_private`).
+- **Deluge:** `total_uploaded`, `all_time_download`, `seeding_time`, `private`.
+
+**Behavior:**
+- **Trackers:** tracker URLs are read only for a transfer the client reports as public. A transfer that is private, or whose privacy is unknown, gets only the default.
+- **Stop:** the shared verified `ClientOperations.setStarted(false)`.
+- **Upload caps:** no per-transfer cap is written yet. Each client's native limits need verified readback first, so a rule's cap is reported as not applied.
+- **Opt-in:** the same per-profile switch (`remote:` + the exact client identity).
+- **When it runs:** in each profile's existing 30 s loop, alongside its Finish in Order steps.
+
+**Real-daemon evidence**, loopback rig, `ProtocolSeedingInteropTest`. These are plain JUnit tests, because the desktop libtorrent JNI library must not load in a Robolectric sandbox:
+- **Deluge 2.1.2:** its own `seeding_time` for an idle seed passed 8 s, then exactly one verified Stop. A manual Start was respected.
+- **qBittorrent 4.6.3:** real pieces both ways, then its own `uploaded`/`downloaded` passed a ratio of 0.5 and exactly one verified Stop followed. A manual Start was respected.
+- **Transmission:** behavior depends on the version.
+  - **4.0.5 (local rig):** `secondsSeeding` stayed **0** for an idle seed verified at Add, so the time rule never fabricated a Stop.
+  - **4.1.1 (CI):** the counter advanced, and the rule stopped the job once its own counter passed the limit.
+  - The test asserts the shared invariant: a Stop happens only once the client's own counter passes the limit.
+  - qBittorrent's `seeding_time` also stalled (at 2 s) while idle.
+  - Loopback Transmission peering is a known rig limit, so a Transmission ratio Stop is unproved.
+
+**Product consequence:** on these clients, seeding time may count only while a transfer is active. A time limit can then stop later than wall-clock time, never earlier.
+
+The gate and persistence are covered by `RemoteSeedingTickTest` (Robolectric, fake client).
+
+**Not established:**
+- a live Seedhost Stop (no protected mutation was dispatched);
+- numbered instances;
+- background enforcement while Chunks is closed;
+- an installed-UI switch journey;
+- a Transmission ratio Stop;
+- native per-client upload caps.
 
 ## Runtime and capabilities
 

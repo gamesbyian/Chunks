@@ -16,8 +16,21 @@ class LocalSeedingPort(private val engine: LocalTorrentEngine) : SeedingControll
 }
 
 /** Device-private per-transfer policy snapshots for the local device. Never holds tracker URLs. */
-class PreferencesAssignmentStore(context: Context) : SeedingController.AssignmentStore {
-    private val prefs = context.applicationContext.getSharedPreferences("chunks_seeding_assignments", Context.MODE_PRIVATE)
+class PreferencesAssignmentStore(
+    context: Context,
+    /** Null: the local device's existing store. Otherwise one exact remote account's own store. */
+    environment: String? = null
+) : SeedingController.AssignmentStore {
+    private val prefs = context.applicationContext.getSharedPreferences(
+        if (environment == null) "chunks_seeding_assignments"
+        else "chunks_seeding_assignments_" + digest(environment), Context.MODE_PRIVATE)
+
+    companion object {
+        /** A stable, non-reversible file/key name for an environment ID (no endpoint or user in storage names). */
+        internal fun digest(environment: String): String =
+            java.security.MessageDigest.getInstance("SHA-256").digest(environment.toByteArray())
+                .take(16).joinToString("") { "%02x".format(it) }
+    }
     /**
      * A corrupt/wrong-type epoch must never crash the service poll or be
      * treated as a new activation: doing so could apply rules to old jobs.

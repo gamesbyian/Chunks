@@ -905,12 +905,17 @@ internal fun ChunksApp(
         }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
-    val seedingEnvironments = remember(savedProfiles, aliasScope, server) {
+    val seedingEnvironments = remember(savedProfiles, aliasScope, server, combinedProtocolProfiles) {
         buildList {
             add(SeedingEnvironment.local())
             savedProfiles.forEach { add(SeedingEnvironment.server(it.credentials.endpoint, it.credentials.username)) }
             if (server != null && aliasScope.isNotBlank())
                 add(SeedingEnvironment.server(aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000', "")))
+            // Transmission / qBittorrent / Deluge profiles, by their exact client identity.
+            combinedProtocolProfiles.forEach {
+                add(SeedingEnvironment(io.github.gamesbyian.chunks.seeding.RemoteSeeding.protocolEnvironment(it.id),
+                    it.label, server = true))
+            }
         }.distinctBy { it.id }
     }
     var createRequest by (retainedAddOwner?.createReviewRequest
@@ -1380,6 +1385,37 @@ internal fun ChunksApp(
                 }
             }
         }
+        // Remote Smart Seeding (opt-in per exact server, default off): while this server is
+        // connected, every 30 s evaluate its rules against rTorrent's own counters under the
+        // same mutation gate as every other server change. A sent Stop is journaled before the
+        // call, never retried, and is followed by a fresh read. Nothing runs when disabled.
+        LaunchedEffect(server, aliasScope) {
+            val connectedRemote = server ?: return@LaunchedEffect
+            while (true) {
+                kotlinx.coroutines.delay(30_000L)
+                val enabled = withContext(Dispatchers.IO) {
+                    io.github.gamesbyian.chunks.seeding.RemoteSeeding.enabledFor(context, connectedRemote)
+                }
+                if (!enabled) continue
+                if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) continue
+                var tick: io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick? = null
+                try {
+                    tick = withContext(Dispatchers.IO) {
+                        io.github.gamesbyian.chunks.seeding.RemoteSeeding.tick(context, connectedRemote)
+                    }
+                } finally {
+                    if (tick == io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick.NO_WRITE ||
+                        tick == io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick.NOT_RUN) {
+                        mutationGate.abandonKnownNoWrite()
+                    } else {
+                        // A Stop was sent, or cancellation may have followed one: keep the
+                        // readback latch until a fresh read, never another blind write.
+                        mutationGate.settled()
+                        if (server === connectedRemote) { stale = true; refresh() }
+                    }
+                }
+            }
+        }
         // Finish in Order on Transmission/qBittorrent/Deluge advances the same way: every
         // 30 s, at most one journaled, verified step per enabled policy of a started
         // transfer, serialized with every other policy edit. One client instance per
@@ -1392,6 +1428,11 @@ internal fun ChunksApp(
                     val factory = profile.operations ?: continue
                     val ops = clients.getOrPut(profile.id) { factory() }
                     try {
+                        // Opt-in Smart Seeding for this exact profile (default off), serialized
+                        // with its Finish in Order steps; a Stop is journaled first, never retried.
+                        withContext(Dispatchers.IO) {
+                            io.github.gamesbyian.chunks.seeding.RemoteSeeding.tickProtocol(context, profile.id, ops)
+                        }
                         val session = ops.session()
                         if (io.github.gamesbyian.chunks.rpc.ClientCapability.FILE_PRIORITIES !in session.capabilities) continue
                         val store = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile.id))

@@ -197,6 +197,29 @@ internal class DelugeClient(
         else -> ClientFilePriority.NORMAL
     }
 
+    override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
+        val exact = ClientHashes.requireHash(hash)
+        connect()
+        suspend fun row(keys: List<String>): JSONObject? {
+            val result = call("core.get_torrents_status",
+                JSONArray().put(JSONObject().put("id", JSONArray().put(exact))).put(JSONArray(keys))) as? JSONObject
+                ?: throw IOException("Deluge seeding facts unavailable")
+            if (result.length() > 1) throw IOException("Ambiguous Deluge identity")
+            return result.keys().asSequence().firstOrNull { it.equals(exact, ignoreCase = true) }?.let(result::getJSONObject)
+        }
+        val r = row(listOf("total_uploaded", "all_time_download", "seeding_time", "state", "is_finished", "private"))
+            ?: return null
+        val private = if (r.has("private")) r.optBoolean("private") else null
+        val trackers = if (private == false) row(listOf("trackers", "private"))?.let { t ->
+            if (t.optBoolean("private", true)) null
+            else t.optJSONArray("trackers")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("url")?.takeIf(String::isNotBlank) } }
+        } else null
+        fun count(key: String) = if (r.has(key)) r.optLong(key, -1).takeIf { it >= 0 } else null
+        return ClientSeedingFacts(exact, count("total_uploaded"), count("all_time_download"), count("seeding_time"),
+            seeding = if (r.has("state")) r.optString("state") == "Seeding" && r.optBoolean("is_finished") else null,
+            isPrivate = private, publicTrackerUrls = trackers)
+    }
+
     private suspend fun status(filter: JSONObject): List<ClientTorrent> {
         connect()
         val keys = JSONArray(listOf("name", "state", "total_wanted", "total_done",
