@@ -20,6 +20,7 @@ import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.ClientOperations
+import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.TorrentClient
 import kotlinx.coroutines.MainScope
 import org.junit.Assert.assertEquals
@@ -42,6 +43,7 @@ class ProtocolAddScreenTest {
         override val kind = TorrentClientKind.DELUGE
         var added: ClientAddRequest? = null
         var writes = 0
+        var loseNextWrite = false
         override suspend fun session() = ClientSessionInfo(kind, "2.1", "/srv/dl", ClientCapability.entries.toSet(), levels)
         override suspend fun torrents() = listOfNotNull(torrent(hash))
         override suspend fun torrent(hash: String): ClientTorrent? = added?.takeIf { hash == this@ProtocolAddScreenTest.hash }?.let {
@@ -49,7 +51,11 @@ class ProtocolAddScreenTest {
                 null, null, null, null, it.directory ?: "/srv/dl")
         }
         override suspend fun files(hash: String) = emptyList<io.github.gamesbyian.chunks.rpc.ClientFile>()
-        override suspend fun add(request: ClientAddRequest) { writes++; added = request }
+        override suspend fun add(request: ClientAddRequest) {
+            writes++
+            if (loseNextWrite) { loseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
+            added = request
+        }
         override suspend fun setStarted(hash: String, started: Boolean) = Unit
         override suspend fun remove(hash: String, deleteData: Boolean) = Unit
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = Unit
@@ -135,6 +141,61 @@ class ProtocolAddScreenTest {
         assertEquals(ClientFilePriority.HIGH, sent.filePriorities.getValue(0).priority)
         assertEquals("one.bin", sent.filePriorities.getValue(0).path.substringAfterLast('/'))
         assertEquals(emptyMap<Int, String>(), sent.skippedFiles)
+    }
+
+    private fun renderMagnetAdd(fake: Fake, attempt: ProtocolAddAttempt, draft: androidx.compose.runtime.MutableState<String>) {
+        rule.setContent {
+            ChunksTheme {
+                ProtocolAddScreen(
+                    profileId = "p", clientLabel = "Box Deluge",
+                    createOperations = { ClientOperations(fake, 3, 1) },
+                    destinationPicker = {},
+                    sourceDraft = draft, reviewedTorrent = mutableStateOf(null),
+                    startState = mutableStateOf(false), attempt = attempt,
+                    attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
+                    onViewTransfer = {}
+                )
+            }
+        }
+        rule.waitForIdle()
+    }
+
+    @Test fun anUncertainAddBlocksASecondSubmissionUntilThePersonDismissesIt() {
+        val fake = Fake().apply { loseNextWrite = true }
+        val attempt = ProtocolAddAttempt()
+        val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=x")
+        renderMagnetAdd(fake, attempt, draft)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome != null }
+        rule.waitForIdle()
+        assertEquals(1, fake.writes)
+        // Tapping Add again: the shared admission refuses before any write.
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals("no blind second write after an uncertain Add", 1, fake.writes)
+        rule.onNodeWithText("Resolve or finish the previous exact Add first", substring = true).assertExists()
+        // The person dismisses the uncertain result; a new reviewed Add is admitted.
+        rule.onNodeWithText("Add another").performScrollTo().performClick()
+        rule.waitForIdle()
+        draft.value = "magnet:?xt=urn:btih:$hash&dn=x"
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { fake.writes == 2 }
+    }
+
+    @Test fun aVerifiedAddDoesNotBlockTheNextReviewedSource() {
+        val fake = Fake()
+        val attempt = ProtocolAddAttempt()
+        val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=x")
+        renderMagnetAdd(fake, attempt, draft)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome is ClientOperationOutcome.Verified }
+        val other = "ef".repeat(20)
+        rule.runOnIdle { draft.value = "magnet:?xt=urn:btih:$other&dn=y"; fake.added = null }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { fake.writes == 2 }
+        assertEquals(other, (fake.added!!.source as ClientAddSource.Magnet).infoHash)
     }
 
     @Test fun anotherClientsAttemptBlocksSubmission() {

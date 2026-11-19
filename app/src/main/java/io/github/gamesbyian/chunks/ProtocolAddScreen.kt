@@ -72,8 +72,30 @@ internal class ProtocolAddAttempt {
         return true
     }
 
+    /** A claim that never reached the write boundary (admission refused after the claim). */
+    fun releaseUnwritten(hash: String) {
+        if (attemptedHash == hash && outcome == null) { attemptedHash = null; profileId = null }
+    }
+
+    // The shared Universal Add review → approval → one-ticket fence, one per exact client.
+    private val coordinators = mutableMapOf<String, io.github.gamesbyian.chunks.model.UniversalAddCoordinator>()
+    fun coordinator(profile: String) =
+        coordinators.getOrPut(profile) { io.github.gamesbyian.chunks.model.UniversalAddCoordinator() }
+
+    /** The fixed admission reason when an Add was refused before any write; null otherwise. */
+    var admissionRefusal by mutableStateOf<String?>(null)
+        internal set
+
     fun clearSettled() {
-        if (!busy) { attemptedHash = null; outcome = null; profileId = null }
+        if (busy) return
+        // The person dismissed the shown result: retire this client's ticket the way the
+        // shared coordinator allows (verified / exact-session / observed job), else start fresh.
+        profileId?.let { id ->
+            val c = coordinator(id)
+            val retired = c.finishVerified() || c.acknowledgeExactSession() || c.acknowledgeObservedJob()
+            if (!retired) coordinators[id] = io.github.gamesbyian.chunks.model.UniversalAddCoordinator()
+        }
+        attemptedHash = null; outcome = null; profileId = null; admissionRefusal = null
     }
 }
 
@@ -249,18 +271,75 @@ internal fun ProtocolAddScreen(
                     .associate { it.index to io.github.gamesbyian.chunks.rpc.ReviewedFilePriority(
                         it.path, levels.getValue(it.index)) } else emptyMap()
                 val request = ClientAddRequest(frozen, folder, startState.value, skips, reviewedLevels)
-                if (!attempt.claim(profileId, frozen.infoHash)) return@Button
+                // The same Universal Add admission as Local and rTorrent: capability-bound
+                // review, the explicit tap as approval, this client's one-Add claim as the
+                // mutation gate, then ONE immutable ticket, all before the write boundary.
+                val coordinator = attempt.coordinator(profileId)
+                // A positively verified earlier Add needs no recovery; a new reviewed
+                // source may follow it (as before). Pending/uncertain results still block
+                // until the person dismisses them ("Add another"): never a blind retry.
+                if (!attempt.busy) coordinator.finishVerified()
+                val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
+                    source = when (frozen) {
+                        is ClientAddSource.TorrentFile ->
+                            io.github.gamesbyian.chunks.model.UniversalAddSource.metainfo(frozen.bytes, frozen.infoHash)
+                        is ClientAddSource.Magnet ->
+                            io.github.gamesbyian.chunks.model.UniversalAddSource.magnet(frozen.uri, frozen.infoHash)
+                    },
+                    target = io.github.gamesbyian.chunks.model.UniversalAddTarget.ProtocolClient(
+                        io.github.gamesbyian.chunks.model.EnvironmentId(profileId)),
+                    place = folder?.let { io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom(it) }
+                        ?: io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerDefault(
+                            session?.defaultDownloadDirectory.orEmpty()),
+                    startWhenAdded = request.startNow, allowArtwork = false)
+                val decision = io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
+                    coordinator = coordinator, intent = intent,
+                    capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(intent.target.environment),
+                    availability = io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
+                    acquireMutationGate = { attempt.claim(profileId, frozen.infoHash) },
+                    submittedAtEpochMillis = System.currentTimeMillis())
+                val ticket = decision.ticket
+                if (ticket == null) {
+                    if (decision.mutationGateAcquired) attempt.releaseUnwritten(frozen.infoHash)
+                    attempt.admissionRefusal = "Not added: " + decision.explanation
+                    return@Button
+                }
+                attempt.admissionRefusal = null
                 attemptScope.launch {
-                    attempt.outcome = try { operations.add(request) } catch (cancel: CancellationException) {
+                    // Sampled before the write, so the shared readback watermark never
+                    // treats this result as newer than the client's own readback.
+                    val writeStartedAt = System.currentTimeMillis()
+                    val outcome = try { operations.add(request) } catch (cancel: CancellationException) {
                         ClientOperationOutcome.Uncertain(frozen.infoHash, "cancelled after submission")
                     } catch (_: Exception) {
                         ClientOperationOutcome.Uncertain(frozen.infoHash, "unexpected failure")
                     }
+                    when (outcome) {
+                        // Exact absence first, one write, exact readback: positive provenance.
+                        is ClientOperationOutcome.Verified -> coordinator.reconcileExactSession(ticket,
+                            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.ExactSessionObservation(
+                                environment = intent.target.environment, infoHash = frozen.infoHash,
+                                observedAtEpochMillis = writeStartedAt, registered = true,
+                                reviewedPlaceVerified = true, started = request.startNow,
+                                newRegistrationVerified = true))
+                        // Nothing was written: the latch may disarm.
+                        is ClientOperationOutcome.Refused -> coordinator.refusedBeforeAnyWrite(ticket)
+                        // Something may have landed: keep the attempted-write fence.
+                        is ClientOperationOutcome.Pending, is ClientOperationOutcome.Uncertain ->
+                            coordinator.requireReadback(ticket)
+                    }
+                    attempt.outcome = outcome
                 }
             },
             enabled = canSubmit,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(ChunksSemantics.ADD_SUBMIT)
         ) { Text(if (attempt.busy) "Adding to $clientLabel…" else "Add to $clientLabel") }
+        // A refusal before any write (fixed admission vocabulary) shares the one status location.
+        attempt.admissionRefusal?.takeIf { attempt.profileId == null || attempt.profileId == profileId }?.let { why ->
+            Text(why, color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                    .testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS))
+        }
         val outcome = attempt.outcome.takeIf { attempt.profileId == profileId }
         outcome?.let { result ->
             Text(ProtocolOperationText.describe("Add", result, clientLabel),
