@@ -16,6 +16,7 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/LocalClientInteropTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/SharedAddFileChoicesInteropTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/PendingMagnetInventoryInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/ClientFinishInOrderInteropTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
   push:
     branches: [main]
@@ -76,6 +77,7 @@ jobs:
             --tests io.github.gamesbyian.chunks.rpc.LocalClientInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.PendingMagnetInventoryInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.ClientFinishInOrderInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
@@ -117,6 +119,15 @@ jobs:
           print(f"CHUNKS_INTEROP: pending magnets tests={proot.get('tests')} skipped={proot.get('skipped')} failed={pfail}")
           # A metadata-less magnet must never blank a real client's inventory.
           if pfail or int(proot.get("skipped", 0)) or int(proot.get("tests", 0)) != 3:
+              sys.exit(1)
+          fio = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.ClientFinishInOrderInteropTest.xml")
+          if not fio.is_file():
+              print("CHUNKS_INTEROP: no Finish in Order receipt"); sys.exit(1)
+          froot = ET.parse(fio).getroot()
+          ffail = int(froot.get("failures", 0)) + int(froot.get("errors", 0))
+          print(f"CHUNKS_INTEROP: finish in order tests={froot.get('tests')} skipped={froot.get('skipped')} failed={ffail}")
+          # Finish in Order must execute on all three protocol daemons.
+          if ffail or int(froot.get("skipped", 0)) or int(froot.get("tests", 0)) != 3:
               sys.exit(1)
           # Add-time file skips must execute on all four real daemons.
           if cfail or int(croot.get("skipped", 0)) or int(croot.get("tests", 0)) != 4:
