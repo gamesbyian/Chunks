@@ -1,6 +1,6 @@
 # Smart Routing, Add source lifecycle and transferable job preferences
 
-> **Implementation checkpoint · 2026-11-18:** #1863 merged an Options editor for ordered content-kind → exact-client rules plus a user-confirmed Smart Routing suggestion in Universal Add. Proposals never issue Add or Move commands. Automatic routing, metadata-late prompts, rule test/explain and job-only Move completion remain open. The contract below remains the target where broader than shipped behavior.
+> **Implementation checkpoint · 2026-11-18:** #1863 merged an Options editor for ordered content-kind → exact-client rules plus a user-confirmed Smart Routing suggestion in Universal Add. Proposals never issue Add or Move commands. Automatic routing and job-only Move completion remain open; metadata-late Move suggestions (Details) and a read-only **Try a name** rule test/explain in Options now exist (2026-11-19). The contract below remains the target where broader than shipped behavior.
 
 > **OWNER ADD-ONLY MEDIA OPTION CORRECTION · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). `Add > Artwork & metadata` shows the default-checked per-job auto-identification checkbox **only when global Options collection and display are enabled**. Save that selection against the exact transfer at Add; respect durable exclusion without later active-transfer toggles. Active Details has only manual identification/art correction, never the Add-only checkbox. Provider network requests still require separate prior consent. No changes to source Keep/Archive/Delete, Smart Routing's offline classifier, job-only Move, or frozen Add authority.
 
@@ -66,6 +66,10 @@ The pure, read-only `SmartRoutingPreview` classifies supported file types offlin
 ### Opt-in pre-selection at Add (2026-11-18)
 
 `SmartRoutingPolicyStore.Policy.autoSelect` (separate switch under "Suggest a client in Add"; **default off**; absent in older saved policies = off; a present non-Boolean value fails closed). When on, a confident proposal for a live, capable exact client (`candidateFor`) is pre-selected in Universal Add through the same handler as tapping the suggestion chip, **once per reviewed source identity**, never while an Add is in flight and never over a target the person chose for that source (`SmartRoutingAddSuggestion.shouldPreselect`). It is a draft edit: no Add, Start or Move is issued; the person's Add tap and the shared workflow's exact-client re-check remain the authority. Unattended Add and metadata-late automatic Move remain unimplemented.
+
+### Try a name (Options test/explain, 2026-11-19)
+
+Options › Smart Routing has a **Try a name** field: the first line is a torrent name, further lines its files. It shows what the content is recognised as, with the classifier's confidence, and which saved rule (by number) would suggest which client, or why Add would ask: mixed or unclear content, no rule sure enough, routing off, or the rule's client no longer set up. It uses the same evaluation as Add, but offline and pure. It explains the rules, not live connectivity, and never saves, adds or moves anything.
 
 ### Metadata-late Move suggestion in Details (2026-11-18)
 

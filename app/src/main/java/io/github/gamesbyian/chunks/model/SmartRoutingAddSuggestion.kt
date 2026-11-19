@@ -135,6 +135,36 @@ internal object SmartRoutingAddSuggestion {
         return suggestion.takeIf { it.environmentId != currentEnvironmentId }
     }
 
+    /**
+     * Options' "Try a name": what the saved rules would do for a typed name
+     * (one per line; the first is the torrent name, any further lines are its
+     * files). Pure and offline; it explains the rules, not whether a client is
+     * connected right now. Every configured target counts as available.
+     */
+    fun explain(policy: SmartRoutingPolicyStore.Policy?, text: String, targets: List<Pair<String, String>>): String? {
+        val lines = text.lineSequence().map { it.trim().filterNot(Char::isISOControl) }
+            .filter { it.isNotEmpty() }.take(2000).map { it.take(4096) }.toList()
+        if (lines.isEmpty()) return null
+        val title = lines.first().take(2048)
+        val files = if (lines.size > 1) lines.drop(1) else emptyList()
+        val found = SmartRoutingPreview.classify(SmartRoutingPreview.Evidence(title, files))
+        val recognised = when {
+            found.ambiguous -> "Mixed or unclear content"
+            found.kind == null -> "Unrecognised content"
+            else -> "Recognised as " + kindLabel(found.kind).lowercase() + " (" + found.confidence + "% sure)"
+        }
+        fun ruleNumber(id: String) = (policy?.rules?.indexOfFirst { it.id == id } ?: -1) + 1
+        val candidates = targets.map { (id, label) -> Candidate(id, label, live = true, acceptsAdd = true, placeKnown = true) }
+        return recognised + ". " + when (val result = evaluate(policy, title, files, candidates)) {
+            Result.Disabled -> if (policy?.enabled == true) "There are no rules yet, so Add asks."
+                else "Smart Routing is off, so Add asks."
+            Result.NoSource -> "Add asks."
+            is Result.Ask -> "No rule is sure enough, so Add asks."
+            is Result.Unavailable -> "Rule ${ruleNumber(result.ruleId)} matches, but its client is no longer set up, so Add asks."
+            is Result.Suggested -> "Rule ${ruleNumber(result.suggestion.ruleId)} suggests ${result.suggestion.label}."
+        }
+    }
+
     fun kindLabel(kind: SmartRoutingPreview.Kind): String = when (kind) {
         SmartRoutingPreview.Kind.MOVIE -> "Movie"
         SmartRoutingPreview.Kind.TV -> "TV episode"

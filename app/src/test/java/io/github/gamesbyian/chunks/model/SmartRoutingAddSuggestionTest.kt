@@ -100,4 +100,18 @@ class SmartRoutingAddSuggestionTest {
         assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02", false, "local", targets,
             fileNames = listOf("Show.S01E02.mkv", "Guide.epub")))
     }
+
+    @Test fun explainSaysWhatTheRulesWouldDo() {
+        val targets = listOf(qb to "Seedbox qB", deluge to "Deluge")
+        assertEquals(null, SmartRoutingAddSuggestion.explain(policy, "  \n ", targets))
+        val tv = SmartRoutingAddSuggestion.explain(policy, "Show.S01E02.1080p\nShow.S01E02.mkv", targets)!!
+        assertTrue(tv, tv.startsWith("Recognised as tv episode") && tv.endsWith("Rule 1 suggests Seedbox qB."))
+        assertTrue(SmartRoutingAddSuggestion.explain(policy, "Pack\na.mkv\nb.epub", targets)!!
+            .startsWith("Mixed or unclear content"))
+        assertTrue(SmartRoutingAddSuggestion.explain(policy.copy(enabled = false), "x.mkv", targets)!!
+            .endsWith("Smart Routing is off, so Add asks."))
+        // A rule whose client was removed never falls through to another client.
+        assertTrue(SmartRoutingAddSuggestion.explain(policy, "Novel.epub", listOf(qb to "Seedbox qB"))!!
+            .endsWith("its client is no longer set up, so Add asks."))
+    }
 }

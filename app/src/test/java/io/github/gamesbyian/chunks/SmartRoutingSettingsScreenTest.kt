@@ -6,6 +6,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertTextContains
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore
 import io.github.gamesbyian.chunks.model.SmartRoutingPreview
@@ -75,5 +78,28 @@ class SmartRoutingSettingsScreenTest {
         compose.onNodeWithText("New rule").assertExists()
         assertTrue((SmartRoutingPolicyStore(context).read() as SmartRoutingPolicyStore.Read.Ready)
             .policy.rules.isEmpty())
+    }
+
+    @Test fun tryANameExplainsTheRuleWithoutSavingAnything() {
+        val store = SmartRoutingPolicyStore(context)
+        assertEquals(SmartRoutingPolicyStore.Save.SAVED, store.save(0L, SmartRoutingPolicyStore.Policy(
+            enabled = true, rules = listOf(SmartRoutingPreview.Rule("books", 1, SmartRoutingPreview.Kind.BOOK, 60, wood)))))
+        compose.setContent {
+            ChunksTheme {
+                SmartRoutingSettingsScreen(
+                    targets = listOf(SmartRoutingTargetChoice("local", "Local"), SmartRoutingTargetChoice(wood, "Wood")),
+                    onBack = {})
+            }
+        }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Try a name").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("chunks.smart_routing.try").performScrollTo()
+            .performTextReplacement("Collection\nCollection/One.epub\nCollection/Two.epub")
+        compose.onNodeWithTag("chunks.smart_routing.try_result").performScrollTo()
+            .assertTextContains("Rule 1 suggests Wood", substring = true)
+        compose.onNodeWithTag("chunks.smart_routing.try").performTextReplacement("Show.S01E02.mkv")
+        compose.onNodeWithTag("chunks.smart_routing.try_result")
+            .assertTextContains("No rule is sure enough, so Add asks", substring = true)
+        assertEquals("explaining never saves", 1L,
+            (SmartRoutingPolicyStore(context).read() as SmartRoutingPolicyStore.Read.Ready).revision)
     }
 }

@@ -66,6 +66,7 @@ internal fun SmartRoutingSettingsScreen(
     var draftTarget by remember { mutableStateOf<String?>(null) }
     var editingRuleId by remember { mutableStateOf<String?>(null) }
     var saving by remember { mutableStateOf(false) }
+    var tryText by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
 
     suspend fun reload() { read = withContext(Dispatchers.IO) { store.read() } }
     LaunchedEffect(store) { reload() }
@@ -184,6 +185,15 @@ internal fun SmartRoutingSettingsScreen(
                             }
                         }
                     }
+                }
+                // Test/explain: pure and offline, it never adds, moves or saves anything.
+                Text("Try a name", style = MaterialTheme.typography.titleMedium)
+                androidx.compose.material3.OutlinedTextField(value = tryText, onValueChange = { tryText = it.take(20_000) },
+                    label = { Text("Torrent name, then file names (one per line)") },
+                    minLines = 2, modifier = Modifier.fillMaxWidth().testTag("chunks.smart_routing.try"))
+                SmartRoutingAddSuggestion.explain(policy, tryText, targets.map { it.environmentId to it.label })?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag("chunks.smart_routing.try_result"))
                 }
                 Text(if (editingRuleId == null) "New rule" else "Edit rule",
                     style = MaterialTheme.typography.titleMedium)
