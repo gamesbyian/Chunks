@@ -536,6 +536,56 @@ class ProtocolClientInstalledJourneyTest {
                 runBlocking { independentRead(episodesHash) }?.runState)
             stage("fio-e01-high-verified-independently")
             runBlocking { witness.remove(episodesHash, deleteData = false) }
+
+            // Smart Seeding through the installed UI: this client's default upload limit and its
+            // explicit "Apply while Chunks is open" switch. A transfer added after activation gets
+            // the client's own per-transfer cap, read back from the real daemon (no peers needed).
+            val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val profileLabel = RememberedRemoteProtocolProfiles(targetContext).list().single { p -> p.backend == kind }.label
+            val seedingEnvironment = io.github.gamesbyian.chunks.seeding.RemoteSeeding.protocolEnvironment(profileId)
+            val switch = io.github.gamesbyian.chunks.seeding.RemoteSeeding.EnforcementSwitch(targetContext)
+            try {
+                rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+                clickOnce(OptionsCategory.SEEDING.tag, "Seeding options category")
+                val seedingRules = hasText("Seeding rules…") and androidx.compose.ui.test.hasClickAction()
+                waitFor("Seeding rules entry") { runCatching { scrollToNode(seedingRules); true }.getOrDefault(false) }
+                rule.onNode(seedingRules).performSemanticsAction(SemanticsActions.OnClick)
+                val reviewDefaults = hasText("Review defaults", substring = true)
+                waitFor("Seeding rules screen") { runCatching { scrollToNode(reviewDefaults); true }.getOrDefault(false) }
+                rule.onNode(reviewDefaults).performSemanticsAction(SemanticsActions.OnClick)
+                if (visible("Find client defaults")) typeInto("Find client defaults", profileLabel)
+                waitFor("this client's default") { runCatching { scrollToNode(hasText("Change default")); true }.getOrDefault(false) }
+                assertEquals("only this client's default is shown", 1,
+                    rule.onAllNodesWithText("Change default").fetchSemanticsNodes().size)
+                rule.onNodeWithText("Change default").performSemanticsAction(SemanticsActions.OnClick)
+                typeInto("Upload limit per transfer (blank: none), e.g. 24 KiB/s", "128 kB/s")
+                scrollToNode(hasText("Save default"))
+                rule.onNodeWithText("Save default").performSemanticsAction(SemanticsActions.OnClick)
+                waitFor("default saved") { visible("Saved.") }
+                assertEquals(false, switch.enabled(seedingEnvironment))
+                clickOnce(ChunksSemantics.SEEDING_REMOTE_ENFORCEMENT, "Apply while Chunks is open")
+                waitFor("switch saved on") { switch.enabled(seedingEnvironment) }
+                stage("seeding-switch-on-via-ui")
+                // The first 30 s tick records activation: transfers present then stay unmanaged.
+                Thread.sleep(45_000)
+                val capped = fixture("seeding-cap")
+                assertTrue(runBlocking {
+                    witness.add(ClientAddRequest(ClientAddSource.TorrentFile(capped.torrent), null, startNow = false))
+                } is ClientOperationOutcome.Verified)
+                waitFor("the client's own per-transfer cap set by the rule", 150_000) {
+                    runBlocking {
+                        runCatching {
+                            io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
+                                .uploadCapBytesPerSecond(capped.infoHashV1)
+                        }.getOrNull()
+                    } == 128_000L
+                }
+                stage("seeding-cap-applied-and-read-back")
+                runBlocking { witness.remove(capped.infoHashV1, deleteData = false) }
+            } finally {
+                // Leave the disposable profile's opt-in off for any later run.
+                switch.set(seedingEnvironment, false)
+            }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
