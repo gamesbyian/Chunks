@@ -287,19 +287,8 @@ internal fun ProtocolAddScreen(
                 // source may follow it (as before). Pending/uncertain results still block
                 // until the person dismisses them ("Add another"): never a blind retry.
                 if (!attempt.busy) coordinator.finishVerified()
-                val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
-                    source = when (frozen) {
-                        is ClientAddSource.TorrentFile ->
-                            io.github.gamesbyian.chunks.model.UniversalAddSource.metainfo(frozen.bytes, frozen.infoHash)
-                        is ClientAddSource.Magnet ->
-                            io.github.gamesbyian.chunks.model.UniversalAddSource.magnet(frozen.uri, frozen.infoHash)
-                    },
-                    target = io.github.gamesbyian.chunks.model.UniversalAddTarget.ProtocolClient(
-                        io.github.gamesbyian.chunks.model.EnvironmentId(profileId)),
-                    place = folder?.let { io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom(it) }
-                        ?: io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerDefault(
-                            session?.defaultDownloadDirectory.orEmpty()),
-                    startWhenAdded = request.startNow, allowArtwork = false)
+                val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
+                    profileId, request, session?.defaultDownloadDirectory)
                 val decision = io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
                     coordinator = coordinator, intent = intent,
                     capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(intent.target.environment),
@@ -314,29 +303,8 @@ internal fun ProtocolAddScreen(
                 }
                 attempt.admissionRefusal = null
                 attemptScope.launch {
-                    // Sampled before the write, so the shared readback watermark never
-                    // treats this result as newer than the client's own readback.
-                    val writeStartedAt = System.currentTimeMillis()
-                    val outcome = try { operations.add(request) } catch (cancel: CancellationException) {
-                        ClientOperationOutcome.Uncertain(frozen.infoHash, "cancelled after submission")
-                    } catch (_: Exception) {
-                        ClientOperationOutcome.Uncertain(frozen.infoHash, "unexpected failure")
-                    }
-                    when (outcome) {
-                        // Exact absence first, one write, exact readback: positive provenance.
-                        is ClientOperationOutcome.Verified -> coordinator.reconcileExactSession(ticket,
-                            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.ExactSessionObservation(
-                                environment = intent.target.environment, infoHash = frozen.infoHash,
-                                observedAtEpochMillis = writeStartedAt, registered = true,
-                                reviewedPlaceVerified = true, started = request.startNow,
-                                newRegistrationVerified = true))
-                        // Nothing was written: the latch may disarm.
-                        is ClientOperationOutcome.Refused -> coordinator.refusedBeforeAnyWrite(ticket)
-                        // Something may have landed: keep the attempted-write fence.
-                        is ClientOperationOutcome.Pending, is ClientOperationOutcome.Uncertain ->
-                            coordinator.requireReadback(ticket)
-                    }
-                    attempt.outcome = outcome
+                    attempt.outcome = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.submit(
+                        coordinator, ticket, operations, request)
                 }
             },
             enabled = canSubmit,
