@@ -8,6 +8,8 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -90,11 +92,31 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             assertTrue(roster.saveVerified(requireNotNull(vault.load()), "Saved account"))
             connectionsFooter().performClick()
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
-            rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).performTextInput("Studio")
-            rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
-                .performTextInput("https://draft.invalid/RPC2")
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Password"))
-            rule.onNodeWithText("Password").performTextInput("unsaved-secret")
+            // Each field is brought into the lazy form's composition and replaced (idempotent).
+            // A lazy row can be disposed between lookup and its focus request; that fails
+            // before any text is entered, so only that case re-locates (twice seen at the
+            // Password field, native Add shard 0 on #1885 and #1889).
+            fun enter(field: SemanticsMatcher, value: String) {
+                var last: Throwable? = null
+                repeat(5) {
+                    try {
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(field)
+                        rule.waitForIdle()
+                        rule.onNode(field).performTextReplacement(value)
+                        return
+                    } catch (failure: IllegalStateException) {
+                        if (failure.message?.contains("unattached") != true) throw failure
+                        last = failure
+                    } catch (failure: AssertionError) {
+                        last = failure
+                    }
+                    Thread.sleep(300)
+                }
+                throw AssertionError("Could not enter a draft field", last)
+            }
+            enter(hasTestTag(ChunksSemantics.CONNECTION_NAME), "Studio")
+            enter(hasText("Seedbox hostname, ruTorrent URL or RPC address"), "https://draft.invalid/RPC2")
+            enter(hasText("Password"), "unsaved-secret")
 
             rule.activityRule.scenario.recreate()
 
