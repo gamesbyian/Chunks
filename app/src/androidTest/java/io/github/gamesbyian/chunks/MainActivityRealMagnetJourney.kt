@@ -129,8 +129,31 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText(text).performClick()
     }
     private fun type(label: String, text: String) {
-        scroll(label)
-        rule.onNodeWithText(label).performTextReplacement(text)
+        // Find -> reveal -> re-find -> act (TEST-ARCHITECTURE lazy-container contract) in one
+        // bounded loop. Text replacement is idempotent and never submits anything, so re-locating
+        // is safe. Presence is a defined condition; the one Compose case with no dedicated type (a
+        // row disposed between the lookup and the focus request) is an IllegalStateException
+        // "unattached node", thrown before any text is entered. Ambiguity and anything else fail loudly.
+        // First interaction of the journey: CI showed it failing here before Connect was attempted.
+        val deadline = android.os.SystemClock.elapsedRealtime() + 30_000
+        var detached: IllegalStateException? = null
+        while (true) {
+            scroll(label)
+            val present = rule.onAllNodesWithText(label).fetchSemanticsNodes().size
+            if (present > 1) throw AssertionError("Ambiguous field: $present nodes match its label")
+            if (present == 1) {
+                try {
+                    rule.onNodeWithText(label).performTextReplacement(text)
+                    break
+                } catch (failure: IllegalStateException) {
+                    if (failure.message?.contains("unattached node") != true) throw failure
+                    detached = failure
+                }
+            }
+            if (android.os.SystemClock.elapsedRealtime() > deadline)
+                throw AssertionError("Could not enter a field (never composed, or detached each time)", detached)
+            rule.waitForIdle()
+        }
         if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
             // Exercise the same Done IME action available to a real local user
             // instead of leaving the URL editor focused under an unseen IME.
