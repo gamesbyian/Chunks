@@ -37,6 +37,30 @@ Literal copy **is** the requirement for: destructive-action and consent wording,
 - Removing a capability removes its id **and** records its replacement verification (section 5) in the same change. The UI never has to keep an obsolete control for a test's sake.
 - `EnduringCapabilityAccessibilityTest` proves each id is reachable, named, touch-sized and, for the Add-to choice, selected through semantics. Extend it when you add an id.
 
+### Compose lazy containers: virtualization contract
+
+Apply this contract to any new or changed `LazyColumn`, `LazyRow`, dynamic list item, and Compose test that interacts with one. Lazy containers compose only nearby items, and can dispose/recreate rows after scroll, conditional insertion, IME movement or refresh. A missing offscreen semantics node is not by itself a missing product capability.
+
+**Production composition**
+- Give conditionally inserted, removed, or reordered list items **stable semantic identity** with stable `key` values (and meaningful `contentType` where appropriate). Keys must follow the logical item, not its position, rendered label or list index.
+- Hoist business decisions, submitted-intent state, settings loads, and effects that must survive eviction **above disposable lazy items**. Do not assume a row-local `remember`, `rememberSaveable`, or `LaunchedEffect` survives disposal, replacement or a second Add draft. Local presentation state may remain local when losing it is intended.
+- Give enduring interactive capabilities a unique, stable `ChunksSemantics` tag and correct accessible state. Do not keep hidden duplicate actionable nodes merely to satisfy tests.
+
+**Test interactions**
+- **Find → reveal → re-find → assert → act.** For an offscreen target, locate the intended lazy container by a scoped, stable root selector, use `performScrollToNode(hasTestTag(...))` or an appropriate indexed scroll, then query the target **again**. Never cache `SemanticsNode`/`SemanticsNodeInteraction` across a scroll or recomposition as evidence it is still attached; re-query before interaction. Do not choose the first arbitrary scrolling list when several are present.
+- Wait on a bounded **observable condition** for async loading, focus and IME transitions. `waitForIdle()` alone does not settle RPC, disk reads or every external asynchronous state. Diagnose absent versus offscreen versus disabled versus detached versus covered before changing assertions or timing.
+- Prefer stable semantic actions for one-shot Add/Remove/Connect actions in long installed journeys when coordinate taps can miss reflowing lazy content. Keep separate installed touch-target/layout evidence for real physical reachability; a semantics click does not establish the finger hit area.
+- A stale/detached target may be **re-located using read/scroll-only operations**. Never blindly retry a potentially dispatched Add, Connect, Start, Move or Remove action. Confirm its attempted/verified/uncertain status with independent readback before deciding what is safe next.
+- Keep exact consent, selected profile, source, Place, Start and operation-outcome assertions. Never replace a failing meaningful state assertion with existence-only checking, long sleeps, broad exception suppression or retries until green.
+
+**Required regression scenarios for changed lazy forms/lists**
+1. Initially offscreen required control: reveal it and verify its semantics, enabled state, accessibility and one intended action at 320dp/200% font scale as appropriate.
+2. Scroll the relevant item out of composition and back, then verify choices, disclosure state and pending operation identity remain correct. A test of persistence must actually cause disposal/recomposition rather than merely calling `performScrollToNode`.
+3. Insert/remove conditional rows or move between two Add drafts; verify the same logical item retains its state, while the new logical item does not inherit old state. Include IME/focus-induced reflow for input forms.
+4. For remote/Local mutating journeys, prove a **single** submission and honest exact-job readback after navigation/recomposition. Distinguish an undispatched tap from an attempted but uncertain remote mutation.
+
+Run focused Compose JVM coverage early, then the impacted installed/native journey on its exact source head under [CI policy](CI-POLICY.md). A repeat pass after a flaky failure is a diagnostic observation, never proof that recycling/state-loss is fixed. When tracing a failure, first establish whether the target was never composed, was disposed between lookup and action, was hit outside its clickable bounds, or actually lost product state.
+
 ## 4. Screenshots: evidence vs approved baselines
 
 - **Evidence collection** is automatic: JVM `captureRoboImage` (recorded into `app/build/chunks-visual`) and installed `save()/capture()` PNGs are reviewable artifacts. They are not compared against anything.
