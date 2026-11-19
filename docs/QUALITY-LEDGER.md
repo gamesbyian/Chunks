@@ -2,6 +2,13 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: #1902 merged; #1903 red attempts kept
+
+- **#1902** merged as `c4ee439` from exact head `e09677d`. `pr_acceptance_report.py --profile integration-real-peer` ACCEPTABLE: check, build (JVM), build-once, both native Add shards + verifier, minified-smoke, api29-downloads, installed-magnet-lifecycle, installed-protocol-client, interop, and dispatched android-native-atlas [44512560662](https://github.com/gamesbyian/Chunks/actions/runs/44512560662), two-server-combined [44512575554](https://github.com/gamesbyian/Chunks/actions/runs/44512575554), remote-delete-data [44512580190](https://github.com/gamesbyian/Chunks/actions/runs/44512580190) all green on first attempt.
+- **#1903 head `82cf987` (red, kept):**
+  - installed-magnet-lifecycle [44515043997](https://github.com/gamesbyian/Chunks/actions/runs/44515043997): `MainActivityRealMagnetJourney.kt:338` after `native-place-awaits-metadata`. Cause: this branch's test rewrite identified the rTorrent form by the selected Add-to chip, which the rTorrent body hides once an attempt exists. Test-contract drift introduced here, not a product failure. Fixed on `3786b54` with always-composed body root ids (`ADD_BODY_RTORRENT` / `ADD_BODY_PROTOCOL`).
+  - two-server-combined (dispatched) [44515055156](https://github.com/gamesbyian/Chunks/actions/runs/44515055156): timed out in `connect()` → `enterConnectedCanonicalTransfers` (Connections → View transfers), before any Add step; the PR-triggered two-server run on the same head passed [44515043834](https://github.com/gamesbyian/Chunks/actions/runs/44515043834). Classified intermittent; not rerun to claim green.
+
 ## 2026-11-19 UTC: Smart Seeding native per-transfer upload caps (protocol clients)
 
 - **Real daemons, this container (loopback):** `ProtocolUploadCapInteropTest` 3/3. Transmission 4.0.5 (step 1000 B), qBittorrent 4.6.3 (exact bytes), Deluge distro (1024 B): a rule cap of 128 000 B/s was written once and confirmed by an independent read; the next tick sent nothing; a pre-existing transfer added before activation kept its cap; on Transmission and Deluge an inexact cap (step + 1 B) was never written and was noted "outside the client's supported range".
