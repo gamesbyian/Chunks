@@ -1183,39 +1183,24 @@ internal fun LocalEngineScreen(
             }
         }
         if (addExpanded || pane == LocalPane.ADD) {
-        Text("Torrent source", style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.bringIntoViewRequester(addRequester)
-                .semantics { heading() })
         val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
-        // A web link is a different source: fetched only on request, then reviewed as a .torrent.
         val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
         val isLink = linkCheck !is TorrentLinkCheck.NotALink
-        OutlinedTextField(value = magnet, onValueChange = { selectTextSource(it.trim()) },
-            enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-            label = { Text("Magnet or HTTP(S) torrent URL") }, singleLine = true,
-            isError = if (isLink) linkCheck is TorrentLinkCheck.Problem else magnetCheck is MagnetDraftCheck.Problem,
-            // Autocorrect must never rewrite a magnet's hash or trackers.
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
-                autoCorrectEnabled = false,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD))
-        ActionTile("Open .torrent", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
-            enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null,
-            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
-        PasteMagnetButton(
-            enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-            onPaste = { selectTextSource(it) },
-            onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
-        if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
-            onClear = { magnet = ""; clipboardFilled = null },
-            enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null)
-        if (isLink) TorrentLinkPanel(linkCheck, fetching = linkFetching,
+        // The one shared source-first intake (as rTorrent and the protocol clients).
+        val sourceEnabled = !busy && localAddAttemptSession?.attemptedTicket == null
+        UniversalAddSourceSection(
+            text = magnet,
+            onTextChange = { selectTextSource(it.trim()) },
+            enabled = sourceEnabled,
+            onOpenTorrent = { picker.launch(arrayOf("*/*")) },
+            readingTorrent = sourceReading,
+            linkFetching = linkFetching,
             // Read-only source validation does not require a local Place.
             // Actual Add still requires the existing fresh inventory/Place gates.
             // An existing verified review remains selected until the replacement fetch
             // succeeds and validates; refusal must never require discarding it first.
-            enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null, onFetch = { link ->
+            onFetchLink = fetch@{ link ->
+                if (!sourceEnabled || sourceReading) return@fetch
                 initialTorrentUri?.let(onTorrentConsumed)
                 linkFetching = true
                 scope.launch {
@@ -1240,8 +1225,15 @@ internal fun LocalEngineScreen(
                         linkFetching = false
                     }
                 }
-            })
-        else MagnetDraftSummary(magnetCheck)
+            },
+            onPaste = { selectTextSource(it) },
+            onNothingToPaste = { message = UniversalAddSourceText.NOTHING_TO_PASTE },
+            modifier = Modifier.bringIntoViewRequester(addRequester)
+        ) {
+            if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
+                onClear = { magnet = ""; clipboardFilled = null },
+                enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null)
+        }
         if (magnetCheck is MagnetDraftCheck.Valid) Text(
             "Seeding: your device Seeding rules choose a policy when this magnet's metadata " +
                 "arrives (its trackers and private flag are known then); otherwise the local device default applies.",

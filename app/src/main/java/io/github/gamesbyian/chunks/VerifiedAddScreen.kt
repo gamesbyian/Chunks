@@ -503,42 +503,21 @@ internal fun VerifiedAddScreen(
                 modifier = Modifier.semantics { heading() })
         }
         item {
-            OutlinedTextField(
-                value = sourceText,
-                onValueChange = {
+            // The one shared source-first intake (as Local and the protocol clients).
+            UniversalAddSourceSection(
+                text = sourceText,
+                onTextChange = {
                     if (!alreadyAttempted) {
                         onMagnet(it)
                         useFile = false
                         awaitingConfirmation = false
                     }
                 },
-                label = { Text("Magnet or torrent link") },
-                isError = !useFile && (if (linkCheck is TorrentLinkCheck.NotALink)
-                    magnetCheck is MagnetDraftCheck.Problem else linkCheck is TorrentLinkCheck.Problem),
-                // Autocorrect must never rewrite a magnet's hash or trackers.
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
-                    autoCorrectEnabled = false,
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                 enabled = !submitting && !choosing && !alreadyAttempted,
-                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD),
-                minLines = 2,
-                maxLines = 4
-            )
-            if (!alreadyAttempted) PasteMagnetButton(
-                enabled = !submitting && !choosing,
-                onPaste = {
-                    onMagnet(it)
-                    useFile = false
-                    awaitingConfirmation = false
-                },
-                onNothingToPaste = { fileError = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
-            if (clipboardFilled != null && sourceText == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
-                onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
-            if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
-                fetching = linkFetching,
-                enabled = !submitting && !choosing && !alreadyAttempted && !externalSourceReading,
-                onFetch = fetch@{ link ->
+                onOpenTorrent = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
+                readingTorrent = choosing,
+                linkFetching = linkFetching,
+                onFetchLink = fetch@{ link ->
                     // The button's composed URI may lag a newer text edit by
                     // one frame. Freeze the URL actually requested, including
                     // its signed query, and refuse the obsolete click *before*
@@ -592,8 +571,13 @@ internal fun VerifiedAddScreen(
                             linkFetching = false
                         }
                     }
-                })
-            else if (!useFile) MagnetDraftSummary(magnetCheck)
+                },
+                onNothingToPaste = { fileError = UniversalAddSourceText.NOTHING_TO_PASTE },
+                textIsSelectedSource = !useFile
+            ) {
+                if (clipboardFilled != null && sourceText == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
+                    onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
+            }
             clipboardPrefillOn?.let { on ->
                 ClipboardPrefillToggle(checked = on, enabled = !submitting, onChange = { next ->
                     scope.launch {
@@ -601,15 +585,6 @@ internal fun VerifiedAddScreen(
                             clipboardPrefillOn = next
                     }
                 })
-            }
-        }
-        item {
-            OutlinedButton(
-                onClick = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
-                enabled = !choosing && !submitting && !alreadyAttempted,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
-            ) {
-                Text(if (choosing) "Reading torrent…" else "Open .torrent")
             }
         }
         if (selectedTorrent != null) {
@@ -1710,30 +1685,10 @@ internal suspend fun applyRemoteOriginalHandling(
     draft.frozenOriginal = null
     if (frozen.handling == OriginalTorrentHandling.KEEP) return null
     val verifiedNew = remoteVerifiedNewSourceHash(result, ticket.intent.source.expectedInfoHash)
-        ?: return "The original .torrent file was kept because this Add did not verify a new transfer."
-    val archived = try {
-        withContext(Dispatchers.IO) {
-            SourceTorrentArchive(context.filesDir).apply(frozen.handling,
-                OriginalTorrentOrigin.ANDROID_DOCUMENT, frozen.bytes,
-                SourceAddVerification(ticket.intent.target.environment.value, verifiedNew, verifiedNew = true))
-        }
-    } catch (cancel: kotlinx.coroutines.CancellationException) {
-        throw cancel
-    } catch (_: Exception) { SourceArchiveOutcome.IoFailure }
-    suspend fun request(archivedCopy: Boolean) = OriginalDeletionRequest(frozen.document,
-        withContext(Dispatchers.IO) {
-            OriginalTorrentDocuments.displayName(context.contentResolver, frozen.document)
-        }, OriginalTorrentDocuments.sha256(frozen.bytes),
-        runCatching { TorrentMetainfoReader.preview(frozen.bytes).name }.getOrDefault("this transfer"),
-        archived = archivedCopy)
-    if (archived == SourceArchiveOutcome.OriginalDeletionRequiresApproval) {
-        draft.originalDeletion = request(archivedCopy = false)
-        return null
-    }
-    // Archive prefers a move: removing an original its app lets us delete is a separate question.
-    if (archived is SourceArchiveOutcome.ArchivedCopy && frozen.deletable)
-        draft.originalDeletion = request(archivedCopy = true)
-    return archiveOutcomeMessage(archived, frozen.handling)
+    val retirement = OriginalSourceRetirement.afterAdd(context, frozen,
+        ticket.intent.target.environment.value, verifiedNew)
+    draft.originalDeletion = retirement.deletion
+    return retirement.note
 }
 
 /** The reviewed infohash, lower-case, only when [result] verified a NEW job of exactly it. */

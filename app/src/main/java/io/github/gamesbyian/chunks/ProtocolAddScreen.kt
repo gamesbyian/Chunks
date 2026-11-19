@@ -90,6 +90,14 @@ internal class ProtocolAddAttempt {
     var admissionRefusal by mutableStateOf<String?>(null)
         internal set
 
+    /** Keep/Archive/Delete frozen with the Add click; only a verified NEW job may act on it. */
+    internal var frozenOriginal: RemoteAddSession.FrozenOriginalHandling? = null
+    /** A separately approved original-.torrent deletion still awaiting the person's answer. */
+    var originalDeletion by mutableStateOf<OriginalDeletionRequest?>(null)
+        internal set
+    var originalNote by mutableStateOf<String?>(null)
+        internal set
+
     fun clearSettled() {
         if (busy) return
         // The person dismissed the shown result: retire this client's ticket the way the
@@ -100,6 +108,8 @@ internal class ProtocolAddAttempt {
             if (!retired) coordinators[id] = io.github.gamesbyian.chunks.model.UniversalAddCoordinator()
         }
         attemptedHash = null; outcome = null; profileId = null; admissionRefusal = null; checkNote = null
+        // An unanswered deletion request simply keeps the original.
+        frozenOriginal = null; originalDeletion = null; originalNote = null
     }
 }
 
@@ -123,7 +133,11 @@ internal fun ProtocolAddScreen(
     attemptScope: CoroutineScope,
     onViewTransfer: (String) -> Unit,
     /** The app-owned Add lifecycle owner; a standalone screen uses its own. */
-    attemptController: UniversalAddAttemptController? = null
+    attemptController: UniversalAddAttemptController? = null,
+    /** HTTPS .torrent links are fetched and validated on this device, never by the client. */
+    fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
+        withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
+    }
 ) {
     val controller = attemptController ?: remember(attemptScope) { UniversalAddAttemptController { attemptScope } }
     val context = LocalContext.current
@@ -133,6 +147,8 @@ internal fun ProtocolAddScreen(
     var customFolder by remember(profileId) { mutableStateOf("") }
     var useCustom by remember(profileId) { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
+    var readingTorrent by remember { mutableStateOf(false) }
+    var linkFetching by remember { mutableStateOf(false) }
 
     LaunchedEffect(operations) {
         try {
@@ -143,6 +159,7 @@ internal fun ProtocolAddScreen(
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        readingTorrent = true
         attemptScope.launch {
             val read = withContext(Dispatchers.IO) {
                 runCatching {
@@ -157,10 +174,12 @@ internal fun ProtocolAddScreen(
                         }
                         val bytes = out.toByteArray()
                         require(bytes.size <= TorrentMetainfoReader.MAX_BYTES) { "This .torrent is too large" }
-                        PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                        // The person's own document: eligible for the Keep/Archive/Delete policy.
+                        PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes, uri)
                     } ?: error("Could not open the document")
                 }
             }
+            readingTorrent = false
             read.onSuccess { reviewedTorrent.value = it; sourceDraft.value = ""; fileError = null }
                 .onFailure { fileError = "Not a usable .torrent: " + (it.message?.take(120) ?: "unreadable") }
         }
@@ -168,15 +187,31 @@ internal fun ProtocolAddScreen(
 
     val draft = sourceDraft.value.trim()
     val torrent = reviewedTorrent.value
-    val source: ClientAddSource? = remember(draft, torrent) {
+    // The same magnet check as every client: one v1 identity, base32 normalized to hex.
+    val magnetCheck = remember(draft) { MagnetDraftCheck.inspect(draft) }
+    val source: ClientAddSource? = remember(draft, torrent, magnetCheck) {
         when {
-            draft.startsWith("magnet:?", ignoreCase = true) ->
-                runCatching { ClientAddSource.Magnet(draft) }.getOrNull()
-            torrent != null -> runCatching { ClientAddSource.TorrentFile(torrent.bytes) }.getOrNull()
+            magnetCheck is MagnetDraftCheck.Valid ->
+                runCatching { ClientAddSource.Magnet(magnetCheck.normalized) }.getOrNull()
+            draft.isEmpty() && torrent != null -> runCatching { ClientAddSource.TorrentFile(torrent.bytes) }.getOrNull()
             else -> null
         }
     }
-    val sourceInvalid = draft.isNotEmpty() && source == null
+    // Keep/Archive/Delete applies only to the person's own document behind the reviewed bytes.
+    val originalDocument = torrent?.originalDocument?.takeIf { draft.isEmpty() }
+    var originalHandling by remember(originalDocument) { mutableStateOf<OriginalTorrentHandling?>(null) }
+    var originalDeletable by remember(originalDocument) { mutableStateOf(false) }
+    var originalDeleting by remember { mutableStateOf(false) }
+    LaunchedEffect(originalDocument) {
+        val document = originalDocument ?: return@LaunchedEffect
+        val (saved, deletable) = withContext(Dispatchers.IO) {
+            OriginalTorrentHandlingStore(context).default to
+                OriginalTorrentDocuments.supportsDelete(context, document)
+        }
+        originalDeletable = deletable
+        originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
+            OriginalTorrentHandling.ARCHIVE else saved
+    }
     val folder = if (useCustom) customFolder.trim() else null
     val folderValid = folder == null || runCatching { ClientHashes.requireDirectory(folder) }.isSuccess
     val caps = session?.capabilities.orEmpty()
@@ -215,26 +250,49 @@ internal fun ProtocolAddScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Add a transfer", style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
-        // 1. Source first.
-        OutlinedTextField(
-            value = sourceDraft.value,
-            onValueChange = { sourceDraft.value = it; if (it.isNotBlank()) reviewedTorrent.value = null },
-            label = { Text("Magnet link") },
-            isError = sourceInvalid,
-            enabled = !attempt.busy,
-            modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD)
+        // 1. Source first: the one shared intake (as Local and rTorrent).
+        UniversalAddSourceSection(
+            text = sourceDraft.value,
+            // A complete magnet replaces a reviewed .torrent; a typed link keeps it until fetched.
+            onTextChange = { value ->
+                sourceDraft.value = value
+                if (MagnetDraftCheck.inspect(value.trim()) is MagnetDraftCheck.Valid) reviewedTorrent.value = null
+            },
+            enabled = !attempt.busy && !linkFetching,
+            onOpenTorrent = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
+            readingTorrent = readingTorrent,
+            linkFetching = linkFetching,
+            onFetchLink = fetch@{ link ->
+                if (attempt.busy || linkFetching) return@fetch
+                // Freeze the exact requested URL; a newer edit wins over this fetch.
+                val requested = sourceDraft.value.trim()
+                linkFetching = true
+                attemptScope.launch {
+                    try {
+                        when (val result = fetchTorrentLink(link)) {
+                            is TorrentLinkResult.Fetched -> if (sourceDraft.value.trim() == requested && !attempt.busy) {
+                                // Downloaded and validated on this device; a fetched link has no
+                                // deletable or archivable original.
+                                reviewedTorrent.value = PendingLocalAdd(result.preview, result.bytes)
+                                sourceDraft.value = ""
+                                fileError = null
+                            } else fileError = "The draft changed while fetching. The current source was kept."
+                            is TorrentLinkResult.Refused -> if (sourceDraft.value.trim() == requested)
+                                fileError = result.message
+                        }
+                    } finally { linkFetching = false }
+                }
+            },
+            onNothingToPaste = { fileError = UniversalAddSourceText.NOTHING_TO_PASTE },
+            textIsSelectedSource = draft.isNotEmpty() || torrent == null
         )
-        OutlinedButton(onClick = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
-            enabled = !attempt.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Open .torrent")
-        }
         torrent?.takeIf { draft.isEmpty() }?.let {
             Text("Using " + it.preview.name + " · " + it.preview.fileCount.coerceAtLeast(1) + " file(s)",
                 style = MaterialTheme.typography.bodyMedium)
         }
         fileError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (sourceInvalid) Text("Use a magnet link with one v1 info hash.", color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall)
+        // The policy itself lives only in Options → Downloads & storage → Add & files.
+        originalHandling?.takeIf { originalDocument != null && !attempt.busy }?.let { OriginalTorrentHandlingSummary(it) }
         if (layout != null && canChooseFiles) AddFileChoice(
             files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
             onExpanded = { fileChoiceOpen = it },
@@ -310,6 +368,16 @@ internal fun ProtocolAddScreen(
                 }
                 attempt.admissionRefusal = null
                 attempt.checkNote = null
+                // Frozen with this ticket: a later draft edit cannot redirect it.
+                attempt.frozenOriginal = (frozen as? ClientAddSource.TorrentFile)?.let { file ->
+                    originalDocument?.let { document ->
+                        RemoteAddSession.FrozenOriginalHandling(document,
+                            originalHandling ?: OriginalTorrentHandling.KEEP, originalDeletable, file.bytes.copyOf())
+                    }
+                }
+                attempt.originalDeletion = null
+                attempt.originalNote = null
+                val appContext = context.applicationContext
                 val hash = frozen.infoHash
                 // The one shared lifecycle (as Local and rTorrent): the app-owned
                 // controller runs the single write and settles the ticket.
@@ -328,6 +396,19 @@ internal fun ProtocolAddScreen(
                         is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed ->
                             if (run.writeMayHaveHappened) ClientOperationOutcome.Uncertain(hash, "unexpected failure")
                             else ClientOperationOutcome.Refused(hash, "The Add could not be prepared; nothing was sent")
+                    }
+                    // The shared original-.torrent policy: only this Add's positively
+                    // verified NEW registration may archive or ask to delete it.
+                    val original = attempt.frozenOriginal
+                    attempt.frozenOriginal = null
+                    if (original != null) {
+                        val verifiedNew = (attempt.outcome as? ClientOperationOutcome.Verified)?.hash
+                            ?.takeIf { it.equals(hash, ignoreCase = true) &&
+                                coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
+                        val retirement = OriginalSourceRetirement.afterAdd(appContext, original,
+                            ticket.intent.target.environment.value, verifiedNew?.lowercase(java.util.Locale.ROOT))
+                        attempt.originalDeletion = retirement.deletion
+                        attempt.originalNote = retirement.note
                     }
                 }
                 if (!launched) {
@@ -393,6 +474,35 @@ internal fun ProtocolAddScreen(
                 attempt.clearSettled()
                 if (result is ClientOperationOutcome.Verified) { sourceDraft.value = ""; reviewedTorrent.value = null }
             }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add another") }
+        }
+        attempt.originalDeletion?.takeIf { attempt.profileId == profileId }?.let { request ->
+            OriginalDeletionPrompt(request, busy = originalDeleting,
+                onDelete = {
+                    if (!originalDeleting) {
+                        originalDeleting = true
+                        attemptScope.launch {
+                            try {
+                                val deleted = withContext(Dispatchers.IO) {
+                                    OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
+                                }
+                                attempt.originalNote = originalDeletionMessage(deleted, request.archived)
+                            } finally {
+                                originalDeleting = false
+                                if (attempt.originalDeletion === request) attempt.originalDeletion = null
+                            }
+                        }
+                    }
+                },
+                onKeep = {
+                    if (attempt.originalDeletion === request) attempt.originalDeletion = null
+                    attempt.originalNote = if (request.archived)
+                        "The original .torrent file was kept; Chunks also keeps its archived copy."
+                    else "The original .torrent file was kept."
+                })
+        }
+        attempt.originalNote?.takeIf { attempt.profileId == profileId }?.let { note ->
+            Text(note, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
     }
 }

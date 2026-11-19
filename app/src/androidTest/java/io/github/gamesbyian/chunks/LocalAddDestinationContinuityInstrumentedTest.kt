@@ -41,7 +41,7 @@ class LocalAddDestinationContinuityInstrumentedTest {
             rule.onNodeWithText("Start when added").performScrollTo()
                 .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
             rule.onNodeWithText("Start when added").assertIsOff()
-            rule.onNodeWithText("Magnet or HTTP(S) torrent URL").performScrollTo()
+            rule.onNodeWithText("Magnet or torrent link").performScrollTo()
                 .performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
             rule.onNodeWithText("Options").performClick()
             rule.waitForIdle()

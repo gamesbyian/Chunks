@@ -48,6 +48,10 @@ internal class MainActivityRealMagnetJourney(
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
     }
     private fun hasTag(tag: String) = rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+    // Every client now shares one source field label, so the remote form is identified by its
+    // selected Add-to target, not by a client-specific field label.
+    private fun remoteTargetSelected() = rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE) and
+        androidx.compose.ui.test.isSelected()).fetchSemanticsNodes().isNotEmpty()
     /** Enduring operation status, unaffected by the owner-approved heading/copy. */
     private fun scrollOutcome() {
         val target = hasTestTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
@@ -322,7 +326,7 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
-        fun remoteAddShowing() = visible("Magnet or torrent link") || visible("View transfer")
+        fun remoteAddShowing() = (remoteTargetSelected() && visible("Magnet or torrent link")) || visible("View transfer")
         fun openRemoteAdd() {
             clickTag(ChunksSemantics.FOOTER_ADD)
             rule.waitUntil(30_000) { visible("Add a transfer") || remoteAddShowing() }

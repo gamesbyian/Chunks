@@ -220,7 +220,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 click("Change download location")
                 click("Chunks app folder")
                 type("Optional local download subfolder", folder)
-                type("Magnet or HTTP(S) torrent URL", url)
+                type("Magnet or torrent link", url)
                 // Leaving the local device screen must not turn an explicit one-time root
                 // into the saved default when the same draft returns.
                 stage("override-set")
@@ -249,7 +249,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 assertNull("Activity recreation cannot authorize a local Add",
                     LocalEngineHolder.current()?.status(preview.infoHashV1))
                 // Exercise a real refused retrieval and recover the same scoped draft.
-                type("Magnet or HTTP(S) torrent URL", "https://127.0.0.1/blocked.torrent")
+                type("Magnet or torrent link", "https://127.0.0.1/blocked.torrent")
                 click("Get torrent from link")
                 // A refused URL's notice may be below the currently composed
                 // LazyColumn viewport after recreation. Actually scroll to it:
@@ -267,7 +267,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("refusal-recovered")
                 // Source URLs stay out of instance state by the existing privacy contract.
-                type("Magnet or HTTP(S) torrent URL", url)
+                type("Magnet or torrent link", url)
                 stage("before-fetch")
                 click("Get torrent from link")
                 awaitSourceReview()
@@ -288,7 +288,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 click("Change download location")
                 click("Chunks app folder")
                 type("Optional local download subfolder", folder)
-                type("Magnet or HTTP(S) torrent URL", url)
+                type("Magnet or torrent link", url)
                 click("Get torrent from link")
                 awaitSourceReview()
                 stage("cancel-recovered")
