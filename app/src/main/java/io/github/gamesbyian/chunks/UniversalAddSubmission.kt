@@ -34,6 +34,49 @@ internal object UniversalAddSubmission {
         data class ClientBusy(val ticket: UniversalAddCoordinator.Ticket) : Result
     }
 
+    /** [admitAndRun]'s outcome: the same admission, awaited in the caller's retained lane. */
+    sealed interface RunResult<out R : Any> {
+        data class Ran<R : Any>(val ticket: UniversalAddCoordinator.Ticket,
+                                val run: io.github.gamesbyian.chunks.model.UniversalAddRun<R>) : RunResult<R>
+        data class Refused(val decision: UniversalAddAdmission.Decision) : RunResult<Nothing>
+        data class ClientBusy(val ticket: UniversalAddCoordinator.Ticket) : RunResult<Nothing>
+    }
+
+    /**
+     * The same admission and freeze as [admitAndLaunch], then the single write
+     * awaited inside the caller's own app-owned coroutine (Local's native
+     * mutation lane already holds the process-wide native gate, so
+     * [acquireMutationGate] is a confirmation, not a second lock). Same
+     * invariants: no ticket → no write; a busy client → no write; never retried.
+     */
+    suspend fun <R : Any> admitAndRun(
+        controller: UniversalAddAttemptController,
+        coordinator: UniversalAddCoordinator,
+        intent: UniversalAddIntent,
+        capabilities: EnvironmentCapabilitySnapshot,
+        availability: EnvironmentAvailability,
+        acquireMutationGate: () -> Boolean,
+        submittedAtEpochMillis: Long,
+        freeze: (UniversalAddCoordinator.Ticket) -> UniversalAddExecutor<R>,
+        followUp: UniversalAddObserver? = null,
+        followUpSchedule: List<Long> = UniversalAddAttemptController.LOCAL_FOLLOW_UP_MILLIS
+    ): RunResult<R> {
+        val decision = UniversalAddAdmission.authorize(coordinator, intent, capabilities, availability,
+            acquireMutationGate, submittedAtEpochMillis)
+        val ticket = decision.ticket ?: return RunResult.Refused(decision)
+        val executor = try {
+            freeze(ticket)
+        } catch (failure: Exception) {
+            coordinator.refusedBeforeAnyWrite(ticket)
+            return RunResult.Refused(decision.copy(ticket = null,
+                refusal = UniversalAddAdmission.Refusal.TICKET,
+                explanation = "The Add could not be prepared. Nothing was sent."))
+        }
+        val run = controller.run(coordinator, ticket, executor, followUp, followUpSchedule)
+            ?: return RunResult.ClientBusy(ticket)
+        return RunResult.Ran(ticket, run)
+    }
+
     fun <R : Any> admitAndLaunch(
         controller: UniversalAddAttemptController,
         coordinator: UniversalAddCoordinator,

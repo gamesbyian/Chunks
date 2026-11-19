@@ -63,6 +63,34 @@ class UniversalAddSubmissionTest {
         scope.cancel()
     }
 
+    @Test fun theAwaitedLocalLaneRunsOnceAndRefusesBeforeAnyWrite() = runBlocking {
+        val scope = CoroutineScope(coroutineContext + Job())
+        val controller = UniversalAddAttemptController { scope }
+        val done = Gated(CompletableDeferred(Unit))
+        var frozen = 0
+        val ran = UniversalAddSubmission.admitAndRun(controller, UniversalAddCoordinator(), intent("local-lane"),
+            EnvironmentCapabilities.unprobed(EnvironmentId("local-lane")), EnvironmentAvailability.LIVE,
+            { true }, 1L, freeze = { frozen++; done }, followUpSchedule = emptyList())
+        assertTrue("$ran", ran is UniversalAddSubmission.RunResult.Ran)
+        assertEquals(1, frozen)
+        assertEquals(1, done.writes)
+        assertFalse("released after the awaited run", controller.isSubmitting(EnvironmentId("local-lane")))
+
+        val coordinator = UniversalAddCoordinator()
+        val never = Gated(CompletableDeferred(Unit))
+        val failedFreeze = UniversalAddSubmission.admitAndRun(controller, coordinator, intent("local-lane"),
+            EnvironmentCapabilities.unprobed(EnvironmentId("local-lane")), EnvironmentAvailability.LIVE,
+            { true }, 2L, freeze = { _ -> error("cannot bind the Place") as Gated })
+        assertTrue(failedFreeze is UniversalAddSubmission.RunResult.Refused)
+        assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+        val noGate = UniversalAddSubmission.admitAndRun(controller, UniversalAddCoordinator(), intent("local-lane"),
+            EnvironmentCapabilities.unprobed(EnvironmentId("local-lane")), EnvironmentAvailability.LIVE,
+            { false }, 3L, freeze = { never })
+        assertTrue(noGate is UniversalAddSubmission.RunResult.Refused)
+        assertEquals("nothing written by either refusal", 0, never.writes)
+        scope.cancel()
+    }
+
     @Test fun aRefusedGateOrAFailedFreezeLaunchesNothing() = runBlocking {
         val scope = CoroutineScope(coroutineContext + Job())
         val controller = UniversalAddAttemptController { scope }
