@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 
 /**
@@ -42,7 +43,7 @@ internal fun UniversalAddSourceSection(
     onFetchLink: (TorrentLinkCheck.Fetchable) -> Unit,
     onNothingToPaste: () -> Unit,
     modifier: Modifier = Modifier,
-    /** A document is being read: Open .torrent shows it and stays disabled. */
+    /** A document is being read: Open .torrent stays visible but disabled. */
     readingTorrent: Boolean = false,
     linkFetching: Boolean = false,
     /** Paste replaces the draft through the same handler unless a client needs its own. */
@@ -74,10 +75,13 @@ internal fun UniversalAddSourceSection(
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD)
         )
-        ActionTile(if (readingTorrent) "Reading torrent…" else UniversalAddSourceText.OPEN_TORRENT,
+        // A stable label: reading is a disabled state with its own description, so the
+        // one Open .torrent action never disappears while a document is read.
+        ActionTile(UniversalAddSourceText.OPEN_TORRENT,
             ChunksColors.Green, onClick = onOpenTorrent,
             enabled = enabled && !readingTorrent,
-            modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_OPEN_TORRENT),
+            modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_OPEN_TORRENT)
+                .semantics { if (readingTorrent) stateDescription = "Reading torrent" },
             icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         PasteMagnetButton(enabled = enabled, onPaste = onPaste, onNothingToPaste = onNothingToPaste)
         belowField()
