@@ -11,7 +11,7 @@
   - Deluge [44611888140](https://github.com/gamesbyian/Chunks/actions/runs/44611888140):
     - Its live cap case **passed**: step 1024 B; a 128,000 B/s cap was written once and read back; the second tick did not rewrite it; the bystander was untouched; an inexact cap was never sent.
     - File choices and Finish in Order also passed.
-    - The run is red only because the main journey test never started: Robolectric's `android-all-instrumented` runtime could not be fetched (infrastructure, no write). The workflow refuses reruns, so one new dispatch follows.
+    - The run is red only because the main journey test never started: Robolectric's `android-all-instrumented` runtime could not be fetched (infrastructure, no write). The workflow refuses reruns, so one new dispatch was made: [44612860282](https://github.com/gamesbyian/Chunks/actions/runs/44612860282) **passed** the full Deluge journey, including the cap case.
   - Live tier: each client's own per-transfer limit, set and read back on the disposable fixture jobs. Upload throughput under the cap is not measured.
 
 ## 2026-11-19 UTC: #1905 red attempts kept
