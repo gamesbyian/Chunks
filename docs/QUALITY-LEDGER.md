@@ -2,6 +2,12 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: #1905 red attempts kept
+
+- `c4a3624`: two-server-combined [44528779457](https://github.com/gamesbyian/Chunks/actions/runs/44528779457) and remote-delete-data [44528779442](https://github.com/gamesbyian/Chunks/actions/runs/44528779442) timed out waiting for canonical Transfers after Connections → View transfers (no crash in logcat). The same stage timed out on `82cf987` (before this change); both passed on the next head, and a new JVM guard (`RepeatedAndroidIntakeTest.connectThenViewTransfersOpensCanonicalServerScopedTransfers`) drives the route on the real MainActivity at this code. Classified intermittent. android-native-atlas [44528779632](https://github.com/gamesbyian/Chunks/actions/runs/44528779632): Maven Central could not serve two dependency JARs; no test executed (infrastructure).
+- `cf0fc97`: api29-downloads [44530550933](https://github.com/gamesbyian/Chunks/actions/runs/44530550933) timed out in `LocalAddDestinationContinuityInstrumentedTest` at the saved-default wait (Local Place picker, untouched here); passed on `c4a3624` and on `0770c48`. Intermittent.
+- `0770c48`: interop [44533129139](https://github.com/gamesbyian/Chunks/actions/runs/44533129139) attempt 1: apt mirrors failed to install the daemons, no test executed; attempt 2 passed (rerun only because nothing executed). installed-protocol-client [44533128636](https://github.com/gamesbyian/Chunks/actions/runs/44533128636): the new Smart Seeding stage reached `seeding-switch-on-via-ui` on all three clients but no cap appeared — the v2 Compose rule runs the app's 30 s `LaunchedEffect` delay on its virtual main clock, so `Thread.sleep` never advanced it. Test-harness defect, fixed by advancing `mainClock` tick by tick; the production `tickProtocol` cap path is proved in Robolectric.
+
 ## 2026-11-19 UTC: Transmission ratio Stop proved; protocol display names and Move name carry
 
 - **Real daemons, this container:** `ProtocolSeedingInteropTest` 4/4 on three consecutive runs; new `transmissionRatio`: real Transmission 4.0.5 downloaded every piece from a Local seeder that dialled its peer port (ratio 0, still running), a fresh Local leech pulled every piece back, Transmission's own counters passed 0.5 and the shared controller sent one verified Stop; a later manual Start stayed started over three ticks. The earlier "loopback peering" blocker concerned tracker-discovered peers only. CI interop now requires 4 seeding cases and the 3 upload-cap cases.
