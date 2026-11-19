@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientFile
 import io.github.gamesbyian.chunks.rpc.ClientFilePriority
+import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
@@ -291,6 +292,26 @@ internal fun ProtocolClientOperationsPanel(
                 enabled = enabled && changed.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Apply ${changed.size} priority change" + if (changed.size == 1) "" else "s") }
+            // Finish in Order through the same shared workflow: one guarded,
+            // verified priorities write per step, never retried.
+            val levelsNow = session?.filePriorities
+            if (levelsNow != null && ClientCapability.FILE_PRIORITIES in caps &&
+                shown.none { it.completedBytes == null }) {
+                val asLocal = remember(shown) { shown.map(ClientFinishInOrderPort::asPlannerFile) }
+                ServerFinishInOrderPanel(
+                    hash = hash, scope = FinishInOrderScopes.protocol(sourceClientId), asLocal = asLocal,
+                    stale = !current || busy || latched,
+                    intro = if (ClientFilePriority.LOW in levelsNow)
+                        "On $clientLabel the current file gets High, the next stays Normal and later ones get Low. " +
+                            "It moves on while Chunks is open and connected to this client."
+                    else "On $clientLabel the current file gets High and the rest stay Normal. " +
+                        "It moves on while Chunks is open and connected to this client.",
+                    isActive = { index -> shown.firstOrNull { it.index == index }?.priority == ClientFilePriority.HIGH },
+                    twoBands = ClientFilePriority.LOW !in levelsNow,
+                    step = { store -> stepClientFinishInOrder(operations, levelsNow, store, hash) },
+                    onMutationStarted = { if (busy || latched || !current) false else { busy = true; true } },
+                    onSettled = { busy = false; files = null; onChanged() })
+            }
         }
         if (!moveOnly && relocating) {
             val target = relocateTo.trim()

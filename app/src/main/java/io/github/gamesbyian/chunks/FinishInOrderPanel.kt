@@ -56,7 +56,12 @@ internal fun FinishInOrderReview(
     initialMode: Mode = Mode.BALANCED,
     confirmLabel: String = "Start Finish in Order",
     /** Local engine only: rTorrent has no verified per-transfer equivalent. */
-    sequentialSupported: Boolean = false
+    sequentialSupported: Boolean = false,
+    /**
+     * The client stores no distinct Low (rTorrent, qBittorrent): Balanced and
+     * Finish first set the same levels, so no mode choice that promises Low is shown.
+     */
+    twoBands: Boolean = false
 ) {
     val byIndex = remember(files) { files.associateBy { it.index } }
     var order by remember(initialOrder) { mutableStateOf(initialOrder) }
@@ -73,7 +78,7 @@ internal fun FinishInOrderReview(
         "Download order depends on available peers, so it's not guaranteed. " +
         "Skipped files stay skipped, and manual priority changes are respected.",
         style = MaterialTheme.typography.bodySmall)
-    Column(Modifier.selectableGroup()) {
+    if (!twoBands) Column(Modifier.selectableGroup()) {
         (listOf(Mode.BALANCED to "Balanced: next file at Normal, the rest Low",
             Mode.FINISH_FIRST to "Finish first: everything after the current file Low") +
             (if (sequentialSupported) listOf(Mode.SEQUENTIAL_PLAYBACK to
