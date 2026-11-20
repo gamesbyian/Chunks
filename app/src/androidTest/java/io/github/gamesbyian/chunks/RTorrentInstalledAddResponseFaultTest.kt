@@ -96,7 +96,8 @@ class RTorrentInstalledAddResponseFaultTest {
         Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     ) as MainActivity
 
-    private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String): Intent? {
+    private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String,
+        expectedName: String): Intent? {
         var originalIntent: Intent? = null
         instrumentation.runOnMainSync {
             originalIntent = activity.intent
@@ -107,25 +108,36 @@ class RTorrentInstalledAddResponseFaultTest {
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
             })
         }
-        rule.waitUntil(30_000) {
-            rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)).fetchSemanticsNodes().size == 1
-        }
-        journey.activate(ChunksSemantics.ADD_TARGET_REMOTE)
+        // Android Share parses the document asynchronously. Establish the
+        // selected source before switching destinations; otherwise a target
+        // change may race the source-selection witness and leave a stale draft.
         val replace = hasText("Use new source") and hasClickAction()
-        val reviewed = hasText("Infohash: $expectedHash", substring = true)
-        rule.waitUntil(30_000) {
+        val localReviewed = hasText("Selected .torrent: $expectedName", substring = true)
+        rule.waitUntil(45_000) {
             rule.onAllNodes(replace).fetchSemanticsNodes().size == 1 || runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(reviewed)
-                rule.onAllNodes(reviewed).fetchSemanticsNodes().size == 1
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(localReviewed)
+                rule.onAllNodes(localReviewed).fetchSemanticsNodes().size == 1
             }.getOrDefault(false)
         }
-        if (rule.onAllNodes(replace).fetchSemanticsNodes().size == 1) LazyComposeActions.activateOnce(rule, replace)
+        if (rule.onAllNodes(replace).fetchSemanticsNodes().size == 1)
+            LazyComposeActions.activateOnce(rule, replace)
+        rule.waitUntil(30_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(localReviewed)
+                rule.onAllNodes(localReviewed).fetchSemanticsNodes().size == 1
+            }.getOrDefault(false)
+        }
+        stage("add-fault-shared-document-reviewed")
+        journey.activate(ChunksSemantics.ADD_TARGET_REMOTE)
+        // A client switch must retain the exact file, not an earlier magnet.
+        val reviewed = hasText("Infohash: $expectedHash", substring = true)
         rule.waitUntil(30_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(reviewed)
                 rule.onAllNodes(reviewed).fetchSemanticsNodes().size == 1
             }.getOrDefault(false)
         }
+        stage("add-fault-exact-remote-source-reviewed")
         journey.chooseStopped()
         val archiveSummary = hasTestTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
         rule.waitUntil(30_000) {
@@ -178,7 +190,7 @@ class RTorrentInstalledAddResponseFaultTest {
                 val hash = fixture.infoHashV1
                 assertNull("The exact disposable fixture must be absent", runBlocking { witness.lookupName(hash) })
                 val document = document(name, fixture.torrent)
-                val originalIntent = openForStoppedAdd(activity, document, hash)
+                val originalIntent = openForStoppedAdd(activity, document, hash, name)
                 faultRelay.arm(fault)
                 journey.submit()
                 stage("add-fault-$fault-dispatched-once")
@@ -253,7 +265,7 @@ class RTorrentInstalledAddResponseFaultTest {
         val activity = launchMain()
         try {
             connect()
-            openForStoppedAdd(activity, document, hash)
+            openForStoppedAdd(activity, document, hash, processDeathName)
             faultRelay.arm("hold")
             journey.submit()
             rule.waitUntil(10_000) { faultRelay.hasWithheldReply() }
