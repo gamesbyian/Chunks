@@ -95,8 +95,11 @@ class ExternalApkTorrentHandoffInstrumentedTest {
                 resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
                     .fetchSemanticsNodes().isNotEmpty()
             }
-        } catch (failure: AssertionError) {
-            throw AssertionError("Foreign provider Add review failed: $lastState", failure)
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            // waitUntil throws ComposeTimeoutException, not AssertionError.
+            // Keep only booleans, never source identity or payload, in CI logs.
+            android.util.Log.e("ChunksExternalGrant", "review-timeout $lastState")
+            throw AssertionError("Foreign provider Add review timed out: $lastState", failure)
         }
     }
 
