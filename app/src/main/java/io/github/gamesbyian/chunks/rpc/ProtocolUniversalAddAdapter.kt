@@ -25,7 +25,8 @@ internal object ProtocolUniversalAddAdapter {
     fun intent(
         clientId: String,
         request: ClientAddRequest,
-        clientDefaultFolder: String?
+        clientDefaultFolder: String?,
+        allowArtwork: Boolean = true
     ): UniversalAddIntent = UniversalAddIntent(
         source = when (val source = request.source) {
             is ClientAddSource.TorrentFile -> UniversalAddSource.metainfo(source.bytes, source.infoHash)
@@ -35,7 +36,7 @@ internal object ProtocolUniversalAddAdapter {
         place = request.directory?.let { UniversalAddPlace.ServerCustom(it) }
             ?: UniversalAddPlace.ServerDefault(clientDefaultFolder.orEmpty()),
         startWhenAdded = request.startNow,
-        allowArtwork = false
+        allowArtwork = allowArtwork
     )
 
     /**
@@ -67,7 +68,9 @@ internal object ProtocolUniversalAddAdapter {
 internal class ProtocolAddExecutor(
     private val operations: ClientOperations,
     private val request: ClientAddRequest,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** Local privacy preference preflight. Failure is a proven no-write refusal. */
+    private val prepareBeforeWrite: suspend () -> Boolean = { true }
 ) : UniversalAddExecutor<ClientOperationOutcome> {
     private var writeStartedAt = -1L
 
@@ -83,6 +86,13 @@ internal class ProtocolAddExecutor(
         boundary: UniversalAddWriteBoundary
     ): ClientOperationOutcome {
         requireTicket(ticket)
+        // Opt-out must be persisted on this exact profile+hash before ANY RPC.
+        // A failed preference write must never cross the one-shot write boundary.
+        val prepared = try { prepareBeforeWrite() } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (_: Exception) { false }
+        if (!prepared) return ClientOperationOutcome.Refused(request.source.infoHash,
+            "The artwork preference could not be saved; nothing was sent")
         // Sampled before the write: the workflow's readback starts after it,
         // so this never makes the result look newer than the client's own read.
         writeStartedAt = clock()
