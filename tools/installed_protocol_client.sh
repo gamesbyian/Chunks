@@ -82,10 +82,13 @@ run_one() {
         return 1
       fi
     done
-    if [ "$kind" = TRANSMISSION ] &&
-      ! grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=changed-default-refused-without-write' "$stages"; then
-      echo '::error::Missing installed Transmission stale-default refusal witness'
-      return 1
+    if [ "$kind" = TRANSMISSION ]; then
+      for witness in add-delayed-valid-ack-then-exact-verified-readback changed-default-refused-without-write; do
+        if ! grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=$witness" "$stages"; then
+          echo "::error::Missing installed Transmission witness: $witness"
+          return 1
+        fi
+      done
     fi
   fi
   echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode passed" | tee -a "$GITHUB_STEP_SUMMARY"

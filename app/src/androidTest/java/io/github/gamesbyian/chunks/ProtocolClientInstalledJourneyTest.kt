@@ -757,6 +757,30 @@ class ProtocolClientInstalledJourneyTest {
                 runBlocking { witness.remove(pendingHash, deleteData = false) }
             }
             if (kind == RemoteBackendKind.TRANSMISSION) {
+                val delayed = fixture("delayed-ack")
+                val delayedHash = delayed.infoHashV1
+                assertNull(runBlocking { independentRead(delayedHash) })
+                typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(delayed.magnet))
+                ensureStartWhenAddedOff()
+                responseFault.arm("delay")
+                addJourney.submit()
+                waitFor("daemon accepted the delayed request", 8_000) { responseFault.hasWithheldReply() }
+                assertEquals(ClientRunState.STOPPED, runBlocking { independentRead(delayedHash) }?.runState)
+                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.awaitTransferReceipt("Adding")
+                assertTrue("Exact inventory alone cannot settle an Add with a reply outstanding", !receiptVerified())
+                responseFault.releaseDelayedResponse()
+                scenario.recreate()
+                addJourney.awaitTransferReceipt("Adding", "Verified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                addJourney.awaitAddReceipt("Verified")
+                addJourney.viewExactTransfer(profileId, delayedHash)
+                responseFault.requireOneWriteAndNoStart()
+                stage("add-delayed-valid-ack-then-exact-verified-readback")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                addJourney.activate(ChunksSemantics.ADD_ANOTHER)
+                runBlocking { witness.remove(delayedHash, deleteData = false) }
+
                 val original = runBlocking { requireNotNull(witness.session(refresh = true).defaultDownloadDirectory) }
                 val changed = decoded("chunks_protocol_custom_folder_b64")
                 assertTrue("The disposable folder for the policy change must differ",

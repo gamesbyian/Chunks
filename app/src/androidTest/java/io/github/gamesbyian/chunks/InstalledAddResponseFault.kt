@@ -31,6 +31,10 @@ internal class InstalledAddResponseFault(appUrl: String) {
 
     fun hasWithheldReply() = counts().getInt("acknowledgments_withheld") == 1
 
+    fun releaseDelayedResponse() {
+        request("release", post = true)
+    }
+
     fun requireNoWrite() {
         val counters = counts()
         assertEquals("The fixture saw no Add", 0, counters.getInt("adds"))
