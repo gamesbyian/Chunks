@@ -1548,30 +1548,13 @@ internal fun LocalEngineScreen(
                             if (original != null && verifiedBytes != null && session != null && ticket != null &&
                                 frozenHandling != OriginalTorrentHandling.KEEP &&
                                 added.status.infoHash.equals(add.preview.infoHashV1, ignoreCase = true)) {
-                                val outcome = withContext(Dispatchers.IO) {
-                                    SourceTorrentArchive(context.filesDir).apply(frozenHandling,
-                                        OriginalTorrentOrigin.ANDROID_DOCUMENT, verifiedBytes,
-                                        SourceAddVerification(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
-                                            added.status.infoHash, verifiedNew = true))
-                                }
-                                if (outcome == SourceArchiveOutcome.OriginalDeletionRequiresApproval) {
-                                    originalAddDocument.deletion = OriginalDeletionRequest(original,
-                                        withContext(Dispatchers.IO) {
-                                            OriginalTorrentDocuments.displayName(context.contentResolver, original)
-                                        }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name)
-                                } else {
-                                    archiveOutcomeMessage(outcome, frozenHandling)?.let { note ->
-                                        message = listOfNotNull(message, note).joinToString(" ")
-                                    }
-                                    // Archive prefers a move: once the private copy is verified,
-                                    // ask separately before removing an original its app lets us delete.
-                                    if (outcome is SourceArchiveOutcome.ArchivedCopy && frozenDeletable)
-                                        originalAddDocument.deletion = OriginalDeletionRequest(original,
-                                            withContext(Dispatchers.IO) {
-                                                OriginalTorrentDocuments.displayName(context.contentResolver, original)
-                                            }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name,
-                                            archived = true)
-                                }
+                                val retired = OriginalSourceRetirement.afterAdd(context,
+                                    RemoteAddSession.FrozenOriginalHandling(original, frozenHandling,
+                                        frozenDeletable, verifiedBytes),
+                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
+                                    added.status.infoHash)
+                                originalAddDocument.deletion = retired.deletion
+                                originalAddDocument.note = retired.note
                             }
                             rememberAdded(added.status.infoHash, message)
                         }

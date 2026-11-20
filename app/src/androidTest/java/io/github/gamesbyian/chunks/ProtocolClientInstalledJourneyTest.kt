@@ -14,13 +14,11 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.printToString
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -68,13 +66,8 @@ class ProtocolClientInstalledJourneyTest {
         try {
             rule.waitUntil(timeoutMs, condition)
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
-            // Prefer the protocol controls when present: the whole root is too long.
-            val ui = runCatching {
-                rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATIONS, useUnmergedTree = true)
-                    .printToString().take(6_000)
-            }.recoverCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
-                .getOrDefault("semantics unavailable")
-            throw AssertionError("Timed out: $what\n$ui", failure)
+            val count = rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().size
+            throw AssertionError("Timed out: $what ($count lazy scrollers)", failure)
         }
     }
 
@@ -305,8 +298,9 @@ class ProtocolClientInstalledJourneyTest {
             stage("remove-verified-independently")
 
             // Universal Add to this exact client, stopped, from a magnet.
-            val profileId = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
-                .list().single { it.backend == kind }.id
+            val profile = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+                .list().single { it.backend == kind }
+            val profileId = profile.id
             val second = fixture("add")
             val magnet = requireNotNull(second.magnet)
             // Details may hide the footer: go back to Transfers first.
@@ -368,8 +362,23 @@ class ProtocolClientInstalledJourneyTest {
 
             // View transfer from Add must locate the exact hash on the selected
             // protocol client, rather than merely opening that client's inventory.
-            addJourney.viewExactTransfer(second.infoHashV1)
+            addJourney.viewExactTransfer(profileId, second.infoHashV1)
             stage("add-view-exact-hash-navigation")
+
+            // Start a separate review and deliberately request an existing hash.
+            // This must refuse while the exact independently witnessed job stays stopped.
+            clickOnce(ChunksSemantics.FOOTER_ADD, "Return to the Add receipt")
+            addJourney.activate(ChunksSemantics.ADD_ANOTHER)
+            typeInto(UniversalAddSourceText.FIELD_LABEL, magnet)
+            ensureStartWhenAddedOff()
+            addJourney.submit()
+            waitFor("Duplicate hash refused") {
+                addJourney.hasReceiptState("Not added") && visible("Already in this client")
+            }
+            assertEquals("Duplicate refusal must keep the existing job stopped", ClientRunState.STOPPED,
+                runBlocking { independentRead(second.infoHashV1) }?.runState)
+            stage("add-another-duplicate-refused")
+            clickOnce(ChunksSemantics.FOOTER_TRANSFERS, "Return to exact client Transfers")
 
             // Job-only Move of that exact job to This device (Local engine).
             val secondName = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(second.torrent).name
@@ -488,6 +497,12 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
             }
             stage("choices-kept-file-high")
+            val folderChoice = hasText("Change folder")
+            scrollToNode(folderChoice)
+            rule.onNode(folderChoice).performSemanticsAction(SemanticsActions.OnClick)
+            val customFolder = decoded("chunks_protocol_custom_folder_b64")
+            typeInto("Absolute folder on ${profile.label}", customFolder)
+            stage("choices-custom-folder-reviewed")
             // A Chunks-only display name for this Add: stored for this exact profile only
             // after the verified NEW registration, never sent to the client.
             val choicesAlias = "Chunks alias " + kind.name.lowercase()
@@ -518,8 +533,10 @@ class ProtocolClientInstalledJourneyTest {
                         io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH
             }
             waitFor("Add receipt verified", 60_000) { receiptVerified() }
-            assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
-                runBlocking { independentRead(choicesHash) }?.runState)
+            val customJob = runBlocking { independentRead(choicesHash) }
+            assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED, customJob?.runState)
+            assertTrue("Exact custom folder independently verified",
+                io.github.gamesbyian.chunks.rpc.ClientHashes.sameDirectory(customJob?.downloadDirectory, customFolder))
             stage("choices-skip-and-high-verified-independently")
             assertEquals("display name stored for this exact profile", choicesAlias,
                 TransferAliasStore(InstrumentationRegistry.getInstrumentation().targetContext)

@@ -21,9 +21,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * The one engine-neutral application of the global original-`.torrent`
- * Keep/Archive/Delete policy after an Add, shared by rTorrent and the
- * Transmission/qBittorrent/Deluge clients (Local applies the same
- * [SourceTorrentArchive] inside its native sequence).
+ * Keep/Archive/Delete policy after an Add across all five clients.
  *
  * Only a verified NEW exact job ([verifiedNewHash] non-null) may archive a
  * private copy or request deletion; an uncertain, exact-session or

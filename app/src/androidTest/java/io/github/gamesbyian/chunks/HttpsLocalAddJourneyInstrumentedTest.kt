@@ -317,7 +317,8 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 stage("added-stopped")
                 // Add review never exposes a competing lifecycle executor.
                 // Start the positively registered job from Transfers.
-                addJourney.viewExactTransfer(preview.infoHashV1)
+                addJourney.viewExactTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
+                    preview.infoHashV1)
                 // The receipt opens the canonical catalog at the exact Local job.
                 // Enter this exact device's existing lifecycle controls.
                 // The compact Search-adjacent Filters/Sort affordance opens

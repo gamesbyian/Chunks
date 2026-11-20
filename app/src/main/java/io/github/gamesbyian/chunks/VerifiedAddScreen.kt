@@ -1203,7 +1203,7 @@ internal fun VerifiedAddScreen(
                         }
                 }
             }
-            OriginalAddDocumentStatus(draft.originalDocument, submitScope)
+            OriginalAddDocumentStatus(draft.originalDocumentStatus, submitScope)
             // Read-only recovery can prove the exact hash, Place and Start
             // without proving that Chunks originally registered the job. Never
             // present this as an ordinary newly verified Add.
@@ -1246,7 +1246,7 @@ internal fun VerifiedAddScreen(
                         exactSessionConfirmed -> "Acknowledge session and start another Add"
                         else -> "Start another Add"
                     },
-                    enabled = !submitting && !rechecking && !choosing && !linkFetching && !draft.originalDocument.deleting
+                    enabled = !submitting && !rechecking && !choosing && !linkFetching && !draft.originalDocumentStatus.deleting
                 ) {
                     val oldSource = draft.attemptSource
                     // The single explicit click acknowledges a confirmed session

@@ -669,7 +669,8 @@ internal class MainActivityRealMagnetJourney(
             } else {
                 scroll("View transfer")
                 rule.onNodeWithText("View transfer").assertExists()
-                addJourney.viewExactTransfer(hash)
+                addJourney.viewExactTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(url, user).value,
+                    hash)
                 openRemoteAdd()
             }
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",

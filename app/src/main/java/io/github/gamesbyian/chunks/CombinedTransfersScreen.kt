@@ -472,6 +472,10 @@ internal fun CombinedTransfersScreen(
     }
     fun update(next: UnifiedTransferQuery) {
         queryTouched = true
+        if (next.search != query.search) {
+            searchState?.value = next.search
+            onManualSearchEdited()
+        }
         query = next
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
@@ -1621,7 +1625,9 @@ internal fun CombinedTransfersScreen(
                             else -> ""
                         }, maxLines = 1) },
                         leadingIcon = { EnvironmentDot(hueFor(id)) },
-                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES + "." + id.value)
+                            .semantics {
                             contentDescription = (if (visible) "Showing " else "Hidden: ") +
                                 label + ", " + (if (count == "?") "count unknown" else "$count transfers") +
                                 (if (unavailable) ", currently unavailable" else "")

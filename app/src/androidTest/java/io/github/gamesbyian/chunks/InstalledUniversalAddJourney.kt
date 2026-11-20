@@ -5,7 +5,9 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.ComposeTestRule
@@ -47,14 +49,19 @@ internal class InstalledUniversalAddJourney(private val rule: ComposeTestRule) {
             .fetchSemanticsNodes().isNotEmpty()
     }
 
-    fun viewExactTransfer(hash: String) {
+    fun viewExactTransfer(environment: String, hash: String) {
         activate(ChunksSemantics.ADD_VIEW_TRANSFER)
         val search = hasTestTag(ChunksSemantics.TRANSFERS_SEARCH)
+        val toggles = hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES)
+        val destination = hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES + "." + environment)
+        val selectedClient = hasAnyAncestor(toggles) and isSelected()
         rule.waitUntil(45_000) {
             runCatching {
                 reveal(search)
                 rule.onNode(search).fetchSemanticsNode().config[SemanticsProperties.EditableText]
-                    .text.equals(hash, ignoreCase = true)
+                    .text.equals(hash, ignoreCase = true) &&
+                    rule.onAllNodes(destination and selectedClient).fetchSemanticsNodes().size == 1 &&
+                    rule.onAllNodes(selectedClient).fetchSemanticsNodes().size == 1
             }.getOrDefault(false)
         }
     }
