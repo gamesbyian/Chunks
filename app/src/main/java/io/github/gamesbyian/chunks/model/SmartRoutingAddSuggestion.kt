@@ -91,7 +91,10 @@ internal object SmartRoutingAddSuggestion {
         val startOk = startNow || io.github.gamesbyian.chunks.rpc.ClientCapability.ADD_STOPPED in caps
         return Candidate(environmentId, label, live = session != null,
             acceptsAdd = sourceOk && startOk,
-            placeKnown = session?.defaultDownloadDirectory != null)
+            // Empty and whitespace-only daemon values are not an observed
+            // location. A routing suggestion may not claim a reviewed Save to
+            // path unless the exact live client actually reported one.
+            placeKnown = !session?.defaultDownloadDirectory.isNullOrBlank())
     }
 
     /**

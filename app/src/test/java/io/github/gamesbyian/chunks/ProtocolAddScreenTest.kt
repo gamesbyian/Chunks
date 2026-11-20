@@ -23,8 +23,10 @@ import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.TorrentClient
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +46,8 @@ class ProtocolAddScreenTest {
         var added: ClientAddRequest? = null
         var writes = 0
         var loseNextWrite = false
+        /** Stop at a real suspend boundary so a newer source can arrive before the old response. */
+        var beforeAddCompletion: CompletableDeferred<Unit>? = null
         /** The write lands on the client, but its reply is lost. */
         var landThenLoseNextWrite = false
         var reads = 0
@@ -56,6 +60,7 @@ class ProtocolAddScreenTest {
         override suspend fun files(hash: String) = emptyList<io.github.gamesbyian.chunks.rpc.ClientFile>()
         override suspend fun add(request: ClientAddRequest) {
             writes++
+            beforeAddCompletion?.await()
             if (loseNextWrite) { loseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
             added = request
             if (landThenLoseNextWrite) { landThenLoseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
@@ -199,6 +204,95 @@ class ProtocolAddScreenTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
         rule.waitUntil(5_000) { fake.writes == 2 }
         assertEquals(other, (fake.added!!.source as ClientAddSource.Magnet).infoHash)
+    }
+
+    @Test fun acknowledgingOldProtocolAddKeepsNewerMagnetDraft() {
+        val fake = Fake()
+        val attempt = ProtocolAddAttempt()
+        val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=old")
+        renderMagnetAdd(fake, attempt, draft)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome is ClientOperationOutcome.Verified }
+        val newer = "magnet:?xt=urn:btih:" + "ef".repeat(20) + "&dn=new"
+        rule.runOnIdle { draft.value = newer }
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals("An older receipt may not erase a newer shared magnet", newer, draft.value)
+            assertEquals("No second Add until a new explicit submission", 1, fake.writes)
+        }
+    }
+
+    @Test fun submittedProtocolSourceFingerprintIsExactAndCannotEraseANewDocument() {
+        val bytes = io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.build(
+            io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Request("exact-review",
+                listOf(io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(
+                    listOf("one.bin"), 1024L) { ByteArray(1024).inputStream() }),
+                trackerTiers = emptyList(), pieceLength = 16 * 1024)).torrent
+        val preview = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes)
+        val first = PendingLocalAdd(preview, bytes)
+        val attempt = ProtocolAddAttempt()
+        val selectedText = "magnet:?xt=urn:btih:$hash&tr=https%3A%2F%2Fprivate.one"
+        assertTrue(attempt.claim("p", hash, selectedText, first))
+        assertTrue(attempt.submittedTextStillSelected(selectedText))
+        assertTrue(attempt.submittedFileStillSelected(first))
+        assertFalse(attempt.submittedTextStillSelected(
+            "magnet:?xt=urn:btih:$hash&tr=https%3A%2F%2Fprivate.two"))
+        // A newly reviewed file object, even with the same infohash and
+        // identical bytes, is a distinct user source and must survive.
+        assertFalse(attempt.submittedFileStillSelected(PendingLocalAdd(preview, bytes.copyOf())))
+        first.bytes[0] = (first.bytes[0].toInt() xor 1).toByte()
+        assertFalse(attempt.submittedFileStillSelected(first))
+        attempt.releaseUnwritten("p", hash)
+        assertFalse(attempt.submittedTextStillSelected(selectedText))
+        assertFalse(attempt.submittedFileStillSelected(first))
+    }
+
+    @Test fun lateOldAddVerificationCannotResetNewSourceArtworkOptOut() {
+        val gate = CompletableDeferred<Unit>()
+        val fake = Fake().apply { beforeAddCompletion = gate }
+        val attempt = ProtocolAddAttempt()
+        val oldSource = "magnet:?xt=urn:btih:$hash&dn=old"
+        val draft = mutableStateOf(oldSource)
+        val artwork = mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                ProtocolAddScreen(
+                    profileId = "p", clientLabel = "Box Deluge",
+                    createOperations = { ClientOperations(fake, 3, 1) },
+                    destinationPicker = {},
+                    sourceDraft = draft, reviewedTorrent = mutableStateOf(null),
+                    startState = mutableStateOf(false),
+                    artworkState = artwork, attempt = attempt,
+                    attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
+                    onViewTransfer = {}
+                )
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(10_000) { fake.writes == 1 }
+        // A genuine external Share can update the app-owned draft while
+        // the previous wire call is still in flight. The new Add's opt-out
+        // must not be reset by its predecessor's delayed positive outcome.
+        val newSource = "magnet:?xt=urn:btih:" + "ef".repeat(20) + "&dn=new"
+        rule.runOnIdle { draft.value = newSource; artwork.value = false }
+        gate.complete(Unit)
+        rule.waitUntil(10_000) { attempt.outcome is ClientOperationOutcome.Verified }
+        rule.runOnIdle {
+            assertEquals(newSource, draft.value)
+            assertFalse("Old Add verification must not override a newer source's opt-out", artwork.value)
+            assertEquals("One write for only the old source", 1, fake.writes)
+        }
+    }
+
+    @Test fun differentProfileCannotReleaseSameHashInFlightClaim() {
+        val attempt = ProtocolAddAttempt()
+        assertTrue(attempt.claim("profile-A", hash, "magnet:?xt=urn:btih:$hash&dn=A"))
+        attempt.releaseUnwritten("profile-B", hash)
+        assertEquals("profile-A", attempt.profileId)
+        assertTrue("Unrelated client may not release an in-flight Add", attempt.busy)
+        attempt.releaseUnwritten("profile-A", hash)
+        assertFalse(attempt.busy)
+        assertEquals(null, attempt.profileId)
     }
 
     @Test fun anotherClientsAttemptBlocksSubmission() {

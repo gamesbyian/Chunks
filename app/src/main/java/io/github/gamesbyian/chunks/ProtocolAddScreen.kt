@@ -68,18 +68,55 @@ internal class ProtocolAddAttempt {
 
     val busy: Boolean get() = attemptedHash != null && outcome == null
 
+    // The displayed source can change after a write, including via Android
+    // Share. Remember *which exact draft* was submitted, without retaining a
+    // second plaintext magnet/passkey or serializing private metainfo.
+    private var submittedTextDigest: ByteArray? = null
+    private var submittedFile: PendingLocalAdd? = null
+    private var submittedFileDigest: ByteArray? = null
+    private fun digest(bytes: ByteArray) = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+    private fun textDigest(value: String) = digest(value.toByteArray(Charsets.UTF_8))
+
+    internal fun submittedTextStillSelected(current: String): Boolean =
+        submittedTextDigest?.let { java.security.MessageDigest.isEqual(it, textDigest(current)) } == true
+
+    internal fun submittedFileStillSelected(current: PendingLocalAdd?): Boolean =
+        current != null && current === submittedFile && submittedFileDigest?.let {
+            java.security.MessageDigest.isEqual(it, digest(current.bytes))
+        } == true
+
+    internal fun submittedDraftStillSelected(currentText: String, currentFile: PendingLocalAdd?): Boolean =
+        submittedTextStillSelected(currentText) &&
+            if (submittedFile == null) currentFile == null else submittedFileStillSelected(currentFile)
+
+    private fun discardSubmittedDraftFingerprint() {
+        submittedTextDigest = null
+        submittedFile = null
+        submittedFileDigest = null
+    }
+
     /** Claims the single submission; false when another attempt owns it. */
-    fun claim(profile: String, hash: String): Boolean {
+    fun claim(profile: String, hash: String,
+        sourceText: String = "", reviewedFile: PendingLocalAdd? = null): Boolean {
         if (busy) return false
         attemptedHash = hash
         profileId = profile
         outcome = null
+        submittedTextDigest = textDigest(sourceText)
+        submittedFile = reviewedFile
+        submittedFileDigest = reviewedFile?.let { digest(it.bytes) }
         return true
     }
 
     /** A claim that never reached the write boundary (admission refused after the claim). */
-    fun releaseUnwritten(hash: String) {
-        if (attemptedHash == hash && outcome == null) { attemptedHash = null; profileId = null }
+    fun releaseUnwritten(profile: String, hash: String) {
+        // Identical hashes on two clients do not grant cross-account authority:
+        // only the holder of this *unwritten* claim may release the latch.
+        if (profileId == profile && attemptedHash == hash && outcome == null) {
+            attemptedHash = null
+            profileId = null
+            discardSubmittedDraftFingerprint()
+        }
     }
 
     // The shared Universal Add review → approval → one-ticket fence, one per exact client.
@@ -125,6 +162,7 @@ internal class ProtocolAddAttempt {
         checkNote = null
         frozenOriginal = null
         originalNote = null
+        discardSubmittedDraftFingerprint()
         return true
     }
 
@@ -429,7 +467,9 @@ internal fun ProtocolAddScreen(
                     controller = controller, coordinator = coordinator, intent = intent,
                     capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(intent.target.environment),
                     availability = io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
-                    acquireMutationGate = { attempt.claim(profileId, frozen.infoHash) },
+                    acquireMutationGate = {
+                        attempt.claim(profileId, frozen.infoHash, sourceDraft.value, reviewedTorrent.value)
+                    },
                     submittedAtEpochMillis = System.currentTimeMillis(),
                     freeze = {
                         attempt.admissionRefusal = null
@@ -490,7 +530,12 @@ internal fun ProtocolAddScreen(
                             attempt.originalDeletion = retirement.deletion
                             attempt.originalNote = retirement.note
                         }
-                        if (settled is ClientOperationOutcome.Verified) automaticArtwork = true
+                        // An old reply may settle after a newer Android Share or
+                        // a newer source-specific artwork opt-out. It may reset
+                        // only the preference of the same exact source.
+                        if (settled is ClientOperationOutcome.Verified &&
+                            attempt.submittedDraftStillSelected(sourceDraft.value, reviewedTorrent.value))
+                            automaticArtwork = true
                     } finally {
                         attempt.outcome = settled
                     }
@@ -498,11 +543,11 @@ internal fun ProtocolAddScreen(
                 when (submitted) {
                     is UniversalAddSubmission.Result.Launched -> Unit
                     is UniversalAddSubmission.Result.Refused -> {
-                        if (submitted.decision.mutationGateAcquired) attempt.releaseUnwritten(hash)
+                        if (submitted.decision.mutationGateAcquired) attempt.releaseUnwritten(profileId, hash)
                         attempt.admissionRefusal = "Not added: " + submitted.decision.explanation
                     }
                     is UniversalAddSubmission.Result.ClientBusy -> {
-                        attempt.releaseUnwritten(hash)
+                        attempt.releaseUnwritten(profileId, hash)
                         attempt.admissionRefusal = "Not added: another Add to $clientLabel is still settling."
                     }
                 }
@@ -566,10 +611,16 @@ internal fun ProtocolAddScreen(
                     else -> "Start another Add"
                 }
             ) {
+                // A newer Share/picker/text edit can occur while the old
+                // attempt is settling. Only retire the exact source captured
+                // by that old write; never drop a newer document or passkey.
+                val sameText = attempt.submittedTextStillSelected(sourceDraft.value)
+                val sameFile = attempt.submittedFileStillSelected(reviewedTorrent.value)
+                val sameDraft = attempt.submittedDraftStillSelected(sourceDraft.value, reviewedTorrent.value)
                 if (attempt.clearSettled(profileId) && phase != UniversalAddCoordinator.Phase.REVIEWED) {
-                    sourceDraft.value = ""
-                    reviewedTorrent.value = null
-                    automaticArtwork = true
+                    if (sameText) sourceDraft.value = ""
+                    if (sameFile) reviewedTorrent.value = null
+                    if (sameDraft) automaticArtwork = true
                 }
             }
         }
