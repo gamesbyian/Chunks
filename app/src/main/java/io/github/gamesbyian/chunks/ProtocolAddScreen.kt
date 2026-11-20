@@ -129,6 +129,7 @@ internal fun ProtocolAddScreen(
     sourceDraft: MutableState<String>,
     reviewedTorrent: MutableState<PendingLocalAdd?>,
     startState: MutableState<Boolean>,
+    artworkState: MutableState<Boolean>? = null,
     attempt: ProtocolAddAttempt,
     attemptScope: CoroutineScope,
     onViewTransfer: (String) -> Unit,
@@ -148,6 +149,9 @@ internal fun ProtocolAddScreen(
 ) {
     val controller = attemptController ?: remember(attemptScope) { UniversalAddAttemptController { attemptScope } }
     val context = LocalContext.current
+    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
+    val artworkHolder = artworkState ?: remember(profileId) { mutableStateOf(true) }
+    var automaticArtwork by artworkHolder
     val operations = remember(profileId, createOperations) { createOperations() }
     var session by remember(operations) { mutableStateOf<ClientSessionInfo?>(null) }
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
@@ -342,6 +346,11 @@ internal fun ProtocolAddScreen(
             "every file will download.", style = MaterialTheme.typography.bodySmall)
         if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+        // An opted-out new transfer is excluded locally before any client RPC.
+        // The choice is retained per exact profile, never inherited across clients.
+        if (capabilities.artworkChoice) AddArtworkChoice(automaticArtwork, enabled = !attempt.busy && mine && !unresolved) {
+            automaticArtwork = it
+        }
         UniversalAddSubmitAction(
             onClick = {
                 val frozen = source ?: return@UniversalAddSubmitAction
@@ -353,6 +362,7 @@ internal fun ProtocolAddScreen(
                     .associate { it.index to io.github.gamesbyian.chunks.rpc.ReviewedFilePriority(
                         it.path, levels.getValue(it.index)) } else emptyMap()
                 val request = ClientAddRequest(frozen, folder, startState.value, skips, reviewedLevels)
+                val allowArtwork = automaticArtwork // freeze on this one explicit click
                 // The same Universal Add admission as Local and rTorrent: capability-bound
                 // review, the explicit tap as approval, this client's one-Add claim as the
                 // mutation gate, then ONE immutable ticket, all before the write boundary.
@@ -368,7 +378,7 @@ internal fun ProtocolAddScreen(
                         return@UniversalAddSubmitAction
                     }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
-                    profileId, request, session?.defaultDownloadDirectory)
+                    profileId, request, session?.defaultDownloadDirectory, allowArtwork)
                 val appContext = context.applicationContext
                 val aliasStore = saveVerifiedAlias ?: { h: String, value: String ->
                     TransferAliasStore(appContext).saveVerifiedNewAddAlias(ProtocolAliasScope.of(profileId), h, value)
@@ -394,7 +404,14 @@ internal fun ProtocolAddScreen(
                         }
                         attempt.originalDeletion = null
                         attempt.originalNote = null
-                        io.github.gamesbyian.chunks.rpc.ProtocolAddExecutor(operations, request)
+                        io.github.gamesbyian.chunks.rpc.ProtocolAddExecutor(operations, request,
+                            prepareBeforeWrite = {
+                                allowArtwork || withContext(Dispatchers.IO) {
+                                    mediaController?.prepareForAdd(
+                                        io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+                                            intent.target.environment, hash), false) == true
+                                }
+                            })
                     },
                     // A Pending/Uncertain write keeps being observed read-only from the
                     // app-owned scope after leaving Add; never a second write.
@@ -410,6 +427,9 @@ internal fun ProtocolAddScreen(
                             if (run.writeMayHaveHappened) ClientOperationOutcome.Uncertain(hash, "unexpected failure")
                             else ClientOperationOutcome.Refused(hash, "The Add could not be prepared; nothing was sent")
                     }
+                    // Each new source starts checked, even when the user edits another
+                    // source after a verified Add without pressing Add another first.
+                    if (attempt.outcome is ClientOperationOutcome.Verified) automaticArtwork = true
                     // A display name only for this Add's positively verified NEW registration.
                     val verifiedNewHash = (attempt.outcome as? ClientOperationOutcome.Verified)?.hash
                         ?.takeIf { coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
@@ -503,7 +523,10 @@ internal fun ProtocolAddScreen(
             }
             OutlinedButton(onClick = {
                 attempt.clearSettled()
-                if (result is ClientOperationOutcome.Verified) { sourceDraft.value = ""; reviewedTorrent.value = null }
+                if (result is ClientOperationOutcome.Verified) {
+                    sourceDraft.value = ""; reviewedTorrent.value = null
+                    automaticArtwork = true // a fresh Add starts with the default-checked choice
+                }
             }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add another") }
         }
         attempt.originalDeletion?.takeIf { attempt.profileId == profileId }?.let { request ->

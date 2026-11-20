@@ -131,6 +131,32 @@ class ProtocolClientInstalledJourneyTest {
         }
     }
 
+    private fun artworkChoiceIs(expected: androidx.compose.ui.state.ToggleableState) {
+        val matcher = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+        waitFor("per-Add artwork choice available") {
+            runCatching {
+                scrollToNode(matcher)
+                true
+            }.getOrDefault(false)
+        }
+        rule.waitForIdle()
+        val state = rule.onNode(matcher).fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
+        assertEquals("per-Add artwork choice", expected, state)
+    }
+
+    private fun showArtworkChoice() {
+        val matcher = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+        if (rule.onAllNodes(matcher).fetchSemanticsNodes().isEmpty()) {
+            val disclosure = hasText("Artwork & metadata")
+            waitFor("artwork disclosure") {
+                runCatching { scrollToNode(disclosure); true }.getOrDefault(false)
+            }
+            val node = rule.onNode(disclosure)
+            if (node.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] == "Collapsed")
+                node.performSemanticsAction(SemanticsActions.OnClick)
+        }
+    }
+
     /** The shared Universal Add receipt's fixed accessibility state (Local, rTorrent and protocol). */
     private fun receiptVerified() =
         rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified")).fetchSemanticsNodes().isNotEmpty() ||
@@ -300,6 +326,11 @@ class ProtocolClientInstalledJourneyTest {
             rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(magnet)
             rule.waitForIdle()
             ensureStartWhenAddedOff()
+            showArtworkChoice()
+            artworkChoiceIs(androidx.compose.ui.state.ToggleableState.On)
+            rule.onNodeWithTag(ChunksSemantics.ADD_ARTWORK_CHOICE).performSemanticsAction(SemanticsActions.OnClick)
+            artworkChoiceIs(androidx.compose.ui.state.ToggleableState.Off)
+            stage("add-artwork-opt-out-selected")
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
             stage("add-dispatched-once")
             waitFor("Add verified (shared receipt)", 90_000) { receiptVerified() }
@@ -326,6 +357,18 @@ class ProtocolClientInstalledJourneyTest {
             assertTrue("Independent settled readback: remained stopped ($settled)",
                 settled?.runState == ClientRunState.STOPPED)
             stage("add-stopped-verified-independently")
+            val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val automation = io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(
+                java.io.File(appContext.filesDir, "media/automation.json"))
+            fun artworkExcluded(environment: io.github.gamesbyian.chunks.model.EnvironmentId) = automation.isExcluded(
+                io.github.gamesbyian.chunks.media.MediaTransferKey.of(
+                    io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(environment, second.infoHashV1)))
+            assertTrue("Opt-out persisted for the exact protocol profile and hash",
+                artworkExcluded(io.github.gamesbyian.chunks.model.EnvironmentId(profileId)))
+            assertTrue("The same hash on Local is unaffected by the protocol opt-out",
+                !artworkExcluded(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))
+            stage("add-exact-profile-artwork-opt-out-persisted")
+
 
             // View transfer from Add must locate the exact hash on the selected
             // protocol client, rather than merely opening that client's inventory.
@@ -468,6 +511,9 @@ class ProtocolClientInstalledJourneyTest {
             typeInto("Display name in Chunks", choicesAlias)
             stage("choices-display-name-entered")
             ensureStartWhenAddedOff()
+            showArtworkChoice()
+            artworkChoiceIs(androidx.compose.ui.state.ToggleableState.On)
+            stage("next-add-artwork-default-checked")
             clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
             stage("choices-add-dispatched-once")
             val choicesHash = choices.first.infoHashV1

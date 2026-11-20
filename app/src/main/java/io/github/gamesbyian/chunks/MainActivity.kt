@@ -1341,6 +1341,7 @@ internal fun ChunksApp(
             sourceDraft = addSourceDraft,
             reviewedTorrent = localReviewedTorrent,
             startState = localAddStart,
+            artworkState = addArtworkChoices.onProtocol(profile.id),
             attempt = protocolAddAttempt,
             attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
             attemptController = retainedAddOwner?.attempts,
