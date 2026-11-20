@@ -72,26 +72,33 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-    private fun withResumed(block: (MainActivity, LocalAddAttemptOwner) -> Unit) {
+    // Absence is expected while Android is creating the target Activity.
+    // A waitUntil probe may keep polling, rather than aborting the whole test
+    // before the actual permission-granted handoff can complete.
+    private fun withResumed(block: (MainActivity, LocalAddAttemptOwner) -> Unit): Boolean {
+        var found = false
         instrumentation.runOnMainSync {
             val activities = ActivityLifecycleMonitorRegistry.getInstance()
                 .getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>()
-            if (activities.size != 1) throw AssertionError("Exactly one Chunks task must be resumed")
-            val activity = activities.single()
-            block(activity, ViewModelProvider(activity)[LocalAddAttemptOwner::class.java])
+            if (activities.size == 1) {
+                found = true
+                val activity = activities.single()
+                block(activity, ViewModelProvider(activity)[LocalAddAttemptOwner::class.java])
+            }
         }
+        return found
     }
 
     private fun awaitSource(name: String, expected: Uri, bytes: ByteArray) {
         compose.waitUntil(60_000) {
             var reviewed = false
-            withResumed { activity, owner ->
+            val resumed = withResumed { activity, owner ->
                 val file = owner.reviewedTorrent.value
-                reviewed = !activity.isFinishing && file?.preview?.name == name &&
+                reviewed = !activity.isFinishing && file != null && file.preview.name == name &&
                     file.originalDocument == expected && file.bytes.contentEquals(bytes) &&
                     owner.session.attemptedTicket == null
             }
-            reviewed && compose.onAllNodes(hasText(name, substring = true))
+            resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -127,13 +134,13 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         sourceApp.startActivity(send(second))
         compose.waitUntil(60_000) {
             var queued = false
-            withResumed { activity, owner ->
+            val resumed = withResumed { activity, owner ->
                 queued = activity.taskId == originalTask && !activity.isFinishing &&
                     owner.pendingSharedDocument.value == second &&
                     owner.reviewedTorrent.value?.bytes?.contentEquals(firstBytes) == true &&
                     owner.session.attemptedTicket == null
             }
-            queued && compose.onAllNodes(hasText("Use new source", substring = true))
+            resumed && queued && compose.onAllNodes(hasText("Use new source", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
 
