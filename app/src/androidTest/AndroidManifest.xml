@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Belongs to the separately installed androidTest APK, not Chunks.
+             Supplies an opaque external content URI and an actual read grant. -->
+        <provider
+            android:name="io.github.gamesbyian.chunks.external.ExternalTorrentTestProvider"
+            android:authorities="${applicationId}.external-torrent-proof"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+        <!-- The actual external sender runs in the test APK's own UID,
+             creates its private document and dispatches the grant-bearing
+             Open With/Share Intent to the separate Chunks target package. -->
+        <activity
+            android:name="io.github.gamesbyian.chunks.external.ExternalSourceSenderActivity"
+            android:exported="true" />
+    </application>
+</manifest>
