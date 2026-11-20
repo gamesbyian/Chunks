@@ -42,17 +42,21 @@ for port in 19091 18080 18112 19191 18180 18212; do
 done
 b64() { printf '%s' "$1" | base64 -w 0; }
 run_one() {
-  local kind=$1 url=$2 app_url=$3 user=$4 pass=$5
+  local kind=$1 url=$2 app_url=$3 user=$4 pass=$5 mode=$6
+  local class=io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest
+  local test_method=protocolClientConnectTransfersDetailsAddAndRemove
+  if [ "$mode" = fault ]; then test_method=installedAddAfterTheDaemonResponseIsWithheld; fi
+  local raw="$out/instrumentation-$kind-$mode.txt" stages="$out/stages-$kind-$mode.txt"
   local custom_folder="$RUNNER_TEMP/interop/dl/custom-${kind,,}"
   mkdir -p "$custom_folder"
   # Android shell sometimes resolves 'current' to USER_CURRENT (-2) after prior instrumentation.
   # This disposable emulator has a known primary user; clear exactly user 0.
-  adb shell pm clear --user 0 io.github.gamesbyian.chunks >/dev/null
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   set +e
   # Give instrumentation an explicit primary user; CURRENT (-2) is not resolved
   # reliably after repeated app/test process launches in this disposable AVD.
   adb shell am instrument --user 0 -w -r \
-    -e class io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest \
+    -e class "$class#$test_method" \
     -e chunks_protocol_disposable authorized \
     -e chunks_protocol_kind_b64 "$(b64 "$kind")" \
     -e chunks_protocol_url_b64 "$(b64 "$url")" \
@@ -61,26 +65,37 @@ run_one() {
     -e chunks_protocol_user_b64 "$(b64 "$user")" \
     -e chunks_protocol_pass_b64 "$(b64 "$pass")" \
     io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
-    > "$out/instrumentation-$kind.txt" 2>&1
+    > "$raw" 2>&1
   local status=$?
   set -e
-  grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation-$kind.txt" | tee "$out/stages-$kind.txt" || true
-  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation-$kind.txt"; then
-    tail -80 "$out/instrumentation-$kind.txt"
-    echo "::error::Installed protocol-client journey failed for $kind"
+  tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' | tee "$stages" || true
+  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
+    tail -80 "$raw"
+    echo "::error::Installed protocol-client $mode journey failed for $kind"
     return 1
   fi
-  for fault in drop timeout; do
-    grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=add-fault-$fault-one-write-present-origin-unverified" "$out/stages-$kind.txt" || return 1
-  done
-  echo "CHUNKS_INSTALLED_PROTOCOL: $kind installed Add and post-write response loss/timeout passed" | tee -a "$GITHUB_STEP_SUMMARY"
+  if [ "$mode" = fault ]; then
+    for fault in drop timeout; do
+      if ! grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=add-fault-$fault-one-write-present-origin-unverified" "$stages"; then
+        echo "::error::Missing installed $kind $fault witness"
+        return 1
+      fi
+    done
+  fi
+  echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode passed" | tee -a "$GITHUB_STEP_SUMMARY"
+}
+run_pair() {
+  local result=0
+  run_one "$@" positive || result=1
+  run_one "$@" fault || result=1
+  return "$result"
 }
 failed=0
-run_one TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
-run_one QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
+run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
+run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
 # Deluge authenticates with a password only; a blank shell extra is swallowed by
 # adb shell, shifting every following am instrument argument out of position.
 # Send a non-empty unused username placeholder (ignored by the Deluge adapter).
-run_one DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
+run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed
