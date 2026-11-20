@@ -9,6 +9,7 @@ test "$source_sha" = "${CHUNKS_SOURCE_SHA:?}"
 test "$source_sha" = "${GITHUB_SHA:?}"
 source_tree="$(git rev-parse HEAD^{tree})"
 pkg=io.github.gamesbyian.chunks
+runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 app_apk=app/build/outputs/apk/debug/app-debug.apk
 adb install -r "$app_apk" >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
@@ -65,7 +66,7 @@ run_one() {
     -e chunks_protocol_custom_folder_b64 "$(b64 "$custom_folder")" \
     -e chunks_protocol_user_b64 "$(b64 "$user")" \
     -e chunks_protocol_pass_b64 "$(b64 "$pass")" \
-    io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
+    "$runner" \
     > "$raw" 2>&1
   local status=$?
   set -e
@@ -106,13 +107,12 @@ run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chun
 # adb shell, shifting every following am instrument argument out of position.
 # Send a non-empty unused username placeholder (ignored by the Deluge adapter).
 run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
-run_rtorrent() {
+rtorrent_test=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
+run_rtorrent_faults() {
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
-  local test_class=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
-  local runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
   local raw="$out/instrumentation-RTORRENT.txt" stages="$out/stages-RTORRENT.txt"
   if ! adb shell am instrument --user 0 -w -r \
-    -e class "$test_class#stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost" \
+    -e class "$rtorrent_test#stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost" \
     -e chunks_rtorrent_add_fault authorized \
     "$runner" > "$raw" 2>&1 ||
     ! grep -q '^OK (1 test)' "$raw"; then
@@ -128,11 +128,13 @@ run_rtorrent() {
     return 1
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT installed document Add and post-write response loss/timeout passed" |
     tee -a "$GITHUB_STEP_SUMMARY"
+}
 
+run_rtorrent_death() {
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
-  adb shell am instrument --user 0 -w -r -e class "$test_class#submitThenKillTheAppProcess" \
+  adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#submitThenKillTheAppProcess" \
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || true
   adb logcat -d -s ChunksAddFault:I > "$out/process-death-boundary.txt" || return 1
   if ! grep -Fq 'process-death-real-write-awaits-ack' "$out/process-death-boundary.txt" ||
@@ -142,7 +144,7 @@ run_rtorrent() {
     echo "::error::The installed app did not die at the held Add write boundary"
     return 1
   fi
-  if ! adb shell am instrument --user 0 -w -r -e class "$test_class#freshProcessDoesNotReplayTheHeldAdd" \
+  if ! adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 ||
     ! grep -q '^OK (1 test)' "$out/process-death-phase2.txt" ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=process-death-no-replay-no-start-original-unchanged' "$out/process-death-phase2.txt"; then
@@ -153,13 +155,13 @@ run_rtorrent() {
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
-run_rtorrent || failed=1
+run_rtorrent_faults || failed=1
+run_rtorrent_death || failed=1
 run_local_add_death() {
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
   local class=io.github.gamesbyian.chunks.LocalInstalledAddProcessDeathTest
-  local runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
   local before="$out/local-add-death-phase1.txt" after="$out/local-add-death-phase2.txt"
   adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
     -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || true
