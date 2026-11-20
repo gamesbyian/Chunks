@@ -121,6 +121,8 @@ run_rtorrent() {
   for fault in drop timeout; do
     grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=add-fault-$fault-one-write-present-origin-unverified" "$stages" || return 1
   done
+  grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=add-fault-hidden-main-session-found-with-origin-unverified' "$stages" ||
+    return 1
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT installed document Add and post-write response loss/timeout passed" |
     tee -a "$GITHUB_STEP_SUMMARY"
 

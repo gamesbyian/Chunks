@@ -171,23 +171,39 @@ class RTorrentInstalledAddResponseFaultTest {
                     runBlocking { witness.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
                         ?.let { it.name == name && !it.started } == true
                 }
-                journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
-                journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
-                activity = recreateAfterIntake(activity, originalIntent)
-                journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
-                journey.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$exactScope")
-                journey.awaitAddReceipt("Present, origin unverified")
-                assertFalse("Exact readback cannot prove who created the registration", journey.hasReceiptState("Verified"))
-                val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
-                val addList = rule.onNode(hasScrollToIndexAction())
-                addList.assertExists()
-                assertFalse("The retained result has no Add action", runCatching {
-                    addList.performScrollToNode(submit)
-                }.isSuccess)
-                journey.viewExactTransfer(exactScope, hash)
-                journey.awaitTransferReceipt("Present, origin unverified")
+                val hideFromMain = fault == "timeout"
+                if (hideFromMain) runBlocking { witness.call("view.set_not_visible", listOf(hash, "main")) }
+                try {
+                    if (hideFromMain) {
+                        assertEquals("The exact session still exists", name, runBlocking { witness.lookupName(hash) })
+                        assertTrue("The job is absent from main while the app checks its exact session",
+                            runBlocking { witness.listTransfers("main").none { it.hash.equals(hash, true) } })
+                    }
+                    journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                    journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
+                    activity = recreateAfterIntake(activity, originalIntent)
+                    journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
+                    journey.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$exactScope")
+                    journey.awaitAddReceipt("Present, origin unverified")
+                    assertFalse("Exact readback cannot prove who created the registration", journey.hasReceiptState("Verified"))
+                    val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+                    val addList = rule.onNode(hasScrollToIndexAction())
+                    addList.assertExists()
+                    assertFalse("The retained result has no Add action", runCatching {
+                        addList.performScrollToNode(submit)
+                    }.isSuccess)
+                    journey.viewExactTransfer(exactScope, hash)
+                    journey.awaitTransferReceipt("Present, origin unverified")
 
-                faultRelay.requireOneWriteAndNoStart()
+                    faultRelay.requireOneWriteAndNoStart()
+                    if (hideFromMain) {
+                        assertTrue("Read-only recovery did not change the server view",
+                            runBlocking { witness.listTransfers("main").none { it.hash.equals(hash, true) } })
+                        stage("add-fault-hidden-main-session-found-with-origin-unverified")
+                    }
+                } finally {
+                    if (hideFromMain) runBlocking { witness.call("view.set_visible", listOf(hash, "main")) }
+                }
                 val observed = runBlocking { witness.listTransfers("main").single { it.hash.equals(hash, true) } }
                 assertFalse("The fixture must remain stopped", observed.started)
                 assertTrue("The job stayed in the exact reviewed folder",
