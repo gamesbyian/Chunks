@@ -97,8 +97,7 @@ class RTorrentInstalledAddResponseFaultTest {
         Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     ) as MainActivity
 
-    private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String,
-        expectedName: String): Intent? {
+    private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String): Intent? {
         // Establish the real authenticated destination before Android intake.
         // This avoids racing a post-Connect route transition with the new share,
         // and exercises the ordinary source-first form without a Local detour.
@@ -208,7 +207,7 @@ class RTorrentInstalledAddResponseFaultTest {
                 val hash = fixture.infoHashV1
                 assertNull("The exact disposable fixture must be absent", runBlocking { witness.lookupName(hash) })
                 val document = document(name, fixture.torrent)
-                val originalIntent = openForStoppedAdd(activity, document, hash, name)
+                val originalIntent = openForStoppedAdd(activity, document, hash)
                 faultRelay.arm(fault)
                 journey.submit()
                 stage("add-fault-$fault-dispatched-once")
@@ -283,7 +282,7 @@ class RTorrentInstalledAddResponseFaultTest {
         val activity = launchMain()
         try {
             connect()
-            openForStoppedAdd(activity, document, hash, processDeathName)
+            openForStoppedAdd(activity, document, hash)
             faultRelay.arm("hold")
             journey.submit()
             rule.waitUntil(10_000) { faultRelay.hasWithheldReply() }
