@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,14 +65,20 @@ internal fun AddArtworkChoice(
     automatic: Boolean,
     enabled: Boolean,
     offeredByParent: Boolean? = null,
+    expandedState: MutableState<Boolean>? = null,
     onAutomatic: (Boolean) -> Unit
 ) {
     val offered = offeredByParent ?: rememberAddArtworkChoiceOffered()
     if (!offered) return
 
-    var expanded by rememberSaveable { mutableStateOf(false) }
+    // A LazyColumn can dispose its "artwork" item while scrolling. The Add
+    // form supplies a retained parent state, so neither disposal nor the
+    // second Add's temporary status-only item loses the person's disclosure.
+    val localExpanded = rememberSaveable { mutableStateOf(false) }
+    val disclosure = expandedState ?: localExpanded
+    val expanded = disclosure.value
     Column(Modifier.fillMaxWidth()) {
-        OutlinedButton(onClick = { expanded = !expanded },
+        OutlinedButton(onClick = { disclosure.value = !expanded },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                 stateDescription = if (expanded) "Expanded" else "Collapsed"
             }) { Text("Artwork & metadata") }

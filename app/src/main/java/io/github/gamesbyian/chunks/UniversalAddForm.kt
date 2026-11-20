@@ -11,6 +11,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -52,6 +54,9 @@ internal fun UniversalAddForm(
     guidance: @Composable () -> Unit = {}
 ) {
     val artworkOffered = capabilities.artworkChoice && rememberAddArtworkChoiceOffered()
+    // Owned outside all LazyColumn items. A temporary change of Add status
+    // or lazy disposal must never collapse the checkbox the person is using.
+    val artworkDisclosure = rememberSaveable { mutableStateOf(false) }
     fun section(id: String, content: @Composable () -> Unit) = id to content
     val sections = listOf(
         section("title") {
@@ -66,7 +71,10 @@ internal fun UniversalAddForm(
         },
         section("files") { files(capabilities) },
         section("artwork") {
-            artwork?.let { AddArtworkChoice(it.checked, it.enabled, artworkOffered, it.onChange) }
+            artwork?.let {
+                AddArtworkChoice(it.checked, it.enabled, artworkOffered,
+                    expandedState = artworkDisclosure, onAutomatic = it.onChange)
+            }
         },
         section("options", options),
         section("submit") {
