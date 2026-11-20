@@ -23,6 +23,7 @@ import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.TorrentClient
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -45,6 +46,8 @@ class ProtocolAddScreenTest {
         var added: ClientAddRequest? = null
         var writes = 0
         var loseNextWrite = false
+        /** Stop at a real suspend boundary so a newer source can arrive before the old response. */
+        var beforeAddCompletion: CompletableDeferred<Unit>? = null
         /** The write lands on the client, but its reply is lost. */
         var landThenLoseNextWrite = false
         var reads = 0
@@ -57,6 +60,7 @@ class ProtocolAddScreenTest {
         override suspend fun files(hash: String) = emptyList<io.github.gamesbyian.chunks.rpc.ClientFile>()
         override suspend fun add(request: ClientAddRequest) {
             writes++
+            beforeAddCompletion?.await()
             if (loseNextWrite) { loseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
             added = request
             if (landThenLoseNextWrite) { landThenLoseNextWrite = false; throw io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException("lost") }
@@ -241,6 +245,43 @@ class ProtocolAddScreenTest {
         attempt.releaseUnwritten(hash)
         assertFalse(attempt.submittedTextStillSelected(selectedText))
         assertFalse(attempt.submittedFileStillSelected(first))
+    }
+
+    @Test fun lateOldAddVerificationCannotResetNewSourceArtworkOptOut() {
+        val gate = CompletableDeferred<Unit>()
+        val fake = Fake().apply { beforeAddCompletion = gate }
+        val attempt = ProtocolAddAttempt()
+        val oldSource = "magnet:?xt=urn:btih:$hash&dn=old"
+        val draft = mutableStateOf(oldSource)
+        val artwork = mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                ProtocolAddScreen(
+                    profileId = "p", clientLabel = "Box Deluge",
+                    createOperations = { ClientOperations(fake, 3, 1) },
+                    destinationPicker = {},
+                    sourceDraft = draft, reviewedTorrent = mutableStateOf(null),
+                    startState = mutableStateOf(false),
+                    artworkState = artwork, attempt = attempt,
+                    attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
+                    onViewTransfer = {}
+                )
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(10_000) { fake.writes == 1 }
+        // A genuine external Share can update the app-owned draft while
+        // the previous wire call is still in flight. The new Add's opt-out
+        // must not be reset by its predecessor's delayed positive outcome.
+        val newSource = "magnet:?xt=urn:btih:" + "ef".repeat(20) + "&dn=new"
+        rule.runOnIdle { draft.value = newSource; artwork.value = false }
+        gate.complete(Unit)
+        rule.waitUntil(10_000) { attempt.outcome is ClientOperationOutcome.Verified }
+        rule.runOnIdle {
+            assertEquals(newSource, draft.value)
+            assertFalse("Old Add verification must not override a newer source's opt-out", artwork.value)
+            assertEquals("One write for only the old source", 1, fake.writes)
+        }
     }
 
     @Test fun anotherClientsAttemptBlocksSubmission() {

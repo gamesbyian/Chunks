@@ -85,6 +85,10 @@ internal class ProtocolAddAttempt {
             java.security.MessageDigest.isEqual(it, digest(current.bytes))
         } == true
 
+    internal fun submittedDraftStillSelected(currentText: String, currentFile: PendingLocalAdd?): Boolean =
+        submittedTextStillSelected(currentText) &&
+            if (submittedFile == null) currentFile == null else submittedFileStillSelected(currentFile)
+
     private fun discardSubmittedDraftFingerprint() {
         submittedTextDigest = null
         submittedFile = null
@@ -524,7 +528,12 @@ internal fun ProtocolAddScreen(
                             attempt.originalDeletion = retirement.deletion
                             attempt.originalNote = retirement.note
                         }
-                        if (settled is ClientOperationOutcome.Verified) automaticArtwork = true
+                        // An old reply may settle after a newer Android Share or
+                        // a newer source-specific artwork opt-out. It may reset
+                        // only the preference of the same exact source.
+                        if (settled is ClientOperationOutcome.Verified &&
+                            attempt.submittedDraftStillSelected(sourceDraft.value, reviewedTorrent.value))
+                            automaticArtwork = true
                     } finally {
                         attempt.outcome = settled
                     }
@@ -605,10 +614,11 @@ internal fun ProtocolAddScreen(
                 // by that old write; never drop a newer document or passkey.
                 val sameText = attempt.submittedTextStillSelected(sourceDraft.value)
                 val sameFile = attempt.submittedFileStillSelected(reviewedTorrent.value)
+                val sameDraft = attempt.submittedDraftStillSelected(sourceDraft.value, reviewedTorrent.value)
                 if (attempt.clearSettled(profileId) && phase != UniversalAddCoordinator.Phase.REVIEWED) {
                     if (sameText) sourceDraft.value = ""
                     if (sameFile) reviewedTorrent.value = null
-                    if (sameText && (sameFile || reviewedTorrent.value == null)) automaticArtwork = true
+                    if (sameDraft) automaticArtwork = true
                 }
             }
         }
