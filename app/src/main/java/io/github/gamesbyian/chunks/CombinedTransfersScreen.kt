@@ -403,6 +403,10 @@ internal fun CombinedTransfersScreen(
      * list and coming Back. It is still never written to preferences.
      */
     searchState: androidx.compose.runtime.MutableState<String>? = null,
+    initialAddSearch: String? = null,
+    onManualSearchEdited: () -> Unit = {},
+    addReceipts: List<UniversalAddTransferReceipt> = emptyList(),
+    onReviewAdd: (EnvironmentId) -> Unit = {},
     /**
      * Caller-owned last read-only listings of other saved profiles, so returning
      * from Add/Connections/Options shows last-known counts and rows instead of
@@ -444,7 +448,9 @@ internal fun CombinedTransfersScreen(
     val activity = remember(context) { context.findActivity() }
     // Persistent preference reads run off the composition thread. A saved
     // snapshot cannot replace a scope/filter/search chosen while it loads.
-    var query by remember { mutableStateOf(UnifiedTransferQuery(search = searchState?.value.orEmpty())) }
+    var query by remember {
+        mutableStateOf(UnifiedTransferQuery(search = initialAddSearch ?: searchState?.value.orEmpty()))
+    }
     var queryTouched by remember { mutableStateOf(false) }
     // Read the mutable query state inside each callback. A remembered updated
     // value only refreshes on recomposition, so two rapid clicks (sort key,
@@ -468,8 +474,11 @@ internal fun CombinedTransfersScreen(
     }
     fun update(next: UnifiedTransferQuery) {
         queryTouched = true
+        if (next.search != query.search) {
+            searchState?.value = next.search
+            onManualSearchEdited()
+        }
         query = next
-        searchState?.value = next.search
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
@@ -1544,6 +1553,14 @@ internal fun CombinedTransfersScreen(
             quickResults[key]?.forEach { line -> Text(line, style = MaterialTheme.typography.bodySmall) }
         }
     }
+    val visibleAddReceipts = addReceipts.filter { receipt ->
+        val environment = receipt.key.environment
+        environmentVisible(query.scope, environment) && when (environment) {
+            EnvironmentSnapshots.LOCAL -> localPrivacy.mayShow
+            serverId -> serverPrivacy?.mayShow == true
+            else -> environment in protocolAllowed
+        }
+    }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
         LazyColumn(Modifier.fillMaxSize().testTag(ChunksSemantics.TRANSFERS_SCREEN).semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
@@ -1553,6 +1570,20 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
+        }
+
+        visibleAddReceipts.forEach { receipt ->
+            item(key = "add-receipt-" + receipt.key.environment.value) {
+                UniversalAddReceiptCard(receipt.display,
+                    modifier = Modifier.testTag(ChunksSemantics.TRANSFERS_ADD_RECEIPT)) {
+                    UniversalAddContinuationAction(
+                        ChunksSemantics.TRANSFERS_ADD_REVIEW + "." + receipt.key.environment.value,
+                        "Review Add on ${receipt.clientLabel}"
+                    ) {
+                        onReviewAdd(receipt.key.environment)
+                    }
+                }
+            }
         }
 
         if (firstRunVisible) {
@@ -1618,7 +1649,9 @@ internal fun CombinedTransfersScreen(
                             else -> ""
                         }, maxLines = 1) },
                         leadingIcon = { EnvironmentDot(hueFor(id)) },
-                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        modifier = Modifier.heightIn(min = 48.dp)
+                            .testTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES + "." + id.value)
+                            .semantics {
                             contentDescription = (if (visible) "Showing " else "Hidden: ") +
                                 label + ", " + (if (count == "?") "count unknown" else "$count transfers") +
                                 (if (unavailable) ", currently unavailable" else "")
@@ -1640,6 +1673,7 @@ internal fun CombinedTransfersScreen(
                     queryTouched = true
                     query = query.copy(search = it)
                     searchState?.value = it
+                    onManualSearchEdited()
                 },
                 filtersExpanded = showingViewOptions,
                 batchExpanded = showingBatchTools,

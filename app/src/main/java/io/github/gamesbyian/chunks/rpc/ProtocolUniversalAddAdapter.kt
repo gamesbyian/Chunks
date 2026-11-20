@@ -25,7 +25,8 @@ internal object ProtocolUniversalAddAdapter {
     fun intent(
         clientId: String,
         request: ClientAddRequest,
-        clientDefaultFolder: String?
+        clientDefaultFolder: String?,
+        allowArtwork: Boolean = true
     ): UniversalAddIntent = UniversalAddIntent(
         source = when (val source = request.source) {
             is ClientAddSource.TorrentFile -> UniversalAddSource.metainfo(source.bytes, source.infoHash)
@@ -35,7 +36,7 @@ internal object ProtocolUniversalAddAdapter {
         place = request.directory?.let { UniversalAddPlace.ServerCustom(it) }
             ?: UniversalAddPlace.ServerDefault(clientDefaultFolder.orEmpty()),
         startWhenAdded = request.startNow,
-        allowArtwork = false
+        allowArtwork = allowArtwork
     )
 
     /**
@@ -67,7 +68,9 @@ internal object ProtocolUniversalAddAdapter {
 internal class ProtocolAddExecutor(
     private val operations: ClientOperations,
     private val request: ClientAddRequest,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** Local privacy preference preflight. Failure is a proven no-write refusal. */
+    private val prepareBeforeWrite: (suspend () -> Boolean)? = null
 ) : UniversalAddExecutor<ClientOperationOutcome> {
     private var writeStartedAt = -1L
 
@@ -76,6 +79,12 @@ internal class ProtocolAddExecutor(
             "The request is not the reviewed ticket's source"
         }
         require(ticket.intent.target is UniversalAddTarget.ProtocolClient) { "Not a protocol client ticket" }
+        val place = ticket.intent.place
+        require(ticket.intent.startWhenAdded == request.startNow && when (place) {
+            is UniversalAddPlace.ServerCustom -> ClientHashes.sameDirectory(place.absolutePath, request.directory)
+            is UniversalAddPlace.ServerDefault -> request.directory == null
+            else -> false
+        }) { "The request is not the reviewed ticket's Place and Start" }
     }
 
     override suspend fun execute(
@@ -83,15 +92,43 @@ internal class ProtocolAddExecutor(
         boundary: UniversalAddWriteBoundary
     ): ClientOperationOutcome {
         requireTicket(ticket)
-        // Sampled before the write: the workflow's readback starts after it,
-        // so this never makes the result look newer than the client's own read.
-        writeStartedAt = clock()
-        boundary.enter()
-        return try { operations.add(request) } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            ClientOperationOutcome.Uncertain(request.source.infoHash, "unexpected failure")
+        val place = ticket.intent.place
+        val reviewedDefault = (place as? UniversalAddPlace.ServerDefault)?.reviewedProtocolFolder()
+        if (place is UniversalAddPlace.ServerDefault && reviewedDefault == null) {
+            return ClientOperationOutcome.Refused(request.source.infoHash,
+                "The default folder could not be confirmed; choose an explicit folder")
         }
+        val result = operations.add(request, reviewedDefaultDirectory = reviewedDefault) {
+            if (reviewedDefault != null) {
+                val currentDefault = try {
+                    operations.session(refresh = true).defaultDownloadDirectory
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) { null }
+                if (!ClientHashes.sameDirectory(reviewedDefault, currentDefault)) {
+                    return@add "The reviewed default folder could not be confirmed; review Save to again"
+                }
+            }
+            // Read-only absence/capability checks have already passed. A refusal
+            // there cannot change the preference of an existing transfer.
+            val prepared = try {
+                ticket.intent.allowArtwork || prepareBeforeWrite?.invoke() == true
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) { false }
+            if (!prepared) "The artwork preference could not be saved; nothing was sent"
+            else {
+                writeStartedAt = clock()
+                boundary.enter()
+                null
+            }
+        }
+        if (result is ClientOperationOutcome.Verified &&
+            !ClientHashes.sameDirectory(result.observed?.downloadDirectory, place.reviewedProtocolFolder())) {
+            return ClientOperationOutcome.Pending(result.hash, result.observed,
+                "Registered, but the reviewed folder could not be confirmed")
+        }
+        return result
     }
 
     override suspend fun settle(
@@ -131,11 +168,7 @@ internal class ProtocolAddObserver(
             throw cancel
         } catch (_: Exception) { return null }
         if (torrent != null && !torrent.hash.equals(hash, ignoreCase = true)) return null
-        val reviewedFolder = when (val place = ticket.intent.place) {
-            is UniversalAddPlace.ServerCustom -> place.absolutePath
-            is UniversalAddPlace.ServerDefault -> place.observedDefaultPath.ifBlank { null }
-            else -> null
-        }
+        val reviewedFolder = ticket.intent.place.reviewedProtocolFolder()
         val started = torrent?.runState?.started
         return UniversalAddCoordinator.ExactSessionObservation(
             environment = ticket.intent.target.environment,
@@ -149,4 +182,10 @@ internal class ProtocolAddObserver(
             newRegistrationVerified = false
         )
     }
+}
+
+private fun UniversalAddPlace.reviewedProtocolFolder(): String? = when (this) {
+    is UniversalAddPlace.ServerCustom -> absolutePath
+    is UniversalAddPlace.ServerDefault -> runCatching { ClientHashes.requireDirectory(observedDefaultPath) }.getOrNull()
+    else -> null
 }

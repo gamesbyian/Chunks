@@ -84,7 +84,7 @@ class LocalUniversalAddScreenGateTest {
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
         rule.onNodeWithText("Open .torrent").performScrollTo().assertIsNotEnabled()
-        rule.onNodeWithText("Review another local Add").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).assertDoesNotExist()
         assertNotNull(session.attemptedTicket)
         assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, session.coordinator.phase)
     }
@@ -112,7 +112,7 @@ class LocalUniversalAddScreenGateTest {
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
         rule.onNodeWithText("Acknowledge existing job (Start unverified)").assertDoesNotExist()
-        rule.onNodeWithText("Review another local Add").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).assertDoesNotExist()
         assertSame("Contrary inventory keeps the exact attempted ticket", ticket, session.attemptedTicket)
         assertNull("No new engine Add is authorized by contrary readback",
             session.coordinator.beginSubmission(13_000L))
@@ -156,7 +156,7 @@ class LocalUniversalAddScreenGateTest {
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
         rule.onNodeWithText("Acknowledge existing job, then review another").assertDoesNotExist()
-        rule.onNodeWithText("Review another local Add").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).assertDoesNotExist()
         assertSame("Exact attempted ticket remains fenced", ticket, session.attemptedTicket)
         assertNull("Contrary readback never authorizes a new engine Add",
             session.coordinator.beginSubmission(13_000L))

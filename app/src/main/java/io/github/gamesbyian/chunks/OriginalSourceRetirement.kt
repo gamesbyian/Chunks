@@ -1,15 +1,27 @@
 package io.github.gamesbyian.chunks
 
+import android.content.ContentResolver
 import android.content.Context
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
  * The one engine-neutral application of the global original-`.torrent`
- * Keep/Archive/Delete policy after an Add, shared by rTorrent and the
- * Transmission/qBittorrent/Deluge clients (Local applies the same
- * [SourceTorrentArchive] inside its native sequence).
+ * Keep/Archive/Delete policy after an Add across all five clients.
  *
  * Only a verified NEW exact job ([verifiedNewHash] non-null) may archive a
  * private copy or request deletion; an uncertain, exact-session or
@@ -49,5 +61,51 @@ internal object OriginalSourceRetirement {
         val deletion = if (archived is SourceArchiveOutcome.ArchivedCopy && frozen.deletable)
             request(archivedCopy = true) else null
         return Result(archiveOutcomeMessage(archived, frozen.handling), deletion)
+    }
+}
+
+/** A separately approved original-document action remains bound to its exact reviewed request. */
+internal class OriginalAddDocumentState {
+    var deletion by mutableStateOf<OriginalDeletionRequest?>(null)
+    var note by mutableStateOf<String?>(null)
+    var deleting by mutableStateOf(false)
+        private set
+
+    fun keep(request: OriginalDeletionRequest) {
+        if (deleting || deletion !== request) return
+        deletion = null
+        note = if (request.archived)
+            "The original .torrent file was kept; Chunks also keeps its archived copy."
+        else "The original .torrent file was kept."
+    }
+
+    fun delete(resolver: ContentResolver, scope: CoroutineScope, request: OriginalDeletionRequest) {
+        if (deleting || deletion !== request) return
+        deleting = true
+        scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    OriginalTorrentDocuments.deleteReviewed(resolver, request)
+                }
+                if (deletion === request) note = originalDeletionMessage(result, request.archived)
+            } finally {
+                if (deletion === request) deletion = null
+                deleting = false
+            }
+        }
+    }
+}
+
+@Composable
+internal fun OriginalAddDocumentStatus(state: OriginalAddDocumentState, scope: CoroutineScope) {
+    val resolver = LocalContext.current.applicationContext.contentResolver
+    state.deletion?.let { request ->
+        OriginalDeletionPrompt(request, busy = state.deleting,
+            onDelete = { state.delete(resolver, scope, request) },
+            onKeep = { state.keep(request) })
+    }
+    state.note?.let {
+        Text(it, style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     }
 }

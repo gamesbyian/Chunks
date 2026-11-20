@@ -13,11 +13,16 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddDestinationPicker.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
       - "tools/installed_protocol_client.sh"
+      - "tools/verify_installed_apk_bytes.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledUniversalAddJourney.kt"
       - "tools/interop/**"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  CHUNKS_SOURCE_SHA: ${{ github.sha }}
 
 concurrency:
   group: chunks-installed-protocol-${{ github.event.pull_request.number || github.run_id }}

@@ -72,7 +72,7 @@ internal data class UniversalAddClientCapabilities(
                 finishInOrderAtAdd = false,
                 // Stored under the exact profile's ProtocolAliasScope after a verified new Add.
                 displayName = true,
-                artworkChoice = false,
+                artworkChoice = true,
                 originalSourcePolicy = true)
         }
     }

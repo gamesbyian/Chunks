@@ -328,6 +328,7 @@ internal fun LocalEngineScreen(
     onSearchConsumed: () -> Unit = {},
     /** Reports each Add the local device engine acknowledged and read back, by its exact hash. */
     onAcknowledgedAdd: (String) -> Unit = {},
+    onViewAddTransfer: ((String) -> Unit)? = null,
     /** The Local options tool just closed ("SEEDING", "CREATE", "ARCHIVES"); its button regains focus. */
     returnFocusTool: String? = null,
     onReturnFocusConsumed: () -> Unit = {},
@@ -425,10 +426,10 @@ internal fun LocalEngineScreen(
         localFilterStore.save(choice)
     }
     // Exact hash of the latest acknowledged local Add, for "hidden by view" only.
-    var lastAddedHash by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastAddedHash by remember { mutableStateOf<String?>(null) }
     // The search/filter in effect when that Add happened. Any later deliberate
     // view change retires the notice, so an old Add is never called "new".
-    var lastAddedView by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastAddedView by remember { mutableStateOf<String?>(null) }
     // The outcome text an acknowledged Add produced, with its exact hash, so
     // only that notice offers "Show new transfer". Process memory only.
     var addedOutcome by remember { mutableStateOf<Pair<String?, String>?>(null) }
@@ -520,11 +521,7 @@ internal fun LocalEngineScreen(
         problemOutcome = text
     }
     var busy by remember { mutableStateOf(false) }
-    // Separately approved deletion of a verified Add's original document; RAM only.
-    var originalDeletion by remember { mutableStateOf<OriginalDeletionRequest?>(null) }
-    var originalDeleting by remember { mutableStateOf(false) }
-    // The outcome of that separate action; the Add's own result message stays intact.
-    var originalNote by remember { mutableStateOf<String?>(null) }
+    val originalAddDocument = localAddAttemptSession?.originalDocument ?: remember { OriginalAddDocumentState() }
     // Parent-owned private source is available to all intake callbacks, including
     // the asynchronous picker. Keep it in RAM rather than Android SavedState.
     val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
@@ -1091,251 +1088,65 @@ internal fun LocalEngineScreen(
             message?.let { LocalOutcomeNotice(it, needsAttention = problemOutcome == it) }
         }
         if (pane == LocalPane.ADD) {
-        Text("Add a transfer", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        localAddAttemptSession?.attemptedTicket?.let {
-            val phase = localAddAttemptSession.coordinator.phase
-            // The same client-neutral receipt vocabulary is used by rTorrent.
-            // A local registration token is positive new-Add evidence; a matching
-            // hash seen after an uncertain write is not.
-            val display = UniversalAddDisplayProjector.from(
-                phase = phase,
-                clientLabel = "Local",
-                submitting = busy,
-                registrationFromThisSubmission = localAddAttemptSession.registrationFromThisSubmission
-            )
-            if (display != null) UniversalAddReceiptCard(
-                receipt = display,
-                needsAttention = display.stage in setOf(
-                    io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.UNCONFIRMED,
-                    io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.START_UNVERIFIED
-                )
-            )
-            // The same read-only Check status as the protocol clients: one exact
-            // native list read of this ticket, never a second Add.
-            val localEnvironment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
-            if (!busy && phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED &&
-                !localAttemptController.isFollowingUp(localEnvironment)) {
-                val checkingNow = localAttemptController.isChecking(localEnvironment)
-                OutlinedButton(onClick = {
-                    localAttemptController.recheck(localAddAttemptSession.coordinator,
-                        LocalNativeAddObserver(localAddAttemptSession)) { readback ->
-                        if (readback == null) noteProblem(
-                            "The local transfer list could not be read. Nothing was sent; check again later.")
-                        else if (readback == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.NOT_OBSERVED)
-                            noteProblem("Local does not list this transfer yet. Nothing was resent.")
-                    }
-                }, enabled = !checkingNow,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .testTag(ChunksSemantics.ADD_CHECK_STATUS)) {
-                    Text(if (checkingNow) "Checking Local…" else "Check status")
-                }
+            val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
+            val isLink = remember(magnet) { TorrentLinkCheck.inspect(magnet) !is TorrentLinkCheck.NotALink }
+            val sourceEnabled = !busy && localAddAttemptSession?.attemptedTicket == null
+            val add = pending
+            // Files to download, chosen before Add (multi-file .torrent only); read off the UI thread.
+            var addFiles by remember(add) { mutableStateOf<List<DeclaredAddFile>?>(null) }
+            var skippedFiles by remember(add) { mutableStateOf<Set<Int>>(emptySet()) }
+            // Reviewed Low/High per wanted file, for exactly this reviewed .torrent.
+            var fileLevels by remember(add) {
+                mutableStateOf<Map<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>>(emptyMap())
             }
-            if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ||
-                phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
-                phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) {
-                if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
-                    Text("Acknowledging does not confirm payload Start or repeat Add. Inspect the existing transfer before starting it separately.",
-                        style = MaterialTheme.typography.bodySmall)
-                OutlinedButton(onClick = {
-                    val done = if (phase ==
-                        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
-                        localAddAttemptSession.acknowledgeObservedJob()
-                    else localAddAttemptSession.finishReviewedAttempt()
-                    if (done) {
-                        pending = null
-                        magnet = ""
-                        addFolderDraft = ""
-                        currentAddPlaceId = null
-                        addExpanded = true
-                        message = if (phase ==
-                            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
-                            "Existing local job acknowledged with Start unverified. No retry was sent; review a new source explicitly."
-                        else "Previous local Add review closed. Choose your next source explicitly."
-                    }
-                }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(when (phase) {
-                        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ->
-                            "Review another local Add"
-                        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
-                            "Acknowledge existing job (Start unverified)"
-                        else -> "Acknowledge existing job, then review another"
-                    })
-                }
+            var fileChoiceOpen by remember(add) { mutableStateOf(false) }
+            LaunchedEffect(add) {
+                val reviewedAdd = add?.takeIf { it.preview.fileCount >= 2 } ?: return@LaunchedEffect
+                addFiles = withContext(Dispatchers.Default) { AddFileChoices.declared(reviewedAdd.bytes.copyOf()) }
             }
-        }
-        if (addExpanded || pane == LocalPane.ADD) {
-        val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
-        val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
-        val isLink = linkCheck !is TorrentLinkCheck.NotALink
-        // The one shared source-first intake (as rTorrent and the protocol clients).
-        val sourceEnabled = !busy && localAddAttemptSession?.attemptedTicket == null
-        UniversalAddSourceSection(
-            text = magnet,
-            onTextChange = { selectTextSource(it.trim()) },
-            enabled = sourceEnabled,
-            onOpenTorrent = { picker.launch(arrayOf("*/*")) },
-            readingTorrent = sourceReading,
-            linkFetching = linkFetching,
-            // Read-only source validation does not require a local Place.
-            // Actual Add still requires the existing fresh inventory/Place gates.
-            // An existing verified review remains selected until the replacement fetch
-            // succeeds and validates; refusal must never require discarding it first.
-            onFetchLink = fetch@{ link ->
-                if (!sourceEnabled || sourceReading) return@fetch
-                initialTorrentUri?.let(onTorrentConsumed)
-                linkFetching = true
-                scope.launch {
-                    val read = beginSourceRead()
-                    try {
-                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
-                        val result = withContext(Dispatchers.IO) { fetchTorrentDocument(link) }
-                        if (sourceReadJob !== read) return@launch
-                        when (result) {
-                            is TorrentLinkResult.Fetched -> {
-                                // The same reviewed .torrent Add as the picker and Android share.
-                                pending = PendingLocalAdd(result.preview, result.bytes)
-                                magnet = ""
-                                clipboardFilled = null
-                                message = "Torrent from " + result.display +
-                                    " is ready to review below. Nothing has been added."
-                            }
-                            is TorrentLinkResult.Refused -> noteProblem(result.message)
-                        }
-                    } finally {
-                        if (sourceReadJob === read) sourceReadJob = null
-                        linkFetching = false
-                    }
+            val declaredFiles = addFiles
+            var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
+            // Null until the saved default and the provider's delete support are read on IO;
+            // an Add confirmed before then keeps the original untouched.
+            var originalHandling by remember(add) { mutableStateOf<OriginalTorrentHandling?>(null) }
+            var originalDeletable by remember(add) { mutableStateOf(false) }
+            LaunchedEffect(add) {
+                val document = add?.originalDocument ?: return@LaunchedEffect
+                val (saved, deletable) = withContext(Dispatchers.IO) {
+                    OriginalTorrentHandlingStore(context).default to
+                        OriginalTorrentDocuments.supportsDelete(context, document)
                 }
-            },
-            onPaste = { selectTextSource(it) },
-            onNothingToPaste = { message = UniversalAddSourceText.NOTHING_TO_PASTE },
-            modifier = Modifier.bringIntoViewRequester(addRequester)
-        ) {
-            if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
-                onClear = { magnet = ""; clipboardFilled = null },
-                enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null)
-        }
-        if (magnetCheck is MagnetDraftCheck.Valid) Text(
-            "Seeding: your device Seeding rules choose a policy when this magnet's metadata " +
-                "arrives (its trackers and private flag are known then); otherwise the local device default applies.",
-            style = MaterialTheme.typography.bodySmall)
-        addDestinationPicker?.invoke()
-        // Save to is a primary Add choice, above Start and submission.
-        // Keep both intake methods discoverable before optional storage, seeding
-        // and engine explanations. Existing Place and safety gates remain authoritative.
-        LocalDownloadPlacePicker(
-            resolution = addPlaceResolution,
-            enabled = !busy && !inventoryStale && !placeSaving &&
-                localAddAttemptSession?.attemptedTicket == null,
-            currentAdd = true,
-            defaultResolution = placeResolution,
-            onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
-            onUseDefault = { currentAddPlaceId = null },
-            onSaveDefault = { choice ->
-                placeSaving = true
-                scope.launch {
-                    val saved = withContext(Dispatchers.IO) {
-                        try {
-                            // Recheck the exact root, including removable-volume identity.
-                            LocalDownloadPlaces.choices(context).singleOrNull {
-                                LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
-                            }?.let { LocalDownloadPlaces.remember(context, it) } == true
-                        } catch (_: Exception) { false }
-                    }
-                    if (saved) {
-                        placeCheck++
-                        message = "Local default saved for future Adds. Existing transfers keep their files where they are."
-                    } else noteProblem("That download location could not be saved. Check local download locations before trying again.")
-                    placeSaving = false
-                }
-            },
-            onUseAutomatic = {
-                placeSaving = true
-                scope.launch {
-                    val forgotten = withContext(Dispatchers.IO) {
-                        try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
-                    }
-                    if (forgotten) {
-                        placeCheck++
-                        message = "New local downloads use the automatic location. Existing transfers keep their files where they are."
-                    } else noteProblem("The saved download location could not be cleared. Check local download locations before trying again.")
-                    placeSaving = false
-                }
-            },
-            onRequestStoragePermission = {
-                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
+                originalDeletable = deletable
+                originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
+                    OriginalTorrentHandling.ARCHIVE else saved
             }
-        )
-        OutlinedTextField(
-            value = addFolderDraft,
-            onValueChange = { addFolderDraft = it },
-            label = { Text("Optional local download subfolder") },
-            placeholder = { Text("Leave blank for Chunks default") },
-            singleLine = true,
-            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            // Only the typed name can be wrong; an unresolved download location is
-            // reported separately ("Checking where this device can save…").
-            isError = addFolderNameInvalid,
-            enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text("Optional. Leave blank to save directly in the download location above. " +
-            "A nonempty folder is refused; nothing is created until Add is confirmed.",
-            style = MaterialTheme.typography.bodySmall)
-        if (addFolderNameInvalid)
-            Text("Use one plain folder name, without slashes, dot-prefixed names, " +
-                "control characters or path traversal.",
-                color = MaterialTheme.colorScheme.error)
-        else if (proposedAddDestination != null)
-            Text("Planned local Place: " + proposedAddDestination.absolutePath,
-                style = MaterialTheme.typography.bodySmall)
-        UniversalAddStartChoice(startAfterAdd,
-            enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-            onCheckedChange = { startAfterAdd = it })
-        AddArtworkChoice(automaticArtwork,
-            enabled = !busy && localAddAttemptSession?.attemptedTicket == null) { automaticArtwork = it }
-        if (magnet.isNotEmpty() && !isLink) {
-        Text("On this device · Place: " + (proposedAddDestination?.absolutePath ?: "Choose a download location below"),
-            style = MaterialTheme.typography.bodySmall)
-            LocalMagnetDiscoveryPrompt(
-                magnet = magnet,
-                dhtEnabled = dht,
-                applying = dhtSaving,
-                blocked = busy || inventoryStale,
-                onEnable = {
-                    if (onOpenOptions != null) {
-                        // Point to the existing DHT preference, not a new settings authority.
-                        localOptionsSearch = "dht"
-                        onOpenOptions()
-                    } else requestDhtSetting(true)
-                },
-                opensOptions = onOpenOptions != null
-            )
-            ActionTile("Add transfer",
-                ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
-                if (sourceReadJob != null) return@ActionTile
+            val seedingPreview = remember(add?.preview?.infoHashV1) {
+                add?.preview?.let { localSeedingPreview(context, it) }
+            }
+            val canAddTorrent = add != null && destination != null && !busy &&
+                localReviewedMetainfoIsCurrent(magnet, sourceReading) &&
+                validUniversalAddAlias(addAliasState?.value.orEmpty()) && addInventoryReady && !placeSaving &&
+                proposedAddDestination != null && localAddAttemptSession?.attemptedTicket == null &&
+                !originalAddDocument.deleting
+            val addMagnet: () -> Unit = addMagnet@{
+                if (sourceReadJob != null) return@addMagnet
                 // Submitting closes the keyboard, so the form's collapse is not
                 // racing an IME animation (see the Connect transition fix).
                 addKeyboard?.hide()
                 addFocus.clearFocus()
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
-                val checkedMagnet = magnetCheck as? MagnetDraftCheck.Valid ?: return@ActionTile
+                val checkedMagnet = magnetCheck as? MagnetDraftCheck.Valid ?: return@addMagnet
                 val frozenAlias = runCatching {
                     normalizedUniversalAddAlias(addAliasState?.value.orEmpty())
                 }.getOrElse {
                     noteProblem("That display name contains unsupported characters or exceeds 160 characters. Nothing was added.")
-                    return@ActionTile
+                    return@addMagnet
                 }
                 if (LocalUniversalAddAdapter.alreadyPresentInFreshInventory(
                         checkedMagnet.infoHash, transfers, hasConfirmedLocalInventory && !inventoryStale)) {
                     noteProblem("This exact torrent already exists on this device. No second Add was sent. Open its transfer card instead.")
-                    return@ActionTile
+                    return@addMagnet
                 }
                 val selectedMagnet = checkedMagnet.normalized
                 val autoStart = startAfterAdd
@@ -1485,274 +1296,9 @@ internal fun LocalEngineScreen(
                         noteProblem("Magnet Add may have reached the native engine. Wait for a fresh exact transfer list; no retry occurred.")
                     }
                 }
-            }, enabled = !busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
-                magnetCheck is MagnetDraftCheck.Valid &&
-                validUniversalAddAlias(addAliasState?.value.orEmpty()) &&
-                localAddAttemptSession?.attemptedTicket == null,
-                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SUBMIT))
-        } else if (pending == null) {
-            // The one Add action is never silently missing: without a usable source it is
-            // shown disabled with the exact next step.
-            val reason = when {
-                localAddAttemptSession?.attemptedTicket != null ->
-                    "Finish the previous Add above before adding another."
-                isLink -> "Get the .torrent from this link first (Get torrent from link above)."
-                else -> "Add a magnet or torrent link, or open a .torrent, to continue."
             }
-            Button(onClick = {}, enabled = false,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                    .testTag(ChunksSemantics.ADD_SUBMIT)
-                    .semantics { stateDescription = "Unavailable: $reason" }) { Text("Add transfer") }
-            Text(reason, style = MaterialTheme.typography.bodySmall)
-        }
-        // Engine/network explanation is optional, after actual Add selections.
-        LocalEngineAbout()
-        if (magnet.isNotEmpty() && destination != null) {
-            FinishInOrderAddChoice(
-                "Finish in Order once the file list arrives (episodes or numbered files)",
-                checked = magnetFinishInOrder,
-                enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-                onChecked = { magnetFinishInOrder = it },
-                defaultOn = finishInOrderDefault,
-                onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
-            )
-            Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
-                style = MaterialTheme.typography.bodySmall)
-        }
-        }
-        repairReview?.let { prepared ->
-            val (hash, source) = prepared
-            val observed = transfers.singleOrNull { it.infoHash == hash }
-            val eligible = observed?.stopped == true && observed.metadataKnown &&
-                observed.trackers?.total == 0 && !inventoryStale && !busy &&
-                !repairSelectionBusy
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Review missing-tracker repair",
-                        style = MaterialTheme.typography.titleMedium)
-                    Text("Original: " + source.preview.name + " · " +
-                        source.preview.trackerCount + " usable tracker(s)")
-                    Text("Matching exact infohash: " + hash,
-                        style = MaterialTheme.typography.bodySmall)
-                    Text("Only the missing tracker list in this stopped local torrent " +
-                        "will be restored, then saved to its existing resume record. " +
-                        "No downloaded files, destination, file priorities, or running " +
-                        "state are changed. Tracker addresses may contain private " +
-                        "passkeys and can disclose your IP if you later Start. " +
-                        "Repair never starts a torrent or makes an rTorrent request.",
-                        style = MaterialTheme.typography.bodySmall)
-                    if (!eligible) {
-                        Text("The local queue changed, became stale, or the transfer " +
-                            "already has trackers or is running. The repair cannot proceed.",
-                            color = MaterialTheme.colorScheme.error)
-                    }
-                    Row(Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = {
-                                // One confirmed native operation. The engine repeats
-                                // all identity/stop/empty-tracker checks atomically.
-                                repairReview = null
-                                performLocalMutation {
-                                    try {
-                                        val result = withContext(Dispatchers.IO) {
-                                            LocalEngineHolder.current()
-                                                ?.repairMissingTrackers(hash, source.bytes)
-                                                ?: LocalTrackerRepairOutcome.NOT_FOUND
-                                        }
-                                        message = when (result) {
-                                            LocalTrackerRepairOutcome.VERIFIED ->
-                                                "Missing trackers restored and verified in the " +
-                                                "saved local session. The torrent is still stopped; " +
-                                                "press Start separately when ready."
-                                            LocalTrackerRepairOutcome.REFUSED ->
-                                                "Tracker repair refused: the original or current " +
-                                                "stopped transfer did not satisfy the safety checks."
-                                            LocalTrackerRepairOutcome.NOT_FOUND ->
-                                                "That torrent is no longer in the local device engine."
-                                            LocalTrackerRepairOutcome.UNCERTAIN -> {
-                                                inventoryFrame = inventoryFrame.copy(stale = true)
-                                                "Tracker repair or resume persistence was not verified. " +
-                                                "Refresh the local device list before making another change; " +
-                                                "do not blindly retry."
-                                            }
-                                        }
-                                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                        throw cancel
-                                    } catch (_: Exception) {
-                                        inventoryFrame = inventoryFrame.copy(stale = true)
-                                        noteProblem("Tracker repair was not confirmed. Check a fresh " +
-                                            "local status before any other change.")
-                                    }
-                                }
-                            },
-                            enabled = eligible, modifier = Modifier.weight(1f)
-                                .heightIn(min = 48.dp)
-                        ) { Text("Confirm repair") }
-                        OutlinedButton(
-                            onClick = { repairReview = null },
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                        ) { Text("Cancel") }
-                    }
-                }
-            }
-        }
-        if (placeResolution != null && destination == null)
-            Text("Local device storage for Chunks is unavailable right now.",
-                color = MaterialTheme.colorScheme.error)
-        // Outcomes include successes ("Added and started…") as well as refusals,
-        // so present them as a neutral, politely announced status rather than
-        // colouring every result as an error. The wording carries the outcome.
-        message?.let { text ->
-            // Only an Add outcome whose exact hash is in the observed
-            // inventory can offer to show it; refusals never do.
-            val newHash = addedOutcome?.takeIf { it.first == text }?.second
-                ?.takeIf { hash -> transfers.any { it.infoHash.equals(hash, ignoreCase = true) } }
-            LocalOutcomeNotice(text,
-                needsAttention = problemOutcome == text,
-                actionLabel = if (newHash != null) "Show new transfer" else null,
-                onAction = {
-                    if (newHash != null) {
-                        // View only: search for the exact hash and show all states.
-                        transferSearch = newHash
-                        chooseLocalFilter(LocalQueueFilter.ALL)
-                        scope.launch { transfersRequester.bringIntoView() }
-                    }
-                })
-        }
-        restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (inventoryStale) {
-            Text("Local torrent status unavailable. Showing the last confirmed transfers. " +
-                "Start, Stop, Remove, file selection, new Adds and library publication are disabled " +
-                "until a fresh engine status read succeeds.",
-                color = MaterialTheme.colorScheme.error)
-        }
-
-        originalDeletion?.let { request ->
-            OriginalDeletionPrompt(request, busy = originalDeleting,
-                onDelete = {
-                    if (!originalDeleting) {
-                        originalDeleting = true
-                        scope.launch {
-                            try {
-                                val outcome = withContext(Dispatchers.IO) {
-                                    OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
-                                }
-                                originalNote = originalDeletionMessage(outcome, request.archived)
-                            } finally {
-                                originalDeleting = false
-                                if (originalDeletion === request) originalDeletion = null
-                            }
-                        }
-                    }
-                },
-                onKeep = {
-                    if (originalDeletion === request) originalDeletion = null
-                    originalNote = if (request.archived) "The original .torrent file was kept; Chunks also keeps its archived copy."
-                        else "The original .torrent file was kept."
-                })
-        }
-        originalNote?.let { note ->
-            Text(note, style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        }
-        val add = pending
-        if (add != null && magnet.isNotBlank()) {
-            Text("A newer torrent source is entered. Resolve or clear it before adding the previously selected .torrent.",
-                style = MaterialTheme.typography.bodySmall)
-        }
-        if (add != null && destination == null) {
-            Text("Selected .torrent: " + add.preview.name, fontWeight = FontWeight.Bold)
-        }
-        if (add != null && canReviewOnConnectedServer &&
-            onPrepareRemoteTorrent != null) {
-            ReviewedTorrentTargetChooser(
-                verifiedTorrentBytes = add.bytes,
-                localPlaceAvailable = destination != null,
-                enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null,
-                onPrepareServerReview = prepare@{ original ->
-                    if (sourceReadJob != null || pending !== add) return@prepare
-                    // The parent only enables this action for an authenticated,
-                    // independently privacy-gated remote target.
-                    onPrepareRemoteTorrent(original)
-                    pending = null
-                }
-            )
-        }
-        // Files to download, chosen before Add (multi-file .torrent only); read off the UI thread.
-        var addFiles by remember(add) { mutableStateOf<List<DeclaredAddFile>?>(null) }
-        var skippedFiles by remember(add) { mutableStateOf<Set<Int>>(emptySet()) }
-        // Reviewed Low/High per wanted file, for exactly this reviewed .torrent.
-        var fileLevels by remember(add) {
-            mutableStateOf<Map<Int, io.github.gamesbyian.chunks.rpc.ClientFilePriority>>(emptyMap())
-        }
-        var fileChoiceOpen by remember(add) { mutableStateOf(false) }
-        LaunchedEffect(add) {
-            val reviewedAdd = add?.takeIf { it.preview.fileCount >= 2 } ?: return@LaunchedEffect
-            addFiles = withContext(Dispatchers.Default) { AddFileChoices.declared(reviewedAdd.bytes.copyOf()) }
-        }
-        val declaredFiles = addFiles
-        if (add != null && destination != null && declaredFiles != null && declaredFiles.size >= 2)
-            AddFileChoice(declaredFiles, skippedFiles, fileChoiceOpen,
-                enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-                onExpanded = { fileChoiceOpen = it },
-                localOnlyNote = canReviewOnConnectedServer && onPrepareRemoteTorrent != null,
-                // This device stores every level.
-                priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
-                    io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW),
-                priorities = fileLevels.filterKeys { it !in skippedFiles },
-                onPriorityChange = { index, level ->
-                    fileLevels = if (level == null) fileLevels - index else fileLevels + (index to level)
-                },
-                onSkippedChange = { skippedFiles = it; fileLevels = fileLevels - it })
-        var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
-        if (add != null && destination != null && add.preview.fileCount >= 2) {
-            FinishInOrderAddChoice(
-                "Finish in Order: prioritise the first episode or numbered file, then the next " +
-                    "(set up before downloading starts; change or turn off from Files)",
-                checked = finishInOrderAfterAdd,
-                enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
-                onChecked = { finishInOrderAfterAdd = it },
-                defaultOn = finishInOrderDefault,
-                onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
-            )
-        }
-        // Null until the saved default and the provider's delete support are read on IO;
-        // an Add confirmed before then keeps the original untouched.
-        var originalHandling by remember(add) { mutableStateOf<OriginalTorrentHandling?>(null) }
-        var originalDeletable by remember(add) { mutableStateOf(false) }
-        LaunchedEffect(add) {
-            val document = add?.originalDocument ?: return@LaunchedEffect
-            val (saved, deletable) = withContext(Dispatchers.IO) {
-                OriginalTorrentHandlingStore(context).default to
-                    OriginalTorrentDocuments.supportsDelete(context, document)
-            }
-            originalDeletable = deletable
-            originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
-                OriginalTorrentHandling.ARCHIVE else saved
-        }
-        val shownHandling = originalHandling
-        if (add?.originalDocument != null && destination != null && shownHandling != null)
-            // Read-only here: the single policy is chosen in Options → Add & files (#1786).
-            OriginalTorrentHandlingSummary(shownHandling)
-        val seedingPreview = remember(add?.preview?.infoHashV1) {
-            add?.preview?.let { localSeedingPreview(context, it) }
-        }
-        if (add != null && destination != null) LocalAddReview(
-            add.preview, proposedAddDestination ?: destination,
-            placeTitle = place?.title,
-            busy = busy || !localReviewedMetainfoIsCurrent(magnet, sourceReading) ||
-                !validUniversalAddAlias(addAliasState?.value.orEmpty()) || !addInventoryReady || placeSaving || proposedAddDestination == null ||
-                localAddAttemptSession?.attemptedTicket != null,
-            startAfterAdd = startAfterAdd,
-            cancelEnabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-            storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
-            seeding = seedingPreview,
-            recovery = addRecovery?.takeIf { it.first == add.preview.infoHashV1 }?.second,
-            useRecovery = useRecovery,
-            onUseRecovery = { useRecovery = it },
-            onConfirm = confirm@{
+            val addTorrent: () -> Unit = confirm@{
+                val add = add ?: return@confirm
                 if (!localReviewedMetainfoIsCurrent(magnet, sourceReading) || pending !== add) return@confirm
                 // Freeze on the explicit Add click before native admission or
                 // any suspension. Editing a different draft cannot redirect a
@@ -1799,7 +1345,7 @@ internal fun LocalEngineScreen(
                 val frozenHandling = if (frozenOriginal != null) originalHandling ?: OriginalTorrentHandling.KEEP
                     else OriginalTorrentHandling.KEEP
                 val frozenDeletable = frozenOriginal != null && originalDeletable
-                originalNote = null
+                originalAddDocument.note = null
                 var submittedBytes: ByteArray? = null
                 performLocalMutation(retainAddAfterNavigation = true) localDocument@{
                     val selected = selectedPlace ?: run {
@@ -2002,30 +1548,13 @@ internal fun LocalEngineScreen(
                             if (original != null && verifiedBytes != null && session != null && ticket != null &&
                                 frozenHandling != OriginalTorrentHandling.KEEP &&
                                 added.status.infoHash.equals(add.preview.infoHashV1, ignoreCase = true)) {
-                                val outcome = withContext(Dispatchers.IO) {
-                                    SourceTorrentArchive(context.filesDir).apply(frozenHandling,
-                                        OriginalTorrentOrigin.ANDROID_DOCUMENT, verifiedBytes,
-                                        SourceAddVerification(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
-                                            added.status.infoHash, verifiedNew = true))
-                                }
-                                if (outcome == SourceArchiveOutcome.OriginalDeletionRequiresApproval) {
-                                    originalDeletion = OriginalDeletionRequest(original,
-                                        withContext(Dispatchers.IO) {
-                                            OriginalTorrentDocuments.displayName(context.contentResolver, original)
-                                        }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name)
-                                } else {
-                                    archiveOutcomeMessage(outcome, frozenHandling)?.let { note ->
-                                        message = listOfNotNull(message, note).joinToString(" ")
-                                    }
-                                    // Archive prefers a move: once the private copy is verified,
-                                    // ask separately before removing an original its app lets us delete.
-                                    if (outcome is SourceArchiveOutcome.ArchivedCopy && frozenDeletable)
-                                        originalDeletion = OriginalDeletionRequest(original,
-                                            withContext(Dispatchers.IO) {
-                                                OriginalTorrentDocuments.displayName(context.contentResolver, original)
-                                            }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name,
-                                            archived = true)
-                                }
+                                val retired = OriginalSourceRetirement.afterAdd(context,
+                                    RemoteAddSession.FrozenOriginalHandling(original, frozenHandling,
+                                        frozenDeletable, verifiedBytes),
+                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
+                                    added.status.infoHash)
+                                originalAddDocument.deletion = retired.deletion
+                                originalAddDocument.note = retired.note
                             }
                             rememberAdded(added.status.infoHash, message)
                         }
@@ -2045,15 +1574,447 @@ internal fun LocalEngineScreen(
                         noteProblem("Torrent Add may have reached the native engine. Check the next fresh exact transfer list; no retry occurred.")
                     }
                 }
-            },
-            onCancel = cancel@{
-                if (busy || (pending !== add && sourceReadJob == null)) return@cancel
-                cancelSourceRead()
-                pending = null
-                initialTorrentUri?.let(onTorrentConsumed)
-                currentAddPlaceId = null
-                addFolderDraft = ""
-            })
+            }
+            val hasMagnetDraft = magnet.isNotEmpty() && !isLink
+            val disabledReason = when {
+                localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
+                isLink -> "Get the .torrent from this link first (Get torrent from link above)."
+                else -> "Add a magnet or torrent link, or open a .torrent, to continue."
+            }
+            UniversalAddForm(
+                capabilities = UniversalAddClientCapabilities.LOCAL,
+                source = {
+                    // The one shared source-first intake (as rTorrent and the protocol clients).
+                    UniversalAddSourceSection(
+                        text = magnet,
+                        onTextChange = { selectTextSource(it.trim()) },
+                        enabled = sourceEnabled,
+                        onOpenTorrent = { picker.launch(arrayOf("*/*")) },
+                        readingTorrent = sourceReading,
+                        linkFetching = linkFetching,
+                        // Read-only source validation does not require a local Place.
+                        // Actual Add still requires the existing fresh inventory/Place gates.
+                        // An existing verified review remains selected until the replacement fetch
+                        // succeeds and validates; refusal must never require discarding it first.
+                        onFetchLink = fetch@{ link ->
+                            if (!sourceEnabled || sourceReading) return@fetch
+                            initialTorrentUri?.let(onTorrentConsumed)
+                            linkFetching = true
+                            scope.launch {
+                                val read = beginSourceRead()
+                                try {
+                                    androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+                                    val result = withContext(Dispatchers.IO) { fetchTorrentDocument(link) }
+                                    if (sourceReadJob !== read) return@launch
+                                    when (result) {
+                                        is TorrentLinkResult.Fetched -> {
+                                            // The same reviewed .torrent Add as the picker and Android share.
+                                            pending = PendingLocalAdd(result.preview, result.bytes)
+                                            magnet = ""
+                                            clipboardFilled = null
+                                            message = "Torrent from " + result.display +
+                                                " is ready to review below. Nothing has been added."
+                                        }
+                                        is TorrentLinkResult.Refused -> noteProblem(result.message)
+                                    }
+                                } finally {
+                                    if (sourceReadJob === read) sourceReadJob = null
+                                    linkFetching = false
+                                }
+                            }
+                        },
+                        onPaste = { selectTextSource(it) },
+                        onNothingToPaste = { message = UniversalAddSourceText.NOTHING_TO_PASTE },
+                        modifier = Modifier.bringIntoViewRequester(addRequester)
+                    ) {
+                        if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
+                            onClear = { magnet = ""; clipboardFilled = null },
+                            enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null)
+                    }
+                    if (add != null && magnet.isNotBlank()) {
+                        Text("A newer torrent source is entered. Resolve or clear it before adding the previously selected .torrent.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (add != null) {
+                        val selection = if (magnet.isBlank()) "Selected .torrent" else "Previously selected .torrent"
+                        Text("$selection: ${add.preview.name}", fontWeight = FontWeight.Bold)
+                    }
+                    if (add != null && canReviewOnConnectedServer &&
+                        onPrepareRemoteTorrent != null) {
+                        ReviewedTorrentTargetChooser(
+                            verifiedTorrentBytes = add.bytes,
+                            localPlaceAvailable = destination != null,
+                            enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null,
+                            onPrepareServerReview = prepare@{ original ->
+                                if (sourceReadJob != null || pending !== add) return@prepare
+                                // The parent only enables this action for an authenticated,
+                                // independently privacy-gated remote target.
+                                onPrepareRemoteTorrent(original)
+                                pending = null
+                            }
+                        )
+                    }
+                },
+                destination = { addDestinationPicker?.invoke() },
+                saveTo = {
+                    LocalDownloadPlacePicker(
+                        resolution = addPlaceResolution,
+                        enabled = !busy && !inventoryStale && !placeSaving &&
+                            localAddAttemptSession?.attemptedTicket == null,
+                        currentAdd = true,
+                        defaultResolution = placeResolution,
+                        onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
+                        onUseDefault = { currentAddPlaceId = null },
+                        onSaveDefault = { choice ->
+                            placeSaving = true
+                            scope.launch {
+                                val saved = withContext(Dispatchers.IO) {
+                                    try {
+                                        // Recheck the exact root, including removable-volume identity.
+                                        LocalDownloadPlaces.choices(context).singleOrNull {
+                                            LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
+                                        }?.let { LocalDownloadPlaces.remember(context, it) } == true
+                                    } catch (_: Exception) { false }
+                                }
+                                if (saved) {
+                                    placeCheck++
+                                    message = "Local default saved for future Adds. Existing transfers keep their files where they are."
+                                } else noteProblem("That download location could not be saved. Check local download locations before trying again.")
+                                placeSaving = false
+                            }
+                        },
+                        onUseAutomatic = {
+                            placeSaving = true
+                            scope.launch {
+                                val forgotten = withContext(Dispatchers.IO) {
+                                    try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
+                                }
+                                if (forgotten) {
+                                    placeCheck++
+                                    message = "New local downloads use the automatic location. Existing transfers keep their files where they are."
+                                } else noteProblem("The saved download location could not be cleared. Check local download locations before trying again.")
+                                placeSaving = false
+                            }
+                        },
+                        onRequestStoragePermission = {
+                            storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
+                        }
+                    )
+                    OutlinedTextField(
+                        value = addFolderDraft,
+                        onValueChange = { addFolderDraft = it },
+                        label = { Text("Optional local download subfolder") },
+                        placeholder = { Text("Leave blank for Chunks default") },
+                        singleLine = true,
+                        // A folder name is typed exactly: no autocorrect or auto-capitalisation.
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+                            autoCorrectEnabled = false,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                        // Only the typed name can be wrong; an unresolved download location is
+                        // reported separately ("Checking where this device can save…").
+                        isError = addFolderNameInvalid,
+                        enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text("Optional. Leave blank to save directly in the download location above. " +
+                        "A nonempty folder is refused; nothing is created until Add is confirmed.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (addFolderNameInvalid)
+                        Text("Use one plain folder name, without slashes, dot-prefixed names, " +
+                            "control characters or path traversal.",
+                            color = MaterialTheme.colorScheme.error)
+                    else if (proposedAddDestination != null)
+                        Text("Planned local Place: " + proposedAddDestination.absolutePath,
+                            style = MaterialTheme.typography.bodySmall)
+                    if (placeResolution != null && destination == null)
+                        Text("Local device storage for Chunks is unavailable right now.",
+                            color = MaterialTheme.colorScheme.error)
+                },
+                start = UniversalAddToggle(startAfterAdd, sourceEnabled && !inventoryStale) { startAfterAdd = it },
+                files = { capabilities ->
+                    if (capabilities.fileChoices && magnet.isBlank() && add != null && destination != null && declaredFiles != null && declaredFiles.size >= 2)
+                        AddFileChoice(declaredFiles, skippedFiles, fileChoiceOpen,
+                            enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
+                            onExpanded = { fileChoiceOpen = it },
+                            localOnlyNote = canReviewOnConnectedServer && onPrepareRemoteTorrent != null,
+                            // This device stores every level.
+                            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
+                                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW).filter { it in capabilities.priorityLevels },
+                            priorities = fileLevels.filterKeys { it !in skippedFiles },
+                            onPriorityChange = { index, level ->
+                                fileLevels = if (level == null) fileLevels - index else fileLevels + (index to level)
+                            },
+                            onSkippedChange = { skippedFiles = it; fileLevels = fileLevels - it })
+                },
+                artwork = UniversalAddToggle(automaticArtwork, sourceEnabled) { automaticArtwork = it },
+                options = {
+                    if (magnetCheck is MagnetDraftCheck.Valid) Text(
+                        "Seeding: your device Seeding rules choose a policy when this magnet's metadata " +
+                            "arrives (its trackers and private flag are known then); otherwise the local device default applies.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (magnet.isNotEmpty() && !isLink) LocalMagnetDiscoveryPrompt(
+                        magnet = magnet,
+                        dhtEnabled = dht,
+                        applying = dhtSaving,
+                        blocked = busy || inventoryStale,
+                        onEnable = {
+                            if (onOpenOptions != null) {
+                                localOptionsSearch = "dht"
+                                onOpenOptions()
+                            } else requestDhtSetting(true)
+                        },
+                        opensOptions = onOpenOptions != null
+                    )
+                    if (magnet.isNotEmpty() && destination != null) {
+                        FinishInOrderAddChoice(
+                            "Finish in Order once the file list arrives (episodes or numbered files)",
+                            checked = magnetFinishInOrder,
+                            enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
+                            onChecked = { magnetFinishInOrder = it },
+                            defaultOn = finishInOrderDefault,
+                            onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
+                        )
+                        Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (add != null && magnet.isBlank() && destination != null && add.preview.fileCount >= 2) {
+                        FinishInOrderAddChoice(
+                            "Finish in Order: prioritise the first episode or numbered file, then the next " +
+                                "(set up before downloading starts; change or turn off from Files)",
+                            checked = finishInOrderAfterAdd,
+                            enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
+                            onChecked = { finishInOrderAfterAdd = it },
+                            defaultOn = finishInOrderDefault,
+                            onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
+                        )
+                    }
+                    val shownHandling = originalHandling
+                    if (magnet.isBlank() && add?.originalDocument != null && destination != null && shownHandling != null)
+                        // Read-only here: the single policy is chosen in Options → Add & files (#1786).
+                        OriginalTorrentHandlingSummary(shownHandling)
+                    if (add != null && destination != null && magnet.isBlank()) LocalAddReview(
+                        add.preview, proposedAddDestination ?: destination,
+                        placeTitle = place?.title,
+                        busy = !canAddTorrent,
+                        startAfterAdd = startAfterAdd,
+                        cancelEnabled = !busy && localAddAttemptSession?.attemptedTicket == null,
+                        storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
+                        seeding = seedingPreview,
+                        recovery = addRecovery?.takeIf { it.first == add.preview.infoHashV1 }?.second,
+                        useRecovery = useRecovery,
+                        onUseRecovery = { useRecovery = it },
+                        onCancel = cancel@{
+                            if (busy || (pending !== add && sourceReadJob == null)) return@cancel
+                            cancelSourceRead()
+                            pending = null
+                            initialTorrentUri?.let(onTorrentConsumed)
+                            currentAddPlaceId = null
+                            addFolderDraft = ""
+                        })
+                },
+                submit = when {
+                    hasMagnetDraft -> UniversalAddAction(!busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
+                        magnetCheck is MagnetDraftCheck.Valid &&
+                        validUniversalAddAlias(addAliasState?.value.orEmpty()) &&
+                        localAddAttemptSession?.attemptedTicket == null, onSubmit = addMagnet)
+                    add != null && magnet.isBlank() -> UniversalAddAction(canAddTorrent, onSubmit = addTorrent)
+                    else -> UniversalAddAction(false, onSubmit = {}, unavailableReason = disabledReason)
+                },
+                guidance = {
+                    if (!hasMagnetDraft && (add == null || magnet.isNotBlank()))
+                        Text(disabledReason, style = MaterialTheme.typography.bodySmall)
+                },
+                status = {
+                    localAddAttemptSession?.attemptedTicket?.let { ticket ->
+                        val phase = localAddAttemptSession.coordinator.phase
+                        // The same client-neutral receipt vocabulary is used by rTorrent.
+                        // A local registration token is positive new-Add evidence; a matching
+                        // hash seen after an uncertain write is not.
+                        val display = UniversalAddDisplayProjector.from(
+                            phase = phase,
+                            clientLabel = "Local",
+                            submitting = busy,
+                            registrationFromThisSubmission = localAddAttemptSession.registrationFromThisSubmission
+                        )
+                        if (display != null) UniversalAddReceiptCard(
+                            receipt = display,
+                            needsAttention = display.stage in setOf(
+                                io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.UNCONFIRMED,
+                                io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.START_UNVERIFIED
+                            )
+                        )
+                        if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
+                            onViewAddTransfer != null) {
+                            UniversalAddContinuationAction(ChunksSemantics.ADD_VIEW_TRANSFER, "View transfer") {
+                                onViewAddTransfer(ticket.intent.source.expectedInfoHash)
+                            }
+                        }
+                        // The same read-only Check status as the protocol clients: one exact
+                        // native list read of this ticket, never a second Add.
+                        val localEnvironment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
+                        if (!busy && phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED) {
+                            val checkingNow = localAttemptController.isChecking(localEnvironment)
+                            OutlinedButton(onClick = {
+                                localAttemptController.recheck(localAddAttemptSession.coordinator,
+                                    LocalNativeAddObserver(localAddAttemptSession)) { readback ->
+                                    if (readback == null) noteProblem(
+                                        "The local transfer list could not be read. Nothing was sent; check again later.")
+                                    else if (readback == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.NOT_OBSERVED)
+                                        noteProblem("Local does not list this transfer yet. Nothing was resent.")
+                                }
+                            }, enabled = !checkingNow,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                    .testTag(ChunksSemantics.ADD_CHECK_STATUS)) {
+                                Text(if (checkingNow) "Checking Local…" else "Check status")
+                            }
+                        }
+                        if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ||
+                            phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
+                            phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) {
+                            if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
+                                Text("Acknowledging does not confirm payload Start or repeat Add. Inspect the existing transfer before starting it separately.",
+                                    style = MaterialTheme.typography.bodySmall)
+                            UniversalAddContinuationAction(
+                                ChunksSemantics.ADD_ANOTHER,
+                                label = when (phase) {
+                                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ->
+                                        "Start another Add"
+                                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
+                                        "Acknowledge existing job (Start unverified)"
+                                    else -> "Acknowledge existing job, then review another"
+                                },
+                                enabled = !busy && !originalAddDocument.deleting
+                            ) {
+                                val done = if (phase ==
+                                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
+                                    localAddAttemptSession.acknowledgeObservedJob()
+                                else localAddAttemptSession.finishReviewedAttempt()
+                                if (done) {
+                                    pending = null
+                                    magnet = ""
+                                    addFolderDraft = ""
+                                    currentAddPlaceId = null
+                                    addExpanded = true
+                                    message = if (phase ==
+                                        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
+                                        "Existing local job acknowledged with Start unverified. No retry was sent; review a new source explicitly."
+                                    else "Previous local Add review closed. Choose your next source explicitly."
+                                }
+                            }
+                        }
+                    }
+                    // Outcomes include successes ("Added and started…") as well as refusals,
+                    // so present them as a neutral, politely announced status rather than
+                    // colouring every result as an error. The wording carries the outcome.
+                    message?.let { text ->
+                        // Only an Add outcome whose exact hash is in the observed
+                        // inventory can offer to show it; refusals never do.
+                        val newHash = addedOutcome?.takeIf { it.first == text }?.second
+                            ?.takeIf { hash -> transfers.any { it.infoHash.equals(hash, ignoreCase = true) } }
+                        LocalOutcomeNotice(text,
+                            needsAttention = problemOutcome == text,
+                            actionLabel = if (newHash != null && onViewAddTransfer == null) "Show new transfer" else null,
+                            onAction = {
+                                if (newHash != null) {
+                                    // View only: search for the exact hash and show all states.
+                                    transferSearch = newHash
+                                    chooseLocalFilter(LocalQueueFilter.ALL)
+                                    scope.launch { transfersRequester.bringIntoView() }
+                                }
+                            })
+                    }
+                    restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    if (inventoryStale) {
+                        Text("Local torrent status unavailable. Showing the last confirmed transfers. " +
+                            "Start, Stop, Remove, file selection, new Adds and library publication are disabled " +
+                            "until a fresh engine status read succeeds.",
+                            color = MaterialTheme.colorScheme.error)
+                    }
+
+                    OriginalAddDocumentStatus(originalAddDocument, addAttemptScope ?: scope)
+                }
+            )
+            // Keep the general engine explanation below the user's Add action.
+            LocalEngineAbout()
+            repairReview?.let { prepared ->
+                val (hash, source) = prepared
+                val observed = transfers.singleOrNull { it.infoHash == hash }
+                val eligible = observed?.stopped == true && observed.metadataKnown &&
+                    observed.trackers?.total == 0 && !inventoryStale && !busy &&
+                    !repairSelectionBusy
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Review missing-tracker repair",
+                            style = MaterialTheme.typography.titleMedium)
+                        Text("Original: " + source.preview.name + " · " +
+                            source.preview.trackerCount + " usable tracker(s)")
+                        Text("Matching exact infohash: " + hash,
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("Only the missing tracker list in this stopped local torrent " +
+                            "will be restored, then saved to its existing resume record. " +
+                            "No downloaded files, destination, file priorities, or running " +
+                            "state are changed. Tracker addresses may contain private " +
+                            "passkeys and can disclose your IP if you later Start. " +
+                            "Repair never starts a torrent or makes an rTorrent request.",
+                            style = MaterialTheme.typography.bodySmall)
+                        if (!eligible) {
+                            Text("The local queue changed, became stale, or the transfer " +
+                                "already has trackers or is running. The repair cannot proceed.",
+                                color = MaterialTheme.colorScheme.error)
+                        }
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = {
+                                    // One confirmed native operation. The engine repeats
+                                    // all identity/stop/empty-tracker checks atomically.
+                                    repairReview = null
+                                    performLocalMutation {
+                                        try {
+                                            val result = withContext(Dispatchers.IO) {
+                                                LocalEngineHolder.current()
+                                                    ?.repairMissingTrackers(hash, source.bytes)
+                                                    ?: LocalTrackerRepairOutcome.NOT_FOUND
+                                            }
+                                            message = when (result) {
+                                                LocalTrackerRepairOutcome.VERIFIED ->
+                                                    "Missing trackers restored and verified in the " +
+                                                    "saved local session. The torrent is still stopped; " +
+                                                    "press Start separately when ready."
+                                                LocalTrackerRepairOutcome.REFUSED ->
+                                                    "Tracker repair refused: the original or current " +
+                                                    "stopped transfer did not satisfy the safety checks."
+                                                LocalTrackerRepairOutcome.NOT_FOUND ->
+                                                    "That torrent is no longer in the local device engine."
+                                                LocalTrackerRepairOutcome.UNCERTAIN -> {
+                                                    inventoryFrame = inventoryFrame.copy(stale = true)
+                                                    "Tracker repair or resume persistence was not verified. " +
+                                                    "Refresh the local device list before making another change; " +
+                                                    "do not blindly retry."
+                                                }
+                                            }
+                                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            inventoryFrame = inventoryFrame.copy(stale = true)
+                                            noteProblem("Tracker repair was not confirmed. Check a fresh " +
+                                                "local status before any other change.")
+                                        }
+                                    }
+                                },
+                                enabled = eligible, modifier = Modifier.weight(1f)
+                                    .heightIn(min = 48.dp)
+                            ) { Text("Confirm repair") }
+                            OutlinedButton(
+                                onClick = { repairReview = null },
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                            ) { Text("Cancel") }
+                        }
+                    }
+                }
+            }
 
         snapshotRestoreDraft?.let { draft ->
             val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy && !sourceReading &&
@@ -3693,7 +3654,6 @@ internal fun LocalAddReview(
     storagePreflight: LocalAddStoragePreflight? = null,
     /** What Smart Seeding will apply on this device; null when no rule store is readable. */
     seeding: io.github.gamesbyian.chunks.seeding.SeedingResolution? = null,
-    onConfirm: () -> Unit,
     onCancel: () -> Unit,
     cancelEnabled: Boolean = true,
     /** Foreign partial files next to the declared names; reuse only on explicit choice. */
@@ -3766,9 +3726,6 @@ internal fun LocalAddReview(
                 style = MaterialTheme.typography.bodySmall)
             if (preview.trackerCount == 0) Text("This torrent lists no tracker, so peers can only be found through DHT (if turned on) or its web sources.",
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Add transfer")
-            }
             OutlinedButton(onClick = onCancel, enabled = cancelEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
         }
     }

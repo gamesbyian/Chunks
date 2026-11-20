@@ -301,7 +301,8 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 click("Artwork & metadata")
                 click("Automatically identify and fetch artwork & metadata")
                 assertFalse("The draft choice alone is not Add admission", excluded())
-                click("Add transfer")
+                val addJourney = InstalledUniversalAddJourney(rule)
+                addJourney.submit()
                 awaitUi("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
                 assertTrue("Local Add must persist the exclusion before exposing the job", excluded())
                 val local = requireNotNull(LocalEngineHolder.current())
@@ -316,8 +317,10 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 stage("added-stopped")
                 // Add review never exposes a competing lifecycle executor.
                 // Start the positively registered job from Transfers.
-                click("Transfers")
-                // The persistent footer now opens the canonical catalog.
+                addJourney.viewExactTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
+                    preview.infoHashV1)
+                addJourney.awaitTransferReceipt("Verified")
+                // The receipt opens the canonical catalog at the exact Local job.
                 // Enter this exact device's existing lifecycle controls.
                 // The compact Search-adjacent Filters/Sort affordance opens
                 // the same safe Local lifecycle controls as before.

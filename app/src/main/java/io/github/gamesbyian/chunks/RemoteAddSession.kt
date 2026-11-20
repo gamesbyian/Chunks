@@ -57,8 +57,9 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     /** Handling frozen with the Add click; only a verified NEW exact job may act on it. */
     internal var frozenOriginal: FrozenOriginalHandling? = null
     /** The separately approved deletion still awaiting the person's answer. */
-    internal var originalDeletion by mutableStateOf<OriginalDeletionRequest?>(null)
-    internal var originalNote by mutableStateOf<String?>(null)
+    internal val originalDocumentStatus = OriginalAddDocumentState()
+    internal var originalDeletion: OriginalDeletionRequest? by originalDocumentStatus::deletion
+    internal var originalNote: String? by originalDocumentStatus::note
 
     internal class FrozenOriginalHandling(
         val document: android.net.Uri,
@@ -107,7 +108,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal fun beginNextDraft(): Boolean {
         val registeredWithoutStart =
             coordinator.phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
-        if (submitting || (verifiedHash == null && !registeredWithoutStart)) return false
+        if (submitting || originalDocumentStatus.deleting || (verifiedHash == null && !registeredWithoutStart)) return false
         when (coordinator.phase) {
             UniversalAddCoordinator.Phase.VERIFIED -> {
                 if (uncertain || !coordinator.finishVerified()) return false
@@ -155,6 +156,8 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
 internal class RemoteAddSessions {
     private val accounts = mutableMapOf<String, RemoteAddSession>()
     private var pendingMagnetSelection = false
+
+    fun existingForAccount(scope: String): RemoteAddSession? = accounts[scope]
 
     fun forAccount(scope: String): RemoteAddSession {
         require(scope.isNotBlank()) { "An authenticated account is required for Add" }

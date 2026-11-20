@@ -178,8 +178,10 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     })
                 }
                 waitFor("Add target choice for the shared document") { tagged(ChunksSemantics.ADD_TARGET_REMOTE) }
-                rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+                val addJourney = InstalledUniversalAddJourney(rule)
+                addJourney.activate(ChunksSemantics.ADD_TARGET_REMOTE)
                 waitFor("remote review of the shared .torrent") {
+                    bringTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
                     tagged(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
                 }
                 stage("remote-review")
@@ -187,19 +189,15 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 check(rule.onAllNodes(hasText(OriginalTorrentHandling.ARCHIVE.label, substring = true))
                     .fetchSemanticsNodes().isNotEmpty()) { "effective Archive policy is not shown" }
                 bringTag(ChunksSemantics.ADD_START_PREFERENCE)
-                val start = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE)
-                if (start.fetchSemanticsNode().config
-                        .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name != "Off")
-                    start.performClick()
-                val add = hasText("Add transfer") and hasClickAction()
-                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(add) }
-                waitFor("enabled Add transfer", 60_000) {
-                    rule.onAllNodes(add).fetchSemanticsNodes().any {
-                        it.config.getOrElseNullable(SemanticsProperties.Disabled) { null } == null
-                    }
+                fun startState() = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE)
+                    .fetchSemanticsNode().config.getOrElseNullable(SemanticsProperties.ToggleableState) { null }
+                if (startState() == androidx.compose.ui.state.ToggleableState.On)
+                    addJourney.activate(ChunksSemantics.ADD_START_PREFERENCE)
+                waitFor("stopped Add option is selected") {
+                    startState() == androidx.compose.ui.state.ToggleableState.Off
                 }
                 assertTrue("Nothing is archived before the Add", archived().isEmpty())
-                rule.onNode(add).performClick()
+                addJourney.submit()
                 stage("add-submitted")
                 waitFor("separate original removal question after the verified Add", 90_000) {
                     bringTag(ChunksSemantics.ADD_ORIGINAL_DELETE_PROMPT)
@@ -210,8 +208,7 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 assertArrayEquals("Exactly the reviewed bytes are archived", bytes, archived().single().readBytes())
                 assertTrue("Archive alone never removes the original", stillReadable(document))
                 stage("archived")
-                bringTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM)
-                rule.onNodeWithTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM).performClick()
+                addJourney.activate(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM)
                 waitFor("confirmed move into Chunks") {
                     runCatching { scrollTo("was moved into Chunks") }
                     visible("was moved into Chunks")

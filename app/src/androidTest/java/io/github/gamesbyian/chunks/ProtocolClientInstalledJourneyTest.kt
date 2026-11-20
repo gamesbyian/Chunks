@@ -14,13 +14,11 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.printToString
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -68,13 +66,8 @@ class ProtocolClientInstalledJourneyTest {
         try {
             rule.waitUntil(timeoutMs, condition)
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
-            // Prefer the protocol controls when present: the whole root is too long.
-            val ui = runCatching {
-                rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATIONS, useUnmergedTree = true)
-                    .printToString().take(6_000)
-            }.recoverCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
-                .getOrDefault("semantics unavailable")
-            throw AssertionError("Timed out: $what\n$ui", failure)
+            val count = rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().size
+            throw AssertionError("Timed out: $what ($count lazy scrollers)", failure)
         }
     }
 
@@ -130,11 +123,34 @@ class ProtocolClientInstalledJourneyTest {
         }
     }
 
-    /** The shared Universal Add receipt's fixed accessibility state (Local, rTorrent and protocol). */
-    private fun receiptVerified() =
-        rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified")).fetchSemanticsNodes().isNotEmpty() ||
-            rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
+    private fun artworkChoiceIs(expected: androidx.compose.ui.state.ToggleableState) {
+        val matcher = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+        waitFor("per-Add artwork choice available") {
+            runCatching {
+                scrollToNode(matcher)
+                true
+            }.getOrDefault(false)
+        }
+        rule.waitForIdle()
+        val state = rule.onNode(matcher).fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
+        assertEquals("per-Add artwork choice", expected, state)
+    }
+
+    private fun showArtworkChoice() {
+        val matcher = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+        if (rule.onAllNodes(matcher).fetchSemanticsNodes().isEmpty()) {
+            val disclosure = hasText("Artwork & metadata")
+            waitFor("artwork disclosure") {
+                runCatching { scrollToNode(disclosure); true }.getOrDefault(false)
+            }
+            val node = rule.onNode(disclosure)
+            if (node.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] == "Collapsed")
+                node.performSemanticsAction(SemanticsActions.OnClick)
+        }
+    }
+
+    private val addJourney get() = InstalledUniversalAddJourney(rule)
+    private fun receiptVerified() = addJourney.hasReceiptState("Verified")
 
     /** One dispatch of a control, after polling only until it is enabled. */
     private fun clickOnce(tag: String, what: String, timeoutMs: Long = 30_000) {
@@ -282,8 +298,9 @@ class ProtocolClientInstalledJourneyTest {
             stage("remove-verified-independently")
 
             // Universal Add to this exact client, stopped, from a magnet.
-            val profileId = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
-                .list().single { it.backend == kind }.id
+            val profile = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+                .list().single { it.backend == kind }
+            val profileId = profile.id
             val second = fixture("add")
             val magnet = requireNotNull(second.magnet)
             // Details may hide the footer: go back to Transfers first.
@@ -299,8 +316,24 @@ class ProtocolClientInstalledJourneyTest {
             rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(magnet)
             rule.waitForIdle()
             ensureStartWhenAddedOff()
-            clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
+            showArtworkChoice()
+            artworkChoiceIs(androidx.compose.ui.state.ToggleableState.On)
+            rule.onNodeWithTag(ChunksSemantics.ADD_ARTWORK_CHOICE).performSemanticsAction(SemanticsActions.OnClick)
+            artworkChoiceIs(androidx.compose.ui.state.ToggleableState.Off)
+            stage("add-artwork-opt-out-selected")
+            addJourney.submit()
             stage("add-dispatched-once")
+            val submitting = addJourney.hasReceiptState("Adding")
+            if (submitting) {
+                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.awaitTransferReceipt("Adding", "Verified")
+            }
+            it.recreate()
+            if (submitting) {
+                addJourney.awaitTransferReceipt("Adding", "Verified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + "." + profileId)
+                stage("transfer-receipt-kept-across-recreation")
+            }
             waitFor("Add verified (shared receipt)", 90_000) { receiptVerified() }
             // The attempt is app-owned like Local and rTorrent: Activity recreation must
             // keep this exact receipt and must not re-enable a second Add of the same source.
@@ -325,10 +358,42 @@ class ProtocolClientInstalledJourneyTest {
             assertTrue("Independent settled readback: remained stopped ($settled)",
                 settled?.runState == ClientRunState.STOPPED)
             stage("add-stopped-verified-independently")
+            val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val automation = io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(
+                java.io.File(appContext.filesDir, "media/automation.json"))
+            fun artworkExcluded(environment: io.github.gamesbyian.chunks.model.EnvironmentId) = automation.isExcluded(
+                io.github.gamesbyian.chunks.media.MediaTransferKey.of(
+                    io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(environment, second.infoHashV1)))
+            assertTrue("Opt-out persisted for the exact protocol profile and hash",
+                artworkExcluded(io.github.gamesbyian.chunks.model.EnvironmentId(profileId)))
+            assertTrue("The same hash on Local is unaffected by the protocol opt-out",
+                !artworkExcluded(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))
+            stage("add-exact-profile-artwork-opt-out-persisted")
+
+
+            // View transfer from Add must locate the exact hash on the selected
+            // protocol client, rather than merely opening that client's inventory.
+            addJourney.viewExactTransfer(profileId, second.infoHashV1)
+            addJourney.awaitTransferReceipt("Verified")
+            stage("add-view-exact-hash-navigation")
+
+            // Start a separate review and deliberately request an existing hash.
+            // This must refuse while the exact independently witnessed job stays stopped.
+            addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + "." + profileId)
+            addJourney.activate(ChunksSemantics.ADD_ANOTHER)
+            typeInto(UniversalAddSourceText.FIELD_LABEL, magnet)
+            ensureStartWhenAddedOff()
+            addJourney.submit()
+            waitFor("Duplicate hash refused") {
+                addJourney.hasReceiptState("Not added") && visible("Already in this client")
+            }
+            assertEquals("Duplicate refusal must keep the existing job stopped", ClientRunState.STOPPED,
+                runBlocking { independentRead(second.infoHashV1) }?.runState)
+            stage("add-another-duplicate-refused")
+            addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
 
             // Job-only Move of that exact job to This device (Local engine).
             val secondName = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(second.torrent).name
-            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
             val secondDetails = hasContentDescription("Details for $secondName", substring = true)
             waitFor("added job row", 90_000) {
                 runCatching { scrollToNode(secondDetails); true }.getOrDefault(false)
@@ -444,6 +509,10 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
             }
             stage("choices-kept-file-high")
+            LazyComposeActions.activateOnce(rule, hasText("Change folder"))
+            val customFolder = decoded("chunks_protocol_custom_folder_b64")
+            typeInto("Absolute folder on ${profile.label}", customFolder)
+            stage("choices-custom-folder-reviewed")
             // A Chunks-only display name for this Add: stored for this exact profile only
             // after the verified NEW registration, never sent to the client.
             val choicesAlias = "Chunks alias " + kind.name.lowercase()
@@ -452,7 +521,10 @@ class ProtocolClientInstalledJourneyTest {
             typeInto("Display name in Chunks", choicesAlias)
             stage("choices-display-name-entered")
             ensureStartWhenAddedOff()
-            clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
+            showArtworkChoice()
+            artworkChoiceIs(androidx.compose.ui.state.ToggleableState.On)
+            stage("next-add-artwork-default-checked")
+            addJourney.submit()
             stage("choices-add-dispatched-once")
             val choicesHash = choices.first.infoHashV1
             // Independent readback is the authority: the job exists, stays stopped,
@@ -471,13 +543,20 @@ class ProtocolClientInstalledJourneyTest {
                         io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH
             }
             waitFor("Add receipt verified", 60_000) { receiptVerified() }
-            assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
-                runBlocking { independentRead(choicesHash) }?.runState)
+            val customJob = runBlocking { independentRead(choicesHash) }
+            assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED, customJob?.runState)
+            assertTrue("Exact custom folder independently verified",
+                io.github.gamesbyian.chunks.rpc.ClientHashes.sameDirectory(customJob?.downloadDirectory, customFolder))
             stage("choices-skip-and-high-verified-independently")
             assertEquals("display name stored for this exact profile", choicesAlias,
                 TransferAliasStore(InstrumentationRegistry.getInstrumentation().targetContext)
                     .get(ProtocolAliasScope.of(profileId), choicesHash))
             rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            // View transfer's injected hash is cleared when a new Add begins.
+            // Otherwise this second, independently verified job stays hidden.
+            waitFor("previous Add navigation search cleared", 30_000) {
+                rule.onAllNodes(hasText("Clear search")).fetchSemanticsNodes().isEmpty()
+            }
             waitFor("canonical Transfers shows the Chunks display name", 90_000) {
                 runCatching { scrollToNode(hasText(choicesAlias, substring = true)); true }.getOrDefault(false)
             }

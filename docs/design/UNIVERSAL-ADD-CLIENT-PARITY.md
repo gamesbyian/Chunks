@@ -84,9 +84,11 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 
 **Local on the same step.** Local's magnet and `.torrent` Adds now use `UniversalAddSubmission.admitAndRun`: the identical admission and freeze (Place bound to the minted ticket before any write), awaited inside the native mutation lane that already holds the process-wide native gate. The separate `authorizeLocalTicket` admission is gone, so all five clients pass through one admission and one freeze contract.
 
-**Still separate:** Save to / options controls per body; `MainActivity` still selects the body by target inside the one `ADD_CHOOSE` route.
+**Shared form (merged 2026-11-20).** `UniversalAddForm` owns the source → exact client → Save to → Start → file choices → artwork and optional settings → one submit → status order across all five clients. rTorrent keeps lazy scrolling and its folder browser, Local keeps Android Place validation and storage/recovery review, and Transmission, qBittorrent and Deluge show the priorities supported by the authenticated session. The existing app-owned submission and observation controller decides what may write or settle and serializes the explicit status check with scheduled readback for each exact client. View transfer enters canonical Transfers by exact client and hash, with a temporary lookup held in RAM independently of manual search. The original document prompt and its in-flight action stay with the retained attempt and still require separate consent. [#1912](https://github.com/gamesbyian/Chunks/pull/1912)
 
-Step 3 below (one capability-driven source-first route) remains the finish line.
+An unresolved protocol write cannot clear its ticket through Start another Add. Exact-session acknowledgment permits a separate review and never asserts new registration. Protocol default-folder observations must match the reviewed folder before reporting a verified Add. The installed Local, rTorrent and protocol journeys use the same semantic submission, receipt and continuation checks where their evidence permits them. Track executed exact-source evidence in the quality ledger. The full negative matrix and physical Pixel, provider and TalkBack gates remain open until executed.
+
+**Transfers receipt (merged 2026-11-20).** Canonical Transfers displays the same retained receipt in the exact client's visible scope. Local, authenticated rTorrent and protocol-client privacy decisions also govern the receipt. Review Add returns to that exact attempt without writing or clearing it. The receipt projects the existing frozen key and evidence and stays in memory. [#1913](https://github.com/gamesbyian/Chunks/pull/1913)
 
 ## Implementation ownership: converge incrementally
 

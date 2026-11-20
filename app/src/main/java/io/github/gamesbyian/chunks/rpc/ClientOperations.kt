@@ -46,8 +46,15 @@ internal class ClientOperations(
     /** Explicit read of one exact transfer's files (no mutation). */
     suspend fun files(hash: String): List<ClientFile> = client.files(ClientHashes.requireHash(hash))
 
-    suspend fun add(request: ClientAddRequest): ClientOperationOutcome =
-        if (!request.hasFileChoices) addOnce(request) else addWithFileChoices(request)
+    suspend fun add(
+        request: ClientAddRequest,
+        reviewedDefaultDirectory: String? = null,
+        beforeAdd: suspend () -> String? = { null }
+    ): ClientOperationOutcome {
+        val expectedDirectory = request.directory ?: reviewedDefaultDirectory
+        return if (request.hasFileChoices) addWithFileChoices(request, expectedDirectory, beforeAdd)
+        else addOnce(request, expectedDirectory, beforeAdd)
+    }
 
     /**
      * Reviewed file choices (skips and Low/High) for every engine, one gated
@@ -58,7 +65,11 @@ internal class ClientOperations(
      * job stopped and is reported, never replayed; Start is never sent unless
      * the choices were verified.
      */
-    private suspend fun addWithFileChoices(request: ClientAddRequest): ClientOperationOutcome {
+    private suspend fun addWithFileChoices(
+        request: ClientAddRequest,
+        expectedDirectory: String?,
+        beforeAdd: suspend () -> String?
+    ): ClientOperationOutcome {
         val hash = request.source.infoHash
         val session = try { session() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
@@ -73,13 +84,14 @@ internal class ClientOperations(
         val reviewed = request.reviewedChoices
         if (ClientCapability.ADD_WITH_FILE_CHOICES in caps) {
             // The client applies the choices inside its own Add; verify them here.
-            val added = addOnce(request)
+            val added = addOnce(request, expectedDirectory, beforeAdd)
             if (added is ClientOperationOutcome.Refused || added is ClientOperationOutcome.Uncertain) return added
             return if (choicesObserved(hash, reviewed)) added
             else ClientOperationOutcome.Pending(hash, (added as? ClientOperationOutcome.Verified)?.observed,
                 "Added; the file choices were not confirmed")
         }
-        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap(), filePriorities = emptyMap()))
+        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap(), filePriorities = emptyMap()),
+            expectedDirectory, beforeAdd)
         if (added !is ClientOperationOutcome.Verified) return added
         val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { null }
@@ -93,7 +105,7 @@ internal class ClientOperations(
                 "Added stopped; the file choices were not confirmed, so it was not started")
         }
         if (!request.startNow) return ClientOperationOutcome.Verified(hash, added.observed)
-        return when (val started = setStarted(hash, true)) {
+        return when (val started = setStarted(hash, true, expectedDirectory)) {
             is ClientOperationOutcome.Refused ->
                 ClientOperationOutcome.Pending(hash, added.observed, "Added stopped with file choices; Start was refused")
             else -> started
@@ -112,7 +124,11 @@ internal class ClientOperations(
         return false
     }
 
-    private suspend fun addOnce(request: ClientAddRequest): ClientOperationOutcome {
+    private suspend fun addOnce(
+        request: ClientAddRequest,
+        expectedDirectory: String?,
+        beforeAdd: suspend () -> String?
+    ): ClientOperationOutcome {
         val hash = request.source.infoHash
         val caps = try { session().capabilities } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
@@ -130,12 +146,12 @@ internal class ClientOperations(
             is Read.Present -> return ClientOperationOutcome.Refused(hash, "Already in this client")
             Read.Absent -> Unit
         }
+        beforeAdd()?.let { return ClientOperationOutcome.Refused(hash, it) }
         write(hash) { client.add(request) }?.let { return it }
         val outcome = readback(hash) { observed ->
             when {
                 observed == null -> "Not yet registered"
-                request.directory != null &&
-                    !ClientHashes.sameDirectory(observed.downloadDirectory, request.directory) ->
+                expectedDirectory != null && !ClientHashes.sameDirectory(observed.downloadDirectory, expectedDirectory) ->
                     "Registered in a different directory"
                 !request.startNow && observed.runState.started == true -> "Registered but running"
                 // Clients may hash-check existing payload first; only the
@@ -153,9 +169,14 @@ internal class ClientOperations(
         repeat(stoppedSettleReads) {
             delay(readbackDelayMillis)
             when (val read = exactRead(hash)) {
-                is Read.Present -> if (read.torrent.runState != ClientRunState.STOPPED)
-                    return ClientOperationOutcome.Pending(hash, read.torrent,
-                        "Registered stopped, then the client changed it to ${read.torrent.runState.name.lowercase()}")
+                is Read.Present -> {
+                    val observed = read.torrent
+                    if (expectedDirectory != null && !ClientHashes.sameDirectory(observed.downloadDirectory, expectedDirectory))
+                        return ClientOperationOutcome.Pending(hash, observed, "Registered in a different directory")
+                    if (observed.runState != ClientRunState.STOPPED)
+                        return ClientOperationOutcome.Pending(hash, observed,
+                            "Registered stopped, then the client changed it to ${observed.runState.name.lowercase()}")
+                }
                 Read.Absent -> return ClientOperationOutcome.Pending(hash, null, "Registered, then no longer listed")
                 is Read.Failed -> Unit
             }
@@ -163,10 +184,12 @@ internal class ClientOperations(
         return outcome
     }
 
-    suspend fun setStarted(hash: String, started: Boolean): ClientOperationOutcome =
-        mutateExisting(hash, ClientCapability.START_STOP, { client.setStarted(hash, started) }) { observed ->
+    suspend fun setStarted(hash: String, started: Boolean, expectedDirectory: String? = null): ClientOperationOutcome =
+        mutateExisting(hash, ClientCapability.START_STOP, { client.setStarted(hash, started) }, expectedDirectory) { observed ->
             when {
                 observed == null -> "Transfer disappeared"
+                expectedDirectory != null && !ClientHashes.sameDirectory(observed.downloadDirectory, expectedDirectory) ->
+                    "Registered in a different directory"
                 started && observed.runState.started != true -> "Start not yet observed"
                 !started && observed.runState != ClientRunState.STOPPED -> "Still running"
                 else -> null
@@ -235,6 +258,7 @@ internal class ClientOperations(
         hash: String,
         capability: ClientCapability,
         send: suspend () -> Unit,
+        expectedDirectory: String? = null,
         unmet: (ClientTorrent?) -> String?
     ): ClientOperationOutcome {
         val exact = ClientHashes.requireHash(hash)
@@ -242,10 +266,12 @@ internal class ClientOperations(
             catch (_: Exception) { return ClientOperationOutcome.Refused(exact, "Client session unavailable") }
         if (capability !in caps)
             return ClientOperationOutcome.Refused(exact, "Client does not support ${capability.name}")
-        when (exactRead(exact)) {
+        when (val pre = exactRead(exact)) {
             is Read.Failed -> return ClientOperationOutcome.Refused(exact, "Could not verify the transfer first")
             Read.Absent -> return ClientOperationOutcome.Refused(exact, "Transfer is not in this client")
-            is Read.Present -> Unit
+            is Read.Present -> if (expectedDirectory != null &&
+                !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))
+                return ClientOperationOutcome.Refused(exact, "Transfer is no longer in the reviewed folder")
         }
         write(exact) { send() }?.let { return it }
         return readback(exact, unmet)
