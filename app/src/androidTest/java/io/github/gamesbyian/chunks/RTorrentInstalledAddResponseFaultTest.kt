@@ -21,6 +21,7 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
+import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
@@ -148,7 +149,7 @@ class RTorrentInstalledAddResponseFaultTest {
 
     @Test fun stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost() {
         requireDisposableRunner()
-        val exactScope = RTorrentRemote(credentials.copy(endpoint = appUrl)).addAccountScope()
+        val exactScope = EnvironmentSnapshots.serverId(appUrl, credentials.username).value
         val directory = runBlocking { requireNotNull(witness.defaultDirectory()) }
         assertTrue(OriginalTorrentHandlingStore(context).setDefault(OriginalTorrentHandling.ARCHIVE))
         var activity = launchMain()
