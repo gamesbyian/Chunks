@@ -18,19 +18,12 @@ class ExternalSourceSenderActivity : Activity() {
         const val MODE = "fixture_mode"
         const val VIEW = "view"
         const val SHARE = "share"
-        const val CLEANUP = "cleanup"
         const val TARGET = "fixture_target"
     }
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         val kind = intent.getStringExtra(MODE)
-        if (kind == CLEANUP) {
-            for (slot in listOf("first", "second"))
-                ExternalTorrentTestProvider.file(this, slot).delete()
-            finish()
-            return
-        }
         val slot = when (kind) {
             VIEW -> "first"
             SHARE -> "second"
@@ -54,6 +47,10 @@ class ExternalSourceSenderActivity : Activity() {
             clipData = ClipData.newUri(contentResolver, "External torrent", uri)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        // Only the FIRST externally initiated fixture may replace a stale
+        // Chunks task left by an unrelated installed test. The SECOND Share
+        // deliberately has no CLEAR_TASK: it must reenter that same task.
+        if (kind == VIEW) handoff.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(handoff)
         finish()
     }

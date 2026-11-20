@@ -93,7 +93,11 @@ class ExternalApkTorrentHandoffInstrumentedTest {
             ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                 .filterIsInstance<MainActivity>().forEach { it.finish() }
         }
-        dispatch("cleanup")
+        // The source documents belong to the separate installed androidTest
+        // APK's private storage. Another Chunks-initiated cleanup Activity
+        // would seize foreground/task focus from unrelated instrumented UI
+        // cases. The disposable test APK is uninstalled by the runner, which
+        // removes both tiny test documents without a cross-package action.
     }
 
     @Test fun externalProviderOpenWithThenShareRetainsExactUnsubmittedSource() {
