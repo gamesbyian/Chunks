@@ -312,6 +312,11 @@ internal fun shouldConsumeReviewedSourceOnExit(
     lifecycleCancelled: Boolean
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
+/** Only a filter injected by Add's View transfer can be cleared automatically.
+ * A person's manually edited search must survive a later Add entry. */
+internal fun searchAfterNewAdd(currentSearch: String, addOwnedHash: String?): String =
+    if (addOwnedHash != null && currentSearch == addOwnedHash) "" else currentSearch
+
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
@@ -545,6 +550,15 @@ internal fun ChunksApp(
     var combinedDetailsVisible by remember { mutableStateOf(false) }
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
+    // A View transfer deep link is owned by Add, unlike an ordinary typed search.
+    // Clear only that injected hash on the next Add, preserving manual filters.
+    var addOwnedTransferSearch by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(section) {
+        if (section == Section.ADD_CHOOSE) {
+            combinedSearch.value = searchAfterNewAdd(combinedSearch.value, addOwnedTransferSearch)
+            addOwnedTransferSearch = null
+        }
+    }
     // Last read-only listings of other saved profiles survive navigation between
     // roots, but never a privacy lock/unlock or policy lifecycle change.
     val combinedSavedListings = remember(TransferPrivacyRuntime.lifecycleRevision) {
@@ -1334,6 +1348,7 @@ internal fun ChunksApp(
                 // Carry both exact client and hash to the canonical browser.
                 // Scope-only navigation could leave the new transfer invisible.
                 // This is read-only navigation, never another Add or Start.
+                addOwnedTransferSearch = hash
                 combinedSearch.value = hash
                 consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                 savedProfileCatalogFocus = profile.id

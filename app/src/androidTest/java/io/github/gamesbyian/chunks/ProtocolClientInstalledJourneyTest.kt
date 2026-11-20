@@ -494,12 +494,11 @@ class ProtocolClientInstalledJourneyTest {
                 TransferAliasStore(InstrumentationRegistry.getInstrumentation().targetContext)
                     .get(ProtocolAliasScope.of(profileId), choicesHash))
             rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
-            // View transfer intentionally leaves an exact-hash search active until
-            // the person clears it. The next Add has a different hash, so the
-            // subsequent alias assertion must explicitly clear that filter.
-            rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SEARCH)
-                .assertTextContains(second.infoHashV1, substring = true)
-            rule.onNodeWithText("Clear search").performClick()
+            // View transfer's injected hash is cleared when a new Add begins.
+            // Otherwise this second, independently verified job stays hidden.
+            waitFor("previous Add navigation search cleared", 30_000) {
+                rule.onAllNodes(hasText("Clear search")).fetchSemanticsNodes().isEmpty()
+            }
             waitFor("canonical Transfers shows the Chunks display name", 90_000) {
                 runCatching { scrollToNode(hasText(choicesAlias, substring = true)); true }.getOrDefault(false)
             }
