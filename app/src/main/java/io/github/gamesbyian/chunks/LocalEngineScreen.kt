@@ -1736,7 +1736,10 @@ internal fun LocalEngineScreen(
         val seedingPreview = remember(add?.preview?.infoHashV1) {
             add?.preview?.let { localSeedingPreview(context, it) }
         }
-        if (add != null && destination != null) LocalAddReview(
+        // A newer typed magnet must first be resolved or cleared. Showing a
+        // disabled .torrent Add alongside that magnet's own Add button creates
+        // duplicate primary actions and ambiguous accessibility/installed tags.
+        if (add != null && destination != null && magnet.isBlank()) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
             busy = busy || !localReviewedMetainfoIsCurrent(magnet, sourceReading) ||

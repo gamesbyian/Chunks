@@ -303,18 +303,6 @@ internal fun ProtocolAddScreen(
         fileError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         // The policy itself lives only in Options → Downloads & storage → Add & files.
         originalHandling?.takeIf { originalDocument != null && !attempt.busy }?.let { OriginalTorrentHandlingSummary(it) }
-        if (layout != null && canChooseFiles) AddFileChoice(
-            files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
-            onExpanded = { fileChoiceOpen = it },
-            // Only the levels this exact client stores (never a silent Low → Normal).
-            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
-                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
-                .filter { it in capabilities.priorityLevels },
-            priorities = levels.filterKeys { it !in chosenSkips },
-            onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
-            onSkippedChange = { skipped = it; levels = levels - it })
-        else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
-            "every file will download.", style = MaterialTheme.typography.bodySmall)
         // 2. Exact target (the shared picker).
         destinationPicker()
         sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
@@ -337,6 +325,21 @@ internal fun ProtocolAddScreen(
         // 4. Start.
         UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
             onCheckedChange = { startState.value = it })
+        // 5. Optional reviewed file choices, after the exact client/Place/Start.
+        // Selection still freezes by exact metainfo index and path before the
+        // stopped-first Add; moving the control cannot issue any native/RPC write.
+        if (layout != null && canChooseFiles) AddFileChoice(
+            files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
+            onExpanded = { fileChoiceOpen = it },
+            // Only the levels this exact client stores (never a silent Low → Normal).
+            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
+                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
+                .filter { it in capabilities.priorityLevels },
+            priorities = levels.filterKeys { it !in chosenSkips },
+            onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
+            onSkippedChange = { skipped = it; levels = levels - it })
+        else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
+            "every file will download.", style = MaterialTheme.typography.bodySmall)
         if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
         UniversalAddSubmitAction(
