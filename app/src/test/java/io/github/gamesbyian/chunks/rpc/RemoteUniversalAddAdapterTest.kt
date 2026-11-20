@@ -19,6 +19,7 @@ import io.github.gamesbyian.chunks.model.UniversalAddIntent
 import io.github.gamesbyian.chunks.model.UniversalAddPlace
 import io.github.gamesbyian.chunks.model.UniversalAddSource
 import io.github.gamesbyian.chunks.model.UniversalAddTarget
+import io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -37,11 +38,12 @@ class RemoteUniversalAddAdapterTest {
         scope: String,
         source: UniversalAddSource = UniversalAddSource.magnet(magnet, hash),
         where: UniversalAddPlace = UniversalAddPlace.ServerCustom(place),
-        start: Boolean = true
+        start: Boolean = true,
+        allowArtwork: Boolean = true
     ): UniversalAddCoordinator.Ticket {
         val intent = UniversalAddIntent(
             source, UniversalAddTarget.AuthenticatedServer(scope), where,
-            startWhenAdded = start, allowArtwork = true)
+            startWhenAdded = start, allowArtwork = allowArtwork)
         val coordinator = UniversalAddCoordinator()
         assertTrue(coordinator.review(
             intent, EnvironmentCapabilities.unprobed(intent.target.environment),
@@ -168,6 +170,57 @@ class RemoteUniversalAddAdapterTest {
             assertEquals(RemoteAddAndStart.Started(hash), adapter.submit(approved).result)
             assertEquals(1, methods.count { it == "load.start" })
             assertFalse(methods.any { it == "d.start" || it == "load.verbose" })
+        }
+
+    @Test fun hiddenDuplicateRefusesBeforePersistingAnArtworkOptOut() =
+        withFixture(initialPresent = true, hiddenFromMain = true) { _, _, methods, connection ->
+            val remote = connection()
+            val boundary = UniversalAddWriteBoundary()
+            var artworkWrites = 0
+            val outcome = RTorrentAddExecutor(remote, false, null, prepareBeforeWrite = { artworkWrites++; true })
+                .execute(ticket(remote.addAccountScope(), allowArtwork = false), boundary)
+            assertTrue(outcome is RTorrentAddExecutor.Result.Executed && outcome.existingWithoutWrite)
+            assertFalse(boundary.entered)
+            assertTrue("Hidden duplicate must be found by an exact read", "d.name" in methods)
+            assertFalse(methods.any { it.startsWith("load.") || it == "d.start" })
+            assertEquals(0, artworkWrites)
+        }
+
+    @Test fun optedOutTicketCannotReachLoadWithoutPreferencePersistence() =
+        withFixture { _, _, methods, connection ->
+            val remote = connection()
+            val missing = UniversalAddWriteBoundary()
+            val noWriter = RTorrentAddExecutor(remote, false, null)
+            assertEquals(RTorrentAddExecutor.Result.PreparationRefused,
+                noWriter.execute(ticket(remote.addAccountScope(), allowArtwork = false), missing))
+            assertFalse(missing.entered)
+            val failed = UniversalAddWriteBoundary()
+            var artworkWrites = 0
+            val failingWriter = RTorrentAddExecutor(remote, false, null, prepareBeforeWrite = { artworkWrites++; false })
+            assertEquals(RTorrentAddExecutor.Result.PreparationRefused,
+                failingWriter.execute(ticket(remote.addAccountScope(), start = false, allowArtwork = false), failed))
+            assertFalse(failed.entered)
+            assertEquals(1, artworkWrites)
+            assertFalse(methods.any { it.startsWith("load.") || it == "d.start" })
+        }
+
+    @Test fun persistedArtworkOptOutIsBetweenExactPreflightAndTheOneLoad() =
+        withFixture { _, _, methods, connection ->
+            val remote = connection()
+            val boundary = UniversalAddWriteBoundary()
+            var artworkWrites = 0
+            val executor = RTorrentAddExecutor(remote, false, null, prepareBeforeWrite = {
+                assertTrue("Exact absence must be checked before recording the preference", "d.name" in methods)
+                assertFalse(methods.any { it.startsWith("load.") })
+                assertFalse(boundary.entered)
+                artworkWrites++
+                true
+            })
+            val outcome = executor.execute(ticket(remote.addAccountScope(), allowArtwork = false), boundary)
+            assertTrue(outcome is RTorrentAddExecutor.Result.Executed && outcome.result is RemoteAddAndStart.Started)
+            assertTrue(boundary.entered)
+            assertEquals(1, artworkWrites)
+            assertEquals(1, methods.count { it == "load.start" })
         }
 
     @Test fun nativeStartLostAcknowledgementReconcilesThroughNewConnectionWithoutRetry() =

@@ -80,7 +80,19 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
     hashlib.sha256((
         "io.github.gamesbyian.chunks.SeedhostInventoryMediaReadOnlyInstrumentedTest" +
         "\\0" + "realInventoryGetsAutomaticArtworkWithoutIdentifyOrMutation").encode()).hexdigest(),
-})
+}) | frozenset(
+    # These cases require the fault relay or a process kill. The dedicated
+    # installed workflow checks each phase independently of the native suite.
+    hashlib.sha256(("io.github.gamesbyian.chunks." + test_class + "\\0" + test).encode()).hexdigest()
+    for test_class, test in (
+        ("ProtocolClientInstalledJourneyTest", "installedAddAfterTheDaemonResponseIsWithheld"),
+        ("RTorrentInstalledAddResponseFaultTest", "stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost"),
+        ("RTorrentInstalledAddResponseFaultTest", "submitThenKillTheAppProcess"),
+        ("RTorrentInstalledAddResponseFaultTest", "freshProcessDoesNotReplayTheHeldAdd"),
+        ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
+        ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
+    )
+)
 
 
 def verify(root, count, sha, screenshot_manifest=None):

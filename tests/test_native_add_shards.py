@@ -249,21 +249,32 @@ class ShardedNativeAddTests(unittest.TestCase):
         expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
             "ProtocolClientInstalledJourneyTest" + "\\0" +
             "protocolClientConnectTransfersDetailsAddAndRemove").encode()).hexdigest())
+        installed_fault_ids = {
+            hashlib.sha256(("io.github.gamesbyian.chunks." + test_class + "\\0" + test).encode()).hexdigest()
+            for test_class, test in (
+                ("ProtocolClientInstalledJourneyTest", "installedAddAfterTheDaemonResponseIsWithheld"),
+                ("RTorrentInstalledAddResponseFaultTest", "stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost"),
+                ("RTorrentInstalledAddResponseFaultTest", "submitThenKillTheAppProcess"),
+                ("RTorrentInstalledAddResponseFaultTest", "freshProcessDoesNotReplayTheHeldAdd"),
+                ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
+                ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
+            )
+        }
+        expected.update(installed_fault_ids)
         self.assertEqual(expected, DEDICATED_WORKFLOW_OPT_IN_IDS)
-        ids = sorted(DEDICATED_WORKFLOW_OPT_IN_IDS)
 
         def reviewed_skips(d):
-            for case in d["test_cases"][:36]:
+            for case in d["test_cases"][:40]:
                 case["outcome"] = "skipped"
-            d["test_cases"][34]["id_sha256"] = ids[0]
-            d["test_cases"][35]["id_sha256"] = ids[1]
-            d["junit"]["executed"] = 145
-            d["junit"]["skipped"] = 36
+            for case, identity in zip(d["test_cases"][34:40], sorted(installed_fault_ids)):
+                case["id_sha256"] = identity
+            d["junit"]["executed"] = 141
+            d["junit"]["skipped"] = 40
 
         self.change(0, reviewed_skips)
-        self.assertEqual(36, self.check()["junit"]["skipped"])
-        # No other test can borrow either exemption.
-        self.change(0, lambda d: d["test_cases"][35].update(id_sha256="e" * 64))
+        self.assertEqual(40, self.check()["junit"]["skipped"])
+        # No other test can borrow one of the dedicated exemptions.
+        self.change(0, lambda d: d["test_cases"][39].update(id_sha256="e" * 64))
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 
