@@ -1194,12 +1194,13 @@ internal fun CombinedTransfersScreen(
         }
         val localMoveTarget = if (localPrivacy?.mayShow != false && !(localRunning && localFrame.stale))
             ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device",
-                aliasScopes[EnvironmentSnapshots.LOCAL], localTargetOperations) else null
+                aliasScopes[EnvironmentSnapshots.LOCAL], createOperations = localTargetOperations) else null
         val rtorrentMoveTarget = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
             serverId != null && serverPrivacy?.mayShow == true && server.stale == false
         }?.let { remote ->
             ProtocolMoveTarget(requireNotNull(serverId).value,
-                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent", aliasScopes[serverId]) {
+                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent", aliasScopes[serverId],
+                connectionWitness = remote) {
                 io.github.gamesbyian.chunks.rpc.ClientOperations(
                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
             }
@@ -1234,7 +1235,8 @@ internal fun CombinedTransfersScreen(
         val protocolMoveTargets = protocolProfiles.filter {
             it.operations != null && it.environment in protocolAllowed
         }.distinctBy { it.id }.map {
-            ProtocolMoveTarget(it.id, it.label, aliasScopes[it.environment], requireNotNull(it.operations))
+            ProtocolMoveTarget(it.id, it.label, aliasScopes[it.environment],
+                connectionWitness = it.identityWitness, createOperations = requireNotNull(it.operations))
         }
         // Transmission / qBittorrent / Deluge: the exact typed profile's own
         // write-capable session, through the ONE shared operation workflow.

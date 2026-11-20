@@ -83,19 +83,25 @@ internal class ClientJobTransfer(
      * never authorizes source removal. Consume before any source write so
      * Pending/Uncertain outcomes cannot be replayed blindly.
      */
-    suspend fun retireSource(hash: String, confirmedCopy: CopyResult.Copied): ClientOperationOutcome =
-        attemptLock.withLock {
-            val exact = ClientHashes.requireHash(hash)
-            if (pendingRetirement !== confirmedCopy || confirmedCopy.hash != exact)
-                return@withLock ClientOperationOutcome.Refused(exact,
-                    "No verified Copy for this exact client and transfer; source kept")
-            pendingRetirement = null
-            val stillOnTarget = try { targetClient.torrent(exact) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { null }
-            if (stillOnTarget == null)
-                return@withLock ClientOperationOutcome.Refused(exact,
-                    "The target no longer shows this job; source kept")
-            source.remove(exact, deleteData = false)
-        }
+    suspend fun retireSource(
+        hash: String,
+        confirmedCopy: CopyResult.Copied,
+        stillAuthorized: () -> Boolean = { true }
+    ): ClientOperationOutcome = attemptLock.withLock {
+        val exact = ClientHashes.requireHash(hash)
+        if (pendingRetirement !== confirmedCopy || confirmedCopy.hash != exact)
+            return@withLock ClientOperationOutcome.Refused(exact,
+                "No verified Copy for this exact client and transfer; source kept")
+        pendingRetirement = null
+        val connectionChanged = "The selected connection changed; source job kept"
+        if (!stillAuthorized()) return@withLock ClientOperationOutcome.Refused(exact, connectionChanged)
+        val stillOnTarget = try { targetClient.torrent(exact) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { null }
+        if (stillOnTarget?.hash?.equals(exact, ignoreCase = true) != true)
+            return@withLock ClientOperationOutcome.Refused(exact,
+                "The target no longer shows this job; source kept")
+        source.remove(exact, deleteData = false,
+            beforeRemove = { connectionChanged.takeUnless { stillAuthorized() } })
+    }
 }
