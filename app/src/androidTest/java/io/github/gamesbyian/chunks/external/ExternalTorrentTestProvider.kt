@@ -25,6 +25,14 @@ class ExternalTorrentTestProvider : ContentProvider() {
                 .appendPath("opaque").appendPath(slot).build()
         fun file(testApp: Context, slot: String) =
             File(testApp.filesDir, "external-$slot.torrent")
+
+        fun torrent(name: String): ByteArray {
+            fun b(value: String) = "${value.toByteArray(Charsets.UTF_8).size}:$value"
+            return ("d8:announce" + b("https://tracker.example/announce") +
+                "4:infod6:lengthi5e4:name" + b(name) +
+                "12:piece lengthi16384e6:pieces20:01234567890123456789ee")
+                .toByteArray(Charsets.UTF_8)
+        }
     }
 
     override fun onCreate(): Boolean = true

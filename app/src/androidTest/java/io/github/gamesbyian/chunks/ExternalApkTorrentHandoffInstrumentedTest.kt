@@ -1,6 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.hasClickAction
@@ -39,42 +38,28 @@ class ExternalApkTorrentHandoffInstrumentedTest {
     private val sourceApp get() = instrumentation.context
     private val chunksApp get() = instrumentation.targetContext
 
-    private fun b(value: String) = "${value.toByteArray(Charsets.UTF_8).size}:$value"
-    private fun torrent(name: String): ByteArray =
-        ("d8:announce" + b("https://tracker.example/announce") +
-            "4:infod6:lengthi5e4:name" + b(name) +
-            "12:piece lengthi16384e6:pieces20:01234567890123456789ee")
-            .toByteArray(Charsets.UTF_8)
-
-    private fun create(slot: String, name: String): Pair<Uri, ByteArray> {
-        val bytes = torrent(name)
-        ExternalTorrentTestProvider.file(sourceApp, slot).writeBytes(bytes)
+    private fun fixture(slot: String): Pair<Uri, ByteArray> {
+        val name = if (slot == "first") "external-first.bin" else "external-second.bin"
         val uri = ExternalTorrentTestProvider.uri(sourceApp, slot)
-        assertEquals("The external test package must really serve this MIME",
-            "application/octet-stream", sourceApp.contentResolver.getType(uri))
-        assertTrue("Opaque provider IDs do not contain a filename", !uri.toString().endsWith(".torrent"))
-        return uri to bytes
+        assertFalse("An opaque provider URI must not expose a .torrent filename",
+            uri.toString().endsWith(".torrent"))
+        return uri to ExternalTorrentTestProvider.torrent(name)
     }
 
-    private fun openWith(uri: Uri, first: Boolean) = Intent(Intent.ACTION_VIEW).apply {
-        setClassName(chunksApp.packageName, MainActivity::class.java.name)
-        setDataAndType(uri, "application/octet-stream")
-        clipData = ClipData.newUri(sourceApp.contentResolver, "External torrent", uri)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        if (first) addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    private fun dispatch(mode: String) {
+        val intent = Intent().apply {
+            setClassName(sourceApp.packageName,
+                "io.github.gamesbyian.chunks.external.ExternalSourceSenderActivity")
+            putExtra("fixture_mode", mode)
+            putExtra("fixture_target", chunksApp.packageName)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        // Only this IPC launches the external sender. Source bytes and the
+        // outbound grant originate inside the other package/UID, not from the
+        // instrumentation running in Chunks' process.
+        sourceApp.startActivity(intent)
     }
 
-    private fun send(uri: Uri) = Intent(Intent.ACTION_SEND).apply {
-        setClassName(chunksApp.packageName, MainActivity::class.java.name)
-        type = "application/octet-stream"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newUri(sourceApp.contentResolver, "External torrent", uri)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-
-    // Absence is expected while Android is creating the target Activity.
-    // A waitUntil probe may keep polling, rather than aborting the whole test
-    // before the actual permission-granted handoff can complete.
     private fun withResumed(block: (MainActivity, LocalAddAttemptOwner) -> Unit): Boolean {
         var found = false
         instrumentation.runOnMainSync {
@@ -108,8 +93,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
             ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
                 .filterIsInstance<MainActivity>().forEach { it.finish() }
         }
-        ExternalTorrentTestProvider.file(sourceApp, "first").delete()
-        ExternalTorrentTestProvider.file(sourceApp, "second").delete()
+        dispatch("cleanup")
     }
 
     @Test fun externalProviderOpenWithThenShareRetainsExactUnsubmittedSource() {
@@ -120,8 +104,8 @@ class ExternalApkTorrentHandoffInstrumentedTest {
 
         val firstName = "external-first.bin"
         val secondName = "external-second.bin"
-        val (first, firstBytes) = create("first", firstName)
-        sourceApp.startActivity(openWith(first, first = true))
+        val (first, firstBytes) = fixture("first")
+        dispatch("view")
         awaitSource(firstName, first, firstBytes)
 
         var originalTask = -1
@@ -130,8 +114,8 @@ class ExternalApkTorrentHandoffInstrumentedTest {
             assertNull("The first foreign Open With does not submit Add", owner.session.attemptedTicket)
         }
 
-        val (second, secondBytes) = create("second", secondName)
-        sourceApp.startActivity(send(second))
+        val (second, secondBytes) = fixture("second")
+        dispatch("share")
         compose.waitUntil(60_000) {
             var queued = false
             val resumed = withResumed { activity, owner ->
