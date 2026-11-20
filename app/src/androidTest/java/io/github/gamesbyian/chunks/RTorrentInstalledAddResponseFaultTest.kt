@@ -8,6 +8,9 @@ import android.os.Process
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -315,8 +318,41 @@ class RTorrentInstalledAddResponseFaultTest {
         val hash = fixture.infoHashV1
         val original = File(FixtureDocumentsProvider.baseDir(context), "$processDeathName.torrent")
         ActivityScenario.launch(MainActivity::class.java).use {
+            // A fresh process has no authenticated UI session yet. A remembered
+            // connection may appear as a disconnected roster card, rather than
+            // the connected-only "View transfers" button. An automatic
+            // read-only startup reconnect is permitted, but never required.
+            // Only the exact saved account is allowed to become this witness.
+            faultRelay.requireOneWriteAndNoStart()
             journey.activate(ChunksSemantics.FOOTER_CONNECTIONS)
-            journey.activate(ChunksSemantics.CONNECTION_VIEW_TRANSFERS, timeoutMillis = 75_000)
+            val exactProfileId = EnvironmentSnapshots.serverId(appUrl, credentials.username).value
+            val exactProfile = hasTestTag("connection-profile-$exactProfileId")
+            val connectedTransfers = hasTestTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS) and
+                hasAnyAncestor(exactProfile)
+            val savedReconnect = hasContentDescription("Connect to ", substring = true) and
+                hasAnyAncestor(exactProfile)
+            rule.waitUntil(75_000) {
+                rule.onAllNodes(connectedTransfers).fetchSemanticsNodes().size == 1 ||
+                    rule.onAllNodes(savedReconnect).fetchSemanticsNodes().size == 1
+            }
+            rule.waitUntil(75_000) {
+                rule.onAllNodes(connectedTransfers).fetchSemanticsNodes().size == 1 ||
+                    rule.onAllNodes(savedReconnect and isEnabled()).fetchSemanticsNodes().size == 1
+            }
+            if (rule.onAllNodes(connectedTransfers).fetchSemanticsNodes().isEmpty()) {
+                // This is an explicit fresh-process, read-only Connect, not a
+                // replay of the held Add or an automatic retry after a lost RPC.
+                LazyComposeActions.activateOnce(rule, savedReconnect and isEnabled())
+                stage("process-death-exact-saved-profile-selected")
+                journey.activate(ChunksSemantics.CONNECTION_CONNECT, timeoutMillis = 45_000)
+                val acknowledged = hasText("Continue to Connections") and hasClickAction()
+                rule.waitUntil(90_000) {
+                    rule.onAllNodes(acknowledged).fetchSemanticsNodes().size == 1
+                }
+                LazyComposeActions.activateOnce(rule, acknowledged)
+                stage("process-death-read-only-login-completed")
+            }
+            LazyComposeActions.activateOnce(rule, connectedTransfers, timeoutMillis = 75_000)
             rule.waitUntil(45_000) {
                 val name = hasText(processDeathName, substring = true)
                 runCatching {
