@@ -8,6 +8,7 @@ import android.os.Process
 import android.provider.DocumentsContract
 import android.util.Log
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -95,7 +96,7 @@ class RTorrentInstalledAddResponseFaultTest {
         Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
     ) as MainActivity
 
-    private fun openForStoppedAdd(activity: MainActivity, document: Uri): Intent? {
+    private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String): Intent? {
         var originalIntent: Intent? = null
         instrumentation.runOnMainSync {
             originalIntent = activity.intent
@@ -110,6 +111,21 @@ class RTorrentInstalledAddResponseFaultTest {
             rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)).fetchSemanticsNodes().size == 1
         }
         journey.activate(ChunksSemantics.ADD_TARGET_REMOTE)
+        val replace = hasText("Use new source") and hasClickAction()
+        val reviewed = hasText("Infohash: $expectedHash", substring = true)
+        rule.waitUntil(30_000) {
+            rule.onAllNodes(replace).fetchSemanticsNodes().size == 1 || runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(reviewed)
+                rule.onAllNodes(reviewed).fetchSemanticsNodes().size == 1
+            }.getOrDefault(false)
+        }
+        if (rule.onAllNodes(replace).fetchSemanticsNodes().size == 1) LazyComposeActions.activateOnce(rule, replace)
+        rule.waitUntil(30_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(reviewed)
+                rule.onAllNodes(reviewed).fetchSemanticsNodes().size == 1
+            }.getOrDefault(false)
+        }
         journey.chooseStopped()
         val archiveSummary = hasTestTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
         rule.waitUntil(30_000) {
@@ -162,7 +178,7 @@ class RTorrentInstalledAddResponseFaultTest {
                 val hash = fixture.infoHashV1
                 assertNull("The exact disposable fixture must be absent", runBlocking { witness.lookupName(hash) })
                 val document = document(name, fixture.torrent)
-                val originalIntent = openForStoppedAdd(activity, document)
+                val originalIntent = openForStoppedAdd(activity, document, hash)
                 faultRelay.arm(fault)
                 journey.submit()
                 stage("add-fault-$fault-dispatched-once")
@@ -189,9 +205,12 @@ class RTorrentInstalledAddResponseFaultTest {
                     val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
                     val addList = rule.onNode(hasScrollToIndexAction())
                     addList.assertExists()
-                    assertFalse("The retained result has no Add action", runCatching {
+                    val missingSubmit = runCatching {
                         addList.performScrollToNode(submit)
-                    }.isSuccess)
+                    }.exceptionOrNull()
+                    assertTrue("The retained result has no Add action",
+                        missingSubmit is AssertionError &&
+                            missingSubmit.message?.contains("No node found that matches") == true)
                     journey.viewExactTransfer(exactScope, hash)
                     journey.awaitTransferReceipt("Present, origin unverified")
 
@@ -234,7 +253,7 @@ class RTorrentInstalledAddResponseFaultTest {
         val activity = launchMain()
         try {
             connect()
-            openForStoppedAdd(activity, document)
+            openForStoppedAdd(activity, document, hash)
             faultRelay.arm("hold")
             journey.submit()
             rule.waitUntil(10_000) { faultRelay.hasWithheldReply() }
