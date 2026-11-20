@@ -3,16 +3,25 @@ package io.github.gamesbyian.chunks
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.performScrollToNode
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
+import io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore
+import io.github.gamesbyian.chunks.model.SmartRoutingPreview
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -93,6 +102,50 @@ class InstalledOpenWithHandoffInstrumentedTest {
 
     private fun scenarioActivity(scenario: ActivityScenario<MainActivity>): ActivityHandle =
         ActivityHandle { block -> scenario.onActivity { block(it) } }
+
+    @Test fun unresolvedReplacementDoesNotRouteUsingRetainedTorrent() {
+        val name = "Show.S01E02.mkv"
+        val uri = document(name)
+        val store = SmartRoutingPolicyStore(context)
+        val previous = store.read() as SmartRoutingPolicyStore.Read.Ready
+        val rule = SmartRoutingPreview.Rule("tv", 1, SmartRoutingPreview.Kind.TV, 60, "local")
+        assertEquals(SmartRoutingPolicyStore.Save.SAVED, store.save(previous.revision,
+            SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(rule), autoSelect = true)))
+        try {
+            ActivityScenario.launch<MainActivity>(freshFixtureLaunch(uri)).use { scenario ->
+                waitForReview(name, scenarioActivity(scenario), uri)
+                val sourceField = hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)
+                val destination = hasTestTag(ChunksSemantics.ADD_TARGET_DEVICE)
+                val suggestion = hasTestTag("chunks.add.routing.suggestion")
+                fun showDestination() {
+                    compose.onNode(hasScrollToIndexAction()).performScrollToNode(destination)
+                    compose.onNode(destination).assertExists()
+                }
+
+                showDestination()
+                compose.waitUntil(20_000) {
+                    compose.onAllNodes(suggestion).fetchSemanticsNodes().size == 1
+                }
+                LazyComposeActions.replaceText(compose, sourceField, "https://fixture.invalid/next.torrent")
+                showDestination()
+                compose.onNode(suggestion).assertDoesNotExist()
+                scenario.onActivity { activity ->
+                    val owner = ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                    val retained = requireNotNull(owner.reviewedTorrent.value)
+                    assertEquals(uri, retained.originalDocument)
+                    assertArrayEquals(metainfo(name), retained.bytes)
+                    assertNull(owner.session.attemptedTicket)
+                }
+
+                LazyComposeActions.replaceText(compose, sourceField, "")
+                showDestination()
+                compose.onNode(suggestion).assertExists()
+            }
+        } finally {
+            val current = store.read() as SmartRoutingPolicyStore.Read.Ready
+            assertEquals(SmartRoutingPolicyStore.Save.SAVED, store.save(current.revision, previous.policy))
+        }
+    }
 
     private fun waitForReview(
         name: String, scenario: ActivityHandle, expected: Uri

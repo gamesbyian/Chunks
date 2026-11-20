@@ -1153,9 +1153,12 @@ internal fun ChunksApp(
     var routingPersonChoiceFor by remember { mutableStateOf<String?>(null) }
     val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
-    val routingSource = localReviewedTorrent.value?.preview
-    val routingMagnetName = remember(magnet, addSourceDraft.value) {
-        (MagnetDraftCheck.inspect(magnet.ifBlank { addSourceDraft.value }) as? MagnetDraftCheck.Valid)?.displayName
+    // A pending text replacement blocks submission of the retained .torrent.
+    // Its name and files must also stop influencing the Add destination.
+    val routingSource = localReviewedTorrent.value?.preview.takeIf { magnet.isBlank() }
+    val (routingMagnetHash, routingMagnetName) = remember(magnet) {
+        val parsed = MagnetDraftCheck.inspect(magnet) as? MagnetDraftCheck.Valid
+        parsed?.infoHash to parsed?.displayName
     }
     // Capability-aware candidacy: each protocol client's own live session,
     // read off the main thread only while Add is shown and routing is on.
@@ -1208,10 +1211,7 @@ internal fun ChunksApp(
             }
         }
     }
-    val routingMagnetKey = remember(magnet, addSourceDraft.value) {
-        (MagnetDraftCheck.inspect(magnet.ifBlank { addSourceDraft.value }) as? MagnetDraftCheck.Valid)?.infoHash
-    }
-    val routingSourceKey = routingSource?.infoHashV1 ?: routingMagnetKey
+    val routingSourceKey = routingSource?.infoHashV1 ?: routingMagnetHash
     val routingSuggestionIsSelected = routingSuggestion?.environmentId?.let { id ->
         id == addProtocolTargetId ||
             (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
@@ -1236,9 +1236,7 @@ internal fun ChunksApp(
             enabled = addChoicesEnabled && !sharedTorrentReading,
             aliasDraft = addAliasDraft.value,
             onAliasChange = { addAliasDraft.value = it },
-            // The newest source's own name: reviewed .torrent, else the magnet's dn.
-            sourceName = localReviewedTorrent.value?.preview?.name
-                ?: remember(magnet) { (MagnetDraftCheck.inspect(magnet) as? MagnetDraftCheck.Valid)?.displayName },
+            sourceName = routingSource?.name ?: routingMagnetName,
             incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
             importingSource = sharedTorrentReading,
             sourceError = sharedTorrentError,
