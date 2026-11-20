@@ -6,10 +6,13 @@ import org.junit.Test
 /** A generated exact-transfer lookup must not masquerade as a permanent user search. */
 class UniversalAddNavigationSearchTest {
     private val firstHash = "ab".repeat(20)
-    @Test fun onlyTheSameInjectedHashIsClearedOnEnteringANewAdd() {
-        assertEquals("", searchAfterNewAdd(firstHash, firstHash))
-        assertEquals("my show", searchAfterNewAdd("my show", firstHash))
-        assertEquals(firstHash, searchAfterNewAdd(firstHash, null))
-        assertEquals("other", searchAfterNewAdd("other", "cd".repeat(20)))
+    @Test fun endingAnAddLookupRestoresTheManualSearch() {
+        val search = UniversalAddNavigationSearch()
+        assertEquals("my show", search.displayQuery("my show"))
+        search.viewTransfer(firstHash)
+        assertEquals(firstHash, search.displayQuery("my show"))
+        search.clear()
+        assertEquals("my show", search.displayQuery("my show"))
+        assertEquals(firstHash, search.displayQuery(firstHash))
     }
 }

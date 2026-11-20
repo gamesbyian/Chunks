@@ -130,6 +130,7 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val sourceDraft = mutableStateOf("")
     // The optional Chunks-only label belongs to the single in-RAM Add draft.
     val aliasDraft = mutableStateOf("")
+    val transferSearch = UniversalAddNavigationSearch()
     val reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null)
     val pendingSharedMagnet = mutableStateOf<String?>(null)
     val pendingSharedDocument = mutableStateOf<Uri?>(null)
@@ -312,10 +313,15 @@ internal fun shouldConsumeReviewedSourceOnExit(
     lifecycleCancelled: Boolean
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
-/** Only a filter injected by Add's View transfer can be cleared automatically.
- * A person's manually edited search must survive a later Add entry. */
-internal fun searchAfterNewAdd(currentSearch: String, addOwnedHash: String?): String =
-    if (addOwnedHash != null && currentSearch == addOwnedHash) "" else currentSearch
+/** Generated exact-transfer lookups are temporary and stay in memory across recreation. */
+internal class UniversalAddNavigationSearch {
+    var exactHash by mutableStateOf<String?>(null)
+        private set
+
+    fun viewTransfer(hash: String) { exactHash = hash }
+    fun clear() { exactHash = null }
+    fun displayQuery(manualSearch: String): String = exactHash ?: manualSearch
+}
 
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
@@ -550,14 +556,9 @@ internal fun ChunksApp(
     var combinedDetailsVisible by remember { mutableStateOf(false) }
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
-    // A View transfer deep link is owned by Add, unlike an ordinary typed search.
-    // Clear only that injected hash on the next Add, preserving manual filters.
-    var addOwnedTransferSearch by rememberSaveable { mutableStateOf<String?>(null) }
+    val addTransferSearch = retainedAddOwner?.transferSearch ?: remember { UniversalAddNavigationSearch() }
     LaunchedEffect(section) {
-        if (section == Section.ADD_CHOOSE) {
-            combinedSearch.value = searchAfterNewAdd(combinedSearch.value, addOwnedTransferSearch)
-            addOwnedTransferSearch = null
-        }
+        if (section == Section.ADD_CHOOSE) addTransferSearch.clear()
     }
     // Last read-only listings of other saved profiles survive navigation between
     // roots, but never a privacy lock/unlock or policy lifecycle change.
@@ -1348,8 +1349,7 @@ internal fun ChunksApp(
                 // Carry both exact client and hash to the canonical browser.
                 // Scope-only navigation could leave the new transfer invisible.
                 // This is read-only navigation, never another Add or Start.
-                addOwnedTransferSearch = hash
-                combinedSearch.value = hash
+                addTransferSearch.viewTransfer(hash)
                 consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                 savedProfileCatalogFocus = profile.id
                 combinedFromConnections = true
@@ -1512,6 +1512,8 @@ internal fun ChunksApp(
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
                 searchState = combinedSearch,
+                initialAddSearch = addTransferSearch.displayQuery(combinedSearch.value),
+                onManualSearchEdited = addTransferSearch::clear,
                 savedListingsState = combinedSavedListings,
                 // Only this session's positively verified Add on the current account.
                 recentlyAddedTransfer = latestAdded?.takeIf { key ->

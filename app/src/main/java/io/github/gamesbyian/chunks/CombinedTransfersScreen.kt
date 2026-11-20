@@ -403,6 +403,8 @@ internal fun CombinedTransfersScreen(
      * list and coming Back. It is still never written to preferences.
      */
     searchState: androidx.compose.runtime.MutableState<String>? = null,
+    initialAddSearch: String? = null,
+    onManualSearchEdited: () -> Unit = {},
     /**
      * Caller-owned last read-only listings of other saved profiles, so returning
      * from Add/Connections/Options shows last-known counts and rows instead of
@@ -444,7 +446,9 @@ internal fun CombinedTransfersScreen(
     val activity = remember(context) { context.findActivity() }
     // Persistent preference reads run off the composition thread. A saved
     // snapshot cannot replace a scope/filter/search chosen while it loads.
-    var query by remember { mutableStateOf(UnifiedTransferQuery(search = searchState?.value.orEmpty())) }
+    var query by remember {
+        mutableStateOf(UnifiedTransferQuery(search = initialAddSearch ?: searchState?.value.orEmpty()))
+    }
     var queryTouched by remember { mutableStateOf(false) }
     // Read the mutable query state inside each callback. A remembered updated
     // value only refreshes on recomposition, so two rapid clicks (sort key,
@@ -469,7 +473,6 @@ internal fun CombinedTransfersScreen(
     fun update(next: UnifiedTransferQuery) {
         queryTouched = true
         query = next
-        searchState?.value = next.search
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
@@ -1640,6 +1643,7 @@ internal fun CombinedTransfersScreen(
                     queryTouched = true
                     query = query.copy(search = it)
                     searchState?.value = it
+                    onManualSearchEdited()
                 },
                 filtersExpanded = showingViewOptions,
                 batchExpanded = showingBatchTools,
