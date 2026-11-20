@@ -254,7 +254,11 @@ internal fun ProtocolAddScreen(
             OriginalTorrentHandling.ARCHIVE else saved
     }
     val folder = if (useCustom) customFolder.trim() else null
-    val folderValid = folder == null || runCatching { ClientHashes.requireDirectory(folder) }.isSuccess
+    val defaultFolder = session?.defaultDownloadDirectory?.let { directory ->
+        runCatching { ClientHashes.requireDirectory(directory) }.getOrNull()
+    }
+    val folderValid = if (folder == null) defaultFolder != null
+        else runCatching { ClientHashes.requireDirectory(folder) }.isSuccess
     // The one engine-neutral capability descriptor decides what this form offers.
     val capabilities = UniversalAddClientCapabilities.protocol(session)
     val sourceRefusal = source?.let {
@@ -343,8 +347,12 @@ internal fun ProtocolAddScreen(
             sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
         },
         saveTo = {
-        Text(if (useCustom) "A folder you enter on $clientLabel"
-            else "$clientLabel's default folder" + (session?.defaultDownloadDirectory?.let { " ($it)" } ?: ""),
+        Text(when {
+            useCustom -> "A folder you enter on $clientLabel"
+            defaultFolder != null -> "$clientLabel's default folder ($defaultFolder)"
+            session != null -> "$clientLabel's default folder could not be confirmed"
+            else -> "Checking $clientLabel's default folder…"
+        },
             style = MaterialTheme.typography.bodyMedium)
         if (capabilities.customFolder) OutlinedButton(onClick = { useCustom = !useCustom },
             enabled = !attempt.busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -409,7 +417,7 @@ internal fun ProtocolAddScreen(
                         return@submit
                     }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
-                    profileId, request, session?.defaultDownloadDirectory, allowArtwork)
+                    profileId, request, defaultFolder, allowArtwork)
                 val appContext = context.applicationContext
                 val aliasStore = saveVerifiedAlias ?: { h: String, value: String ->
                     TransferAliasStore(appContext).saveVerifiedNewAddAlias(ProtocolAliasScope.of(profileId), h, value)
