@@ -99,6 +99,22 @@ class ExternalApkTorrentHandoffInstrumentedTest {
             // waitUntil throws ComposeTimeoutException, not AssertionError.
             // Keep only booleans, never source identity or payload, in CI logs.
             android.util.Log.e("ChunksExternalGrant", "review-timeout $lastState")
+            // A synthetic, local-only source fixture. Preserve the full app
+            // screen for distinguishing task routing from invisible semantics,
+            // using the same atlas directory as the other installed journeys.
+            runCatching {
+                instrumentation.uiAutomation.takeScreenshot()?.let { bitmap ->
+                    val directory = java.io.File(
+                        android.os.Environment.getExternalStoragePublicDirectory(
+                            android.os.Environment.DIRECTORY_PICTURES), "ChunksAddAtlas"
+                    ).apply { mkdirs() }
+                    java.io.File(directory, "external-provider-review-timeout.png")
+                        .outputStream().use {
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                    bitmap.recycle()
+                }
+            }
             throw AssertionError("Foreign provider Add review timed out: $lastState", failure)
         }
     }
