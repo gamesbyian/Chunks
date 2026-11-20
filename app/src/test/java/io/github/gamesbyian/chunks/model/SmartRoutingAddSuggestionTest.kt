@@ -67,6 +67,23 @@ class SmartRoutingAddSuggestionTest {
         assertTrue(!SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_MAGNET, dir = null), true, true).placeKnown)
     }
 
+    @Test fun blankDaemonDefaultCannotMakeAnUnavailableClientLookReady() {
+        for (path in listOf("", " ", "\t", "\r\n")) {
+            val unknownPlace = SmartRoutingAddSuggestion.candidateFor(qb, "qB",
+                session(C.ADD_MAGNET, C.ADD_STOPPED, dir = path), magnetSource = true, startNow = false)
+            assertTrue("A blank default cannot prove a Save to folder", !unknownPlace.placeKnown)
+            assertTrue("The exact matching rule must not silently reroute",
+                SmartRoutingAddSuggestion.evaluate(policy, "Show.S01E02.mkv",
+                    listOf("Show.S01E02.mkv"), listOf(unknownPlace, c(deluge, "Deluge")))
+                    is SmartRoutingAddSuggestion.Result.Unavailable)
+        }
+        // A nonblank, genuinely reported default remains selectable; do not
+        // require an unnecessary picker or damage normal successful Adds.
+        assertTrue(SmartRoutingAddSuggestion.candidateFor(qb, "qB",
+            session(C.ADD_MAGNET, C.ADD_STOPPED, dir = "/srv/downloads"),
+            magnetSource = true, startNow = false).placeKnown)
+    }
+
     @Test fun incapableMatchedClientIsUnavailableNotRerouted() {
         val noMagnet = SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_TORRENT_FILE), true, true)
         val r = SmartRoutingAddSuggestion.evaluate(policy, "Show.S01E02", listOf("Show.S01E02.mkv"),
