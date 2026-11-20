@@ -201,6 +201,47 @@ class ProtocolAddScreenTest {
         assertEquals(other, (fake.added!!.source as ClientAddSource.Magnet).infoHash)
     }
 
+    @Test fun acknowledgingOldProtocolAddKeepsNewerMagnetDraft() {
+        val fake = Fake()
+        val attempt = ProtocolAddAttempt()
+        val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=old")
+        renderMagnetAdd(fake, attempt, draft)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
+        rule.waitUntil(5_000) { attempt.outcome is ClientOperationOutcome.Verified }
+        val newer = "magnet:?xt=urn:btih:" + "ef".repeat(20) + "&dn=new"
+        rule.runOnIdle { draft.value = newer }
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).performScrollTo().performClick()
+        rule.runOnIdle {
+            assertEquals("An older receipt may not erase a newer shared magnet", newer, draft.value)
+            assertEquals("No second Add until a new explicit submission", 1, fake.writes)
+        }
+    }
+
+    @Test fun submittedProtocolSourceFingerprintIsExactAndCannotEraseANewDocument() {
+        val bytes = io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.build(
+            io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Request("exact-review",
+                listOf(io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder.Entry(
+                    listOf("one.bin"), 1024L) { ByteArray(1024).inputStream() }),
+                trackerTiers = emptyList(), pieceLength = 16 * 1024)).torrent
+        val preview = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes)
+        val first = PendingLocalAdd(preview, bytes)
+        val attempt = ProtocolAddAttempt()
+        val selectedText = "magnet:?xt=urn:btih:$hash&tr=https%3A%2F%2Fprivate.one"
+        assertTrue(attempt.claim("p", hash, selectedText, first))
+        assertTrue(attempt.submittedTextStillSelected(selectedText))
+        assertTrue(attempt.submittedFileStillSelected(first))
+        assertFalse(attempt.submittedTextStillSelected(
+            "magnet:?xt=urn:btih:$hash&tr=https%3A%2F%2Fprivate.two"))
+        // A newly reviewed file object, even with the same infohash and
+        // identical bytes, is a distinct user source and must survive.
+        assertFalse(attempt.submittedFileStillSelected(PendingLocalAdd(preview, bytes.copyOf())))
+        first.bytes[0] = (first.bytes[0].toInt() xor 1).toByte()
+        assertFalse(attempt.submittedFileStillSelected(first))
+        attempt.releaseUnwritten(hash)
+        assertFalse(attempt.submittedTextStillSelected(selectedText))
+        assertFalse(attempt.submittedFileStillSelected(first))
+    }
+
     @Test fun anotherClientsAttemptBlocksSubmission() {
         val attempt = ProtocolAddAttempt().apply { claim("other", hash) }
         val draft = mutableStateOf("magnet:?xt=urn:btih:$hash")
