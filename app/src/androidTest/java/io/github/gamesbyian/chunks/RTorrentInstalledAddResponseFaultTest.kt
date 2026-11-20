@@ -11,6 +11,7 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -98,9 +99,23 @@ class RTorrentInstalledAddResponseFaultTest {
 
     private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String,
         expectedName: String): Intent? {
+        // Establish the real authenticated destination before Android intake.
+        // This avoids racing a post-Connect route transition with the new share,
+        // and exercises the ordinary source-first form without a Local detour.
+        journey.activate(ChunksSemantics.FOOTER_ADD)
+        val remoteTarget = hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)
+        rule.waitUntil(30_000) {
+            rule.onAllNodes(remoteTarget).fetchSemanticsNodes().size == 1
+        }
+        val selectedRemote = remoteTarget and isSelected()
+        if (rule.onAllNodes(selectedRemote).fetchSemanticsNodes().isEmpty())
+            journey.activate(ChunksSemantics.ADD_TARGET_REMOTE)
+        rule.waitUntil(30_000) {
+            rule.onAllNodes(selectedRemote).fetchSemanticsNodes().size == 1
+        }
+        stage("add-fault-authenticated-target-ready")
         // Validate the disposable provider and exact metainfo independently
-        // before using the same genuine Open With path as the installed T/Q/D
-        // journey. Delivery is source review only, never an Add authorization.
+        // before the genuine Open With intent. No torrent Add is authorized.
         assertEquals(expectedHash, SharedTorrentDocument.read(context.contentResolver, document)
             .preview.infoHashV1)
         var originalIntent: Intent? = null
@@ -114,38 +129,32 @@ class RTorrentInstalledAddResponseFaultTest {
             })
         }
         stage("add-fault-document-open-with-delivered")
-        // Android Share parses the document asynchronously. Establish the
-        // selected source before switching destinations; otherwise a target
-        // change may race the source-selection witness and leave a stale draft.
+        // The selected client is already authenticated and visible. A second
+        // Open With while another draft is held must be explicitly accepted.
+        // Reveal lazy rows by semantics and never confuse a prior source with
+        // this document's independently parsed exact hash.
         val replace = hasText("Use new source") and hasClickAction()
-        // Local may describe a prior draft as "Previously selected" while
-        // an Android clipboard source is offered. The name is the source
-        // witness here; the later remote form MUST verify the exact hash.
-        val localReviewed = hasText(expectedName, substring = true)
-        rule.waitUntil(45_000) {
-            rule.onAllNodes(replace).fetchSemanticsNodes().size == 1 || runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(localReviewed)
-                rule.onAllNodes(localReviewed).fetchSemanticsNodes().size == 1
-            }.getOrDefault(false)
-        }
-        if (rule.onAllNodes(replace).fetchSemanticsNodes().size == 1)
-            LazyComposeActions.activateOnce(rule, replace)
-        rule.waitUntil(30_000) {
-            runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(localReviewed)
-                rule.onAllNodes(localReviewed).fetchSemanticsNodes().size == 1
-            }.getOrDefault(false)
-        }
-        stage("add-fault-shared-document-reviewed")
-        journey.activate(ChunksSemantics.ADD_TARGET_REMOTE)
-        // A client switch must retain the exact file, not an earlier magnet.
         val reviewed = hasText("Infohash: $expectedHash", substring = true)
-        rule.waitUntil(30_000) {
-            runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(reviewed)
-                rule.onAllNodes(reviewed).fetchSemanticsNodes().size == 1
-            }.getOrDefault(false)
+        fun revealed(matcher: androidx.compose.ui.test.SemanticsMatcher): Boolean = runCatching {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(matcher)
+            rule.onAllNodes(matcher).fetchSemanticsNodes().size == 1
+        }.getOrDefault(false)
+        try {
+            rule.waitUntil(45_000) { revealed(replace) || revealed(reviewed) }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Privacy-safe diagnosis: never log URI, source bytes, infohash,
+            // account address, free text or credentials.
+            val selected = rule.onAllNodes(selectedRemote).fetchSemanticsNodes().size == 1
+            val importing = rule.onAllNodes(hasText("Reading .torrent document", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+            val invalid = rule.onAllNodes(hasText("could not be verified", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+            throw AssertionError("Open With did not reach exact remote review: " +
+                "remoteSelected=$selected importing=$importing readRefused=$invalid " +
+                "replacementVisible=${rule.onAllNodes(replace).fetchSemanticsNodes().isNotEmpty()}", failure)
         }
+        if (revealed(replace)) LazyComposeActions.activateOnce(rule, replace)
+        rule.waitUntil(30_000) { revealed(reviewed) }
         stage("add-fault-exact-remote-source-reviewed")
         journey.chooseStopped()
         val archiveSummary = hasTestTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
