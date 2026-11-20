@@ -648,15 +648,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * Real hosted-server acceptance is still required.
      */
     /** Refuse a stale default preview before sending even the first Add write. */
-    private suspend fun requireCurrentServerDefault(plan: StoppedRemoteAddPlan) {
+    private suspend fun prepareLoad(plan: StoppedRemoteAddPlan, beforeLoad: suspend () -> Unit) {
         if (plan.useServerDefault && plan.destination.isNotEmpty()) {
             check(defaultDirectory() == plan.destination) {
                 "Server default location is missing or changed. Review this Add again."
             }
         }
+        beforeLoad()
     }
 
-    suspend fun loadStopped(plan: StoppedRemoteAddPlan): RemoteAddOutcome {
+    suspend fun loadStopped(plan: StoppedRemoteAddPlan, beforeLoad: suspend () -> Unit = {}): RemoteAddOutcome {
         val existing = listTransfers("main")
         if (existing.any { it.hash.equals(plan.expectedInfoHash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
@@ -666,7 +667,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (lookupName(plan.expectedInfoHash) != null) {
             return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
         }
-        requireCurrentServerDefault(plan)
+        prepareLoad(plan, beforeLoad)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
                 else listOf("", plan.source, "d.directory.set=" + plan.destination)
@@ -691,7 +692,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * post-failure cleanup. Live Seedhost acceptance remains separate.
      */
     suspend fun loadStoppedTorrentBytes(
-        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
+        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false,
+        beforeLoad: suspend () -> Unit = {}
     ): RemoteAddOutcome {
         val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val inspected = TorrentMetainfoReader.preview(torrentBytes)
@@ -703,7 +705,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return RemoteAddOutcome.AlreadyPresent(hash)
         }
         if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
-        requireCurrentServerDefault(plan)
+        prepareLoad(plan, beforeLoad)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
                 else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
@@ -728,13 +730,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * and both started AND active flags can produce Started. This is engine
      * activity, not evidence of peers or downloaded bytes.
      */
-    internal suspend fun loadStarted(plan: StoppedRemoteAddPlan): RemoteAddAndStart {
+    internal suspend fun loadStarted(plan: StoppedRemoteAddPlan, beforeLoad: suspend () -> Unit = {}): RemoteAddAndStart {
         val hash = plan.expectedInfoHash
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) } ||
             lookupName(hash) != null) {
             return RemoteAddAndStart.AddedStopped(RemoteAddOutcome.AlreadyPresent(hash))
         }
-        requireCurrentServerDefault(plan)
+        prepareLoad(plan, beforeLoad)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
                 else listOf("", plan.source, "d.directory.set=" + plan.destination)
@@ -749,7 +751,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     internal suspend fun loadStartedTorrentBytes(
-        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
+        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false,
+        beforeLoad: suspend () -> Unit = {}
     ): RemoteAddAndStart {
         val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val hash = TorrentMetainfoReader.preview(torrentBytes).infoHashV1
@@ -760,7 +763,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             lookupName(hash) != null) {
             return RemoteAddAndStart.AddedStopped(RemoteAddOutcome.AlreadyPresent(hash))
         }
-        requireCurrentServerDefault(plan)
+        prepareLoad(plan, beforeLoad)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
                 else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
