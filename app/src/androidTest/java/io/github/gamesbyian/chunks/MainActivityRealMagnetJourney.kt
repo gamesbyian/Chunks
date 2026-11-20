@@ -319,8 +319,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitUntil(60_000) { visible("View transfers") }
         // Connections lists the current server's button AND one per saved profile; only the
         // current verified server's exact accessibility name is unambiguous.
-        rule.onNode(hasTestTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS))
-            .performScrollTo().performClick()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS))
         waitTransfersCatalog()
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")

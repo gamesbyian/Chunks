@@ -1635,8 +1635,9 @@ internal fun LocalEngineScreen(
                         Text("A newer torrent source is entered. Resolve or clear it before adding the previously selected .torrent.",
                             style = MaterialTheme.typography.bodySmall)
                     }
-                    if (add != null && magnet.isBlank()) {
-                        Text("Selected .torrent: " + add.preview.name, fontWeight = FontWeight.Bold)
+                    if (add != null) {
+                        val selection = if (magnet.isBlank()) "Selected .torrent" else "Previously selected .torrent"
+                        Text("$selection: ${add.preview.name}", fontWeight = FontWeight.Bold)
                     }
                     if (add != null && canReviewOnConnectedServer &&
                         onPrepareRemoteTorrent != null) {
@@ -1765,8 +1766,6 @@ internal fun LocalEngineScreen(
                         },
                         opensOptions = onOpenOptions != null
                     )
-                    // Engine/network explanation is optional, after actual Add selections.
-                    LocalEngineAbout()
                     if (magnet.isNotEmpty() && destination != null) {
                         FinishInOrderAddChoice(
                             "Finish in Order once the file list arrives (episodes or numbered files)",
@@ -1854,8 +1853,7 @@ internal fun LocalEngineScreen(
                         // The same read-only Check status as the protocol clients: one exact
                         // native list read of this ticket, never a second Add.
                         val localEnvironment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
-                        if (!busy && phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED &&
-                            !localAttemptController.isFollowingUp(localEnvironment)) {
+                        if (!busy && phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED) {
                             val checkingNow = localAttemptController.isChecking(localEnvironment)
                             OutlinedButton(onClick = {
                                 localAttemptController.recheck(localAddAttemptSession.coordinator,
@@ -1937,6 +1935,8 @@ internal fun LocalEngineScreen(
                     OriginalAddDocumentStatus(originalAddDocument, addAttemptScope ?: scope)
                 }
             )
+            // Keep the general engine explanation below the user's Add action.
+            LocalEngineAbout()
             repairReview?.let { prepared ->
                 val (hash, source) = prepared
                 val observed = transfers.singleOrNull { it.infoHash == hash }
