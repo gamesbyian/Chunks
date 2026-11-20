@@ -427,6 +427,9 @@ internal fun ProtocolAddScreen(
                             if (run.writeMayHaveHappened) ClientOperationOutcome.Uncertain(hash, "unexpected failure")
                             else ClientOperationOutcome.Refused(hash, "The Add could not be prepared; nothing was sent")
                     }
+                    // Each new source starts checked, even when the user edits another
+                    // source after a verified Add without pressing Add another first.
+                    if (attempt.outcome is ClientOperationOutcome.Verified) automaticArtwork = true
                     // A display name only for this Add's positively verified NEW registration.
                     val verifiedNewHash = (attempt.outcome as? ClientOperationOutcome.Verified)?.hash
                         ?.takeIf { coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }

@@ -70,7 +70,7 @@ internal class ProtocolAddExecutor(
     private val request: ClientAddRequest,
     private val clock: () -> Long = System::currentTimeMillis,
     /** Local privacy preference preflight. Failure is a proven no-write refusal. */
-    private val prepareBeforeWrite: suspend () -> Boolean = { true }
+    private val prepareBeforeWrite: (suspend () -> Boolean)? = null
 ) : UniversalAddExecutor<ClientOperationOutcome> {
     private var writeStartedAt = -1L
 
@@ -88,7 +88,11 @@ internal class ProtocolAddExecutor(
         requireTicket(ticket)
         // Opt-out must be persisted on this exact profile+hash before ANY RPC.
         // A failed preference write must never cross the one-shot write boundary.
-        val prepared = try { prepareBeforeWrite() } catch (cancel: CancellationException) {
+        // No implicit success path for an opted-out ticket: direct adapter callers
+        // must supply the exact-key persistence preflight, too.
+        val prepared = try {
+            ticket.intent.allowArtwork || (prepareBeforeWrite?.invoke() ?: false)
+        } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: Exception) { false }
         if (!prepared) return ClientOperationOutcome.Refused(request.source.infoHash,

@@ -45,8 +45,9 @@ class ProtocolUniversalAddAdapterTest {
         override suspend fun recheck(hash: String) = Unit
     }
 
-    private fun ticketFor(coordinator: UniversalAddCoordinator, request: ClientAddRequest): UniversalAddCoordinator.Ticket {
-        val intent = ProtocolUniversalAddAdapter.intent("qb-profile", request, "/d")
+    private fun ticketFor(coordinator: UniversalAddCoordinator, request: ClientAddRequest,
+                          allowArtwork: Boolean = true): UniversalAddCoordinator.Ticket {
+        val intent = ProtocolUniversalAddAdapter.intent("qb-profile", request, "/d", allowArtwork)
         return requireNotNull(UniversalAddAdmission.authorize(coordinator, intent,
             EnvironmentCapabilities.unprobed(intent.target.environment), EnvironmentAvailability.LIVE,
             acquireMutationGate = { true }, submittedAtEpochMillis = 1_000L).ticket)
@@ -102,12 +103,25 @@ class ProtocolUniversalAddAdapterTest {
         val fake = Fake()
         val coordinator = UniversalAddCoordinator()
         val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
-        val ticket = ticketFor(coordinator, request)
+        val ticket = ticketFor(coordinator, request, allowArtwork = false)
         var checks = 0
         val result = UniversalAddLifecycle.run(coordinator, ticket,
             ProtocolAddExecutor(ClientOperations(fake, 3, 1), request,
                 prepareBeforeWrite = { checks++; false }))
         assertEquals(1, checks)
+        assertEquals(0, fake.writes)
+        assertTrue(result is UniversalAddRun.Completed)
+        assertTrue((result as UniversalAddRun.Completed).result is ClientOperationOutcome.Refused)
+        assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+    }
+
+    @Test fun optedOutTicketWithoutPreferenceWriterCannotSilentlyAdd() = runBlocking {
+        val fake = Fake()
+        val coordinator = UniversalAddCoordinator()
+        val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
+        val ticket = ticketFor(coordinator, request, allowArtwork = false)
+        val result = UniversalAddLifecycle.run(coordinator, ticket,
+            ProtocolAddExecutor(ClientOperations(fake, 3, 1), request))
         assertEquals(0, fake.writes)
         assertTrue(result is UniversalAddRun.Completed)
         assertTrue((result as UniversalAddRun.Completed).result is ClientOperationOutcome.Refused)
