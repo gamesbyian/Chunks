@@ -79,6 +79,12 @@ internal class ProtocolAddExecutor(
             "The request is not the reviewed ticket's source"
         }
         require(ticket.intent.target is UniversalAddTarget.ProtocolClient) { "Not a protocol client ticket" }
+        val place = ticket.intent.place
+        require(ticket.intent.startWhenAdded == request.startNow && when (place) {
+            is UniversalAddPlace.ServerCustom -> ClientHashes.sameDirectory(place.absolutePath, request.directory)
+            is UniversalAddPlace.ServerDefault -> request.directory == null
+            else -> false
+        }) { "The request is not the reviewed ticket's Place and Start" }
     }
 
     override suspend fun execute(
@@ -86,7 +92,7 @@ internal class ProtocolAddExecutor(
         boundary: UniversalAddWriteBoundary
     ): ClientOperationOutcome {
         requireTicket(ticket)
-        return operations.add(request) {
+        val result = operations.add(request) {
             // Read-only absence/capability checks have already passed. A refusal
             // there cannot change the preference of an existing transfer.
             val prepared = try {
@@ -101,6 +107,12 @@ internal class ProtocolAddExecutor(
                 null
             }
         }
+        if (result is ClientOperationOutcome.Verified &&
+            !ClientHashes.sameDirectory(result.observed?.downloadDirectory, ticket.intent.place.reviewedProtocolFolder())) {
+            return ClientOperationOutcome.Pending(result.hash, result.observed,
+                "Registered, but the reviewed folder could not be confirmed")
+        }
+        return result
     }
 
     override suspend fun settle(
@@ -140,11 +152,7 @@ internal class ProtocolAddObserver(
             throw cancel
         } catch (_: Exception) { return null }
         if (torrent != null && !torrent.hash.equals(hash, ignoreCase = true)) return null
-        val reviewedFolder = when (val place = ticket.intent.place) {
-            is UniversalAddPlace.ServerCustom -> place.absolutePath
-            is UniversalAddPlace.ServerDefault -> place.observedDefaultPath.ifBlank { null }
-            else -> null
-        }
+        val reviewedFolder = ticket.intent.place.reviewedProtocolFolder()
         val started = torrent?.runState?.started
         return UniversalAddCoordinator.ExactSessionObservation(
             environment = ticket.intent.target.environment,
@@ -158,4 +166,10 @@ internal class ProtocolAddObserver(
             newRegistrationVerified = false
         )
     }
+}
+
+private fun UniversalAddPlace.reviewedProtocolFolder(): String? = when (this) {
+    is UniversalAddPlace.ServerCustom -> absolutePath
+    is UniversalAddPlace.ServerDefault -> observedDefaultPath.ifBlank { null }
+    else -> null
 }

@@ -3,7 +3,6 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
@@ -157,11 +156,8 @@ class ProtocolClientInstalledJourneyTest {
         }
     }
 
-    /** The shared Universal Add receipt's fixed accessibility state (Local, rTorrent and protocol). */
-    private fun receiptVerified() =
-        rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified")).fetchSemanticsNodes().isNotEmpty() ||
-            rule.onAllNodes(androidx.compose.ui.test.hasStateDescription("Verified"), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
+    private val addJourney get() = InstalledUniversalAddJourney(rule)
+    private fun receiptVerified() = addJourney.hasReceiptState("Verified")
 
     /** One dispatch of a control, after polling only until it is enabled. */
     private fun clickOnce(tag: String, what: String, timeoutMs: Long = 30_000) {
@@ -331,7 +327,7 @@ class ProtocolClientInstalledJourneyTest {
             rule.onNodeWithTag(ChunksSemantics.ADD_ARTWORK_CHOICE).performSemanticsAction(SemanticsActions.OnClick)
             artworkChoiceIs(androidx.compose.ui.state.ToggleableState.Off)
             stage("add-artwork-opt-out-selected")
-            clickOnce(ChunksSemantics.ADD_SUBMIT, "Add", 30_000)
+            addJourney.submit()
             stage("add-dispatched-once")
             waitFor("Add verified (shared receipt)", 90_000) { receiptVerified() }
             // The attempt is app-owned like Local and rTorrent: Activity recreation must
@@ -372,18 +368,7 @@ class ProtocolClientInstalledJourneyTest {
 
             // View transfer from Add must locate the exact hash on the selected
             // protocol client, rather than merely opening that client's inventory.
-            val viewTransfer = hasText("View transfer")
-            waitFor("View transfer after Add", 30_000) {
-                runCatching { scrollToNode(viewTransfer); true }.getOrDefault(false)
-            }
-            rule.onNodeWithText("View transfer").performClick()
-            waitFor("exact added-hash search in canonical Transfers", 30_000) {
-                runCatching {
-                    rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SEARCH)
-                        .assertTextContains(second.infoHashV1, substring = true)
-                    true
-                }.getOrDefault(false)
-            }
+            addJourney.viewExactTransfer(second.infoHashV1)
             stage("add-view-exact-hash-navigation")
 
             // Job-only Move of that exact job to This device (Local engine).
@@ -514,7 +499,7 @@ class ProtocolClientInstalledJourneyTest {
             showArtworkChoice()
             artworkChoiceIs(androidx.compose.ui.state.ToggleableState.On)
             stage("next-add-artwork-default-checked")
-            clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
+            addJourney.submit()
             stage("choices-add-dispatched-once")
             val choicesHash = choices.first.infoHashV1
             // Independent readback is the authority: the job exists, stays stopped,

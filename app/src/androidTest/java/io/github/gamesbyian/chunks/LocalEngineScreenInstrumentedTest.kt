@@ -74,7 +74,8 @@ class LocalEngineScreenInstrumentedTest {
             MaterialTheme {
                 Column(Modifier.fillMaxSize().padding(16.dp)) {
                     LocalAddReview(TorrentMetainfoPreview("Internet Archive public sample", "a".repeat(40), 3,
-                        734_003_200, 262_144), destination, busy = false, onConfirm = { confirmed++ }, onCancel = {})
+                        734_003_200, 262_144), destination, busy = false, onCancel = {})
+                    UniversalAddSubmitAction(onClick = { confirmed++ }, enabled = true)
                 }
             }
         }
@@ -91,13 +92,15 @@ class LocalEngineScreenInstrumentedTest {
         val destination = File("/storage/emulated/0/Android/data/io.github.gamesbyian.chunks/files/Downloads")
         rule.setContent {
             MaterialTheme {
-                LocalAddReview(
-                    TorrentMetainfoPreview("Retained after an uncertain Add", "c".repeat(40),
-                        1, 1_024, 16_384),
-                    destination, busy = true,
-                    onConfirm = { confirmed++ },
-                    onCancel = { cancelled++ }
-                )
+                Column {
+                    LocalAddReview(
+                        TorrentMetainfoPreview("Retained after an uncertain Add", "c".repeat(40),
+                            1, 1_024, 16_384),
+                        destination, busy = true,
+                        onCancel = { cancelled++ }
+                    )
+                    UniversalAddSubmitAction(onClick = { confirmed++ }, enabled = false)
+                }
             }
         }
         rule.onNodeWithText("Retained after an uncertain Add").assertExists()

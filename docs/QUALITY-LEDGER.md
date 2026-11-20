@@ -2,6 +2,12 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-20 UTC: Universal Add integration candidates
+
+- [#1909](https://github.com/gamesbyian/Chunks/pull/1909) keeps the generated exact-hash lookup in RAM, separately from manual Transfers search. The earlier [installed failure](https://github.com/gamesbyian/Chunks/actions/runs/44627739839) had already confirmed the submitted job and its file choices before the retained hash hid the next transfer's display name. [Atlas attempt 1 on `087cbd04`](https://github.com/gamesbyian/Chunks/actions/runs/44647638076) stopped before instrumentation when Maven Central returned HTTP 429. Only the failed atlas job was rerun.
+- [#1911](https://github.com/gamesbyian/Chunks/pull/1911) adds exact-profile artwork opt-out. Candidate `68011f0b` puts preference persistence after the read-only duplicate check and refuses before a write on missing or failed persistence. The installed daemon journey exercises the default, opt-out and exact stored key.
+- [#1844](https://github.com/gamesbyian/Chunks/issues/1844) remains open. The shared-form branch has production changes and reusable installed semantic checks. Android, per-client installed and physical acceptance require their own executed evidence.
+
 ## 2026-11-19 UTC: #1905 merged; live Seedhost per-transfer upload caps
 
 - **#1905 merged** as `e0c188d` from exact head `60e8991` (integration-real-peer acceptance report ACCEPTABLE; installed-protocol-client and real-client interop green).

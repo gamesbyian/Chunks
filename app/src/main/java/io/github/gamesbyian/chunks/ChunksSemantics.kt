@@ -52,6 +52,8 @@ internal object ChunksSemantics {
     /** Root of the Transmission/qBittorrent/Deluge Add body. */
     const val ADD_BODY_PROTOCOL = "chunks.add.body.protocol"
     const val ADD_SUBMIT = "chunks.add.submit"
+    const val ADD_VIEW_TRANSFER = "chunks.add.viewTransfer"
+    const val ADD_ANOTHER = "chunks.add.another"
     /** In-place remote Add status: submitting, verified, refused or uncertain. */
     const val ADD_REMOTE_OPERATION_STATUS = "chunks.add.remote.operationStatus"
     /** Read-only exact-hash status check of an unresolved Add; never a second write. */

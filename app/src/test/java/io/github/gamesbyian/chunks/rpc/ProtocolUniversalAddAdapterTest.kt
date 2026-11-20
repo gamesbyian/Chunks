@@ -143,6 +143,20 @@ class ProtocolUniversalAddAdapterTest {
         assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
     }
 
+    @Test fun aDefaultFolderChangeAfterReviewCannotVerifyTheAdd() = runBlocking {
+        val fake = Fake()
+        val coordinator = UniversalAddCoordinator()
+        val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
+        val intent = ProtocolUniversalAddAdapter.intent("exact-profile", request, "/reviewed-default")
+        val ticket = requireNotNull(UniversalAddAdmission.authorize(coordinator, intent,
+            EnvironmentCapabilities.unprobed(intent.target.environment), EnvironmentAvailability.LIVE,
+            acquireMutationGate = { true }, submittedAtEpochMillis = 1_000L).ticket)
+        val result = ProtocolUniversalAddAdapter.submit(coordinator, ticket, ClientOperations(fake, 3, 1), request)
+        assertTrue(result is ClientOperationOutcome.Pending)
+        assertEquals(1, fake.writes)
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, coordinator.phase)
+    }
+
     @Test fun aRequestThatIsNotTheReviewedTicketIsRejectedBeforeAnyWrite() = runBlocking {
         val fake = Fake()
         val coordinator = UniversalAddCoordinator()

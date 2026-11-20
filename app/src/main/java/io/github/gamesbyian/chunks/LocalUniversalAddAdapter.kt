@@ -201,6 +201,7 @@ internal object LocalUniversalAddAdapter {
 internal class LocalAddAttemptSession(
     val coordinator: UniversalAddCoordinator = UniversalAddCoordinator()
 ) {
+    val originalDocument = OriginalAddDocumentState()
     private var ticketWithReceipt: UniversalAddCoordinator.Ticket? = null
     private var nativeGenerationReceipt: String? = null
     /** A positive registration may be shown in Combined once, separately from Start proof. */

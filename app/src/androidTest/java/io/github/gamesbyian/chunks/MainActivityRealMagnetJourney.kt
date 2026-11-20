@@ -567,7 +567,8 @@ internal class MainActivityRealMagnetJourney(
             // accessibility service activates it). A coordinate touch on a lazy row
             // can miss after the IME or layout shifts: run 44409816661 showed no
             // refusal, no receipt and the control still enabled after the tap.
-            rule.onNode(submit).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            val addJourney = InstalledUniversalAddJourney(rule)
+            addJourney.submit()
             try {
                 rule.waitUntil(60_000) {
                     runCatching { scrollOutcome() }.isSuccess &&
@@ -599,18 +600,8 @@ internal class MainActivityRealMagnetJourney(
             // semantics wrappers of the same card. The status tag must be
             // present, but a state is queried separately by its unique fixed
             // vocabulary; no torrent title, server name or endpoint is read.
-            fun receiptHasState(state: String) =
-                hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) &&
-                    // Card and Material3 semantics may leave this fixed
-                    // state on an inner unmerged node while the testTag is on
-                    // an outer wrapper. Inspect both trees; still require an
-                    // exact permitted state, never infer success from prose.
-                    (
-                        rule.onAllNodes(hasStateDescription(state))
-                            .fetchSemanticsNodes().isNotEmpty() ||
-                        rule.onAllNodes(hasStateDescription(state), useUnmergedTree = true)
-                            .fetchSemanticsNodes().isNotEmpty()
-                    )
+            fun receiptHasState(state: String) = hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) &&
+                addJourney.hasReceiptState(state)
             val settledReceiptStates = listOf(
                 "Verified", "Add unverified", "Start unverified",
                 "Added, checking", "Present, origin unverified", "Not added"
@@ -678,6 +669,8 @@ internal class MainActivityRealMagnetJourney(
             } else {
                 scroll("View transfer")
                 rule.onNodeWithText("View transfer").assertExists()
+                addJourney.viewExactTransfer(hash)
+                openRemoteAdd()
             }
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
                 runCatching {
