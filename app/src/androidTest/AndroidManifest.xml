@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Belongs to the separately installed androidTest APK, not Chunks.
+             Supplies an opaque external content URI and an actual read grant. -->
+        <provider
+            android:name="io.github.gamesbyian.chunks.external.ExternalTorrentTestProvider"
+            android:authorities="${applicationId}.external-torrent-proof"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>
