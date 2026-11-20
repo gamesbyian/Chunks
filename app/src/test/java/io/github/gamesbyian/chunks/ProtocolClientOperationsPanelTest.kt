@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -44,6 +45,7 @@ class ProtocolClientOperationsPanelTest {
         var dir = "/d"
         var movedData: Boolean? = null
         var sessions = 0
+        var fileReads = 0
         override suspend fun session(): ClientSessionInfo {
             sessions++
             return ClientSessionInfo(kind, "5", "/d", ClientCapability.entries.toSet())
@@ -52,7 +54,10 @@ class ProtocolClientOperationsPanelTest {
         override suspend fun torrent(hash: String) =
             if (present && hash == this@ProtocolClientOperationsPanelTest.hash)
                 ClientTorrent(hash, "n", state, 1, 0, 0, 0, dir) else null
-        override suspend fun files(hash: String) = listOf(ClientFile(0, "a", 1, 0, ClientFilePriority.NORMAL))
+        override suspend fun files(hash: String): List<ClientFile> {
+            fileReads++
+            return listOf(ClientFile(0, "a", 1, 0, ClientFilePriority.NORMAL))
+        }
         private fun write(apply: () -> Unit) {
             writes++
             if (lose) throw ClientWriteUncertainException("lost")
@@ -299,28 +304,37 @@ class ProtocolClientOperationsPanelTest {
 
     @Test fun openingMoveRefinesTheSuggestionFromTheJobsOwnFilesWithoutWriting() {
         val source = Fake(); val destination = Target()
-        val evaluated = mutableListOf<List<String>>()
+        val sourceOperations = { ClientOperations(source, 3, 1) }
+        var destinationCurrent by mutableStateOf(true)
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
                     current = true, inventoryWitness = 1L,
-                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
+                    createOperations = sourceOperations, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
                         ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
                     moveOnly = true, suggestedTarget = null,
-                    suggestForFiles = { names -> evaluated += names; "de" to "book rule" })
+                    suggestForFiles = { names ->
+                        if (destinationCurrent && names == listOf("a")) "de" to "book rule" else null
+                    })
             }
         }
         rule.waitForIdle()
-        assertEquals("nothing is read before Copy/Move is opened", 0, evaluated.size)
+        assertEquals("nothing is read before Copy/Move is opened", 0, source.fileReads)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
-        rule.waitForIdle()
-        rule.waitUntil(5_000) { evaluated.isNotEmpty() }
-        rule.waitForIdle()
-        assertEquals(listOf(listOf("a")), evaluated)
-        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
-            .assertTextContains("Seedbox Deluge (book rule)", substring = true)
+        val suggestion = rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION).fetchSemanticsNodes().isNotEmpty()
+        }
+        suggestion.assertTextContains("Seedbox Deluge (book rule)", substring = true)
+
+        rule.runOnIdle { destinationCurrent = false }
+        suggestion.assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".de").assertExists()
+        rule.runOnIdle { destinationCurrent = true }
+        suggestion.assertTextContains("Seedbox Deluge (book rule)", substring = true)
+        assertEquals("target refreshes reuse the exact job's file read", 1, source.fileReads)
         assertEquals("reading files writes nothing", 0, source.writes)
         assertEquals(0, destination.adds)
     }

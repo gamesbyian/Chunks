@@ -24,6 +24,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore
+import io.github.gamesbyian.chunks.model.SmartRoutingPreview
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
 import io.github.gamesbyian.chunks.rpc.ClientHashes
@@ -266,7 +268,7 @@ class ProtocolClientInstalledJourneyTest {
         fun episodeFixture(): TorrentMetainfoBuilder.Result {
             val random = SecureRandom()
             val folder = "chunks-installed-fio-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
-            val entries = listOf("Show S01E03.bin", "Show S01E01.bin", "Show S01E02.bin").map { name ->
+            val entries = listOf("Show S01E03.mkv", "Show S01E01.mkv", "Show S01E02.mkv").map { name ->
                 val bytes = ByteArray(24 * 1024).also(random::nextBytes)
                 TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }
             }
@@ -589,6 +591,11 @@ class ProtocolClientInstalledJourneyTest {
             }
             assertTrue("Episode fixture preload: $preloaded", preloaded is ClientOperationOutcome.Verified)
             stage("fio-fixture-preloaded")
+            val routing = SmartRoutingPolicyStore(context)
+            val originalRouting = routing.read() as SmartRoutingPolicyStore.Read.Ready
+            val episodeRule = SmartRoutingPreview.Rule("episodes", 1, SmartRoutingPreview.Kind.TV, 60, localId)
+            assertEquals(SmartRoutingPolicyStore.Save.SAVED, routing.save(originalRouting.revision,
+                SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(episodeRule))))
             if (rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_TRANSFERS)).fetchSemanticsNodes().isEmpty()) {
                 it.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
             }
@@ -598,6 +605,19 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { scrollToNode(episodesDetails); true }.getOrDefault(false)
             }
             rule.onAllNodes(episodesDetails).onFirst().performClick()
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE, "Copy or move episode job")
+            val advice = hasTestTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
+            waitFor("the files suggest the observed Local client") {
+                rule.onAllNodes(advice and hasText("This device", substring = true))
+                    .fetchSemanticsNodes().size == 1
+            }
+            assertNull("Advice must never register a Local job", local.status(episodesHash))
+            assertEquals("Advice must keep the source stopped", ClientRunState.STOPPED,
+                runBlocking { independentRead(episodesHash) }?.runState)
+            stage("move-suggestion-live-exact-client-no-write")
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE, "Hide copy or move")
+            val currentRouting = routing.read() as SmartRoutingPolicyStore.Read.Ready
+            assertEquals(SmartRoutingPolicyStore.Save.SAVED, routing.save(currentRouting.revision, originalRouting.policy))
             waitFor("protocol Files control", 60_000) {
                 runCatching { scrollToNode(hasText("Files")); rule.onNodeWithText("Files").assertIsEnabled(); true }
                     .getOrDefault(false)
@@ -613,7 +633,7 @@ class ProtocolClientInstalledJourneyTest {
             }
             rule.onNodeWithText("Start Finish in Order").performSemanticsAction(SemanticsActions.OnClick)
             stage("fio-start-dispatched-once")
-            val firstEpisode = "Show S01E01.bin"
+            val firstEpisode = "Show S01E01.mkv"
             waitFor("E01 at High on the real client", 90_000) {
                 val files = runCatching {
                     runBlocking {

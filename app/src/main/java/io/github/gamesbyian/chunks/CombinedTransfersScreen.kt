@@ -1181,9 +1181,8 @@ internal fun CombinedTransfersScreen(
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
         val renameScope = aliasScopes[focusedKey.environment]
-        // Every connected client is a job-only Copy/Move target through the one
-        // shared port, the device's own engine included. A target is offered
-        // only while its own inventory is live and visible.
+        // Copy/Move uses the shared job-only port, including the device's own
+        // engine. The explicit Copy action checks the destination independently.
         val localClientOperations: () -> io.github.gamesbyian.chunks.rpc.ClientOperations = remember(context) {
             { io.github.gamesbyian.chunks.rpc.ClientOperations(LocalTorrentClient.forApp(context)) }
         }
@@ -1214,11 +1213,22 @@ internal fun CombinedTransfersScreen(
                     as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
             }
         }
+        // A Transfers filter does not change which destination was authenticated.
+        val routingSnapshots = sources.associateBy { it.environment }
         fun moveSuggestionFor(targets: List<ProtocolMoveTarget>, fileNames: List<String> = emptyList()): Pair<String, String>? =
             io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.moveSuggestion(
                 routingPolicy, details.observation?.originalName, details.observation?.metadataPending,
                 focusedKey.environment.value,
-                targets.map { io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true) },
+                targets.map { target ->
+                    // Catalog snapshots already fence old reads by exact profile,
+                    // authenticated identity, privacy and freshness.
+                    io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
+                        target.id, target.label,
+                        live = routingSnapshots[EnvironmentId(target.id)]
+                            ?.canClaimCompleteLiveInventory == true,
+                        acceptsAdd = true, placeKnown = true
+                    )
+                },
                 fileNames
             )?.let { it.environmentId to (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") }
         val protocolMoveTargets = protocolProfiles.filter {
@@ -1311,7 +1321,7 @@ internal fun CombinedTransfersScreen(
                             moveTargets = outbound,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(outbound),
-                    suggestForFiles = { names -> moveSuggestionFor(outbound, names) },
+                            suggestForFiles = { names -> moveSuggestionFor(outbound, names) },
                             sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
                     }
@@ -1383,7 +1393,7 @@ internal fun CombinedTransfersScreen(
                             moveTargets = connectedTargets,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(connectedTargets),
-                    suggestForFiles = { names -> moveSuggestionFor(connectedTargets, names) },
+                            suggestForFiles = { names -> moveSuggestionFor(connectedTargets, names) },
                             sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
                     }
