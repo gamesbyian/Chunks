@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Disposable-only: installed app against the runner's loopback Transmission,
-# qBittorrent and Deluge daemons (one emulator boot, app data cleared per client).
+# qBittorrent, Deluge and rTorrent daemons (one boot, app data cleared per client).
 set -euo pipefail
 out="$RUNNER_TEMP/interop/evidence"
 mkdir -p "$out"
@@ -37,7 +37,8 @@ start_proxy() {
 start_proxy transmission 19191
 start_proxy qbittorrent 18180
 start_proxy deluge 18212
-for port in 19091 18080 18112 19191 18180 18212; do
+start_proxy rtorrent 18190
+for port in 19091 18080 18112 18090 19191 18180 18212 18190; do
   adb reverse tcp:$port tcp:$port >/dev/null
 done
 b64() { printf '%s' "$1" | base64 -w 0; }
@@ -64,7 +65,8 @@ run_one() {
     > "$out/instrumentation-$kind.txt" 2>&1
   local status=$?
   set -e
-  grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation-$kind.txt" | tee "$out/stages-$kind.txt" || true
+  tr -d '\r' < "$out/instrumentation-$kind.txt" |
+    grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' | tee "$out/stages-$kind.txt" || true
   if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation-$kind.txt"; then
     tail -80 "$out/instrumentation-$kind.txt"
     echo "::error::Installed protocol-client journey failed for $kind"
@@ -82,5 +84,51 @@ run_one QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunk
 # adb shell, shifting every following am instrument argument out of position.
 # Send a non-empty unused username placeholder (ignored by the Deluge adapter).
 run_one DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
+run_rtorrent() {
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
+  local test_class=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
+  local runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
+  local raw="$out/instrumentation-RTORRENT.txt" stages="$out/stages-RTORRENT.txt"
+  if ! adb shell am instrument --user 0 -w -r \
+    -e class "$test_class#stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost" \
+    -e chunks_rtorrent_add_fault authorized \
+    "$runner" > "$raw" 2>&1 ||
+    ! grep -q '^OK (1 test)' "$raw"; then
+    tail -80 "$raw"
+    echo "::error::Installed rTorrent Add response fault journey failed"
+    return 1
+  fi
+  tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' | tee "$stages"
+  for fault in drop timeout; do
+    grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=add-fault-$fault-one-write-present-origin-unverified" "$stages" || return 1
+  done
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT installed document Add and post-write response loss/timeout passed" |
+    tee -a "$GITHUB_STEP_SUMMARY"
+
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
+  adb logcat -c || return 1
+  adb shell am instrument --user 0 -w -r -e class "$test_class#submitThenKillTheAppProcess" \
+    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || true
+  adb logcat -d -s ChunksAddFault:I > "$out/process-death-boundary.txt" || return 1
+  if ! grep -Fq 'process-death-real-write-awaits-ack' "$out/process-death-boundary.txt" ||
+    grep -q '^OK (' "$out/process-death-phase1.txt" ||
+    adb shell pidof "$pkg" >/dev/null 2>&1; then
+    tail -80 "$out/process-death-phase1.txt"
+    echo "::error::The installed app did not die at the held Add write boundary"
+    return 1
+  fi
+  if ! adb shell am instrument --user 0 -w -r -e class "$test_class#freshProcessDoesNotReplayTheHeldAdd" \
+    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 ||
+    ! grep -q '^OK (1 test)' "$out/process-death-phase2.txt" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=process-death-no-replay-no-start-original-unchanged' "$out/process-death-phase2.txt"; then
+    tail -80 "$out/process-death-phase2.txt"
+    echo "::error::Fresh-process rTorrent Add safety verification failed"
+    return 1
+  fi
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
+    tee -a "$GITHUB_STEP_SUMMARY"
+}
+run_rtorrent || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed

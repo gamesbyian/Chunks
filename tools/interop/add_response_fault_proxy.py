@@ -8,19 +8,22 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit
+from xml.etree import ElementTree
 
 
 # Fixed test fixtures. No request can choose an upstream host or port.
-PORTS = {"transmission": 19091, "qbittorrent": 18080, "deluge": 18112}
+PORTS = {"transmission": 19091, "qbittorrent": 18080, "deluge": 18112, "rtorrent": 18090}
 ADD = {
     "transmission": {"torrent-add"},
     "qbittorrent": {"/api/v2/torrents/add"},
     "deluge": {"core.add_torrent_file", "core.add_torrent_magnet"},
+    "rtorrent": {"load.verbose", "load.raw_verbose", "load.start", "load.raw_start"},
 }
 START = {
     "transmission": {"torrent-start", "torrent-start-now"},
     "qbittorrent": {"/api/v2/torrents/resume", "/api/v2/torrents/start"},
     "deluge": {"core.resume_torrent", "core.resume_torrents", "core.resume_all_torrents"},
+    "rtorrent": {"d.start", "d.open", "d.resume", "load.start", "load.raw_start"},
 }
 CONTROL = "/__chunks_add_response_fault/"
 HOP_HEADERS = {"connection", "keep-alive", "proxy-connection", "transfer-encoding",
@@ -58,17 +61,27 @@ class FaultState:
 def rpc_method(kind, path, body):
     if kind == "qbittorrent":
         return path
+    if kind == "rtorrent":
+        if path == "/RPC2" and body:
+            return ElementTree.fromstring(body).findtext("methodName")
+        return None
     if path != {"transmission": "/transmission/rpc", "deluge": "/json"}[kind]:
         return None
     data = json.loads(body) if body else {}
-    return data.get("method") if isinstance(data, dict) else None
+    method = data.get("method") if isinstance(data, dict) else None
+    return method if isinstance(method, str) else None
 
 
 def accepted_add(kind, status, response):
     if status not in (200, 204):
         return False
     if kind == "qbittorrent":
-        return response.strip() in (b"", b"Ok.")
+        if response.strip() in (b"", b"Ok."):
+            return True
+        return json.loads(response).get("success_count", 0) == 1
+    if kind == "rtorrent":
+        result = ElementTree.fromstring(response)
+        return result.tag == "methodResponse" and result.find("./params/param/value") is not None
     data = json.loads(response)
     if kind == "transmission":
         return data.get("result") == "success" and "torrent-added" in data.get("arguments", {})
@@ -96,7 +109,7 @@ class FaultProxy(BaseHTTPRequestHandler):
         kind = self.server.kind
         if path.startswith(CONTROL):
             action = path.removeprefix(CONTROL)
-            if self.command == "POST" and action in {"drop", "timeout"}:
+            if self.command == "POST" and action in {"drop", "timeout", "hold"}:
                 state.arm(action)
                 return self.respond(204)
             if self.command == "GET" and action == "counts":
@@ -118,7 +131,7 @@ class FaultProxy(BaseHTTPRequestHandler):
             reply = upstream.getresponse()
             status, headers, response = reply.status, reply.getheaders(), reply.read()
             accepted = mode is not None and accepted_add(kind, status, response)
-        except (OSError, http.client.HTTPException, ValueError):
+        except (OSError, http.client.HTTPException, ValueError, ElementTree.ParseError):
             if mode is not None:
                 state.record("upstream_errors")
             return self.respond(502)
@@ -130,10 +143,10 @@ class FaultProxy(BaseHTTPRequestHandler):
             state.record("adds", -1)
         if accepted:
             state.record("acknowledgments_withheld")
-            if mode == "timeout":
+            if mode in {"timeout", "hold"}:
                 # Exceeds the app's real 15 s HTTP read timeout. The reply is
                 # already received here, and other RPCs remain serviceable.
-                time.sleep(18)
+                time.sleep(18 if mode == "timeout" else 45)
                 return
             return self.respond(503)
         return self.respond(status, response, headers)
@@ -141,7 +154,7 @@ class FaultProxy(BaseHTTPRequestHandler):
     def handle_relay(self):
         try:
             self.relay()
-        except (OSError, ValueError):
+        except (OSError, ValueError, ElementTree.ParseError):
             # The app may close a timed-out request. No request diagnostic
             # should print any part of the fixture's RPC traffic.
             self.close_connection = True

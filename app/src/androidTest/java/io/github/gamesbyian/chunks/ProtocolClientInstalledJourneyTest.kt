@@ -3,9 +3,7 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -31,8 +29,6 @@ import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
-import java.net.HttpURLConnection
-import java.net.URI
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -42,7 +38,6 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.json.JSONObject
 
 /**
  * Installed app against one disposable Transmission, qBittorrent or Deluge
@@ -209,21 +204,7 @@ class ProtocolClientInstalledJourneyTest {
         // This remains real-daemon evidence and never replays the app's write.
         suspend fun independentRead(hash: String) =
             io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
-        fun faultControl(action: String, post: Boolean = false): String {
-            val base = URI(appUrl)
-            require(base.scheme == "http" && base.host == "127.0.0.1")
-            val control = URI("http", null, base.host, base.port, "/__chunks_add_response_fault/$action", null, null)
-            val connection = control.toURL().openConnection() as HttpURLConnection
-            return try {
-                connection.connectTimeout = 3_000
-                connection.readTimeout = 3_000
-                if (post) connection.requestMethod = "POST"
-                assertEquals(if (post) 204 else 200, connection.responseCode)
-                connection.inputStream.bufferedReader().use { it.readText() }
-            } finally {
-                connection.disconnect()
-            }
-        }
+        val responseFault = InstalledAddResponseFault(appUrl)
         stage("client-" + kind.name.lowercase())
 
         fun fixture(tag: String): TorrentMetainfoBuilder.Result {
@@ -709,7 +690,7 @@ class ProtocolClientInstalledJourneyTest {
                 assertNull("The exact fixture must be absent before its Add", runBlocking { independentRead(pendingHash) })
                 typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(pending.magnet))
                 ensureStartWhenAddedOff()
-                faultControl(fault, post = true)
+                responseFault.arm(fault)
                 addJourney.submit()
                 stage("add-fault-$fault-dispatched-once")
 
@@ -729,18 +710,11 @@ class ProtocolClientInstalledJourneyTest {
                     addJourney.hasReceiptState("Present, origin unverified")
                 }
                 assertTrue("An exact match cannot establish who registered the job", !receiptVerified())
-                val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
-                scrollToNode(submit)
-                rule.onAllNodes(submit).assertCountEquals(1)
-                rule.onNode(submit).assertIsNotEnabled()
+                addJourney.requireSubmitBlocked()
                 addJourney.viewExactTransfer(profileId, pendingHash)
                 addJourney.awaitTransferReceipt("Present, origin unverified")
 
-                val counters = JSONObject(faultControl("counts"))
-                assertEquals("Exactly one Add passed through the relay", 1, counters.getInt("adds"))
-                assertEquals("Only one accepted daemon response was withheld", 1, counters.getInt("acknowledgments_withheld"))
-                assertEquals("No recovery Start", 0, counters.getInt("starts"))
-                assertEquals("The daemon accepted the write before the relay fault", 0, counters.getInt("upstream_errors"))
+                responseFault.requireOneWriteAndNoStart()
                 assertEquals("Independent readback still finds the job stopped", ClientRunState.STOPPED,
                     runBlocking { independentRead(pendingHash) }?.runState)
                 stage("add-fault-$fault-one-write-present-origin-unverified")
