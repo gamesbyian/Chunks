@@ -41,6 +41,14 @@ internal class InstalledAddResponseFault(appUrl: String) {
         assertEquals("The fixture saw no Start", 0, counters.getInt("starts"))
     }
 
+    /** The app's relay must issue no rTorrent view-changing RPC while
+     * recovering an exact hidden-session job. The test's direct daemon hide
+     * is independent and intentionally excluded from these counts. */
+    fun requireNoViewMutations() {
+        assertEquals("Read-only Add reconciliation sent a view-changing RPC",
+            0, counts().getInt("view_mutations"))
+    }
+
     fun requireOneWriteAndNoStart() {
         val counters = counts()
         assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))

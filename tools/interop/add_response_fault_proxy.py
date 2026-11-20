@@ -28,7 +28,37 @@ START = {
 CONTROL = "/__chunks_add_response_fault/"
 HOP_HEADERS = {"connection", "keep-alive", "proxy-connection", "transfer-encoding",
                "upgrade", "trailer", "te", "content-length", "host"}
-COUNTERS = ("adds", "acknowledgments_withheld", "starts", "upstream_errors")
+COUNTERS = ("adds", "acknowledgments_withheld", "starts", "upstream_errors", "view_mutations")
+
+# All writes to rTorrent view membership/filter/order which the installed app
+# might send. The test's deliberate server-side hide uses the DIRECT 18090 RPC
+# and never passes this relay (18190). Read-only inventory getters do not count.
+VIEW_MUTATIONS = frozenset({
+    "view.set_visible", "view.set_not_visible", "view.filter", "view.filter_all",
+    "view.filter_download", "view.filter_on", "view.add", "view.insert",
+    "view.erase", "view.sort", "view.sort_new", "view.sort_current",
+    "view.persistent", "view.reopen", "d.views.push_back", "d.views.remove",
+})
+
+
+def rtorrent_view_mutation(path, body):
+    """Classify app-issued XML-RPC view mutations, including system.multicall.
+
+    This examines only method names and never logs or retains sensitive
+    XML-RPC parameters, torrent bytes, credentials or source URLs.
+    """
+    if path != "/RPC2" or not body:
+        return False
+    root = ElementTree.fromstring(body)
+    outer = root.findtext("methodName")
+    methods = [outer]
+    if outer in {"system.multicall", "system.multicall2"}:
+        for member in root.findall(".//member"):
+            if member.findtext("name") == "methodName":
+                value = member.find("value")
+                if value is not None:
+                    methods.append((value.findtext("string") or value.text or "").strip())
+    return any(method in VIEW_MUTATIONS for method in methods)
 
 
 class FaultState:
@@ -51,11 +81,12 @@ class FaultState:
             self.release_signal.set()
             return True
 
-    def begin(self, is_add, is_start):
+    def begin(self, is_add, is_start, is_view_mutation=False):
         with self.lock:
             if self.mode is not None:
                 self.counts["adds"] += int(is_add)
                 self.counts["starts"] += int(is_start)
+                self.counts["view_mutations"] += int(is_view_mutation)
             return (self.mode, self.release_signal) if is_add else (None, None)
 
     def record(self, key, delta=1):
@@ -132,7 +163,11 @@ class FaultProxy(BaseHTTPRequestHandler):
             return self.respond(400)
         body = self.rfile.read(length) if length else b""
         method = rpc_method(kind, path, body) if self.command == "POST" else None
-        mode, release = state.begin(method in ADD[kind], method in START[kind])
+        # Attribute mutations sent by the *app* on this proxy. Changes made
+        # directly by the disposable daemon or fixture bypass this counter.
+        is_view_mutation = kind == "rtorrent" and rtorrent_view_mutation(path, body)
+        mode, release = state.begin(method in ADD[kind], method in START[kind],
+                                    is_view_mutation)
         request_headers = {name: value for name, value in self.headers.items()
                            if name.lower() not in HOP_HEADERS | {"accept-encoding"}}
         # The relay examines the upstream acknowledgment before deciding how

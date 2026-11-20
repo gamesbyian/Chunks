@@ -245,8 +245,23 @@ class RTorrentInstalledAddResponseFaultTest {
 
                     faultRelay.requireOneWriteAndNoStart()
                     if (hideFromMain) {
-                        assertTrue("Read-only recovery did not change the server view",
-                            runBlocking { witness.listTransfers("main").none { it.hash.equals(hash, true) } })
+                        // The fixture independently proved that this exact
+                        // stopped job was hidden before recovery. rTorrent may
+                        // later repopulate 'main' from its own view events; that
+                        // is not evidence of an app write. The proxy observes
+                        // every RPC Chunks actually dispatched and rejects any
+                        // view-changing request, including a batched method.
+                        faultRelay.requireNoViewMutations()
+                        val resurfaced = runBlocking {
+                            witness.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                        }
+                        if (resurfaced != null) {
+                            assertEquals("Only the same session may return to main", name, resurfaced.name)
+                            assertFalse("Server must not start the job during recovery", resurfaced.started)
+                            assertEquals("Server must not move the job during recovery",
+                                directory.trimEnd('/'), resurfaced.directory.trimEnd('/'))
+                            stage("add-fault-main-resurfaced-without-app-view-mutation")
+                        }
                         stage("add-fault-hidden-main-session-found-with-origin-unverified")
                     }
                 } finally {
