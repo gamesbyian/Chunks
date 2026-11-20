@@ -23,12 +23,15 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
+import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientOperations
+import io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteTorrentClients
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -184,11 +187,48 @@ class ProtocolClientInstalledJourneyTest {
         throw AssertionError("Could not locate $what to click", last)
     }
 
+    private fun connect(kind: RemoteBackendKind, appUrl: String, user: String, pass: String) {
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+        waitFor("Connections") {
+            runCatching { scrollToNode(hasTestTag(ChunksSemantics.CONNECTION_ADD)); true }.getOrDefault(false)
+        }
+        rule.openConnectionFormIfNeeded()
+        when (kind) {
+            RemoteBackendKind.TRANSMISSION -> {
+                clickOnce("connection-backend-transmission", "Transmission type")
+                typeInto("Transmission RPC URL", appUrl)
+                typeInto("Username, if required", user)
+            }
+            RemoteBackendKind.QBITTORRENT -> {
+                clickOnce("connection-backend-qbittorrent", "qBittorrent type")
+                typeInto("qBittorrent WebUI root URL", appUrl)
+                typeInto("Username, if required", user)
+            }
+            RemoteBackendKind.DELUGE -> {
+                clickOnce("connection-backend-deluge", "Deluge type")
+                typeInto("Deluge Web JSON URL", appUrl)
+            }
+            else -> error("rTorrent has its own installed journeys")
+        }
+        typeInto("Password", pass)
+        clickOnce(ChunksSemantics.CONNECTION_CONNECT, "Connect")
+        stage("connect-dispatched-once")
+    }
+
+    private fun fixture(tag: String): TorrentMetainfoBuilder.Result {
+        val random = SecureRandom()
+        val name = "chunks-installed-$tag-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
+        val bytes = ByteArray(64 * 1024).also(random::nextBytes)
+        return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
+            listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
+            trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
+    }
+
     @Test fun protocolClientConnectTransfersDetailsAddAndRemove() {
         assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
         val kind = io.github.gamesbyian.chunks.model.RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
         val url = decoded("chunks_protocol_url_b64")
-        val appUrl = decoded("chunks_protocol_app_url_b64")
         val user = decoded("chunks_protocol_user_b64")
         val pass = decoded("chunks_protocol_pass_b64")
         val credentials = RemoteCredentials(url,
@@ -204,17 +244,8 @@ class ProtocolClientInstalledJourneyTest {
         // This remains real-daemon evidence and never replays the app's write.
         suspend fun independentRead(hash: String) =
             io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
-        val responseFault = InstalledAddResponseFault(appUrl)
         stage("client-" + kind.name.lowercase())
 
-        fun fixture(tag: String): TorrentMetainfoBuilder.Result {
-            val random = SecureRandom()
-            val name = "chunks-installed-$tag-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
-            val bytes = ByteArray(64 * 1024).also(random::nextBytes)
-            return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
-                listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
-                trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
-        }
         /** Two unique files in one folder; returns the metainfo and the shared file-name suffix. */
         fun multiFileFixture(): Pair<TorrentMetainfoBuilder.Result, String> {
             val random = SecureRandom()
@@ -248,32 +279,7 @@ class ProtocolClientInstalledJourneyTest {
         stage("fixture-preloaded-stopped")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            rule.waitForIdle()
-            rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
-            waitFor("Connections") {
-                runCatching { scrollToNode(hasTestTag(ChunksSemantics.CONNECTION_ADD)); true }.getOrDefault(false)
-            }
-            rule.openConnectionFormIfNeeded()
-            when (kind) {
-                io.github.gamesbyian.chunks.model.RemoteBackendKind.TRANSMISSION -> {
-                    clickOnce("connection-backend-transmission", "Transmission type")
-                    typeInto("Transmission RPC URL", appUrl)
-                    typeInto("Username, if required", user)
-                }
-                io.github.gamesbyian.chunks.model.RemoteBackendKind.QBITTORRENT -> {
-                    clickOnce("connection-backend-qbittorrent", "qBittorrent type")
-                    typeInto("qBittorrent WebUI root URL", appUrl)
-                    typeInto("Username, if required", user)
-                }
-                io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE -> {
-                    clickOnce("connection-backend-deluge", "Deluge type")
-                    typeInto("Deluge Web JSON URL", appUrl)
-                }
-                else -> error("rTorrent has its own installed journeys")
-            }
-            typeInto("Password", pass)
-            clickOnce(ChunksSemantics.CONNECTION_CONNECT, "Connect")
-            stage("connect-dispatched-once")
+            connect(kind, url, user, pass)
 
             waitFor("fixture row in canonical Transfers", 90_000) {
                 runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
@@ -682,6 +688,34 @@ class ProtocolClientInstalledJourneyTest {
                 switch.set(seedingEnvironment, false)
             }
 
+        }
+        val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
+        assertEquals("The verified login was saved once", 1,
+            profiles.count { it.credentials.endpoint == url && it.backend == kind })
+        stage("profile-saved")
+    }
+
+    @Test fun installedAddAfterTheDaemonResponseIsWithheld() {
+        assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
+        val kind = RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
+        val appUrl = decoded("chunks_protocol_app_url_b64")
+        val user = decoded("chunks_protocol_user_b64")
+        val pass = decoded("chunks_protocol_pass_b64")
+        val credentials = RemoteCredentials(decoded("chunks_protocol_url_b64"),
+            if (kind == RemoteBackendKind.DELUGE) "" else user, pass)
+        val daemon = if (kind == RemoteBackendKind.DELUGE) runBlocking {
+            DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds().single()
+        } else null
+        suspend fun independentRead(hash: String) = RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+        val witness = ClientOperations(RemoteTorrentClients.create(kind, credentials, daemon), 40, 500)
+        val responseFault = InstalledAddResponseFault(appUrl)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            connect(kind, appUrl, user, pass)
+            val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+            waitFor("verified exact-client profile") { profiles.list().any { it.backend == kind } }
+            val profileId = profiles.list().single { it.backend == kind && it.credentials.endpoint == appUrl }.id
+
             addJourney.activate(ChunksSemantics.FOOTER_ADD)
             clickOnce("chunks.add.target.protocol.$profileId", "Add target chip")
             for (fault in listOf("drop", "timeout")) {
@@ -699,13 +733,9 @@ class ProtocolClientInstalledJourneyTest {
                 }
                 addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
                 addJourney.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
-                it.recreate()
+                scenario.recreate()
                 addJourney.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
                 addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
-                if (addJourney.hasReceiptState("Add unverified") &&
-                    rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_CHECK_STATUS)).fetchSemanticsNodes().size == 1) {
-                    addJourney.activate(ChunksSemantics.ADD_CHECK_STATUS)
-                }
                 waitFor("existing transfer confirmed, original registration unverified") {
                     addJourney.hasReceiptState("Present, origin unverified")
                 }
@@ -723,9 +753,5 @@ class ProtocolClientInstalledJourneyTest {
                 runBlocking { witness.remove(pendingHash, deleteData = false) }
             }
         }
-        val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
-        assertEquals("The verified login was saved once", 1,
-            profiles.count { it.credentials.endpoint == appUrl && it.backend == kind })
-        stage("profile-saved")
     }
 }
