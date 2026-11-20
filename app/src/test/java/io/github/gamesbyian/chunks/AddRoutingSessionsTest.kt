@@ -69,8 +69,8 @@ class AddRoutingSessionsTest {
             next.set(replacement)
             client.value = profile(2)
         }
-        rule.waitUntil(5_000) { probes.get() == 2 }
         rule.onNodeWithText("Unknown").assertExists()
+        rule.waitUntil(5_000) { probes.get() == 2 }
         replacement.complete("/replacement/default")
         awaitText("/replacement/default")
 
@@ -81,8 +81,8 @@ class AddRoutingSessionsTest {
             next.set(reopened)
             active.value = true
         }
-        rule.waitUntil(5_000) { probes.get() == 3 }
         rule.onNodeWithText("Unknown").assertExists()
+        rule.waitUntil(5_000) { probes.get() == 3 }
         reopened.complete("/reopened/default")
         awaitText("/reopened/default")
         assertEquals(3, probes.get())
