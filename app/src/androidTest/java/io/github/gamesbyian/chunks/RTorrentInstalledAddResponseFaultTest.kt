@@ -98,21 +98,30 @@ class RTorrentInstalledAddResponseFaultTest {
 
     private fun openForStoppedAdd(activity: MainActivity, document: Uri, expectedHash: String,
         expectedName: String): Intent? {
+        // Validate the disposable provider and exact metainfo independently
+        // before using the same genuine Open With path as the installed T/Q/D
+        // journey. Delivery is source review only, never an Add authorization.
+        assertEquals(expectedHash, SharedTorrentDocument.read(context.contentResolver, document)
+            .preview.infoHashV1)
         var originalIntent: Intent? = null
         instrumentation.runOnMainSync {
             originalIntent = activity.intent
             activity.startActivity(Intent(activity, MainActivity::class.java).apply {
-                action = Intent.ACTION_SEND
-                type = "application/x-bittorrent"
-                putExtra(Intent.EXTRA_STREAM, document)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                action = Intent.ACTION_VIEW
+                setDataAndType(document, "application/x-bittorrent")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             })
         }
+        stage("add-fault-document-open-with-delivered")
         // Android Share parses the document asynchronously. Establish the
         // selected source before switching destinations; otherwise a target
         // change may race the source-selection witness and leave a stale draft.
         val replace = hasText("Use new source") and hasClickAction()
-        val localReviewed = hasText("Selected .torrent: $expectedName", substring = true)
+        // Local may describe a prior draft as "Previously selected" while
+        // an Android clipboard source is offered. The name is the source
+        // witness here; the later remote form MUST verify the exact hash.
+        val localReviewed = hasText(expectedName, substring = true)
         rule.waitUntil(45_000) {
             rule.onAllNodes(replace).fetchSemanticsNodes().size == 1 || runCatching {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(localReviewed)
