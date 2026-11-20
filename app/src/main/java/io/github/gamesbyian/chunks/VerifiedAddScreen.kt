@@ -100,6 +100,10 @@ internal fun VerifiedAddScreen(
     /** The person's own Android document behind [initialTorrent], if it came from one. */
     initialTorrentDocument: android.net.Uri? = null,
     onInitialTorrentConsumed: () -> Unit = {},
+    /** Acknowledging a terminal/observed prior Add starts a fresh source draft.
+     * Retire only the exact old shared file, never a newer pending source.
+     * No remote write authority is changed by this callback. */
+    onNextDraftStarted: (ByteArray?) -> Unit = {},
     /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
     finishInOrderScope: String? = null,
     /** Exact server account and address this Add goes to, shown in the confirmation. */
@@ -1250,10 +1254,12 @@ internal fun VerifiedAddScreen(
                     enabled = !submitting && !rechecking && !choosing && !linkFetching && !draft.originalDocumentStatus.deleting
                 ) {
                     val oldSource = draft.attemptSource
+                    val oldDocument = draft.selectedBytes
                     // The single explicit click acknowledges a confirmed session
                     // or finishes an attested Add. Unresolved write latches stay
                     // fenced by RemoteAddSession.beginNextDraft().
                     if (draft.beginNextDraft()) {
+                        onNextDraftStarted(oldDocument)
                         if (magnet == oldSource) onMagnet("")
                         onDestination("")
                         awaitingConfirmation = false

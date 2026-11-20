@@ -2819,6 +2819,19 @@ internal fun ChunksApp(
                             serverHandoffTorrent = null
                             serverHandoffDocument = null
                         },
+                        onNextDraftStarted = { oldDocument ->
+                            // The remote session has just released a completed
+                            // attempt. Retire only its exact shared Local twin:
+                            // a newer Android document, even with the same
+                            // v1 hash, retains its own review authority.
+                            if (completedRemoteReviewMatchesLocal(oldDocument, localReviewedTorrent.value))
+                                localReviewedTorrent.value = null
+                            if (oldDocument != null &&
+                                serverHandoffTorrent?.contentEquals(oldDocument) == true) {
+                                serverHandoffTorrent = null
+                                serverHandoffDocument = null
+                            }
+                        },
                         // The newest explicit server-form .torrent replaces any older local
                         // review, so a target switch can never resurrect the superseded file.
                         onTorrentAdopted = { preview, bytes, document ->
