@@ -303,23 +303,11 @@ internal fun ProtocolAddScreen(
         fileError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         // The policy itself lives only in Options → Downloads & storage → Add & files.
         originalHandling?.takeIf { originalDocument != null && !attempt.busy }?.let { OriginalTorrentHandlingSummary(it) }
-        if (layout != null && canChooseFiles) AddFileChoice(
-            files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
-            onExpanded = { fileChoiceOpen = it },
-            // Only the levels this exact client stores (never a silent Low → Normal).
-            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
-                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
-                .filter { it in capabilities.priorityLevels },
-            priorities = levels.filterKeys { it !in chosenSkips },
-            onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
-            onSkippedChange = { skipped = it; levels = levels - it })
-        else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
-            "every file will download.", style = MaterialTheme.typography.bodySmall)
         // 2. Exact target (the shared picker).
         destinationPicker()
         sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
-        // 3. Save to: client default, or one exact folder.
-        Text("Save to", style = MaterialTheme.typography.titleMedium)
+        // 3. Save to: client default or one exact folder, within the shared section.
+        UniversalAddSaveToSection {
         Text(if (useCustom) "A folder you enter on $clientLabel"
             else "$clientLabel's default folder" + (session?.defaultDownloadDirectory?.let { " ($it)" } ?: ""),
             style = MaterialTheme.typography.bodyMedium)
@@ -333,14 +321,30 @@ internal fun ProtocolAddScreen(
             isError = !folderValid, singleLine = true, enabled = !attempt.busy,
             modifier = Modifier.fillMaxWidth()
         )
+        }
         // 4. Start.
         UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
             onCheckedChange = { startState.value = it })
+        // 5. Optional reviewed file choices, after the exact client/Place/Start.
+        // Selection still freezes by exact metainfo index and path before the
+        // stopped-first Add; moving the control cannot issue any native/RPC write.
+        if (layout != null && canChooseFiles) AddFileChoice(
+            files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
+            onExpanded = { fileChoiceOpen = it },
+            // Only the levels this exact client stores (never a silent Low → Normal).
+            priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
+                io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
+                .filter { it in capabilities.priorityLevels },
+            priorities = levels.filterKeys { it !in chosenSkips },
+            onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
+            onSkippedChange = { skipped = it; levels = levels - it })
+        else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
+            "every file will download.", style = MaterialTheme.typography.bodySmall)
         if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
-        Button(
+        UniversalAddSubmitAction(
             onClick = {
-                val frozen = source ?: return@Button
+                val frozen = source ?: return@UniversalAddSubmitAction
                 // Frozen at the click: reviewed index → path for exactly these bytes.
                 val skips = if (frozen is ClientAddSource.TorrentFile) layout.orEmpty()
                     .filter { it.index in chosenSkips }.associate { it.index to it.path } else emptyMap()
@@ -361,7 +365,7 @@ internal fun ProtocolAddScreen(
                 val frozenAlias = runCatching { normalizedUniversalAddAlias(aliasState?.value.orEmpty()) }
                     .getOrElse {
                         attempt.admissionRefusal = "Not added: that display name contains unsupported characters or exceeds 160 characters."
-                        return@Button
+                        return@UniversalAddSubmitAction
                     }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
                     profileId, request, session?.defaultDownloadDirectory)
@@ -443,8 +447,9 @@ internal fun ProtocolAddScreen(
                 }
             },
             enabled = canSubmit,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(ChunksSemantics.ADD_SUBMIT)
-        ) { Text(if (attempt.busy) "Adding to $clientLabel…" else "Add to $clientLabel") }
+            modifier = Modifier.fillMaxWidth(),
+            label = if (attempt.busy) "Adding to $clientLabel…" else "Add transfer"
+        )
         // A refusal before any write (fixed admission vocabulary) shares the one status location.
         attempt.admissionRefusal?.takeIf { attempt.profileId == null || attempt.profileId == profileId }?.let { why ->
             Text(why, color = MaterialTheme.colorScheme.error,

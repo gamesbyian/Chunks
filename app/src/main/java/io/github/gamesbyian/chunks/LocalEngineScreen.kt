@@ -1221,9 +1221,9 @@ internal fun LocalEngineScreen(
                 "arrives (its trackers and private flag are known then); otherwise the local device default applies.",
             style = MaterialTheme.typography.bodySmall)
         addDestinationPicker?.invoke()
-        // Save to is a primary Add choice, above Start and submission.
-        // Keep both intake methods discoverable before optional storage, seeding
-        // and engine explanations. Existing Place and safety gates remain authoritative.
+        // One shared Save to section; Android's verified Places remain engine-specific.
+        // Keep intake discoverable above storage, Start and submission.
+        UniversalAddSaveToSection {
         LocalDownloadPlacePicker(
             resolution = addPlaceResolution,
             enabled = !busy && !inventoryStale && !placeSaving &&
@@ -1294,6 +1294,7 @@ internal fun LocalEngineScreen(
         else if (proposedAddDestination != null)
             Text("Planned local Place: " + proposedAddDestination.absolutePath,
                 style = MaterialTheme.typography.bodySmall)
+        }
         UniversalAddStartChoice(startAfterAdd,
             enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
             onCheckedChange = { startAfterAdd = it })
@@ -1316,26 +1317,25 @@ internal fun LocalEngineScreen(
                 },
                 opensOptions = onOpenOptions != null
             )
-            ActionTile("Add transfer",
-                ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
-                if (sourceReadJob != null) return@ActionTile
+            UniversalAddSubmitAction(onClick = {
+                if (sourceReadJob != null) return@UniversalAddSubmitAction
                 // Submitting closes the keyboard, so the form's collapse is not
                 // racing an IME animation (see the Connect transition fix).
                 addKeyboard?.hide()
                 addFocus.clearFocus()
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
-                val checkedMagnet = magnetCheck as? MagnetDraftCheck.Valid ?: return@ActionTile
+                val checkedMagnet = magnetCheck as? MagnetDraftCheck.Valid ?: return@UniversalAddSubmitAction
                 val frozenAlias = runCatching {
                     normalizedUniversalAddAlias(addAliasState?.value.orEmpty())
                 }.getOrElse {
                     noteProblem("That display name contains unsupported characters or exceeds 160 characters. Nothing was added.")
-                    return@ActionTile
+                    return@UniversalAddSubmitAction
                 }
                 if (LocalUniversalAddAdapter.alreadyPresentInFreshInventory(
                         checkedMagnet.infoHash, transfers, hasConfirmedLocalInventory && !inventoryStale)) {
                     noteProblem("This exact torrent already exists on this device. No second Add was sent. Open its transfer card instead.")
-                    return@ActionTile
+                    return@UniversalAddSubmitAction
                 }
                 val selectedMagnet = checkedMagnet.normalized
                 val autoStart = startAfterAdd
@@ -1499,10 +1499,7 @@ internal fun LocalEngineScreen(
                 isLink -> "Get the .torrent from this link first (Get torrent from link above)."
                 else -> "Add a magnet or torrent link, or open a .torrent, to continue."
             }
-            Button(onClick = {}, enabled = false,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                    .testTag(ChunksSemantics.ADD_SUBMIT)
-                    .semantics { stateDescription = "Unavailable: $reason" }) { Text("Add transfer") }
+            UniversalAddSubmitAction(onClick = {}, enabled = false, unavailableReason = reason)
             Text(reason, style = MaterialTheme.typography.bodySmall)
         }
         // Engine/network explanation is optional, after actual Add selections.
@@ -1739,7 +1736,10 @@ internal fun LocalEngineScreen(
         val seedingPreview = remember(add?.preview?.infoHashV1) {
             add?.preview?.let { localSeedingPreview(context, it) }
         }
-        if (add != null && destination != null) LocalAddReview(
+        // A newer typed magnet must first be resolved or cleared. Showing a
+        // disabled .torrent Add alongside that magnet's own Add button creates
+        // duplicate primary actions and ambiguous accessibility/installed tags.
+        if (add != null && destination != null && magnet.isBlank()) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
             busy = busy || !localReviewedMetainfoIsCurrent(magnet, sourceReading) ||
@@ -3766,9 +3766,7 @@ internal fun LocalAddReview(
                 style = MaterialTheme.typography.bodySmall)
             if (preview.trackerCount == 0) Text("This torrent lists no tracker, so peers can only be found through DHT (if turned on) or its web sources.",
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Add transfer")
-            }
+            UniversalAddSubmitAction(onClick = onConfirm, enabled = !busy)
             OutlinedButton(onClick = onCancel, enabled = cancelEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
         }
     }

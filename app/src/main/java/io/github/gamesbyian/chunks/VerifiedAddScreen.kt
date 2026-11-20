@@ -771,6 +771,7 @@ internal fun VerifiedAddScreen(
             }
         }
         item {
+            UniversalAddSaveToSection {
             OutlinedTextField(
                 value = destination,
                 onValueChange = {
@@ -875,6 +876,7 @@ internal fun VerifiedAddScreen(
             ) { Text("Stop using a saved default folder") }
             defaultSaveProblem?.let { Text(it, color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall) }
+            }
         }
 
         if (!alreadyAttempted && plan != null) item {
@@ -1018,7 +1020,7 @@ internal fun VerifiedAddScreen(
                     onDefault = { on -> if (fioStore.setDefaultForNewAdds(on)) finishInOrderDefault = on })
             }
                 item {
-                    Button(
+                    UniversalAddSubmitAction(
                         onClick = addClick@{
                             if (externalSourceReading) return@addClick
                             val plan = plan ?: return@addClick
@@ -1274,7 +1276,7 @@ internal fun VerifiedAddScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                             .testTag(ChunksSemantics.ADD_SUBMIT)
                             .semantics { if (plan == null) stateDescription = "Unavailable: " + addGuidance }
-                    ) { Text("Add transfer") }
+                    )
                     if (plan == null) Text(addGuidance,
                         color = if (invalidDestination) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurface,
