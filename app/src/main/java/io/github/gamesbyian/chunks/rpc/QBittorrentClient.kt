@@ -126,14 +126,23 @@ internal class QBittorrentClient(
         field("stopped", (!request.startNow).toString())
         out.write("--$boundary--\r\n".toByteArray())
         val reply = request("POST", "torrents/add", out.toByteArray(),
-            "multipart/form-data; boundary=$boundary", mutating = true)
-        if (reply.trim() == "Fails.") throw ClientRefusedException("qBittorrent declined the Add (duplicate or invalid)")
-        if (reply.trim() != "Ok." && reply.isNotBlank()) {
-            // 5.x may return JSON describing added/failed counts.
-            val json = try { JSONObject(reply) } catch (_: Exception) { null }
-            if (json != null && json.optInt("failure_count", 0) > 0 && json.optInt("success_count", 0) == 0)
-                throw ClientRefusedException("qBittorrent declined the Add (duplicate or invalid)")
+            "multipart/form-data; boundary=$boundary", mutating = true).trim()
+        if (reply == "Ok.") return // The legacy single-source success response.
+        if (reply == "Fails.") throw ClientRefusedException("qBittorrent declined the Add (duplicate or invalid)")
+
+        // The structured response can name the registered torrent. Missing,
+        // pending, or conflicting evidence cannot be upgraded by inventory.
+        val result = try { JSONObject(reply) } catch (_: Exception) { null }
+        val added = result?.optJSONArray("added_torrent_ids")
+        val pending = result?.opt("pending_count")
+        val successes = result?.opt("success_count")
+        val failures = result?.opt("failure_count")
+        if (pending == 0 && successes == 0 && failures == 1 && added?.length() == 0) {
+            throw ClientRefusedException("qBittorrent declined the Add (duplicate or invalid)")
         }
+        if (pending == 0 && successes == 1 && failures == 0 && added?.length() == 1 &&
+            added.optString(0).equals(request.source.infoHash, ignoreCase = true)) return
+        throw ClientWriteUncertainException("qBittorrent did not identify the Add result")
     }
 
     override suspend fun setStarted(hash: String, started: Boolean) {
