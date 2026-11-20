@@ -92,7 +92,23 @@ internal class ProtocolAddExecutor(
         boundary: UniversalAddWriteBoundary
     ): ClientOperationOutcome {
         requireTicket(ticket)
-        val result = operations.add(request) {
+        val place = ticket.intent.place
+        val reviewedDefault = (place as? UniversalAddPlace.ServerDefault)?.reviewedProtocolFolder()
+        if (place is UniversalAddPlace.ServerDefault && reviewedDefault == null) {
+            return ClientOperationOutcome.Refused(request.source.infoHash,
+                "The default folder could not be confirmed; choose an explicit folder")
+        }
+        val result = operations.add(request, reviewedDefaultDirectory = reviewedDefault) {
+            if (reviewedDefault != null) {
+                val currentDefault = try {
+                    operations.session(refresh = true).defaultDownloadDirectory
+                } catch (cancel: CancellationException) {
+                    throw cancel
+                } catch (_: Exception) { null }
+                if (!ClientHashes.sameDirectory(reviewedDefault, currentDefault)) {
+                    return@add "The reviewed default folder could not be confirmed; review Save to again"
+                }
+            }
             // Read-only absence/capability checks have already passed. A refusal
             // there cannot change the preference of an existing transfer.
             val prepared = try {
@@ -108,7 +124,7 @@ internal class ProtocolAddExecutor(
             }
         }
         if (result is ClientOperationOutcome.Verified &&
-            !ClientHashes.sameDirectory(result.observed?.downloadDirectory, ticket.intent.place.reviewedProtocolFolder())) {
+            !ClientHashes.sameDirectory(result.observed?.downloadDirectory, place.reviewedProtocolFolder())) {
             return ClientOperationOutcome.Pending(result.hash, result.observed,
                 "Registered, but the reviewed folder could not be confirmed")
         }
@@ -170,6 +186,6 @@ internal class ProtocolAddObserver(
 
 private fun UniversalAddPlace.reviewedProtocolFolder(): String? = when (this) {
     is UniversalAddPlace.ServerCustom -> absolutePath
-    is UniversalAddPlace.ServerDefault -> observedDefaultPath.ifBlank { null }
+    is UniversalAddPlace.ServerDefault -> runCatching { ClientHashes.requireDirectory(observedDefaultPath) }.getOrNull()
     else -> null
 }
