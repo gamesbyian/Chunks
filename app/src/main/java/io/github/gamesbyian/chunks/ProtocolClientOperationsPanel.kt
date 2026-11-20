@@ -97,7 +97,7 @@ internal fun ProtocolClientOperationsPanel(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    val operations = remember(hash, createOperations) { createOperations() }
+    val operations = remember(hash, sourceClientId, createOperations) { createOperations() }
     var session by remember(operations) { mutableStateOf<ClientSessionInfo?>(null) }
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
     var busy by remember(hash) { mutableStateOf(false) }
@@ -108,18 +108,17 @@ internal fun ProtocolClientOperationsPanel(
     var confirmRemove by remember(hash) { mutableStateOf(false) }
     var deleteData by remember(hash) { mutableStateOf(false) }
     var files by remember(hash) { mutableStateOf<List<ClientFile>?>(null) }
-    var showMove by remember(hash) { mutableStateOf(false) }
-    // null = not yet read; the file-informed suggestion replaces the name-only one.
-    var fileInformedSuggestion by remember(hash) { mutableStateOf<Pair<String, String>?>(null) }
-    var fileInformedRead by remember(hash) { mutableStateOf(false) }
-    LaunchedEffect(hash, showMove) {
-        val evaluate = suggestForFiles
-        if (!showMove || evaluate == null || fileInformedRead) return@LaunchedEffect
+    var showMove by remember(hash, sourceClientId) { mutableStateOf(false) }
+    // Retain source evidence for this authenticated job. Destination eligibility
+    // can change while the panel is open, so derive the advice from current inputs.
+    var routingFileNames by remember(operations) { mutableStateOf<List<String>?>(null) }
+    val inspectRoutingFiles = current && showMove && suggestForFiles != null
+    LaunchedEffect(operations, inspectRoutingFiles) {
+        if (!inspectRoutingFiles || routingFileNames != null) return@LaunchedEffect
         val names = try { filesOf(operations, hash).map { it.path } }
             catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
-        if (!names.isNullOrEmpty()) { fileInformedSuggestion = evaluate(names); fileInformedRead = true }
+        if (!names.isNullOrEmpty()) routingFileNames = names
     }
-    val routingSuggestion = if (fileInformedRead) fileInformedSuggestion else suggestedTarget
     var copiedTo by remember(hash, sourceClientId) { mutableStateOf<ProtocolMoveTarget?>(null) }
     var copiedTransfer by remember(hash, sourceClientId) { mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer?>(null) }
     var copiedReceipt by remember(hash, sourceClientId) {
@@ -231,6 +230,9 @@ internal fun ProtocolClientOperationsPanel(
             }
         }
         if (showMove) {
+            val names = routingFileNames
+            val routingSuggestion = if (!current) null
+                else if (names == null) suggestedTarget else suggestForFiles?.invoke(names)
             Text("Copies only the torrent job. The other client downloads its files itself; " +
                 "nothing on $clientLabel is changed unless you then remove it here.",
                 style = MaterialTheme.typography.bodySmall)
