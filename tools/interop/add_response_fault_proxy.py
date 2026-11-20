@@ -35,19 +35,28 @@ class FaultState:
     def __init__(self):
         self.lock = threading.Lock()
         self.mode = None
+        self.release_signal = threading.Event()
         self.counts = dict.fromkeys(COUNTERS, 0)
 
     def arm(self, mode):
         with self.lock:
             self.counts = dict.fromkeys(COUNTERS, 0)
             self.mode = mode
+            self.release_signal = threading.Event()
+
+    def release_delayed_response(self):
+        with self.lock:
+            if self.mode != "delay":
+                return False
+            self.release_signal.set()
+            return True
 
     def begin(self, is_add, is_start):
         with self.lock:
             if self.mode is not None:
                 self.counts["adds"] += int(is_add)
                 self.counts["starts"] += int(is_start)
-            return self.mode if is_add else None
+            return (self.mode, self.release_signal) if is_add else (None, None)
 
     def record(self, key, delta=1):
         with self.lock:
@@ -109,9 +118,11 @@ class FaultProxy(BaseHTTPRequestHandler):
         kind = self.server.kind
         if path.startswith(CONTROL):
             action = path.removeprefix(CONTROL)
-            if self.command == "POST" and action in {"drop", "timeout", "hold"}:
+            if self.command == "POST" and action in {"delay", "drop", "timeout", "hold"}:
                 state.arm(action)
                 return self.respond(204)
+            if self.command == "POST" and action == "release":
+                return self.respond(204 if state.release_delayed_response() else 409)
             if self.command == "GET" and action == "counts":
                 return self.respond(200, json.dumps(state.report()).encode())
             return self.respond(404)
@@ -121,7 +132,7 @@ class FaultProxy(BaseHTTPRequestHandler):
             return self.respond(400)
         body = self.rfile.read(length) if length else b""
         method = rpc_method(kind, path, body) if self.command == "POST" else None
-        mode = state.begin(method in ADD[kind], method in START[kind])
+        mode, release = state.begin(method in ADD[kind], method in START[kind])
         request_headers = {name: value for name, value in self.headers.items()
                            if name.lower() not in HOP_HEADERS | {"accept-encoding"}}
         # The relay examines the upstream acknowledgment before deciding how
@@ -147,6 +158,11 @@ class FaultProxy(BaseHTTPRequestHandler):
             state.record("adds", -1)
         if accepted:
             state.record("acknowledgments_withheld")
+            if mode == "delay":
+                if release.wait(10):
+                    return self.respond(status, response, headers)
+                state.record("upstream_errors")
+                return self.respond(503)
             if mode in {"timeout", "hold"}:
                 # Exceeds the app's real 15 s HTTP read timeout. The reply is
                 # already received here, and other RPCs remain serviceable.
