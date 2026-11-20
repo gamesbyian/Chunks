@@ -157,6 +157,8 @@ internal class RemoteAddSessions {
     private val accounts = mutableMapOf<String, RemoteAddSession>()
     private var pendingMagnetSelection = false
 
+    fun existingForAccount(scope: String): RemoteAddSession? = accounts[scope]
+
     fun forAccount(scope: String): RemoteAddSession {
         require(scope.isNotBlank()) { "An authenticated account is required for Add" }
         val session = accounts.getOrPut(scope) { RemoteAddSession(scope) }

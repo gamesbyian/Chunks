@@ -1492,6 +1492,33 @@ internal fun ChunksApp(
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
         } else if (presentationSection == Section.COMBINED) {
+            val addController = retainedAddOwner?.attempts
+            val localId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
+            val remoteId = connectedRTorrentId?.let { io.github.gamesbyian.chunks.model.EnvironmentId(it) }
+            val addReceipts = buildList {
+                val localSubmitting = addController?.isSubmitting(localId) == true
+                addController?.observationRevision(localId)
+                activeLocalAddAttempt.coordinator.transferReceipt(localId, "Local", localSubmitting,
+                    activeLocalAddAttempt.registrationFromThisSubmission)?.let(::add)
+                if (remoteId != null) remoteAddSessions.existingForAccount(aliasScope)?.let { attempt ->
+                    addController?.observationRevision(remoteId)
+                    val submitting = attempt.submitting || addController?.isSubmitting(remoteId) == true
+                    attempt.coordinator.transferReceipt(remoteId,
+                        attempt.submittedDisplayName ?: activeAddDisplayName ?: "rTorrent", submitting)?.let(::add)
+                }
+                // Observe the attempt's Compose state even when an exact profile is not selected.
+                val protocolBusy = protocolAddAttempt.busy
+                val profileId = protocolAddAttempt.profileId
+                if (profileId != null) {
+                    val profile = combinedProtocolProfiles.singleOrNull { it.id == profileId }
+                    if (profile != null) {
+                        addController?.observationRevision(profile.environment)
+                        val submitting = protocolBusy || addController?.isSubmitting(profile.environment) == true
+                        protocolAddAttempt.coordinator(profileId)
+                            .transferReceipt(profile.environment, profile.label, submitting)?.let(::add)
+                    }
+                }
+            }
             CombinedTransfersScreen(
                 showNavigationFooter = false,
                 scopeFocusRequest = savedProfileCatalogFocus,
@@ -1514,6 +1541,18 @@ internal fun ChunksApp(
                 // coordinator until source-first Universal Add is integrated.
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
+                addReceipts = addReceipts,
+                onReviewAdd = { environment ->
+                    when {
+                        environment == localId -> selectLocalAddTarget()
+                        environment == remoteId -> selectAuthenticatedAddTarget()
+                        combinedProtocolProfiles.any { it.environment == environment && it.operations != null } -> {
+                            addUsingAuthenticatedRemote = false
+                            addProtocolTargetId = environment.value
+                            section = Section.ADD_CHOOSE
+                        }
+                    }
+                },
                 searchState = combinedSearch,
                 initialAddSearch = addTransferSearch.displayQuery(combinedSearch.value),
                 onManualSearchEdited = addTransferSearch::clear,

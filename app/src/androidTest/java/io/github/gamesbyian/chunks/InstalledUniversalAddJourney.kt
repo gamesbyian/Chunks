@@ -29,6 +29,17 @@ internal class InstalledUniversalAddJourney(private val rule: ComposeTestRule) {
             .fetchSemanticsNodes().isNotEmpty()
     }
 
+    fun awaitTransferReceipt(vararg permittedStates: String) {
+        val receipt = hasTestTag(ChunksSemantics.TRANSFERS_ADD_RECEIPT)
+        rule.waitUntil(45_000) {
+            runCatching {
+                reveal(receipt)
+                rule.onAllNodes(receipt).fetchSemanticsNodes().size == 1 &&
+                    permittedStates.any(::hasReceiptState)
+            }.getOrDefault(false)
+        }
+    }
+
     fun viewExactTransfer(environment: String, hash: String) {
         activate(ChunksSemantics.ADD_VIEW_TRANSFER)
         val search = hasTestTag(ChunksSemantics.TRANSFERS_SEARCH)

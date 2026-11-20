@@ -405,6 +405,8 @@ internal fun CombinedTransfersScreen(
     searchState: androidx.compose.runtime.MutableState<String>? = null,
     initialAddSearch: String? = null,
     onManualSearchEdited: () -> Unit = {},
+    addReceipts: List<UniversalAddTransferReceipt> = emptyList(),
+    onReviewAdd: (EnvironmentId) -> Unit = {},
     /**
      * Caller-owned last read-only listings of other saved profiles, so returning
      * from Add/Connections/Options shows last-known counts and rows instead of
@@ -1551,6 +1553,14 @@ internal fun CombinedTransfersScreen(
             quickResults[key]?.forEach { line -> Text(line, style = MaterialTheme.typography.bodySmall) }
         }
     }
+    val visibleAddReceipts = addReceipts.filter { receipt ->
+        val environment = receipt.key.environment
+        environmentVisible(query.scope, environment) && when (environment) {
+            EnvironmentSnapshots.LOCAL -> localPrivacy.mayShow
+            serverId -> serverPrivacy?.mayShow == true
+            else -> environment in protocolAllowed
+        }
+    }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
         LazyColumn(Modifier.fillMaxSize().testTag(ChunksSemantics.TRANSFERS_SCREEN).semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
@@ -1560,6 +1570,20 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
+        }
+
+        visibleAddReceipts.forEach { receipt ->
+            item(key = "add-receipt-" + receipt.key.environment.value) {
+                UniversalAddReceiptCard(receipt.display,
+                    modifier = Modifier.testTag(ChunksSemantics.TRANSFERS_ADD_RECEIPT)) {
+                    UniversalAddContinuationAction(
+                        ChunksSemantics.TRANSFERS_ADD_REVIEW + "." + receipt.key.environment.value,
+                        "Review Add on ${receipt.clientLabel}"
+                    ) {
+                        onReviewAdd(receipt.key.environment)
+                    }
+                }
+            }
         }
 
         if (firstRunVisible) {
