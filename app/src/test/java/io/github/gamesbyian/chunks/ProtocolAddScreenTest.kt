@@ -25,6 +25,7 @@ import io.github.gamesbyian.chunks.rpc.TorrentClient
 import kotlinx.coroutines.MainScope
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
