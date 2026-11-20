@@ -3,7 +3,9 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -29,6 +31,8 @@ import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import java.net.HttpURLConnection
+import java.net.URI
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -38,13 +42,15 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 
 /**
- * Installed app against ONE disposable real Transmission daemon on the CI
- * runner (adb reverse loopback; never a protected host). The test preloads a
+ * Installed app against one disposable Transmission, qBittorrent or Deluge
+ * daemon on the CI runner. The test preloads a
  * unique stopped fixture with the real client, then drives the app's own
  * Connections form (Transmission type) → canonical Transfers → Details
  * Start → Remove (keep files), with independent client readback after each.
+ * It also verifies what Add can claim after a real daemon's reply is withheld.
  */
 @RunWith(AndroidJUnit4::class)
 class ProtocolClientInstalledJourneyTest {
@@ -187,6 +193,7 @@ class ProtocolClientInstalledJourneyTest {
         assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
         val kind = io.github.gamesbyian.chunks.model.RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
         val url = decoded("chunks_protocol_url_b64")
+        val appUrl = decoded("chunks_protocol_app_url_b64")
         val user = decoded("chunks_protocol_user_b64")
         val pass = decoded("chunks_protocol_pass_b64")
         val credentials = RemoteCredentials(url,
@@ -202,6 +209,21 @@ class ProtocolClientInstalledJourneyTest {
         // This remains real-daemon evidence and never replays the app's write.
         suspend fun independentRead(hash: String) =
             io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+        fun faultControl(action: String, post: Boolean = false): String {
+            val base = URI(appUrl)
+            require(base.scheme == "http" && base.host == "127.0.0.1")
+            val control = URI("http", null, base.host, base.port, "/__chunks_add_response_fault/$action", null, null)
+            val connection = control.toURL().openConnection() as HttpURLConnection
+            return try {
+                connection.connectTimeout = 3_000
+                connection.readTimeout = 3_000
+                if (post) connection.requestMethod = "POST"
+                assertEquals(if (post) 204 else 200, connection.responseCode)
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } finally {
+                connection.disconnect()
+            }
+        }
         stage("client-" + kind.name.lowercase())
 
         fun fixture(tag: String): TorrentMetainfoBuilder.Result {
@@ -254,17 +276,17 @@ class ProtocolClientInstalledJourneyTest {
             when (kind) {
                 io.github.gamesbyian.chunks.model.RemoteBackendKind.TRANSMISSION -> {
                     clickOnce("connection-backend-transmission", "Transmission type")
-                    typeInto("Transmission RPC URL", url)
+                    typeInto("Transmission RPC URL", appUrl)
                     typeInto("Username, if required", user)
                 }
                 io.github.gamesbyian.chunks.model.RemoteBackendKind.QBITTORRENT -> {
                     clickOnce("connection-backend-qbittorrent", "qBittorrent type")
-                    typeInto("qBittorrent WebUI root URL", url)
+                    typeInto("qBittorrent WebUI root URL", appUrl)
                     typeInto("Username, if required", user)
                 }
                 io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE -> {
                     clickOnce("connection-backend-deluge", "Deluge type")
-                    typeInto("Deluge Web JSON URL", url)
+                    typeInto("Deluge Web JSON URL", appUrl)
                 }
                 else -> error("rTorrent has its own installed journeys")
             }
@@ -678,10 +700,58 @@ class ProtocolClientInstalledJourneyTest {
                 // Leave the disposable profile's opt-in off for any later run.
                 switch.set(seedingEnvironment, false)
             }
+
+            addJourney.activate(ChunksSemantics.FOOTER_ADD)
+            clickOnce("chunks.add.target.protocol.$profileId", "Add target chip")
+            for (fault in listOf("drop", "timeout")) {
+                val pending = fixture(fault)
+                val pendingHash = pending.infoHashV1
+                assertNull("The exact fixture must be absent before its Add", runBlocking { independentRead(pendingHash) })
+                typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(pending.magnet))
+                ensureStartWhenAddedOff()
+                faultControl(fault, post = true)
+                addJourney.submit()
+                stage("add-fault-$fault-dispatched-once")
+
+                waitFor("exact real daemon job while the response is withheld") {
+                    runBlocking { independentRead(pendingHash) }?.runState == ClientRunState.STOPPED
+                }
+                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
+                it.recreate()
+                addJourney.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                if (addJourney.hasReceiptState("Add unverified") &&
+                    rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_CHECK_STATUS)).fetchSemanticsNodes().size == 1) {
+                    addJourney.activate(ChunksSemantics.ADD_CHECK_STATUS)
+                }
+                waitFor("existing transfer confirmed, original registration unverified") {
+                    addJourney.hasReceiptState("Present, origin unverified")
+                }
+                assertTrue("An exact match cannot establish who registered the job", !receiptVerified())
+                val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+                scrollToNode(submit)
+                rule.onAllNodes(submit).assertCountEquals(1)
+                rule.onNode(submit).assertIsNotEnabled()
+                addJourney.viewExactTransfer(profileId, pendingHash)
+                addJourney.awaitTransferReceipt("Present, origin unverified")
+
+                val counters = JSONObject(faultControl("counts"))
+                assertEquals("Exactly one Add passed through the relay", 1, counters.getInt("adds"))
+                assertEquals("Only one accepted daemon response was withheld", 1, counters.getInt("acknowledgments_withheld"))
+                assertEquals("No recovery Start", 0, counters.getInt("starts"))
+                assertEquals("The daemon accepted the write before the relay fault", 0, counters.getInt("upstream_errors"))
+                assertEquals("Independent readback still finds the job stopped", ClientRunState.STOPPED,
+                    runBlocking { independentRead(pendingHash) }?.runState)
+                stage("add-fault-$fault-one-write-present-origin-unverified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                addJourney.activate(ChunksSemantics.ADD_ANOTHER)
+                runBlocking { witness.remove(pendingHash, deleteData = false) }
+            }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
-            profiles.count { it.credentials.endpoint == credentials.endpoint && it.backend == kind })
+            profiles.count { it.credentials.endpoint == appUrl && it.backend == kind })
         stage("profile-saved")
     }
 }

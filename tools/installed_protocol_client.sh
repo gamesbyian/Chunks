@@ -19,10 +19,30 @@ installed="$(adb shell pm path "$pkg" | sed -n 's/^package://p' | tr -d '\r' | h
   printf 'CHUNKS_PROTOCOL_SOURCE: commit=%s tree=%s package=%s version=%s\n' "$source_sha" "$source_tree" "$pkg" "$version"
   bash tools/verify_installed_apk_bytes.sh "$app_apk" "$installed" "$out/installed-pull-tmp.apk"
 } | tee "$out/installed-identity.txt"
-for port in 19091 18080 18112; do adb reverse tcp:$port tcp:$port >/dev/null; done
+proxy_pids=()
+trap 'kill "${proxy_pids[@]}" 2>/dev/null || true' EXIT
+start_proxy() {
+  local kind=$1 port=$2
+  python3 -I tools/interop/add_response_fault_proxy.py "$kind" "$port" &
+  proxy_pids+=("$!")
+  for attempt in {1..10}; do
+    if curl -fsS --max-time 1 -o /dev/null "http://127.0.0.1:$port/__chunks_add_response_fault/counts"; then
+      return 0
+    fi
+    sleep 1
+  done
+  echo "::error::Disposable Add fault relay failed to start for $kind"
+  return 1
+}
+start_proxy transmission 19191
+start_proxy qbittorrent 18180
+start_proxy deluge 18212
+for port in 19091 18080 18112 19191 18180 18212; do
+  adb reverse tcp:$port tcp:$port >/dev/null
+done
 b64() { printf '%s' "$1" | base64 -w 0; }
 run_one() {
-  local kind=$1 url=$2 user=$3 pass=$4
+  local kind=$1 url=$2 app_url=$3 user=$4 pass=$5
   local custom_folder="$RUNNER_TEMP/interop/dl/custom-${kind,,}"
   mkdir -p "$custom_folder"
   # Android shell sometimes resolves 'current' to USER_CURRENT (-2) after prior instrumentation.
@@ -36,6 +56,7 @@ run_one() {
     -e chunks_protocol_disposable authorized \
     -e chunks_protocol_kind_b64 "$(b64 "$kind")" \
     -e chunks_protocol_url_b64 "$(b64 "$url")" \
+    -e chunks_protocol_app_url_b64 "$(b64 "$app_url")" \
     -e chunks_protocol_custom_folder_b64 "$(b64 "$custom_folder")" \
     -e chunks_protocol_user_b64 "$(b64 "$user")" \
     -e chunks_protocol_pass_b64 "$(b64 "$pass")" \
@@ -49,14 +70,17 @@ run_one() {
     echo "::error::Installed protocol-client journey failed for $kind"
     return 1
   fi
-  echo "CHUNKS_INSTALLED_PROTOCOL: $kind Connect -> Transfers -> Details Start -> Remove -> Add stopped passed" | tee -a "$GITHUB_STEP_SUMMARY"
+  for fault in drop timeout; do
+    grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=add-fault-$fault-one-write-present-origin-unverified" "$out/stages-$kind.txt" || return 1
+  done
+  echo "CHUNKS_INSTALLED_PROTOCOL: $kind installed Add and post-write response loss/timeout passed" | tee -a "$GITHUB_STEP_SUMMARY"
 }
 failed=0
-run_one TRANSMISSION http://127.0.0.1:19091/transmission/rpc chunks chunkspass || failed=1
-run_one QBITTORRENT http://127.0.0.1:18080/ chunks chunkspass || failed=1
+run_one TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
+run_one QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
 # Deluge authenticates with a password only; a blank shell extra is swallowed by
 # adb shell, shifting every following am instrument argument out of position.
 # Send a non-empty unused username placeholder (ignored by the Deluge adapter).
-run_one DELUGE http://127.0.0.1:18112/json unused deluge || failed=1
+run_one DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed
