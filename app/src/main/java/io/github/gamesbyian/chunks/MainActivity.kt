@@ -130,6 +130,7 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val sourceDraft = mutableStateOf("")
     // The optional Chunks-only label belongs to the single in-RAM Add draft.
     val aliasDraft = mutableStateOf("")
+    val transferSearch = UniversalAddNavigationSearch()
     val reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null)
     val pendingSharedMagnet = mutableStateOf<String?>(null)
     val pendingSharedDocument = mutableStateOf<Uri?>(null)
@@ -311,6 +312,16 @@ internal fun shouldConsumeReviewedSourceOnExit(
     isCurrentDocument: Boolean,
     lifecycleCancelled: Boolean
 ): Boolean = isCurrentDocument && !lifecycleCancelled
+
+/** Generated exact-transfer lookups are temporary and stay in memory across recreation. */
+internal class UniversalAddNavigationSearch {
+    var exactHash by mutableStateOf<String?>(null)
+        private set
+
+    fun viewTransfer(hash: String) { exactHash = hash }
+    fun clear() { exactHash = null }
+    fun displayQuery(manualSearch: String): String = exactHash ?: manualSearch
+}
 
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
@@ -545,6 +556,10 @@ internal fun ChunksApp(
     var combinedDetailsVisible by remember { mutableStateOf(false) }
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
+    val addTransferSearch = retainedAddOwner?.transferSearch ?: remember { UniversalAddNavigationSearch() }
+    LaunchedEffect(section) {
+        if (section == Section.ADD_CHOOSE) addTransferSearch.clear()
+    }
     // Last read-only listings of other saved profiles survive navigation between
     // roots, but never a privacy lock/unlock or policy lifecycle change.
     val combinedSavedListings = remember(TransferPrivacyRuntime.lifecycleRevision) {
@@ -1332,6 +1347,10 @@ internal fun ChunksApp(
             attemptController = retainedAddOwner?.attempts,
             aliasState = addAliasDraft,
             onViewTransfer = { hash ->
+                // Carry both exact client and hash to the canonical browser.
+                // Scope-only navigation could leave the new transfer invisible.
+                // This is read-only navigation, never another Add or Start.
+                addTransferSearch.viewTransfer(hash)
                 consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                 savedProfileCatalogFocus = profile.id
                 combinedFromConnections = true
@@ -1494,6 +1513,8 @@ internal fun ChunksApp(
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
                 searchState = combinedSearch,
+                initialAddSearch = addTransferSearch.displayQuery(combinedSearch.value),
+                onManualSearchEdited = addTransferSearch::clear,
                 savedListingsState = combinedSavedListings,
                 // Only this session's positively verified Add on the current account.
                 recentlyAddedTransfer = latestAdded?.takeIf { key ->
