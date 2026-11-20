@@ -141,8 +141,8 @@ class RTorrentInstalledAddResponseFaultTest {
                 stage("add-fault-$fault-dispatched-once")
 
                 rule.waitUntil(45_000) {
-                    runBlocking { witness.lookupName(hash) } == name &&
-                        runBlocking { witness.readActivity(hash) }.started == false
+                    runBlocking { witness.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
+                        ?.let { it.name == name && !it.started } == true
                 }
                 journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
                 journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
