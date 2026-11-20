@@ -329,11 +329,6 @@ internal fun ProtocolAddScreen(
         // 4. Start.
         UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
             onCheckedChange = { startState.value = it })
-        // An opted-out new transfer is excluded locally before any client RPC.
-        // The choice is retained per exact profile, never inherited across clients.
-        AddArtworkChoice(automaticArtwork, enabled = !attempt.busy && mine && !unresolved) {
-            automaticArtwork = it
-        }
         // 5. Optional reviewed file choices, after the exact client/Place/Start.
         // Selection still freezes by exact metainfo index and path before the
         // stopped-first Add; moving the control cannot issue any native/RPC write.
@@ -351,6 +346,11 @@ internal fun ProtocolAddScreen(
             "every file will download.", style = MaterialTheme.typography.bodySmall)
         if (session != null && sourceRefusal != null) Text(sourceRefusal,
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+        // An opted-out new transfer is excluded locally before any client RPC.
+        // The choice is retained per exact profile, never inherited across clients.
+        if (capabilities.artworkChoice) AddArtworkChoice(automaticArtwork, enabled = !attempt.busy && mine && !unresolved) {
+            automaticArtwork = it
+        }
         UniversalAddSubmitAction(
             onClick = {
                 val frozen = source ?: return@UniversalAddSubmitAction

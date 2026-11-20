@@ -115,6 +115,21 @@ class ProtocolUniversalAddAdapterTest {
         assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
     }
 
+    @Test fun duplicateRefusalDoesNotChangeAnExistingTransfersArtworkPreference() = runBlocking {
+        val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
+        val fake = Fake().apply { added = request }
+        val coordinator = UniversalAddCoordinator()
+        val ticket = ticketFor(coordinator, request, allowArtwork = false)
+        var checks = 0
+        val result = UniversalAddLifecycle.run(coordinator, ticket,
+            ProtocolAddExecutor(ClientOperations(fake, 3, 1), request,
+                prepareBeforeWrite = { checks++; true }))
+        assertEquals(0, checks)
+        assertEquals(0, fake.writes)
+        assertTrue((result as UniversalAddRun.Completed).result is ClientOperationOutcome.Refused)
+        assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+    }
+
     @Test fun optedOutTicketWithoutPreferenceWriterCannotSilentlyAdd() = runBlocking {
         val fake = Fake()
         val coordinator = UniversalAddCoordinator()

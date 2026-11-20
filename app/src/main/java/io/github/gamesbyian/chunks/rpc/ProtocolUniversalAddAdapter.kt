@@ -86,25 +86,20 @@ internal class ProtocolAddExecutor(
         boundary: UniversalAddWriteBoundary
     ): ClientOperationOutcome {
         requireTicket(ticket)
-        // Opt-out must be persisted on this exact profile+hash before ANY RPC.
-        // A failed preference write must never cross the one-shot write boundary.
-        // No implicit success path for an opted-out ticket: direct adapter callers
-        // must supply the exact-key persistence preflight, too.
-        val prepared = try {
-            ticket.intent.allowArtwork || (prepareBeforeWrite?.invoke() ?: false)
-        } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) { false }
-        if (!prepared) return ClientOperationOutcome.Refused(request.source.infoHash,
-            "The artwork preference could not be saved; nothing was sent")
-        // Sampled before the write: the workflow's readback starts after it,
-        // so this never makes the result look newer than the client's own read.
-        writeStartedAt = clock()
-        boundary.enter()
-        return try { operations.add(request) } catch (cancel: CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            ClientOperationOutcome.Uncertain(request.source.infoHash, "unexpected failure")
+        return operations.add(request) {
+            // Read-only absence/capability checks have already passed. A refusal
+            // there cannot change the preference of an existing transfer.
+            val prepared = try {
+                ticket.intent.allowArtwork || prepareBeforeWrite?.invoke() == true
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) { false }
+            if (!prepared) "The artwork preference could not be saved; nothing was sent"
+            else {
+                writeStartedAt = clock()
+                boundary.enter()
+                null
+            }
         }
     }
 
