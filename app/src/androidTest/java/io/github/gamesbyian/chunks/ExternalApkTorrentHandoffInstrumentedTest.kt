@@ -1,6 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -47,17 +46,21 @@ class ExternalApkTorrentHandoffInstrumentedTest {
     }
 
     private fun dispatch(mode: String) {
-        val intent = Intent().apply {
-            setClassName(sourceApp.packageName,
-                "io.github.gamesbyian.chunks.external.ExternalSourceSenderActivity")
-            putExtra("fixture_mode", mode)
-            putExtra("fixture_target", chunksApp.packageName)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        // Only this IPC launches the external sender. Source bytes and the
-        // outbound grant originate inside the other package/UID, not from the
-        // instrumentation running in Chunks' process.
-        sourceApp.startActivity(intent)
+        require(mode == "view" || mode == "share")
+        // Launch the OTHER installed APK from Android's activity manager,
+        // as an external user/app launch. Calling Context.startActivity from
+        // the instrumentation runner can be background-launch restricted
+        // while the runner is not foreground, leaving the Pixel launcher up.
+        // The foreign Activity still creates its own source bytes and grants
+        // its own content URI to the real, separately installed Chunks app.
+        val command = "am start -W -n " + sourceApp.packageName +
+            "/io.github.gamesbyian.chunks.external.ExternalSourceSenderActivity" +
+            " --es fixture_mode " + mode +
+            " --es fixture_target " + chunksApp.packageName
+        val output = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+            .executeShellCommand(command)
+        assertTrue("The external APK was not launched by ActivityManager",
+            output.contains("Status: ok") && !output.contains("Error:"))
     }
 
     private fun withResumed(block: (MainActivity, LocalAddAttemptOwner) -> Unit): Boolean {
