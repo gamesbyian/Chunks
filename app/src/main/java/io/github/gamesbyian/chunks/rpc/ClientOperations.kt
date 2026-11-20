@@ -46,8 +46,11 @@ internal class ClientOperations(
     /** Explicit read of one exact transfer's files (no mutation). */
     suspend fun files(hash: String): List<ClientFile> = client.files(ClientHashes.requireHash(hash))
 
-    suspend fun add(request: ClientAddRequest): ClientOperationOutcome =
-        if (!request.hasFileChoices) addOnce(request) else addWithFileChoices(request)
+    suspend fun add(
+        request: ClientAddRequest,
+        beforeAdd: suspend () -> String? = { null }
+    ): ClientOperationOutcome =
+        if (!request.hasFileChoices) addOnce(request, beforeAdd) else addWithFileChoices(request, beforeAdd)
 
     /**
      * Reviewed file choices (skips and Low/High) for every engine, one gated
@@ -58,7 +61,10 @@ internal class ClientOperations(
      * job stopped and is reported, never replayed; Start is never sent unless
      * the choices were verified.
      */
-    private suspend fun addWithFileChoices(request: ClientAddRequest): ClientOperationOutcome {
+    private suspend fun addWithFileChoices(
+        request: ClientAddRequest,
+        beforeAdd: suspend () -> String?
+    ): ClientOperationOutcome {
         val hash = request.source.infoHash
         val session = try { session() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
@@ -73,13 +79,13 @@ internal class ClientOperations(
         val reviewed = request.reviewedChoices
         if (ClientCapability.ADD_WITH_FILE_CHOICES in caps) {
             // The client applies the choices inside its own Add; verify them here.
-            val added = addOnce(request)
+            val added = addOnce(request, beforeAdd)
             if (added is ClientOperationOutcome.Refused || added is ClientOperationOutcome.Uncertain) return added
             return if (choicesObserved(hash, reviewed)) added
             else ClientOperationOutcome.Pending(hash, (added as? ClientOperationOutcome.Verified)?.observed,
                 "Added; the file choices were not confirmed")
         }
-        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap(), filePriorities = emptyMap()))
+        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap(), filePriorities = emptyMap()), beforeAdd)
         if (added !is ClientOperationOutcome.Verified) return added
         val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { null }
@@ -112,7 +118,10 @@ internal class ClientOperations(
         return false
     }
 
-    private suspend fun addOnce(request: ClientAddRequest): ClientOperationOutcome {
+    private suspend fun addOnce(
+        request: ClientAddRequest,
+        beforeAdd: suspend () -> String?
+    ): ClientOperationOutcome {
         val hash = request.source.infoHash
         val caps = try { session().capabilities } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
@@ -130,6 +139,7 @@ internal class ClientOperations(
             is Read.Present -> return ClientOperationOutcome.Refused(hash, "Already in this client")
             Read.Absent -> Unit
         }
+        beforeAdd()?.let { return ClientOperationOutcome.Refused(hash, it) }
         write(hash) { client.add(request) }?.let { return it }
         val outcome = readback(hash) { observed ->
             when {

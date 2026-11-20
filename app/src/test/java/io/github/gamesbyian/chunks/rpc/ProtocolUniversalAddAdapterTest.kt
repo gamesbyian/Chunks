@@ -4,11 +4,14 @@ import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
 import io.github.gamesbyian.chunks.model.UniversalAddAdmission
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
+import io.github.gamesbyian.chunks.model.UniversalAddLifecycle
+import io.github.gamesbyian.chunks.model.UniversalAddRun
 import io.github.gamesbyian.chunks.model.UniversalAddPlace
 import io.github.gamesbyian.chunks.model.UniversalAddTarget
 import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -42,8 +45,9 @@ class ProtocolUniversalAddAdapterTest {
         override suspend fun recheck(hash: String) = Unit
     }
 
-    private fun ticketFor(coordinator: UniversalAddCoordinator, request: ClientAddRequest): UniversalAddCoordinator.Ticket {
-        val intent = ProtocolUniversalAddAdapter.intent("qb-profile", request, "/d")
+    private fun ticketFor(coordinator: UniversalAddCoordinator, request: ClientAddRequest,
+                          allowArtwork: Boolean = true): UniversalAddCoordinator.Ticket {
+        val intent = ProtocolUniversalAddAdapter.intent("qb-profile", request, "/d", allowArtwork)
         return requireNotNull(UniversalAddAdmission.authorize(coordinator, intent,
             EnvironmentCapabilities.unprobed(intent.target.environment), EnvironmentAvailability.LIVE,
             acquireMutationGate = { true }, submittedAtEpochMillis = 1_000L).ticket)
@@ -65,6 +69,10 @@ class ProtocolUniversalAddAdapterTest {
         assertEquals("qb-profile", byDefault.target.environment.value)
         assertTrue(byDefault.place is UniversalAddPlace.ServerDefault)
         assertTrue(byDefault.startWhenAdded)
+        assertTrue("Protocol artwork defaults enabled", byDefault.allowArtwork)
+        assertFalse("A frozen opt-out remains off", ProtocolUniversalAddAdapter.intent("qb-profile",
+            ClientAddRequest(ClientAddSource.Magnet(magnet), null, startNow = false), "/srv/dl",
+            allowArtwork = false).allowArtwork)
         val custom = ProtocolUniversalAddAdapter.intent("qb-profile",
             ClientAddRequest(ClientAddSource.Magnet(magnet), "/data/tv", startNow = false), "/srv/dl")
         assertEquals("/data/tv", (custom.place as UniversalAddPlace.ServerCustom).absolutePath)
@@ -88,6 +96,50 @@ class ProtocolUniversalAddAdapterTest {
 
     @Test fun aDefiniteRefusalDisarmsBecauseNothingWasWritten() {
         val (coordinator, _) = run("refused")
+        assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+    }
+
+    @Test fun rejectedArtworkPreflightCannotSendTheClientAdd() = runBlocking {
+        val fake = Fake()
+        val coordinator = UniversalAddCoordinator()
+        val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
+        val ticket = ticketFor(coordinator, request, allowArtwork = false)
+        var checks = 0
+        val result = UniversalAddLifecycle.run(coordinator, ticket,
+            ProtocolAddExecutor(ClientOperations(fake, 3, 1), request,
+                prepareBeforeWrite = { checks++; false }))
+        assertEquals(1, checks)
+        assertEquals(0, fake.writes)
+        assertTrue(result is UniversalAddRun.Completed)
+        assertTrue((result as UniversalAddRun.Completed).result is ClientOperationOutcome.Refused)
+        assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+    }
+
+    @Test fun duplicateRefusalDoesNotChangeAnExistingTransfersArtworkPreference() = runBlocking {
+        val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
+        val fake = Fake().apply { added = request }
+        val coordinator = UniversalAddCoordinator()
+        val ticket = ticketFor(coordinator, request, allowArtwork = false)
+        var checks = 0
+        val result = UniversalAddLifecycle.run(coordinator, ticket,
+            ProtocolAddExecutor(ClientOperations(fake, 3, 1), request,
+                prepareBeforeWrite = { checks++; true }))
+        assertEquals(0, checks)
+        assertEquals(0, fake.writes)
+        assertTrue((result as UniversalAddRun.Completed).result is ClientOperationOutcome.Refused)
+        assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
+    }
+
+    @Test fun optedOutTicketWithoutPreferenceWriterCannotSilentlyAdd() = runBlocking {
+        val fake = Fake()
+        val coordinator = UniversalAddCoordinator()
+        val request = ClientAddRequest(ClientAddSource.Magnet(magnet), null, false)
+        val ticket = ticketFor(coordinator, request, allowArtwork = false)
+        val result = UniversalAddLifecycle.run(coordinator, ticket,
+            ProtocolAddExecutor(ClientOperations(fake, 3, 1), request))
+        assertEquals(0, fake.writes)
+        assertTrue(result is UniversalAddRun.Completed)
+        assertTrue((result as UniversalAddRun.Completed).result is ClientOperationOutcome.Refused)
         assertEquals(UniversalAddCoordinator.Phase.REVIEWED, coordinator.phase)
     }
 
