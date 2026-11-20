@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -88,9 +90,13 @@ class RTorrentInstalledAddResponseFaultTest {
         return document
     }
 
-    private fun openForStoppedAdd(scenario: ActivityScenario<MainActivity>, document: Uri): Intent? {
+    private fun launchMain(): MainActivity = instrumentation.startActivitySync(
+        Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+    ) as MainActivity
+
+    private fun openForStoppedAdd(activity: MainActivity, document: Uri): Intent? {
         var originalIntent: Intent? = null
-        scenario.onActivity { activity ->
+        instrumentation.runOnMainSync {
             originalIntent = activity.intent
             activity.startActivity(Intent(activity, MainActivity::class.java).apply {
                 action = Intent.ACTION_SEND
@@ -115,6 +121,25 @@ class RTorrentInstalledAddResponseFaultTest {
         return originalIntent
     }
 
+    private fun recreateAfterIntake(activity: MainActivity, originalIntent: Intent?): MainActivity {
+        instrumentation.runOnMainSync {
+            originalIntent?.let { activity.intent = it }
+            activity.recreate()
+        }
+        // Single-task Share reentry changes the task's Intent and can strand
+        // ActivityScenario's original launch monitor on its PAUSED identity.
+        // Observe the actual replacement Activity from Android's lifecycle.
+        var resumed: MainActivity? = null
+        rule.waitUntil(30_000) {
+            instrumentation.runOnMainSync {
+                resumed = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED)
+                    .filterIsInstance<MainActivity>().singleOrNull { it !== activity }
+            }
+            resumed != null
+        }
+        return requireNotNull(resumed)
+    }
+
     private fun requireNoArchive(hash: String) {
         assertTrue("No archive is authorized without positive provenance",
             File(context.filesDir, SourceTorrentArchive.DIRECTORY).listFiles().orEmpty()
@@ -126,7 +151,8 @@ class RTorrentInstalledAddResponseFaultTest {
         val exactScope = RTorrentRemote(credentials.copy(endpoint = appUrl)).addAccountScope()
         val directory = runBlocking { requireNotNull(witness.defaultDirectory()) }
         assertTrue(OriginalTorrentHandlingStore(context).setDefault(OriginalTorrentHandling.ARCHIVE))
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+        var activity = launchMain()
+        try {
             connect()
 
             for (fault in listOf("drop", "timeout")) {
@@ -135,7 +161,7 @@ class RTorrentInstalledAddResponseFaultTest {
                 val hash = fixture.infoHashV1
                 assertNull("The exact disposable fixture must be absent", runBlocking { witness.lookupName(hash) })
                 val document = document(name, fixture.torrent)
-                val originalIntent = openForStoppedAdd(scenario, document)
+                val originalIntent = openForStoppedAdd(activity, document)
                 faultRelay.arm(fault)
                 journey.submit()
                 stage("add-fault-$fault-dispatched-once")
@@ -146,10 +172,7 @@ class RTorrentInstalledAddResponseFaultTest {
                 }
                 journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
                 journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
-                // Keep the literal incoming Intent out of recreation; the Activity already
-                // consumed it. Restoring the launch identity also keeps ActivityScenario valid.
-                scenario.onActivity { activity -> originalIntent?.let { activity.intent = it } }
-                scenario.recreate()
+                activity = recreateAfterIntake(activity, originalIntent)
                 journey.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
                 journey.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$exactScope")
                 journey.awaitAddReceipt("Present, origin unverified")
@@ -166,7 +189,8 @@ class RTorrentInstalledAddResponseFaultTest {
                 faultRelay.requireOneWriteAndNoStart()
                 val observed = runBlocking { witness.listTransfers("main").single { it.hash.equals(hash, true) } }
                 assertFalse("The fixture must remain stopped", observed.started)
-                assertEquals(directory.trimEnd('/'), observed.directory.trimEnd('/'))
+                assertTrue("The job stayed in the exact reviewed folder",
+                    directory.trimEnd('/') == observed.directory.trimEnd('/'))
                 requireNoArchive(hash)
                 assertArrayEquals("The original remains unchanged", fixture.torrent,
                     requireNotNull(context.contentResolver.openInputStream(document)).use { it.readBytes() })
@@ -176,6 +200,8 @@ class RTorrentInstalledAddResponseFaultTest {
                 assertTrue(runBlocking { witness.eraseFromSession(hash, name, observed.directory) } is
                     SessionEraseOutcome.VerifiedRemoved)
             }
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
         }
     }
 
@@ -188,15 +214,18 @@ class RTorrentInstalledAddResponseFaultTest {
         assertNull("The fixture must be absent before the one Add", runBlocking { witness.lookupName(hash) })
         assertTrue(OriginalTorrentHandlingStore(context).setDefault(OriginalTorrentHandling.ARCHIVE))
         val document = document(processDeathName, fixture.torrent)
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+        val activity = launchMain()
+        try {
             connect()
-            openForStoppedAdd(scenario, document)
+            openForStoppedAdd(activity, document)
             faultRelay.arm("hold")
             journey.submit()
             rule.waitUntil(10_000) { faultRelay.hasWithheldReply() }
             journey.awaitAddReceipt("Adding")
             Log.i("ChunksAddFault", "process-death-real-write-awaits-ack")
             Process.killProcess(Process.myPid())
+        } finally {
+            instrumentation.runOnMainSync { activity.finish() }
         }
     }
 

@@ -33,9 +33,9 @@ internal class InstalledAddResponseFault(appUrl: String) {
 
     fun requireOneWriteAndNoStart() {
         val counters = counts()
+        assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))
         assertEquals("Exactly one Add passed through the relay", 1, counters.getInt("adds"))
         assertEquals("Only one accepted daemon response was withheld", 1, counters.getInt("acknowledgments_withheld"))
         assertEquals("No recovery Start", 0, counters.getInt("starts"))
-        assertEquals("The daemon accepted the write before the relay fault", 0, counters.getInt("upstream_errors"))
     }
 }

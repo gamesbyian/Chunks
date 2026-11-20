@@ -123,7 +123,11 @@ class FaultProxy(BaseHTTPRequestHandler):
         method = rpc_method(kind, path, body) if self.command == "POST" else None
         mode = state.begin(method in ADD[kind], method in START[kind])
         request_headers = {name: value for name, value in self.headers.items()
-                           if name.lower() not in HOP_HEADERS}
+                           if name.lower() not in HOP_HEADERS | {"accept-encoding"}}
+        # The relay examines the upstream acknowledgment before deciding how
+        # to fault it. HTTPConnection otherwise passes Android's gzip request
+        # through without decoding the compressed body.
+        request_headers["Accept-Encoding"] = "identity"
 
         upstream = http.client.HTTPConnection("127.0.0.1", PORTS[kind], timeout=10)
         try:

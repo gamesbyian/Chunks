@@ -88,6 +88,8 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 
 An unresolved protocol write cannot clear its ticket through Start another Add. Exact-session acknowledgment permits a separate review and never asserts new registration. Protocol default-folder observations must match the reviewed folder before reporting a verified Add. The installed Local, rTorrent and protocol journeys use the same semantic submission, receipt and continuation checks where their evidence permits them. Track executed exact-source evidence in the quality ledger. The full negative matrix and physical Pixel, provider and TalkBack gates remain open until executed.
 
+Transmission, qBittorrent and Deluge reread the reviewed default folder before saving an artwork opt-out or sending Add. A changed or unavailable default requires a fresh review. Stopped-first registration must match the reviewed folder before applying file choices, and the executor checks the folder again before sending Start. [#1916](https://github.com/gamesbyian/Chunks/pull/1916)
+
 **Transfers receipt (merged 2026-11-20).** Canonical Transfers displays the same retained receipt in the exact client's visible scope. Local, authenticated rTorrent and protocol-client privacy decisions also govern the receipt. Review Add returns to that exact attempt without writing or clearing it. The receipt projects the existing frozen key and evidence and stays in memory. [#1913](https://github.com/gamesbyian/Chunks/pull/1913)
 
 ## Implementation ownership: converge incrementally
