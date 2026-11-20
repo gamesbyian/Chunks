@@ -323,9 +323,17 @@ class ProtocolClientInstalledJourneyTest {
             stage("add-artwork-opt-out-selected")
             addJourney.submit()
             stage("add-dispatched-once")
-            val submittingAtRecreation = addJourney.hasReceiptState("Adding")
+            val submitting = addJourney.hasReceiptState("Adding")
+            if (submitting) {
+                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.awaitTransferReceipt("Adding", "Verified")
+            }
             it.recreate()
-            stage(if (submittingAtRecreation) "recreated-while-submitting" else "submit-settled-before-recreation")
+            if (submitting) {
+                addJourney.awaitTransferReceipt("Adding", "Verified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + "." + profileId)
+                stage("transfer-receipt-kept-across-recreation")
+            }
             waitFor("Add verified (shared receipt)", 90_000) { receiptVerified() }
             // The attempt is app-owned like Local and rTorrent: Activity recreation must
             // keep this exact receipt and must not re-enable a second Add of the same source.
@@ -366,11 +374,12 @@ class ProtocolClientInstalledJourneyTest {
             // View transfer from Add must locate the exact hash on the selected
             // protocol client, rather than merely opening that client's inventory.
             addJourney.viewExactTransfer(profileId, second.infoHashV1)
+            addJourney.awaitTransferReceipt("Verified")
             stage("add-view-exact-hash-navigation")
 
             // Start a separate review and deliberately request an existing hash.
             // This must refuse while the exact independently witnessed job stays stopped.
-            addJourney.activate(ChunksSemantics.FOOTER_ADD)
+            addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + "." + profileId)
             addJourney.activate(ChunksSemantics.ADD_ANOTHER)
             typeInto(UniversalAddSourceText.FIELD_LABEL, magnet)
             ensureStartWhenAddedOff()

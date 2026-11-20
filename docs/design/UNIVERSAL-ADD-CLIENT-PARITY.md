@@ -88,6 +88,8 @@ A blind second write after an uncertain protocol Add is now prevented, with an e
 
 An unresolved protocol write cannot clear its ticket through Start another Add. Exact-session acknowledgment permits a separate review and never asserts new registration. Protocol default-folder observations must match the reviewed folder before reporting a verified Add. The installed Local, rTorrent and protocol journeys use the same semantic submission, receipt and continuation checks where their evidence permits them. Track executed exact-source evidence in the quality ledger. The full negative matrix and physical Pixel, provider and TalkBack gates remain open until executed.
 
+**Transfers receipt candidate.** Canonical Transfers can display the same retained receipt in the exact client's visible scope. Local, authenticated rTorrent and protocol-client privacy decisions also govern the receipt. Review Add returns to that exact attempt without writing or clearing it. The receipt only projects the existing frozen key and evidence, and stays in memory.
+
 ## Implementation ownership: converge incrementally
 
 **Current baseline at adoption:** `UniversalAddCoordinator` in `model/UniversalAddCoordinator.kt` already owns source/target/Place intent, review, one-shot submission ticket, readback fence, exact-session reconciliation and acknowledgment states. `LocalUniversalAddAdapter` and `RemoteUniversalAddAdapter` bridge real different engines correctly. However, `LocalEngineScreen` and `VerifiedAddScreen` still independently own large Add orchestration, outcome presentation and navigation paths. This separation is the owner-observed UX discrepancy.

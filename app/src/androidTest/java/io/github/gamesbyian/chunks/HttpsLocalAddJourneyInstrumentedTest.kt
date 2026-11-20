@@ -319,6 +319,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 // Start the positively registered job from Transfers.
                 addJourney.viewExactTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
                     preview.infoHashV1)
+                addJourney.awaitTransferReceipt("Verified")
                 // The receipt opens the canonical catalog at the exact Local job.
                 // Enter this exact device's existing lifecycle controls.
                 // The compact Search-adjacent Filters/Sort affordance opens
