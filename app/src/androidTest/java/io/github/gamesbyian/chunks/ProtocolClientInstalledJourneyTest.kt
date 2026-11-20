@@ -26,12 +26,15 @@ import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
+import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTorrentClients
+import io.github.gamesbyian.chunks.rpc.TransmissionReadOnlyRpc
+import java.net.URI
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -41,6 +44,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 
 /**
  * Installed app against one disposable Transmission, qBittorrent or Deluge
@@ -752,6 +756,53 @@ class ProtocolClientInstalledJourneyTest {
                 addJourney.activate(ChunksSemantics.ADD_ANOTHER)
                 runBlocking { witness.remove(pendingHash, deleteData = false) }
             }
+            if (kind == RemoteBackendKind.TRANSMISSION) {
+                val original = runBlocking { requireNotNull(witness.session(refresh = true).defaultDownloadDirectory) }
+                val changed = decoded("chunks_protocol_custom_folder_b64")
+                assertTrue("The disposable folder for the policy change must differ",
+                    !ClientHashes.sameDirectory(original, changed))
+                val pending = fixture("changed-default")
+                typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(pending.magnet))
+                ensureStartWhenAddedOff()
+                waitFor("the original default is still the reviewed Save to folder") {
+                    visible("default folder ($original)")
+                }
+                assertNull(runBlocking { independentRead(pending.infoHashV1) })
+                try {
+                    runBlocking { setDisposableTransmissionDefault(credentials, changed) }
+                    assertTrue(ClientHashes.sameDirectory(changed,
+                        runBlocking { witness.session(refresh = true).defaultDownloadDirectory }))
+                    responseFault.arm("drop")
+                    addJourney.submit()
+                    addJourney.awaitAddReceipt("Not added")
+                    assertTrue(visible("The reviewed default folder could not be confirmed"))
+                    responseFault.requireNoWrite()
+                    assertNull("The exact job must still be absent", runBlocking { independentRead(pending.infoHashV1) })
+                    stage("changed-default-refused-without-write")
+                } finally {
+                    runBlocking { setDisposableTransmissionDefault(credentials, original) }
+                }
+            }
         }
+    }
+
+    private suspend fun setDisposableTransmissionDefault(credentials: RemoteCredentials, directory: String) {
+        require(credentials.endpoint == "http://127.0.0.1:19091/transmission/rpc")
+        val endpoint = URI(credentials.endpoint)
+        val authorization = "Basic " + Base64.encodeToString(
+            "${credentials.username}:${credentials.password}".toByteArray(), Base64.NO_WRAP)
+        val wire = TransmissionReadOnlyRpc.HttpWire
+        val probe = wire.exchange(TransmissionReadOnlyRpc.Request(endpoint,
+            """{"method":"session-get"}""".toByteArray(), authorization, null))
+        val token = when (probe.status) {
+            409 -> probe.header("X-Transmission-Session-Id").single()
+            200 -> null
+            else -> error("Disposable Transmission session validation failed")
+        }
+        val update = JSONObject().put("method", "session-set")
+            .put("arguments", JSONObject().put("download-dir", directory)).toString().toByteArray()
+        val reply = wire.exchange(TransmissionReadOnlyRpc.Request(endpoint, update, authorization, token))
+        assertEquals(200, reply.status)
+        assertEquals("success", JSONObject(reply.body).getString("result"))
     }
 }

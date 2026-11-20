@@ -31,6 +31,12 @@ internal class InstalledAddResponseFault(appUrl: String) {
 
     fun hasWithheldReply() = counts().getInt("acknowledgments_withheld") == 1
 
+    fun requireNoWrite() {
+        val counters = counts()
+        assertEquals("The fixture saw no Add", 0, counters.getInt("adds"))
+        assertEquals("The fixture saw no Start", 0, counters.getInt("starts"))
+    }
+
     fun requireOneWriteAndNoStart() {
         val counters = counts()
         assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))

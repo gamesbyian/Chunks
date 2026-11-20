@@ -82,6 +82,11 @@ run_one() {
         return 1
       fi
     done
+    if [ "$kind" = TRANSMISSION ] &&
+      ! grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=changed-default-refused-without-write' "$stages"; then
+      echo '::error::Missing installed Transmission stale-default refusal witness'
+      return 1
+    fi
   fi
   echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode passed" | tee -a "$GITHUB_STEP_SUMMARY"
 }
