@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.hasTestTag
@@ -96,7 +97,8 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             fun enter(field: SemanticsMatcher, value: String) = LazyComposeActions.replaceText(rule, field, value)
             enter(hasTestTag(ChunksSemantics.CONNECTION_NAME), "Studio")
             enter(hasText("Seedbox hostname, ruTorrent URL or RPC address"), "https://draft.invalid/RPC2")
-            enter(hasText("Password"), "unsaved-secret")
+            val passwordField = hasText("Password") and hasSetTextAction()
+            enter(passwordField, "unsaved-secret")
 
             rule.activityRule.scenario.recreate()
 
@@ -107,8 +109,8 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             // bring the retained draft address into composition first.
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("https://draft.invalid/RPC2"))
             rule.onNodeWithText("https://draft.invalid/RPC2").assertExists()
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Password"))
-            rule.onNodeWithText("Password").assert(SemanticsMatcher.expectValue(
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(passwordField)
+            rule.onNode(passwordField).assert(SemanticsMatcher.expectValue(
                 SemanticsProperties.EditableText, AnnotatedString("")))
             rule.onNodeWithText("Finding secure rTorrent…").assertDoesNotExist()
             assertEquals("https://saved.invalid/RPC2", vault.load()?.endpoint)

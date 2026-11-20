@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
@@ -200,6 +201,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         var primaryFailure: Throwable? = null
         var scenario: ActivityScenario<MainActivity>? = null
         val launchIntent = sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val selectedSource = hasText("Selected .torrent: $name")
         fun captureFailure(failure: Throwable) {
             // A disposable fixture-only display, with a fixed stage and error
             // class in the filename. No incoming URI or exception message is logged.
@@ -220,7 +222,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             val opened = ActivityScenario.launch<MainActivity>(launchIntent).also { scenario = it }
             stage = "first-review"
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodes(selectedSource).fetchSemanticsNodes().size == 1
             }
             stage = "replacement-intent"
             opened.onActivity { it.startActivity(sourceIntent(refused)) }
@@ -235,15 +237,16 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             stage = "refusal"
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("The shared .torrent could not be verified", substring = true)
-                    .fetchSemanticsNodes().isNotEmpty()
+                    .fetchSemanticsNodes().isNotEmpty() &&
+                    rule.onAllNodes(selectedSource).fetchSemanticsNodes().size == 1
             }
-            rule.onNodeWithText(name, substring = true).assertExists()
+            rule.onNode(selectedSource).assertExists()
             stage = "combined"
             rule.onNodeWithText("Options").performClick()
             stage = "return"
             rule.onNodeWithText("+ Add").performClick()
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodes(selectedSource).fetchSemanticsNodes().size == 1
             }
             org.junit.Assert.assertEquals("Replacing/refusing/browsing a source cannot register a job",
                 before, engine.completeIdentityInventory())
