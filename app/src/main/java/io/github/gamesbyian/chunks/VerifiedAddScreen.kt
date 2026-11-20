@@ -976,8 +976,8 @@ internal fun VerifiedAddScreen(
                 val executor = io.github.gamesbyian.chunks.rpc.RTorrentAddExecutor(
                     remote, prioritiesFirst, priorityCallback,
                     prepareBeforeWrite = {
-                        // The artwork exclusion is saved locally before any RPC.
-                        allowArtwork || withContext(Dispatchers.IO) {
+                        // Persist the opt-out before the executor can send its one load.
+                        withContext(Dispatchers.IO) {
                             mediaController?.prepareForAdd(
                                 io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
                                     artworkEnvironment, plan.expectedInfoHash), false) == true

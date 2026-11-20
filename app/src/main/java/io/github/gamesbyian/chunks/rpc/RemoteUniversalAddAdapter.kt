@@ -11,7 +11,7 @@ import io.github.gamesbyian.chunks.model.UniversalAddTarget
  * Unlike a lost write acknowledgement, this can release the shared ticket.
  * Never expose raw transport/authentication errors or private paths in UI.
  */
-internal class RemotePreWriteRefusal : IllegalStateException(
+internal class RemotePreWriteRefusal(val artworkPreferenceFailed: Boolean = false) : IllegalStateException(
     "rTorrent preflight failed before any Add command"
 )
 
@@ -81,6 +81,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
     suspend fun submit(
         ticket: UniversalAddCoordinator.Ticket,
         prioritiesBeforeStart: Boolean = false,
+        beforeLoad: suspend () -> Unit = {},
         onVerifiedStoppedBeforeStart: (suspend (String) -> RemotePreStartSetup)? = null
     ): RemoteAddExecution {
         // This entire block is pure local validation. The ticket has been
@@ -104,25 +105,34 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
                 onVerifiedStoppedBeforeStart != null))
             throw RemotePreWriteRefusal()
         val bytes = intent.source.metainfoForSubmission()
-        // RTorrentRemote catches any failure *after* a load command could
-        // have been sent and returns Uncertain/StartNotVerified. Exceptions
-        // escaping these load methods are preflight refusals: no load was sent.
-        // Cancellation is never a known no-write result.
+        // Only exceptions before the final pre-load callback are known safe.
+        // RTorrentRemote reports transport failures after dispatch as uncertain.
+        var loadEntered = false
+        val enterLoad: suspend () -> Unit = {
+            beforeLoad()
+            loadEntered = true
+        }
         suspend fun loadStoppedPreflighted(): RemoteAddOutcome = try {
-            if (bytes == null) remote.loadStopped(plan)
-            else remote.loadStoppedTorrentBytes(bytes, plan.destination, plan.useServerDefault)
+            if (bytes == null) remote.loadStopped(plan, enterLoad)
+            else remote.loadStoppedTorrentBytes(bytes, plan.destination, plan.useServerDefault, enterLoad)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
-        } catch (_: Exception) {
+        } catch (refusal: RemotePreWriteRefusal) {
+            throw refusal
+        } catch (failure: Exception) {
+            if (loadEntered) throw failure
             throw RemotePreWriteRefusal()
         }
         if (intent.startWhenAdded && !prioritiesBeforeStart) {
             val outcome = try {
-                if (bytes == null) remote.loadStarted(plan)
-                else remote.loadStartedTorrentBytes(bytes, plan.destination, plan.useServerDefault)
+                if (bytes == null) remote.loadStarted(plan, enterLoad)
+                else remote.loadStartedTorrentBytes(bytes, plan.destination, plan.useServerDefault, enterLoad)
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
-            } catch (_: Exception) {
+            } catch (refusal: RemotePreWriteRefusal) {
+                throw refusal
+            } catch (failure: Exception) {
+                if (loadEntered) throw failure
                 throw RemotePreWriteRefusal()
             }
             return RemoteAddExecution(outcome, null)
@@ -288,7 +298,7 @@ internal class RTorrentAddExecutor(
     private val prioritiesFirst: Boolean,
     private val onVerifiedStoppedBeforeStart: (suspend (String) -> RemotePreStartSetup)?,
     /** Local-only preparation before any RPC; false refuses the Add without a write. */
-    private val prepareBeforeWrite: suspend () -> Boolean = { true },
+    private val prepareBeforeWrite: (suspend () -> Boolean)? = null,
     private val clock: () -> Long = System::currentTimeMillis
 ) : io.github.gamesbyian.chunks.model.UniversalAddExecutor<RTorrentAddExecutor.Result> {
     sealed interface Result {
@@ -313,15 +323,26 @@ internal class RTorrentAddExecutor(
         ticket: UniversalAddCoordinator.Ticket,
         boundary: io.github.gamesbyian.chunks.model.UniversalAddWriteBoundary
     ): Result {
-        if (!prepareBeforeWrite()) return Result.PreparationRefused
         // Record the evidence's acquisition order before any suspend/RPC.
         val submissionReadStartedAt = clock()
-        boundary.enter()
         val execution = try {
             adapter.submit(ticket, prioritiesBeforeStart = prioritiesFirst,
+                beforeLoad = {
+                    // Exact-session duplicate and default-folder checks have passed.
+                    // A refused Add cannot change another job's artwork during preflight.
+                    if (!ticket.intent.allowArtwork) {
+                        val saved = try {
+                            prepareBeforeWrite?.invoke() == true
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) { false }
+                        if (!saved) throw RemotePreWriteRefusal(artworkPreferenceFailed = true)
+                    }
+                    boundary.enter()
+                },
                 onVerifiedStoppedBeforeStart = onVerifiedStoppedBeforeStart)
-        } catch (_: RemotePreWriteRefusal) {
-            return Result.PreWriteRefused
+        } catch (refusal: RemotePreWriteRefusal) {
+            return if (refusal.artworkPreferenceFailed) Result.PreparationRefused else Result.PreWriteRefused
         }
         // A second Start in priority mode verifies active state, but only this
         // read-only pass verifies Place after that second mutation as well.
