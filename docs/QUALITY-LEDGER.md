@@ -2,6 +2,20 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-19 UTC: Local ↔ Transmission and Local ↔ Deluge job Move with real bytes
+
+- **Real daemons, this container** (Transmission 4.0.5 and real libtorrent): `LocalClientInteropTest.moveBetweenLocalAndRealTransmissionTransfersRealBytes` runs the production job-only Move both ways: Copy, verified target, then a separate source retirement. Each direction downloaded every piece from the source, the files were byte-identical, and the source files were kept.
+- This closes the open "Local → Transmission did not connect a peer" finding for the transfer itself. On this rig Transmission does not use tracker-announced loopback peers, so Local dials its fixed peer port (51513).
+- Runs:
+  - Before the dialler: one red. The copied magnet's Start was never observed, because a metadata-only Local job had no peer.
+  - With the dialler: one red straight after a daemon restart, then three consecutive greens.
+- That red is the product behaving honestly: a copied magnet whose metadata does not arrive within the copy's readback window is reported **Not copied, Start not yet observed**, and retirement stays unavailable.
+- **Cause of the fresh-daemon red, and the fix.** The red recurred on the first run after every fresh daemon start, which is exactly what CI does.
+  - It cleared when the metadata-dependent direction (Transmission → Local, whose copied source is a magnet) runs **first**, before any other connection between the pair.
+  - Fresh-daemon runs after the reorder passed.
+- **Deluge:** the interop start script now pins Deluge's incoming peer port to 51516 (`core.conf`; it was random). Local ↔ Deluge passed both ways.
+- CI interop now requires all four Local receipts: the journey, plus Move with qBittorrent, Transmission and Deluge.
+
 ## 2026-11-20 UTC: Universal Add integration
 
 - The shared form merged as `93df638c` from `dcd9bda9ddc2cbf6d34bb89542f24ea882f12a43`. All 12 required gates passed. Android/JVM executed 2,893 cases. Both API35 native shards and their verifier accepted 415 cases. Installed Local HTTPS and real rTorrent magnet verified real peer pieces. The three installed protocol clients exercised recreation during submission, exact-client/hash continuation, default and custom locations, duplicate refusal, file priority readback and artwork preference. The installed two-account rTorrent and original-document Archive/Delete suites passed separately. [#1912](https://github.com/gamesbyian/Chunks/pull/1912) · [JVM](https://github.com/gamesbyian/Chunks/actions/runs/44653009612) · [API35](https://github.com/gamesbyian/Chunks/actions/runs/44653009651) · [Local/rTorrent](https://github.com/gamesbyian/Chunks/actions/runs/44653009596) · [Transmission/qBittorrent/Deluge](https://github.com/gamesbyian/Chunks/actions/runs/44653009516) · [Two accounts](https://github.com/gamesbyian/Chunks/actions/runs/44653009579) · [Archive/Delete](https://github.com/gamesbyian/Chunks/actions/runs/44653009524)
