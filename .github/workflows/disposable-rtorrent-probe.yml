@@ -96,6 +96,7 @@ jobs:
           # unchanged for existing disposable protocol and peer-wire tests.
           auth_user="chunks-disposable"
           auth_pass="$(openssl rand -hex 18)"
+          printf '::add-mask::%s\n' "$auth_pass"
           printf 'CHUNKS_DISPOSABLE_AUTH_USER=%s\nCHUNKS_DISPOSABLE_AUTH_PASS=%s\n' \
             "$auth_user" "$auth_pass" >> "$GITHUB_ENV"
           printf '%s:%s\n' "$auth_user" "$(openssl passwd -apr1 "$auth_pass")" \
@@ -399,6 +400,7 @@ jobs:
           # unchanged for existing disposable protocol and peer-wire tests.
           auth_user="chunks-disposable"
           auth_pass="$(openssl rand -hex 18)"
+          printf '::add-mask::%s\n' "$auth_pass"
           printf 'CHUNKS_DISPOSABLE_AUTH_USER=%s\nCHUNKS_DISPOSABLE_AUTH_PASS=%s\n' \
             "$auth_user" "$auth_pass" >> "$GITHUB_ENV"
           printf '%s:%s\n' "$auth_user" "$(openssl passwd -apr1 "$auth_pass")" \

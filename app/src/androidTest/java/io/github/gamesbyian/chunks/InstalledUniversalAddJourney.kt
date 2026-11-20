@@ -1,7 +1,10 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.isSelected
@@ -24,9 +27,48 @@ internal class InstalledUniversalAddJourney(private val rule: ComposeTestRule) {
 
     fun submit() = activate(ChunksSemantics.ADD_SUBMIT)
 
+    fun chooseStopped() = chooseStartPreference(ToggleableState.Off)
+
+    fun chooseStartPreference(expected: ToggleableState) {
+        val tag = ChunksSemantics.ADD_START_PREFERENCE
+        val start = hasTestTag(tag)
+        var state: ToggleableState? = null
+        rule.waitUntil(30_000) {
+            runCatching {
+                reveal(start)
+                state = rule.onNode(start).fetchSemanticsNode().config[SemanticsProperties.ToggleableState]
+                state != null
+            }.getOrDefault(false)
+        }
+        if (state != expected) activate(tag)
+        rule.waitUntil(10_000) {
+            runCatching {
+                reveal(start)
+                rule.onNode(start).fetchSemanticsNode().config[SemanticsProperties.ToggleableState] == expected
+            }.getOrDefault(false)
+        }
+    }
+
+    fun requireSubmitBlocked() {
+        val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+        reveal(submit)
+        rule.onAllNodes(submit).assertCountEquals(1)
+        rule.onNode(submit).assertIsNotEnabled()
+    }
+
     fun hasReceiptState(state: String): Boolean = listOf(false, true).any { unmerged ->
         rule.onAllNodes(hasStateDescription(state), useUnmergedTree = unmerged)
             .fetchSemanticsNodes().isNotEmpty()
+    }
+
+    fun awaitAddReceipt(vararg permittedStates: String) {
+        val status = hasTestTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
+        rule.waitUntil(45_000) {
+            runCatching {
+                reveal(status)
+                permittedStates.any(::hasReceiptState)
+            }.getOrDefault(false)
+        }
     }
 
     fun awaitTransferReceipt(vararg permittedStates: String) {

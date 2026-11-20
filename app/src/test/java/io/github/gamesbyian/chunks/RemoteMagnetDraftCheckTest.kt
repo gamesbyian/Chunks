@@ -38,9 +38,20 @@ class RemoteMagnetDraftCheckTest {
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/RPC2") { exchange ->
             val request = exchange.requestBody.bufferedReader().use { it.readText() }
-            methods += Regex("<methodName>([^<]+)</methodName>").find(request)!!.groupValues[1]
-            val response = ("<methodResponse><params><param><value><string>/srv</string></value>" +
-                "</param></params></methodResponse>").toByteArray()
+            val method = Regex("<methodName>([^<]+)</methodName>").find(request)!!.groupValues[1]
+            methods += method
+            val parameters = when (method) {
+                "directory.default" -> "<params><param><value><string>/srv</string></value></param></params>"
+                "d.multicall2" -> "<params><param><value><array><data/></array></value></param></params>"
+                "d.name" -> """
+                    <fault><value><struct>
+                    <member><name>faultCode</name><value><int>-501</int></value></member>
+                    <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
+                    </struct></value></fault>
+                """.trimIndent()
+                else -> "<params/>"
+            }
+            val response = "<methodResponse>$parameters</methodResponse>".toByteArray()
             exchange.sendResponseHeaders(200, response.size.toLong())
             exchange.responseBody.use { it.write(response) }
         }
@@ -96,7 +107,9 @@ class RemoteMagnetDraftCheckTest {
             reveal("Add transfer")
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
             org.junit.Assert.assertFalse("Refusal retains the opt-out", automatic.value)
-            org.junit.Assert.assertTrue("Only the read-only default Place query is allowed", methods.all { it == "directory.default" })
+            org.junit.Assert.assertTrue("Preflight looked for the exact existing hash", "d.name" in methods)
+            org.junit.Assert.assertTrue("A failed preference may only have queried Place and exact absence",
+                methods.all { it in setOf("directory.default", "d.multicall2", "d.name") })
             org.junit.Assert.assertTrue(mediaHttp.requests.isEmpty())
         } finally {
             server.stop(0)

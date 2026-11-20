@@ -1,6 +1,6 @@
-name: Installed protocol clients (real Transmission, qBittorrent, Deluge)
+name: Installed Universal Add (Local and four real remote clients)
 
-# Disposable loopback Transmission daemon on the runner only; no secrets.
+# Disposable loopback daemons on the runner only.
 on:
   pull_request:
     paths:
@@ -12,6 +12,9 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
       - "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddDestinationPicker.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RTorrentInstalledAddResponseFaultTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt"
       - "tools/installed_protocol_client.sh"
       - "tools/verify_installed_apk_bytes.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledUniversalAddJourney.kt"
@@ -34,7 +37,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Install and start disposable real Transmission
+      - name: Start disposable Transmission, qBittorrent, Deluge and rTorrent
         run: |
           bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web rtorrent nginx
           sudo systemctl stop transmission-daemon deluged deluge-web qbittorrent-nox 2>/dev/null || true
@@ -64,7 +67,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
-      - name: Installed Connect -> Transfers -> Details Start/Remove -> Add stopped, per client
+      - name: Installed journeys and post-write Add response faults
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35

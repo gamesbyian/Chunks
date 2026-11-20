@@ -23,12 +23,18 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
+import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
+import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientRunState
 import io.github.gamesbyian.chunks.rpc.ClientOperations
+import io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteTorrentClients
+import io.github.gamesbyian.chunks.rpc.TransmissionReadOnlyRpc
+import java.net.URI
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -38,13 +44,15 @@ import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 
 /**
- * Installed app against ONE disposable real Transmission daemon on the CI
- * runner (adb reverse loopback; never a protected host). The test preloads a
+ * Installed app against one disposable Transmission, qBittorrent or Deluge
+ * daemon on the CI runner. The test preloads a
  * unique stopped fixture with the real client, then drives the app's own
  * Connections form (Transmission type) → canonical Transfers → Details
  * Start → Remove (keep files), with independent client readback after each.
+ * It also verifies what Add can claim after a real daemon's reply is withheld.
  */
 @RunWith(AndroidJUnit4::class)
 class ProtocolClientInstalledJourneyTest {
@@ -183,6 +191,44 @@ class ProtocolClientInstalledJourneyTest {
         throw AssertionError("Could not locate $what to click", last)
     }
 
+    private fun connect(kind: RemoteBackendKind, appUrl: String, user: String, pass: String) {
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+        waitFor("Connections") {
+            runCatching { scrollToNode(hasTestTag(ChunksSemantics.CONNECTION_ADD)); true }.getOrDefault(false)
+        }
+        rule.openConnectionFormIfNeeded()
+        when (kind) {
+            RemoteBackendKind.TRANSMISSION -> {
+                clickOnce("connection-backend-transmission", "Transmission type")
+                typeInto("Transmission RPC URL", appUrl)
+                typeInto("Username, if required", user)
+            }
+            RemoteBackendKind.QBITTORRENT -> {
+                clickOnce("connection-backend-qbittorrent", "qBittorrent type")
+                typeInto("qBittorrent WebUI root URL", appUrl)
+                typeInto("Username, if required", user)
+            }
+            RemoteBackendKind.DELUGE -> {
+                clickOnce("connection-backend-deluge", "Deluge type")
+                typeInto("Deluge Web JSON URL", appUrl)
+            }
+            else -> error("rTorrent has its own installed journeys")
+        }
+        typeInto("Password", pass)
+        clickOnce(ChunksSemantics.CONNECTION_CONNECT, "Connect")
+        stage("connect-dispatched-once")
+    }
+
+    private fun fixture(tag: String): TorrentMetainfoBuilder.Result {
+        val random = SecureRandom()
+        val name = "chunks-installed-$tag-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
+        val bytes = ByteArray(64 * 1024).also(random::nextBytes)
+        return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
+            listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
+            trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
+    }
+
     @Test fun protocolClientConnectTransfersDetailsAddAndRemove() {
         assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
         val kind = io.github.gamesbyian.chunks.model.RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
@@ -204,14 +250,6 @@ class ProtocolClientInstalledJourneyTest {
             io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
         stage("client-" + kind.name.lowercase())
 
-        fun fixture(tag: String): TorrentMetainfoBuilder.Result {
-            val random = SecureRandom()
-            val name = "chunks-installed-$tag-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
-            val bytes = ByteArray(64 * 1024).also(random::nextBytes)
-            return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
-                listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
-                trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
-        }
         /** Two unique files in one folder; returns the metainfo and the shared file-name suffix. */
         fun multiFileFixture(): Pair<TorrentMetainfoBuilder.Result, String> {
             val random = SecureRandom()
@@ -245,32 +283,7 @@ class ProtocolClientInstalledJourneyTest {
         stage("fixture-preloaded-stopped")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            rule.waitForIdle()
-            rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
-            waitFor("Connections") {
-                runCatching { scrollToNode(hasTestTag(ChunksSemantics.CONNECTION_ADD)); true }.getOrDefault(false)
-            }
-            rule.openConnectionFormIfNeeded()
-            when (kind) {
-                io.github.gamesbyian.chunks.model.RemoteBackendKind.TRANSMISSION -> {
-                    clickOnce("connection-backend-transmission", "Transmission type")
-                    typeInto("Transmission RPC URL", url)
-                    typeInto("Username, if required", user)
-                }
-                io.github.gamesbyian.chunks.model.RemoteBackendKind.QBITTORRENT -> {
-                    clickOnce("connection-backend-qbittorrent", "qBittorrent type")
-                    typeInto("qBittorrent WebUI root URL", url)
-                    typeInto("Username, if required", user)
-                }
-                io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE -> {
-                    clickOnce("connection-backend-deluge", "Deluge type")
-                    typeInto("Deluge Web JSON URL", url)
-                }
-                else -> error("rTorrent has its own installed journeys")
-            }
-            typeInto("Password", pass)
-            clickOnce(ChunksSemantics.CONNECTION_CONNECT, "Connect")
-            stage("connect-dispatched-once")
+            connect(kind, url, user, pass)
 
             waitFor("fixture row in canonical Transfers", 90_000) {
                 runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
@@ -678,10 +691,142 @@ class ProtocolClientInstalledJourneyTest {
                 // Leave the disposable profile's opt-in off for any later run.
                 switch.set(seedingEnvironment, false)
             }
+
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
-            profiles.count { it.credentials.endpoint == credentials.endpoint && it.backend == kind })
+            profiles.count { it.credentials.endpoint == url && it.backend == kind })
         stage("profile-saved")
+    }
+
+    @Test fun installedAddAfterTheDaemonResponseIsWithheld() {
+        assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
+        val kind = RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
+        val appUrl = decoded("chunks_protocol_app_url_b64")
+        val user = decoded("chunks_protocol_user_b64")
+        val pass = decoded("chunks_protocol_pass_b64")
+        val credentials = RemoteCredentials(decoded("chunks_protocol_url_b64"),
+            if (kind == RemoteBackendKind.DELUGE) "" else user, pass)
+        val daemon = if (kind == RemoteBackendKind.DELUGE) runBlocking {
+            DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds().single()
+        } else null
+        suspend fun independentRead(hash: String) = RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+        val witness = ClientOperations(RemoteTorrentClients.create(kind, credentials, daemon), 40, 500)
+        val responseFault = InstalledAddResponseFault(appUrl)
+
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            connect(kind, appUrl, user, pass)
+            val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+            waitFor("verified exact-client profile") { profiles.list().any { it.backend == kind } }
+            val profileId = profiles.list().single { it.backend == kind && it.credentials.endpoint == appUrl }.id
+
+            addJourney.activate(ChunksSemantics.FOOTER_ADD)
+            clickOnce("chunks.add.target.protocol.$profileId", "Add target chip")
+            for (fault in listOf("drop", "timeout")) {
+                val pending = fixture(fault)
+                val pendingHash = pending.infoHashV1
+                assertNull("The exact fixture must be absent before its Add", runBlocking { independentRead(pendingHash) })
+                typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(pending.magnet))
+                ensureStartWhenAddedOff()
+                responseFault.arm(fault)
+                addJourney.submit()
+                stage("add-fault-$fault-dispatched-once")
+
+                waitFor("exact real daemon job while the response is withheld") {
+                    runBlocking { independentRead(pendingHash) }?.runState == ClientRunState.STOPPED
+                }
+                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
+                scenario.recreate()
+                addJourney.awaitTransferReceipt("Adding", "Add unverified", "Present, origin unverified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                waitFor("existing transfer confirmed, original registration unverified") {
+                    addJourney.hasReceiptState("Present, origin unverified")
+                }
+                assertTrue("An exact match cannot establish who registered the job", !receiptVerified())
+                addJourney.requireSubmitBlocked()
+                addJourney.viewExactTransfer(profileId, pendingHash)
+                addJourney.awaitTransferReceipt("Present, origin unverified")
+
+                responseFault.requireOneWriteAndNoStart()
+                assertEquals("Independent readback still finds the job stopped", ClientRunState.STOPPED,
+                    runBlocking { independentRead(pendingHash) }?.runState)
+                stage("add-fault-$fault-one-write-present-origin-unverified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                addJourney.activate(ChunksSemantics.ADD_ANOTHER)
+                runBlocking { witness.remove(pendingHash, deleteData = false) }
+            }
+            if (kind == RemoteBackendKind.TRANSMISSION) {
+                val delayed = fixture("delayed-ack")
+                val delayedHash = delayed.infoHashV1
+                assertNull(runBlocking { independentRead(delayedHash) })
+                typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(delayed.magnet))
+                ensureStartWhenAddedOff()
+                responseFault.arm("delay")
+                addJourney.submit()
+                waitFor("daemon accepted the delayed request", 8_000) { responseFault.hasWithheldReply() }
+                assertEquals(ClientRunState.STOPPED, runBlocking { independentRead(delayedHash) }?.runState)
+                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.awaitTransferReceipt("Adding")
+                assertTrue("Exact inventory alone cannot settle an Add with a reply outstanding", !receiptVerified())
+                responseFault.releaseDelayedResponse()
+                scenario.recreate()
+                addJourney.awaitTransferReceipt("Adding", "Verified")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                addJourney.awaitAddReceipt("Verified")
+                addJourney.viewExactTransfer(profileId, delayedHash)
+                responseFault.requireOneWriteAndNoStart()
+                stage("add-delayed-valid-ack-then-exact-verified-readback")
+                addJourney.activate(ChunksSemantics.TRANSFERS_ADD_REVIEW + ".$profileId")
+                addJourney.activate(ChunksSemantics.ADD_ANOTHER)
+                runBlocking { witness.remove(delayedHash, deleteData = false) }
+
+                val original = runBlocking { requireNotNull(witness.session(refresh = true).defaultDownloadDirectory) }
+                val changed = decoded("chunks_protocol_custom_folder_b64")
+                assertTrue("The disposable folder for the policy change must differ",
+                    !ClientHashes.sameDirectory(original, changed))
+                val pending = fixture("changed-default")
+                typeInto(UniversalAddSourceText.FIELD_LABEL, requireNotNull(pending.magnet))
+                ensureStartWhenAddedOff()
+                waitFor("the original default is still the reviewed Save to folder") {
+                    visible("default folder ($original)")
+                }
+                assertNull(runBlocking { independentRead(pending.infoHashV1) })
+                try {
+                    runBlocking { setDisposableTransmissionDefault(credentials, changed) }
+                    assertTrue(ClientHashes.sameDirectory(changed,
+                        runBlocking { witness.session(refresh = true).defaultDownloadDirectory }))
+                    responseFault.arm("drop")
+                    addJourney.submit()
+                    addJourney.awaitAddReceipt("Not added")
+                    assertTrue(visible("The reviewed default folder could not be confirmed"))
+                    responseFault.requireNoWrite()
+                    assertNull("The exact job must still be absent", runBlocking { independentRead(pending.infoHashV1) })
+                    stage("changed-default-refused-without-write")
+                } finally {
+                    runBlocking { setDisposableTransmissionDefault(credentials, original) }
+                }
+            }
+        }
+    }
+
+    private suspend fun setDisposableTransmissionDefault(credentials: RemoteCredentials, directory: String) {
+        require(credentials.endpoint == "http://127.0.0.1:19091/transmission/rpc")
+        val endpoint = URI(credentials.endpoint)
+        val authorization = "Basic " + Base64.encodeToString(
+            "${credentials.username}:${credentials.password}".toByteArray(), Base64.NO_WRAP)
+        val wire = TransmissionReadOnlyRpc.HttpWire
+        val probe = wire.exchange(TransmissionReadOnlyRpc.Request(endpoint,
+            """{"method":"session-get"}""".toByteArray(), authorization, null))
+        val token = when (probe.status) {
+            409 -> probe.header("X-Transmission-Session-Id").single()
+            200 -> null
+            else -> error("Disposable Transmission session validation failed")
+        }
+        val update = JSONObject().put("method", "session-set")
+            .put("arguments", JSONObject().put("download-dir", directory)).toString().toByteArray()
+        val reply = wire.exchange(TransmissionReadOnlyRpc.Request(endpoint, update, authorization, token))
+        assertEquals(200, reply.status)
+        assertEquals("success", JSONObject(reply.body).getString("result"))
     }
 }

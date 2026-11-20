@@ -706,7 +706,19 @@ internal class MainActivityRealMagnetJourney(
         fun openDetails(hash: String) {
             // The exact-hash search leaves one row for this job, so open it without relying on
             // the display name (a metadata-pending magnet's server name differs from its label).
-            requireNotNull(row(hash)) { "exact remote job must exist" }
+            // The stopped state was independently confirmed by the prior
+            // lifecycle checkpoint. rTorrent can briefly remove this job
+            // from its filtered 'main' view before republishing membership.
+            // Wait for a fresh exact-hash READ only; never retry Stop/Start or
+            // force a view mutation to manufacture a visible UI row. A
+            // persistently hidden job still fails the real installed journey.
+            if (row(hash) == null) {
+                report("chunks_real_add_app_stage", "details-main-temporarily-absent")
+                await(seconds = 20, what = "exact stopped job visible in main for Details") {
+                    row(hash) != null
+                }
+                report("chunks_real_add_app_stage", "details-main-reappeared-read-only")
+            }
             val anyRow = hasContentDescription("Details for ", substring = true)
             rule.waitUntil(60_000) { rule.onAllNodes(anyRow).fetchSemanticsNodes().isNotEmpty() }
             assertEquals("The exact-hash search must leave exactly one row", 1,
