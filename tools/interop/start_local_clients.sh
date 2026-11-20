@@ -49,6 +49,21 @@ qbittorrent-nox --profile="$ROOT/qb" >"$ROOT/qb.log" 2>&1 &
 
 if [ -n "$PY" ]; then
   echo "localclient:localpass:10" > "$ROOT/de/auth"
+  # A fixed incoming peer port (Deluge defaults to a random one) so loopback
+  # interop peers can dial it; Deluge merges its own defaults for other keys.
+  [ -f "$ROOT/de/core.conf" ] || cat > "$ROOT/de/core.conf" <<'CORE'
+{
+    "file": 1,
+    "format": 1
+}{
+    "listen_ports": [51516, 51516],
+    "random_port": false,
+    "dht": false,
+    "lsd": false,
+    "upnp": false,
+    "natpmp": false
+}
+CORE
   # Off the default port; register exactly one daemon in the Web UI host list.
   cat > "$ROOT/de/hostlist.conf" <<HOSTS
 {
