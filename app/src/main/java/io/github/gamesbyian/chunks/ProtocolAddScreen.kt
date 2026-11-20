@@ -109,8 +109,10 @@ internal class ProtocolAddAttempt {
     }
 
     /** A claim that never reached the write boundary (admission refused after the claim). */
-    fun releaseUnwritten(hash: String) {
-        if (attemptedHash == hash && outcome == null) {
+    fun releaseUnwritten(profile: String, hash: String) {
+        // Identical hashes on two clients do not grant cross-account authority:
+        // only the holder of this *unwritten* claim may release the latch.
+        if (profileId == profile && attemptedHash == hash && outcome == null) {
             attemptedHash = null
             profileId = null
             discardSubmittedDraftFingerprint()
@@ -541,11 +543,11 @@ internal fun ProtocolAddScreen(
                 when (submitted) {
                     is UniversalAddSubmission.Result.Launched -> Unit
                     is UniversalAddSubmission.Result.Refused -> {
-                        if (submitted.decision.mutationGateAcquired) attempt.releaseUnwritten(hash)
+                        if (submitted.decision.mutationGateAcquired) attempt.releaseUnwritten(profileId, hash)
                         attempt.admissionRefusal = "Not added: " + submitted.decision.explanation
                     }
                     is UniversalAddSubmission.Result.ClientBusy -> {
-                        attempt.releaseUnwritten(hash)
+                        attempt.releaseUnwritten(profileId, hash)
                         attempt.admissionRefusal = "Not added: another Add to $clientLabel is still settling."
                     }
                 }

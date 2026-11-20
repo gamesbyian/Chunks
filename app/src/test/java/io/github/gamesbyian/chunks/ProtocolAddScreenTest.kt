@@ -242,7 +242,7 @@ class ProtocolAddScreenTest {
         assertFalse(attempt.submittedFileStillSelected(PendingLocalAdd(preview, bytes.copyOf())))
         first.bytes[0] = (first.bytes[0].toInt() xor 1).toByte()
         assertFalse(attempt.submittedFileStillSelected(first))
-        attempt.releaseUnwritten(hash)
+        attempt.releaseUnwritten("p", hash)
         assertFalse(attempt.submittedTextStillSelected(selectedText))
         assertFalse(attempt.submittedFileStillSelected(first))
     }
@@ -282,6 +282,17 @@ class ProtocolAddScreenTest {
             assertFalse("Old Add verification must not override a newer source's opt-out", artwork.value)
             assertEquals("One write for only the old source", 1, fake.writes)
         }
+    }
+
+    @Test fun differentProfileCannotReleaseSameHashInFlightClaim() {
+        val attempt = ProtocolAddAttempt()
+        assertTrue(attempt.claim("profile-A", hash, "magnet:?xt=urn:btih:$hash&dn=A"))
+        attempt.releaseUnwritten("profile-B", hash)
+        assertEquals("profile-A", attempt.profileId)
+        assertTrue("Unrelated client may not release an in-flight Add", attempt.busy)
+        attempt.releaseUnwritten("profile-A", hash)
+        assertFalse(attempt.busy)
+        assertEquals(null, attempt.profileId)
     }
 
     @Test fun anotherClientsAttemptBlocksSubmission() {
