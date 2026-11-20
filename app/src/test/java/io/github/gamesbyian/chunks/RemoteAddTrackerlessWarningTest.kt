@@ -7,6 +7,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.performScrollToNode
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
@@ -50,12 +52,21 @@ class RemoteAddTrackerlessWarningTest {
     @Test fun trackerlessMagnetWarnsBeforeTheSingleAddAction() {
         show("magnet:?xt=urn:btih:" + "a".repeat(40))
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Infohash:", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText(trackerlessWarning(false)).assertExists()
+        val list = rule.onNode(hasScrollToIndexAction())
+        val warning = hasText(trackerlessWarning(false))
+        list.performScrollToNode(warning)
+        rule.onNode(warning).assertExists()
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
     }
 
     @Test fun magnetWithATrackerShowsNoTrackerlessWarning() {
         show("magnet:?xt=urn:btih:" + "b".repeat(40) + "&tr=https%3A%2F%2Ftracker.example%2Fannounce")
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Infohash:", substring = true).fetchSemanticsNodes().isNotEmpty() }
-        assertTrue(rule.onAllNodesWithText(trackerlessWarning(false)).fetchSemanticsNodes().isEmpty())
+        // Search the entire lazy form for the policy warning, including offscreen options.
+        assertTrue(runCatching {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(trackerlessWarning(false)))
+        }.exceptionOrNull() is AssertionError)
+        rule.onNodeWithText(trackerlessWarning(false)).assertDoesNotExist()
     }
 }

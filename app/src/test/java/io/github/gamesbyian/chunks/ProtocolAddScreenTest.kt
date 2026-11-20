@@ -166,7 +166,7 @@ class ProtocolAddScreenTest {
         rule.waitForIdle()
     }
 
-    @Test fun anUncertainAddBlocksASecondSubmissionUntilThePersonDismissesIt() {
+    @Test fun anUnresolvedAddCannotBeDismissedOrSubmittedAgain() {
         val fake = Fake().apply { loseNextWrite = true }
         val attempt = ProtocolAddAttempt()
         val draft = mutableStateOf("magnet:?xt=urn:btih:$hash&dn=x")
@@ -180,13 +180,10 @@ class ProtocolAddScreenTest {
         rule.waitForIdle()
         assertEquals("no blind second write after an uncertain Add", 1, fake.writes)
         rule.onNodeWithText("Couldn't confirm Add on Box Deluge").assertExists()
-        // The person dismisses the uncertain result; a new reviewed Add is admitted.
-        rule.onNodeWithText("Add another").performScrollTo().performClick()
-        rule.waitForIdle()
-        draft.value = "magnet:?xt=urn:btih:$hash&dn=x"
-        rule.waitForIdle()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().performClick()
-        rule.waitUntil(5_000) { fake.writes == 2 }
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).assertDoesNotExist()
+        rule.runOnIdle { assertFalse(attempt.clearSettled("p")) }
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsNotEnabled()
+        assertEquals("no second write after an attempted reset", 1, fake.writes)
     }
 
     @Test fun aVerifiedAddDoesNotBlockTheNextReviewedSource() {
@@ -241,7 +238,7 @@ class ProtocolAddScreenTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS).assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performScrollTo().assertIsNotEnabled()
         // Acknowledging the confirmed session retires the ticket without resending.
-        rule.onNodeWithText("Add another").performScrollTo().performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).performScrollTo().performClick()
         rule.waitForIdle()
         assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.EMPTY,
             attempt.coordinator("p").phase)

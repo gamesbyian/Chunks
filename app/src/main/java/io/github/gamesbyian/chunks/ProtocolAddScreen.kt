@@ -24,6 +24,8 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +37,9 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
+import io.github.gamesbyian.chunks.model.UniversalAddLifecycle
+import io.github.gamesbyian.chunks.model.UniversalAddRun
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientAddSource
 import io.github.gamesbyian.chunks.rpc.ClientCapability
@@ -92,25 +97,37 @@ internal class ProtocolAddAttempt {
 
     /** Keep/Archive/Delete frozen with the Add click; only a verified NEW job may act on it. */
     internal var frozenOriginal: RemoteAddSession.FrozenOriginalHandling? = null
-    /** A separately approved original-.torrent deletion still awaiting the person's answer. */
-    var originalDeletion by mutableStateOf<OriginalDeletionRequest?>(null)
+    val originalDocument = OriginalAddDocumentState()
+    var originalDeletion: OriginalDeletionRequest? by originalDocument::deletion
         internal set
-    var originalNote by mutableStateOf<String?>(null)
+    var originalNote: String? by originalDocument::note
         internal set
 
-    fun clearSettled() {
-        if (busy) return
-        // The person dismissed the shown result: retire this client's ticket the way the
-        // shared coordinator allows (verified / exact-session / observed job), else start fresh.
-        profileId?.let { id ->
-            val c = coordinator(id)
-            val retired = c.finishVerified() || c.acknowledgeExactSession() || c.acknowledgeObservedJob()
-            if (!retired) coordinators[id] = io.github.gamesbyian.chunks.model.UniversalAddCoordinator()
+    fun canStartAnother(profile: String): Boolean {
+        if (busy || profileId != profile || originalDeletion != null) return false
+        return when (coordinator(profile).phase) {
+            UniversalAddCoordinator.Phase.VERIFIED,
+            UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> true
+            UniversalAddCoordinator.Phase.REVIEWED -> outcome is ClientOperationOutcome.Refused
+            else -> false
         }
-        attemptedHash = null; outcome = null; profileId = null; admissionRefusal = null; checkNote = null
-        // An unanswered deletion request simply keeps the original.
-        frozenOriginal = null; originalDeletion = null; originalNote = null
     }
+
+    fun clearSettled(profile: String): Boolean {
+        if (!canStartAnother(profile)) return false
+        val coordinator = coordinator(profile)
+        coordinator.finishVerified() || coordinator.acknowledgeExactSession() || coordinator.acknowledgeObservedJob()
+        attemptedHash = null
+        outcome = null
+        profileId = null
+        admissionRefusal = null
+        checkNote = null
+        frozenOriginal = null
+        originalNote = null
+        return true
+    }
+
 }
 
 /**
@@ -141,6 +158,7 @@ internal fun ProtocolAddScreen(
     },
     /** The shared Add draft's optional Chunks display name (the destination picker edits it). */
     aliasState: MutableState<String>? = null,
+    externalSourceReading: Boolean = false,
     /**
      * Saves a Chunks-only display name for a verified NEW exact registration under this
      * exact profile's alias scope; never overwrites an existing name, never calls the client.
@@ -149,6 +167,10 @@ internal fun ProtocolAddScreen(
 ) {
     val controller = attemptController ?: remember(attemptScope) { UniversalAddAttemptController { attemptScope } }
     val context = LocalContext.current
+    val sourceScope = rememberCoroutineScope()
+    val currentExternalRead = rememberUpdatedState(externalSourceReading)
+    val environment = intentEnvironment(profileId)
+    controller.observationRevision(environment)
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
     val artworkHolder = artworkState ?: remember(profileId) { mutableStateOf(true) }
     var automaticArtwork by artworkHolder
@@ -160,6 +182,12 @@ internal fun ProtocolAddScreen(
     var fileError by remember { mutableStateOf<String?>(null) }
     var readingTorrent by remember { mutableStateOf(false) }
     var linkFetching by remember { mutableStateOf(false) }
+    var documentSelection by remember(profileId) { mutableStateOf<ProtocolAddSourceSelection?>(null) }
+    fun sourceSelection() = ProtocolAddSourceSelection(sourceDraft.value, reviewedTorrent.value)
+    fun stillSelected(witness: ProtocolAddSourceSelection): Boolean =
+        !attempt.busy && !currentExternalRead.value &&
+            witness.text == sourceDraft.value && witness.torrent === reviewedTorrent.value
+
 
     LaunchedEffect(operations) {
         try {
@@ -169,9 +197,11 @@ internal fun ProtocolAddScreen(
         }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
+        val witness = documentSelection
+        documentSelection = null
+        if (uri == null || witness == null || !stillSelected(witness)) return@rememberLauncherForActivityResult
         readingTorrent = true
-        attemptScope.launch {
+        sourceScope.launch {
             val read = withContext(Dispatchers.IO) {
                 runCatching {
                     context.contentResolver.openInputStream(uri)?.use { input ->
@@ -191,8 +221,9 @@ internal fun ProtocolAddScreen(
                 }
             }
             readingTorrent = false
+            if (!stillSelected(witness)) return@launch
             read.onSuccess { reviewedTorrent.value = it; sourceDraft.value = ""; fileError = null }
-                .onFailure { fileError = "Not a usable .torrent: " + (it.message?.take(120) ?: "unreadable") }
+                .onFailure { fileError = "This document could not be read as a supported .torrent file." }
         }
     }
 
@@ -212,7 +243,6 @@ internal fun ProtocolAddScreen(
     val originalDocument = torrent?.originalDocument?.takeIf { draft.isEmpty() }
     var originalHandling by remember(originalDocument) { mutableStateOf<OriginalTorrentHandling?>(null) }
     var originalDeletable by remember(originalDocument) { mutableStateOf(false) }
-    var originalDeleting by remember { mutableStateOf(false) }
     LaunchedEffect(originalDocument) {
         val document = originalDocument ?: return@LaunchedEffect
         val (saved, deletable) = withContext(Dispatchers.IO) {
@@ -252,19 +282,18 @@ internal fun ProtocolAddScreen(
     // A session found by Check status also needs the person's acknowledgement first.
     val unresolved = attempt.coordinator(profileId).phase.let {
         it in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED ||
-            it == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED
-    } && !attempt.busy
+            it == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+    }
     val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine &&
         validUniversalAddAlias(aliasState?.value.orEmpty()) &&
-        !unresolved &&
-        !noFileChosen
+        !unresolved && !externalSourceReading && !readingTorrent && !linkFetching &&
+        attempt.originalDeletion == null && !noFileChosen
 
-    Column(Modifier.fillMaxSize().testTag(ChunksSemantics.ADD_BODY_PROTOCOL)
-        .verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Add a transfer", style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() })
-        // 1. Source first: the one shared intake (as Local and rTorrent).
+    UniversalAddForm(
+        capabilities = capabilities,
+        modifier = Modifier.fillMaxSize().testTag(ChunksSemantics.ADD_BODY_PROTOCOL)
+            .verticalScroll(rememberScrollState()).padding(16.dp),
+        source = {
         UniversalAddSourceSection(
             text = sourceDraft.value,
             // A complete magnet replaces a reviewed .torrent; a typed link keeps it until fetched.
@@ -272,26 +301,29 @@ internal fun ProtocolAddScreen(
                 sourceDraft.value = value
                 if (MagnetDraftCheck.inspect(value.trim()) is MagnetDraftCheck.Valid) reviewedTorrent.value = null
             },
-            enabled = !attempt.busy && !linkFetching,
-            onOpenTorrent = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
+            enabled = !attempt.busy && !unresolved && !linkFetching && !externalSourceReading,
+            onOpenTorrent = {
+                documentSelection = sourceSelection()
+                picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*"))
+            },
             readingTorrent = readingTorrent,
             linkFetching = linkFetching,
             onFetchLink = fetch@{ link ->
-                if (attempt.busy || linkFetching) return@fetch
-                // Freeze the exact requested URL; a newer edit wins over this fetch.
-                val requested = sourceDraft.value.trim()
+                val witness = sourceSelection()
+                if (!stillSelected(witness) || unresolved || linkFetching || readingTorrent ||
+                    witness.text.trim() != link.uri.toString()) return@fetch
                 linkFetching = true
-                attemptScope.launch {
+                sourceScope.launch {
                     try {
                         when (val result = fetchTorrentLink(link)) {
-                            is TorrentLinkResult.Fetched -> if (sourceDraft.value.trim() == requested && !attempt.busy) {
+                            is TorrentLinkResult.Fetched -> if (stillSelected(witness)) {
                                 // Downloaded and validated on this device; a fetched link has no
                                 // deletable or archivable original.
                                 reviewedTorrent.value = PendingLocalAdd(result.preview, result.bytes)
                                 sourceDraft.value = ""
                                 fileError = null
                             } else fileError = "The draft changed while fetching. The current source was kept."
-                            is TorrentLinkResult.Refused -> if (sourceDraft.value.trim() == requested)
+                            is TorrentLinkResult.Refused -> if (stillSelected(witness))
                                 fileError = result.message
                         }
                     } finally { linkFetching = false }
@@ -305,13 +337,12 @@ internal fun ProtocolAddScreen(
                 style = MaterialTheme.typography.bodyMedium)
         }
         fileError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        // The policy itself lives only in Options → Downloads & storage → Add & files.
-        originalHandling?.takeIf { originalDocument != null && !attempt.busy }?.let { OriginalTorrentHandlingSummary(it) }
-        // 2. Exact target (the shared picker).
-        destinationPicker()
-        sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
-        // 3. Save to: client default or one exact folder, within the shared section.
-        UniversalAddSaveToSection {
+        },
+        destination = {
+            destinationPicker()
+            sessionError?.let { Text("$clientLabel is unavailable: $it", color = ChunksColors.Yellow) }
+        },
+        saveTo = {
         Text(if (useCustom) "A folder you enter on $clientLabel"
             else "$clientLabel's default folder" + (session?.defaultDownloadDirectory?.let { " ($it)" } ?: ""),
             style = MaterialTheme.typography.bodyMedium)
@@ -325,35 +356,35 @@ internal fun ProtocolAddScreen(
             isError = !folderValid, singleLine = true, enabled = !attempt.busy,
             modifier = Modifier.fillMaxWidth()
         )
-        }
-        // 4. Start.
-        UniversalAddStartChoice(startState.value, enabled = !attempt.busy,
-            onCheckedChange = { startState.value = it })
-        // 5. Optional reviewed file choices, after the exact client/Place/Start.
-        // Selection still freezes by exact metainfo index and path before the
-        // stopped-first Add; moving the control cannot issue any native/RPC write.
-        if (layout != null && canChooseFiles) AddFileChoice(
+        },
+        start = UniversalAddToggle(startState.value, !attempt.busy) { startState.value = it },
+        files = { options ->
+        if (layout != null && options.fileChoices) AddFileChoice(
             files = layout, skipped = chosenSkips, expanded = fileChoiceOpen, enabled = !attempt.busy,
             onExpanded = { fileChoiceOpen = it },
             // Only the levels this exact client stores (never a silent Low → Normal).
             priorityLevels = listOf(io.github.gamesbyian.chunks.rpc.ClientFilePriority.HIGH,
                 io.github.gamesbyian.chunks.rpc.ClientFilePriority.LOW)
-                .filter { it in capabilities.priorityLevels },
+                .filter { it in options.priorityLevels },
             priorities = levels.filterKeys { it !in chosenSkips },
             onPriorityChange = { index, level -> levels = if (level == null) levels - index else levels + (index to level) },
             onSkippedChange = { skipped = it; levels = levels - it })
         else if (layout != null && session != null) Text("$clientLabel cannot choose files at Add; " +
             "every file will download.", style = MaterialTheme.typography.bodySmall)
-        if (session != null && sourceRefusal != null) Text(sourceRefusal,
-            style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
-        // An opted-out new transfer is excluded locally before any client RPC.
-        // The choice is retained per exact profile, never inherited across clients.
-        if (capabilities.artworkChoice) AddArtworkChoice(automaticArtwork, enabled = !attempt.busy && mine && !unresolved) {
+        },
+        artwork = UniversalAddToggle(automaticArtwork, !attempt.busy && mine && !unresolved) {
             automaticArtwork = it
-        }
-        UniversalAddSubmitAction(
-            onClick = {
-                val frozen = source ?: return@UniversalAddSubmitAction
+        },
+        options = {
+            originalHandling?.takeIf { originalDocument != null && !attempt.busy }
+                ?.let { OriginalTorrentHandlingSummary(it) }
+            if (session != null && sourceRefusal != null) Text(sourceRefusal,
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+        },
+        submit = UniversalAddAction(canSubmit, onSubmit = submit@{
+                val frozen = source ?: return@submit
+                if (!canSubmit || currentExternalRead.value || sourceDraft.value.trim() != draft ||
+                    reviewedTorrent.value !== torrent) return@submit
                 // Frozen at the click: reviewed index → path for exactly these bytes.
                 val skips = if (frozen is ClientAddSource.TorrentFile) layout.orEmpty()
                     .filter { it.index in chosenSkips }.associate { it.index to it.path } else emptyMap()
@@ -375,7 +406,7 @@ internal fun ProtocolAddScreen(
                 val frozenAlias = runCatching { normalizedUniversalAddAlias(aliasState?.value.orEmpty()) }
                     .getOrElse {
                         attempt.admissionRefusal = "Not added: that display name contains unsupported characters or exceeds 160 characters."
-                        return@UniversalAddSubmitAction
+                        return@submit
                     }
                 val intent = io.github.gamesbyian.chunks.rpc.ProtocolUniversalAddAdapter.intent(
                     profileId, request, session?.defaultDownloadDirectory, allowArtwork)
@@ -421,37 +452,39 @@ internal fun ProtocolAddScreen(
                             "The Add was interrupted after it was sent; check its status")
                         else ClientOperationOutcome.Refused(hash, "Interrupted before anything was sent")
                     }) { run ->
-                    attempt.outcome = when (run) {
-                        is io.github.gamesbyian.chunks.model.UniversalAddRun.Completed -> run.result
-                        is io.github.gamesbyian.chunks.model.UniversalAddRun.Failed ->
+                    val settled = when (run) {
+                        is UniversalAddRun.Completed -> run.result
+                        is UniversalAddRun.Failed ->
                             if (run.writeMayHaveHappened) ClientOperationOutcome.Uncertain(hash, "unexpected failure")
                             else ClientOperationOutcome.Refused(hash, "The Add could not be prepared; nothing was sent")
                     }
-                    // Each new source starts checked, even when the user edits another
-                    // source after a verified Add without pressing Add another first.
-                    if (attempt.outcome is ClientOperationOutcome.Verified) automaticArtwork = true
-                    // A display name only for this Add's positively verified NEW registration.
-                    val verifiedNewHash = (attempt.outcome as? ClientOperationOutcome.Verified)?.hash
-                        ?.takeIf { coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
-                    exactNewAddAlias(frozenAlias, hash, verifiedNewHash)?.let { alias ->
-                        val saved = withContext(Dispatchers.IO) {
-                            runCatching { aliasStore(hash.lowercase(java.util.Locale.ROOT), alias) }.getOrDefault(false)
+                    try {
+                        // A display name only for this Add's positively verified NEW registration.
+                        val verifiedNewHash = (settled as? ClientOperationOutcome.Verified)?.hash
+                            ?.takeIf { coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
+                        exactNewAddAlias(frozenAlias, hash, verifiedNewHash)?.let { alias ->
+                            val saved = withContext(Dispatchers.IO) {
+                                runCatching { aliasStore(hash.lowercase(java.util.Locale.ROOT), alias) }.getOrDefault(false)
+                            }
+                            if (saved) aliasState?.let { if (it.value.trim() == alias) it.value = "" }
+                            else attempt.checkNote = "Added, but its Chunks display name was not saved."
                         }
-                        if (saved) aliasState?.let { if (it.value.trim() == alias) it.value = "" }
-                        else attempt.checkNote = "Added, but its Chunks display name was not saved."
-                    }
-                    // The shared original-.torrent policy: only this Add's positively
-                    // verified NEW registration may archive or ask to delete it.
-                    val original = attempt.frozenOriginal
-                    attempt.frozenOriginal = null
-                    if (original != null) {
-                        val verifiedNew = (attempt.outcome as? ClientOperationOutcome.Verified)?.hash
-                            ?.takeIf { it.equals(hash, ignoreCase = true) &&
-                                coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
-                        val retirement = OriginalSourceRetirement.afterAdd(appContext, original,
-                            intent.target.environment.value, verifiedNew?.lowercase(java.util.Locale.ROOT))
-                        attempt.originalDeletion = retirement.deletion
-                        attempt.originalNote = retirement.note
+                        // The shared original-.torrent policy: only this Add's positively
+                        // verified NEW registration may archive or ask to delete it.
+                        val original = attempt.frozenOriginal
+                        attempt.frozenOriginal = null
+                        if (original != null) {
+                            val verifiedNew = (settled as? ClientOperationOutcome.Verified)?.hash
+                                ?.takeIf { it.equals(hash, ignoreCase = true) &&
+                                    coordinator.phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED }
+                            val retirement = OriginalSourceRetirement.afterAdd(appContext, original,
+                                intent.target.environment.value, verifiedNew?.lowercase(java.util.Locale.ROOT))
+                            attempt.originalDeletion = retirement.deletion
+                            attempt.originalNote = retirement.note
+                        }
+                        if (settled is ClientOperationOutcome.Verified) automaticArtwork = true
+                    } finally {
+                        attempt.outcome = settled
                     }
                 }
                 when (submitted) {
@@ -465,11 +498,8 @@ internal fun ProtocolAddScreen(
                         attempt.admissionRefusal = "Not added: another Add to $clientLabel is still settling."
                     }
                 }
-            },
-            enabled = canSubmit,
-            modifier = Modifier.fillMaxWidth(),
-            label = if (attempt.busy) "Adding to $clientLabel…" else "Add transfer"
-        )
+        }),
+        status = {
         // A refusal before any write (fixed admission vocabulary) shares the one status location.
         attempt.admissionRefusal?.takeIf { attempt.profileId == null || attempt.profileId == profileId }?.let { why ->
             Text(why, color = MaterialTheme.colorScheme.error,
@@ -479,8 +509,6 @@ internal fun ProtocolAddScreen(
         val outcome = attempt.outcome.takeIf { attempt.profileId == profileId }
         // The one shared, engine-neutral receipt (as Local and rTorrent): the coordinator's
         // evidence decides the heading; the client's own reason is a subordinate detail.
-        // Recompose when the retained follow-up or a Check status applied new evidence.
-        controller.observationRevision(intentEnvironment(profileId))
         val receipt = if (attempt.profileId == profileId)
             io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector.from(
                 phase = attempt.coordinator(profileId).phase, clientLabel = clientLabel,
@@ -496,15 +524,16 @@ internal fun ProtocolAddScreen(
             }
         }
         outcome?.let { result ->
-            if (result is ClientOperationOutcome.Verified || result is ClientOperationOutcome.Pending) {
-                OutlinedButton(onClick = { onViewTransfer(result.hash) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("View transfer") }
+            val coordinatorNow = attempt.coordinator(profileId)
+            val phase = coordinatorNow.phase
+            if (phase == UniversalAddCoordinator.Phase.VERIFIED || phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED) {
+                UniversalAddContinuationAction(ChunksSemantics.ADD_VIEW_TRANSFER, "View transfer") {
+                    onViewTransfer(result.hash)
+                }
             }
             // Read-only recovery of an unresolved write: one exact-hash read on
             // this client, never a second Add.
-            val coordinatorNow = attempt.coordinator(profileId)
-            if (result !is ClientOperationOutcome.Verified && result !is ClientOperationOutcome.Refused &&
-                coordinatorNow.phase in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED) {
+            if (result !is ClientOperationOutcome.Refused && phase in UniversalAddLifecycle.UNRESOLVED) {
                 val checkingNow = controller.isChecking(intentEnvironment(profileId))
                 OutlinedButton(onClick = {
                     controller.recheck(coordinatorNow,
@@ -521,45 +550,27 @@ internal fun ProtocolAddScreen(
                 Text(note, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             }
-            OutlinedButton(onClick = {
-                attempt.clearSettled()
-                if (result is ClientOperationOutcome.Verified) {
-                    sourceDraft.value = ""; reviewedTorrent.value = null
-                    automaticArtwork = true // a fresh Add starts with the default-checked choice
+            if (attempt.canStartAnother(profileId)) UniversalAddContinuationAction(ChunksSemantics.ADD_ANOTHER,
+                label = when (phase) {
+                    UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> "Acknowledge session and start another Add"
+                    UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> "Acknowledge registered job; Start unverified"
+                    UniversalAddCoordinator.Phase.REVIEWED -> "Review again"
+                    else -> "Start another Add"
                 }
-            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add another") }
+            ) {
+                if (attempt.clearSettled(profileId) && phase != UniversalAddCoordinator.Phase.REVIEWED) {
+                    sourceDraft.value = ""
+                    reviewedTorrent.value = null
+                    automaticArtwork = true
+                }
+            }
         }
-        attempt.originalDeletion?.takeIf { attempt.profileId == profileId }?.let { request ->
-            OriginalDeletionPrompt(request, busy = originalDeleting,
-                onDelete = {
-                    if (!originalDeleting) {
-                        originalDeleting = true
-                        attemptScope.launch {
-                            try {
-                                val deleted = withContext(Dispatchers.IO) {
-                                    OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
-                                }
-                                attempt.originalNote = originalDeletionMessage(deleted, request.archived)
-                            } finally {
-                                originalDeleting = false
-                                if (attempt.originalDeletion === request) attempt.originalDeletion = null
-                            }
-                        }
-                    }
-                },
-                onKeep = {
-                    if (attempt.originalDeletion === request) attempt.originalDeletion = null
-                    attempt.originalNote = if (request.archived)
-                        "The original .torrent file was kept; Chunks also keeps its archived copy."
-                    else "The original .torrent file was kept."
-                })
+        if (attempt.profileId == profileId) OriginalAddDocumentStatus(attempt.originalDocument, attemptScope)
         }
-        attempt.originalNote?.takeIf { attempt.profileId == profileId }?.let { note ->
-            Text(note, style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-        }
-    }
+    )
 }
+
+private class ProtocolAddSourceSelection(val text: String, val torrent: PendingLocalAdd?)
 
 private fun intentEnvironment(profileId: String) = io.github.gamesbyian.chunks.model.EnvironmentId(profileId)
 
