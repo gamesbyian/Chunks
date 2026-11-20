@@ -1,4 +1,4 @@
-name: Installed protocol clients (real Transmission, qBittorrent, Deluge, rTorrent)
+name: Installed Universal Add (Local and four real remote clients)
 
 # Disposable loopback daemons on the runner only.
 on:
@@ -13,6 +13,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddDestinationPicker.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/RTorrentInstalledAddResponseFaultTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt"
       - "tools/installed_protocol_client.sh"
       - "tools/verify_installed_apk_bytes.sh"

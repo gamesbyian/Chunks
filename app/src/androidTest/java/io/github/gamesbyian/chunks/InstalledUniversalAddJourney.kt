@@ -27,7 +27,9 @@ internal class InstalledUniversalAddJourney(private val rule: ComposeTestRule) {
 
     fun submit() = activate(ChunksSemantics.ADD_SUBMIT)
 
-    fun chooseStopped() {
+    fun chooseStopped() = chooseStartPreference(ToggleableState.Off)
+
+    fun chooseStartPreference(expected: ToggleableState) {
         val tag = ChunksSemantics.ADD_START_PREFERENCE
         val start = hasTestTag(tag)
         var state: ToggleableState? = null
@@ -38,11 +40,11 @@ internal class InstalledUniversalAddJourney(private val rule: ComposeTestRule) {
                 state != null
             }.getOrDefault(false)
         }
-        if (state == ToggleableState.On) activate(tag)
+        if (state != expected) activate(tag)
         rule.waitUntil(10_000) {
             runCatching {
                 reveal(start)
-                rule.onNode(start).fetchSemanticsNode().config[SemanticsProperties.ToggleableState] == ToggleableState.Off
+                rule.onNode(start).fetchSemanticsNode().config[SemanticsProperties.ToggleableState] == expected
             }.getOrDefault(false)
         }
     }

@@ -144,5 +144,33 @@ run_rtorrent() {
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_rtorrent || failed=1
+run_local_add_death() {
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
+  adb logcat -c || return 1
+  local class=io.github.gamesbyian.chunks.LocalInstalledAddProcessDeathTest
+  local runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
+  local before="$out/local-add-death-phase1.txt" after="$out/local-add-death-phase2.txt"
+  adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
+    -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || true
+  adb logcat -d -s ChunksLocalAddDeath:I > "$out/local-add-death-boundary.txt" || return 1
+  if ! grep -Fq 'exact-job-registered-start-unverified' "$out/local-add-death-boundary.txt" ||
+    grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
+    tail -80 "$before"
+    echo "::error::The installed app did not die during the Local Add observation"
+    return 1
+  fi
+  if ! adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
+    -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 ||
+    ! grep -q '^OK (1 test)' "$after"; then
+    tail -80 "$after"
+    echo "::error::Fresh-process Local Add safety verification failed"
+    return 1
+  fi
+  adb logcat -d -s ChunksLocalAddDeath:I | grep -Fq 'fresh-review-without-replayed-add' || return 1
+  echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL unresolved metadata observation did not replay on process restart" |
+    tee -a "$GITHUB_STEP_SUMMARY"
+}
+run_local_add_death || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed
