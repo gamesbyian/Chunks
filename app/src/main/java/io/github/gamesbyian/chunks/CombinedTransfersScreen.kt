@@ -1192,11 +1192,12 @@ internal fun CombinedTransfersScreen(
             { io.github.gamesbyian.chunks.rpc.ClientOperations(
                 LocalTorrentClient.forApp(context, startForExplicitUse = true)) }
         }
-        val localMoveTarget = if (localPrivacy?.mayShow != false && !(localRunning && localFrame.stale))
+        val localMoveConnection = if (localPrivacy.mayShow)
             ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device",
                 aliasScopes[EnvironmentSnapshots.LOCAL], createOperations = localTargetOperations) else null
-        val rtorrentMoveTarget = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
-            serverId != null && serverPrivacy?.mayShow == true && server.stale == false
+        val localMoveTarget = localMoveConnection?.takeUnless { localRunning && localFrame.stale }
+        val rtorrentMoveConnection = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
+            serverId != null && serverPrivacy?.mayShow == true
         }?.let { remote ->
             ProtocolMoveTarget(requireNotNull(serverId).value,
                 labels[serverId]?.removePrefix("Server · ") ?: "rTorrent", aliasScopes[serverId],
@@ -1205,6 +1206,7 @@ internal fun CombinedTransfersScreen(
                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
             }
         }
+        val rtorrentMoveTarget = rtorrentMoveConnection?.takeIf { server?.stale == false }
         // Metadata-late Smart Routing Ask: an advisory Move suggestion once the
         // job's real name is known. Read-only; never moves anything by itself.
         val routingPolicy by androidx.compose.runtime.produceState<
@@ -1238,6 +1240,8 @@ internal fun CombinedTransfersScreen(
             ProtocolMoveTarget(it.id, it.label, aliasScopes[it.environment],
                 connectionWitness = it.identityWitness, createOperations = requireNotNull(it.operations))
         }
+        val moveConnections = (protocolMoveTargets + listOfNotNull(localMoveConnection, rtorrentMoveConnection))
+            .associate { it.id to it.connectionWitness }
         // Transmission / qBittorrent / Deluge: the exact typed profile's own
         // write-capable session, through the ONE shared operation workflow.
         val focusedProtocol = protocolProfiles.firstOrNull { it.environment == focusedKey.environment }
@@ -1261,6 +1265,7 @@ internal fun CombinedTransfersScreen(
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
                     moveTargets = protocolTargets,
+                    moveConnections = moveConnections,
                     suggestedTarget = moveSuggestionFor(protocolTargets),
                     suggestForFiles = { names -> moveSuggestionFor(protocolTargets, names) },
                     sourceAliasScope = aliasScopes[focusedKey.environment]
@@ -1321,6 +1326,7 @@ internal fun CombinedTransfersScreen(
                             createOperations = localClientOperations,
                             onChanged = {},
                             moveTargets = outbound,
+                            moveConnections = moveConnections,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(outbound),
                             suggestForFiles = { names -> moveSuggestionFor(outbound, names) },
@@ -1393,6 +1399,7 @@ internal fun CombinedTransfersScreen(
                             },
                             onChanged = mutation.settled,
                             moveTargets = connectedTargets,
+                            moveConnections = moveConnections,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(connectedTargets),
                             suggestForFiles = { names -> moveSuggestionFor(connectedTargets, names) },

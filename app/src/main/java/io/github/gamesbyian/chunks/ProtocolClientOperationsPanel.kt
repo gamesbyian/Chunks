@@ -52,10 +52,7 @@ internal data class ProtocolMoveTarget(
     /** Stable for the current authenticated connection, even across a label change. */
     val connectionWitness: Any = id,
     val createOperations: () -> ClientOperations
-) {
-    fun sameConnection(other: ProtocolMoveTarget): Boolean =
-        id == other.id && connectionWitness == other.connectionWitness
-}
+)
 
 private data class VerifiedMoveCopy(
     val target: ProtocolMoveTarget,
@@ -97,6 +94,8 @@ internal fun ProtocolClientOperationsPanel(
     onChanged: () -> Unit,
     /** Other connected clients this job may be copied/moved to (job only). */
     moveTargets: List<ProtocolMoveTarget> = emptyList(),
+    /** Authorized destination connections can outlive a transient inventory refresh. */
+    moveConnections: Map<String, Any> = moveTargets.associate { it.id to it.connectionWitness },
     /** The rTorrent Details surface already owns its verified lifecycle/file controls. */
     moveOnly: Boolean = false,
     /** Smart Routing's advisory Move suggestion (target id to "why"); never acts by itself. */
@@ -134,10 +133,12 @@ internal fun ProtocolClientOperationsPanel(
         if (!names.isNullOrEmpty()) routingFileNames = names
     }
     var copied by remember(operations) { mutableStateOf<VerifiedMoveCopy?>(null) }
-    val currentTargets by rememberUpdatedState(moveTargets)
+    val currentConnections by rememberUpdatedState(moveConnections)
     val currentOwner by rememberUpdatedState(operations.takeIf { current })
     val completedCopy = copied
-    val finishableCopy = completedCopy?.takeIf { copy -> moveTargets.any(copy.target::sameConnection) }
+    val finishableCopy = completedCopy?.takeIf { copy ->
+        moveConnections[copy.target.id] == copy.target.connectionWitness
+    }
     if (completedCopy != null && finishableCopy == null) SideEffect {
         if (copied === completedCopy) {
             copied = null
@@ -316,7 +317,8 @@ internal fun ProtocolClientOperationsPanel(
             if (finishableCopy != null) Button(onClick = {
                 run("Remove from $clientLabel after moving to ${finishableCopy.target.label}") {
                     finishableCopy.transfer.retireSource(hash, finishableCopy.receipt) {
-                        currentOwner === operations && currentTargets.any(finishableCopy.target::sameConnection)
+                        currentOwner === operations &&
+                            currentConnections[finishableCopy.target.id] == finishableCopy.target.connectionWitness
                     }
                 }
                 copied = null
