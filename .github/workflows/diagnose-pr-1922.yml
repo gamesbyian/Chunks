@@ -1,0 +1,66 @@
+name: Diagnose PR 1922 external APK lifecycle
+on:
+  push:
+    branches: [diagnose/pr-1922-api35-handoff]
+    paths: [.github/workflows/diagnose-pr-1922.yml]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chunks-prebuilt-native-add-apk-pair
+          run-id: 44821974327
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/original
+      - run: |
+          test "$(cat "$RUNNER_TEMP/original/source-sha")" = eb4e7ce598f2767d0244b32b48a598124984aad8
+          (cd "$RUNNER_TEMP/original" && sha256sum -c SHA256SUMS)
+          sudo chmod 0666 /dev/kvm
+          cat > "$RUNNER_TEMP/diagnose-handoff.sh" <<'SH'
+          set -eu
+          app=io.github.gamesbyian.chunks
+          test_app=$app.test
+          sender=$test_app/$app.external.ExternalSourceSenderActivity
+          adb shell wm size 1080x2400
+          adb shell wm density 420
+          adb shell settings put system font_scale 1.0
+          adb install -r -t "$RUNNER_TEMP/original/chunks-app.apk"
+          adb install -r -t "$RUNNER_TEMP/original/chunks-test.apk"
+          show_activity() {
+            adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity|Hist.*(ExternalSourceSenderActivity|chunks/.MainActivity)' | head -15 || true
+            adb logcat -d -b events -v brief | grep -E 'ExternalSourceSenderActivity|chunks/.MainActivity|am_(crash|proc_start).*chunks' | tail -70 || true
+            adb logcat -d -b main -b system -b crash -v brief | grep -E 'ChunksExternalGrant|Background activity start|BAL_BLOCK|ExternalSourceSenderActivity|chunks/.MainActivity|AndroidRuntime' | tail -75 || true
+            adb shell dumpsys uri_grants | grep -E 'external-torrent-proof|chunks' | head -25 || true
+          }
+          # Reproduce the original shell start before a Chunks instrumentation session.
+          adb logcat -c
+          adb shell am start -W -n "$sender" --es fixture_mode view --es fixture_target "$app"
+          sleep 2
+          echo '=== Uninstrumented sender lifecycle ==='
+          show_activity
+          adb shell am force-stop "$app"
+          adb shell am force-stop "$test_app"
+          adb logcat -c
+          set +e
+          timeout 150 adb shell am instrument -w -r -e class "$app.ExternalApkTorrentHandoffInstrumentedTest" "$test_app/androidx.test.runner.AndroidJUnitRunner" > "$RUNNER_TEMP/diagnose-junit.txt" 2>&1
+          status=$?
+          set -e
+          echo "=== Focused instrumentation lifecycle (adb exit $status) ==="
+          show_activity
+          python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/diagnose-junit.txt" --junit "$RUNNER_TEMP/diagnose.xml"
+          SH
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          disable-animations: true
+          script: bash "$RUNNER_TEMP/diagnose-handoff.sh"
