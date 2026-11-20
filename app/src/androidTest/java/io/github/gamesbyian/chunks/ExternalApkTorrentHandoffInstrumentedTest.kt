@@ -75,16 +75,28 @@ class ExternalApkTorrentHandoffInstrumentedTest {
     }
 
     private fun awaitSource(name: String, expected: Uri, bytes: ByteArray) {
-        compose.waitUntil(60_000) {
-            var reviewed = false
-            val resumed = withResumed { activity, owner ->
-                val file = owner.reviewedTorrent.value
-                reviewed = !activity.isFinishing && file != null && file.preview.name == name &&
-                    file.originalDocument == expected && file.bytes.contentEquals(bytes) &&
-                    owner.session.attemptedTicket == null
+        // Failure evidence is boolean-only. Never disclose URIs, names, or metainfo.
+        var lastState = "activityResumed=false"
+        try {
+            compose.waitUntil(60_000) {
+                var reviewed = false
+                val resumed = withResumed { activity, owner ->
+                    val file = owner.reviewedTorrent.value
+                    val alive = !activity.isFinishing
+                    val nameMatches = file?.preview?.name == name
+                    val uriMatches = file?.originalDocument == expected
+                    val bytesMatch = file?.bytes?.contentEquals(bytes) == true
+                    val noDispatch = owner.session.attemptedTicket == null
+                    lastState = "activityResumed=true alive=$alive loaded=${file != null} " +
+                        "nameMatches=$nameMatches uriMatches=$uriMatches " +
+                        "bytesMatch=$bytesMatch noDispatch=$noDispatch"
+                    reviewed = alive && nameMatches && uriMatches && bytesMatch && noDispatch
+                }
+                resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()
             }
-            resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
-                .fetchSemanticsNodes().isNotEmpty()
+        } catch (failure: AssertionError) {
+            throw AssertionError("Foreign provider Add review failed: $lastState", failure)
         }
     }
 
