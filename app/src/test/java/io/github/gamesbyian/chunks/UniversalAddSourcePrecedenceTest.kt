@@ -21,6 +21,8 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore
+import io.github.gamesbyian.chunks.model.SmartRoutingPreview
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.InetAddress
@@ -239,19 +241,33 @@ class UniversalAddSourcePrecedenceTest {
      * when the text is unchanged since that choice.
      */
     @Test fun explicitFileChoiceOverSameTextSurvivesTargetRoundTrip() {
+        val store = SmartRoutingPolicyStore(rule.activity)
+        val saved = store.read() as SmartRoutingPolicyStore.Read.Ready
+        val movieRule = SmartRoutingPreview.Rule("movie", 1, SmartRoutingPreview.Kind.MOVIE, 60, "local")
+        assertEquals(SmartRoutingPolicyStore.Save.SAVED,
+            store.save(saved.revision, SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(movieRule))))
         connect()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
         rule.waitForIdle()
         pickTorrentThroughAndroidPicker()
+        val routingSuggestion = hasTestTag("chunks.add.routing.suggestion")
+        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE))
+        rule.waitUntil(20_000) {
+            rule.onAllNodes(routingSuggestion).fetchSemanticsNodes().size == 1
+        }
         // A newer typed magnet becomes the source; the file remains an explicit alternative.
         list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
             .performTextReplacement("magnet:?xt=urn:btih:" + "d".repeat(40) + "&dn=NewerTypedMagnet")
         waitForText("Magnet for: NewerTypedMagnet")
+        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE))
+        rule.onNode(routingSuggestion).assertDoesNotExist()
         list().performScrollToNode(hasText(".torrent file"))
         rule.onNodeWithText(".torrent file").performClick()
         rule.waitForIdle()
+        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE))
+        rule.onNode(routingSuggestion).assertExists()
 
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()

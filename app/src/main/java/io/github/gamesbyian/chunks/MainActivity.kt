@@ -1153,11 +1153,22 @@ internal fun ChunksApp(
     var routingPersonChoiceFor by remember { mutableStateOf<String?>(null) }
     val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
-    // A pending text replacement blocks submission of the retained .torrent.
-    // Its name and files must also stop influencing the Add destination.
-    val routingSource = localReviewedTorrent.value?.preview.takeIf { magnet.isBlank() }
-    val (routingMagnetHash, routingMagnetName) = remember(magnet) {
-        val parsed = MagnetDraftCheck.inspect(magnet) as? MagnetDraftCheck.Valid
+    // A retained file is evidence only while it is the active source.
+    // rTorrent can explicitly reselect its reviewed file over the same text.
+    val preparingRemoteSource = addTargetIsAuthenticated && serverHandoffTorrent != null
+    val routingSource = when {
+        preparingRemoteSource -> null
+        addTargetIsAuthenticated -> remoteAddSessions.forAccount(aliasScope).let { review ->
+            review.selectedTorrent.takeIf {
+                review.useFile && review.selectedBytes != null && review.textAtFileSelection == magnet
+            }
+        }
+        magnet.isBlank() -> localReviewedTorrent.value?.preview
+        else -> null
+    }
+    val routingText = magnet.takeUnless { preparingRemoteSource || routingSource != null }.orEmpty()
+    val (routingMagnetHash, routingMagnetName) = remember(routingText) {
+        val parsed = MagnetDraftCheck.inspect(routingText) as? MagnetDraftCheck.Valid
         parsed?.infoHash to parsed?.displayName
     }
     // Capability-aware candidacy: each protocol client's own live session,
