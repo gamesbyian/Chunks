@@ -940,7 +940,8 @@ internal class MainActivityRealMagnetJourney(
                 assertEquals(if (preview.fileCount > 1) "$parent/${preview.name}" else parent, payload.directory)
                 assertTrue(payload.completedBytes in 1..payload.sizeBytes)
                 if (!publicDiscovery) assertTrue(payload.completedBytes < payload.sizeBytes)
-                click("Back to transfers")
+                InstalledUniversalAddJourney(rule).viewExactTransfer(
+                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(url, user).value, hash)
                 report("chunks_real_add_app_stage", "click-after-back")
                 refreshAndFind(hash)
                 report("chunks_real_add_app_stage", "click-found-by-hash")

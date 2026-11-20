@@ -56,6 +56,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+import io.github.gamesbyian.chunks.rpc.RTorrentAddObserver
 import io.github.gamesbyian.chunks.rpc.RemoteUniversalAddAdapter
 import io.github.gamesbyian.chunks.rpc.RemotePreWriteRefusal
 import io.github.gamesbyian.chunks.rpc.RemoteAddFileSkips
@@ -288,7 +289,7 @@ internal fun VerifiedAddScreen(
     val declaredFiles = remember(selectedTorrent) { selectedTorrent?.let { AddFileChoices.declared(it) } }
     val noFileChosen = useFile && declaredFiles != null &&
         declaredFiles.none { it.index !in skippedFiles }
-    var rechecking by remember { mutableStateOf(false) }
+    val rechecking = attemptedTicket?.intent?.target?.environment?.let(attemptController::isChecking) == true
     var fileError by remember { mutableStateOf<String?>(null) }
     // Typed, read-only discovery of rTorrent's own default. A late reply only fills this
     // report; it never writes the person's per-Add folder or their saved default.
@@ -986,7 +987,7 @@ internal fun VerifiedAddScreen(
                         },
                     // An unresolved write keeps being observed read-only from the
                     // app-owned scope after leaving Add; never a second load.
-                    followUp = io.github.gamesbyian.chunks.rpc.RTorrentAddObserver(remote) {
+                    followUp = RTorrentAddObserver(remote) {
                         draft.coordinator.phase },
                     onInterrupted = { mayHaveWritten ->
                         if (mayHaveWritten) {
@@ -1260,131 +1261,59 @@ internal fun VerifiedAddScreen(
                     }
                 }
             }
-            if (alreadyAttempted && attemptedTicket != null) {
-                OutlinedButton(
-                    onClick = {
-                        rechecking = true
+            if (alreadyAttempted && attemptedTicket != null &&
+                draft.coordinator.phase != UniversalAddCoordinator.Phase.VERIFIED) {
+                UniversalAddContinuationAction(ChunksSemantics.ADD_CHECK_STATUS,
+                    label = if (rechecking) "Checking server…" else "Check server state (read only)",
+                    enabled = !submitting && !rechecking
+                ) {
+                    val ticket = attemptedTicket
+                    val priorPhase = draft.coordinator.phase
+                    val observer = RTorrentAddObserver(remote) { draft.coordinator.phase }
+                    attemptController.recheck(draft.coordinator, observer) { readback ->
+                        if (draft.attemptTicket !== ticket) return@recheck
                         progressRevision++
-                        val ticket = requireNotNull(draft.attemptTicket)
-                        val priorConfirmedHash = if (draft.coordinator.phase ==
-                            UniversalAddCoordinator.Phase.SESSION_CONFIRMED)
-                            verifiedHash else null
-                        scope.launch {
-                            try {
-                                val adapter = RemoteUniversalAddAdapter(remote)
-                                val reviewedPlan = adapter.planFor(ticket)
-                                // Preserve read REQUEST order, never response
-                                // completion order: late RPC A must not look
-                                // fresher than a completed newer RPC B.
-                                val readStartedAt = System.currentTimeMillis()
-                                val checkedOutcome = adapter.reconcile(ticket)
-                                if (ticket.intent.startWhenAdded) {
-                                    // This original Start intent also covers priority-
-                                    // before-Start, not only native load.start. The
-                                    // selected server/route is rechecked before reads.
-                                    val checked = checkedOutcome
-                                    uncertain = checked !is RemoteAddAndStart.Started
-                                    verifiedHash = verifiedAddNavigationHash(checked)
-                                    outcome = if (checked is RemoteAddAndStart.Started) {
-                                        if (!reviewedPlan.useServerDefault) {
-                                            val saved = runCatching {
-                                                onCustomPlaceVerified(reviewedPlan.destination)
-                                            }.getOrDefault(false)
-                                            if (!saved) "Server now confirms this exact hash, destination and active engine. Recent folder shortcut could not be saved."
-                                            else "Server now confirms this exact hash, destination and active engine. Which client originally registered it remains unknown; no Start or Add was resent."
-                                        } else "Server now confirms this exact hash, destination and active engine. No Start or Add was resent."
-                                    } else "Read-only check did not confirm this exact hash is started AND active at the selected destination. It may be queued, stopped, missing or unavailable. Inspect current server state; no Add or Start was resent."
-                                } else {
-                                    val checked = (checkedOutcome as RemoteAddAndStart.AddedStopped).result
-                                    uncertain = checked !is RemoteAddOutcome.VerifiedStopped
-                                    verifiedHash = (checked as? RemoteAddOutcome.VerifiedStopped)?.hash
-                                    outcome = when (checked) {
-                                        is RemoteAddOutcome.VerifiedStopped ->
-                                            "Read-only check verified this exact hash is stopped at " +
-                                                checked.destination + ". Chunks cannot determine which client originally added it."
-                                        is RemoteAddOutcome.PendingVerification ->
-                                            "Read-only check did not verify the exact hash, destination and stopped state. Inspect the server before deciding what to do next."
-                                        is RemoteAddOutcome.Uncertain ->
-                                            "Read-only server check could not complete. The earlier Add may still have succeeded; do not retry blindly."
-                                        is RemoteAddOutcome.AlreadyPresent ->
-                                            "The hash exists, but placement still requires inspection before another action."
+                        when (draft.coordinator.phase) {
+                            UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> {
+                                verifiedHash = ticket.intent.source.expectedInfoHash
+                                val custom = ticket.intent.place as? UniversalAddPlace.ServerCustom
+                                outcome = when {
+                                    readback != UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED ->
+                                        "Previous exact-session confirmation is retained. No Start or Add was resent."
+                                    ticket.intent.startWhenAdded -> {
+                                        val saved = custom == null || runCatching {
+                                            onCustomPlaceVerified(custom.absolutePath)
+                                        }.getOrDefault(false)
+                                        "Server now confirms this exact hash, destination and active engine. " +
+                                            "Which client originally registered it remains unknown. No Start or Add was resent." +
+                                            if (saved) "" else " Recent folder shortcut could not be saved."
                                     }
+                                    else -> "Read-only check verified this exact hash is stopped at the reviewed destination. " +
+                                        "Chunks cannot determine which client originally added it."
                                 }
-                                // Exact-session proof is distinct from
-                                // provenance: after a lost acknowledgement the
-                                // job may now be verified, but which client
-                                // registered it remains unknown. This permits
-                                // an explicit next draft without replaying Add.
-                                val exact = adapter.exactObservation(
-                                    ticket, checkedOutcome, newRegistrationVerified = false,
-                                    observedAtEpochMillis = readStartedAt)
-                                if (exact != null) {
-                                    draft.coordinator.reconcileExactSession(ticket, exact)
-                                } else {
-                                    // A magnet may exist at the exact reviewed
-                                    // Place before rTorrent can prove active
-                                    // payload Start. Independently verify
-                                    // identity+Place, never use a mere
-                                    // progress.registered hint.
-                                    val registered = if (checkedOutcome is RemoteAddAndStart.StartNotVerified)
-                                        adapter.registeredJobWithUnverifiedStart(
-                                            ticket, observedAtEpochMillis = readStartedAt) else null
-                                    if (registered != null) {
-                                        draft.coordinator.reconcileExactSession(ticket, registered)
-                                        if (draft.coordinator.phase ==
-                                            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
-                                            outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
-                                    } else {
-                                        val earlier = draft.coordinator.phase
-                                        if (shouldProbeContradictoryRecheck(earlier)) {
-                                            // Timestamp starts before the separate real read.
-                                            // Delayed completions cannot masquerade as newer witnesses.
-                                            val witnessReadStartedAt = System.currentTimeMillis()
-                                            val witness = adapter.contradictoryExactSession(
-                                                ticket, observedAtEpochMillis = witnessReadStartedAt)
-                                            if (witness != null) {
-                                                draft.coordinator.reconcileExactSession(ticket, witness)
-                                                if (draft.coordinator.phase != earlier) {
-                                                    verifiedHash = null
-                                                    uncertain = true
-                                                    outcome = if (!witness.registered)
-                                                        "A newer authenticated exact-job read confirms this hash is absent from the reviewed server. The earlier session acknowledgment is no longer available. No Add or Start was resent."
-                                                    else
-                                                        "A newer authenticated exact-job read found this hash at a different destination. The earlier session acknowledgment is no longer available. No Add or Start was resent."
-                                                }
-                                            } else draft.coordinator.requireReadback(ticket)
-                                        } else draft.coordinator.requireReadback(ticket)
-                                    }
-                                }
-                            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                throw cancel
-                            } catch (_: Exception) {
-                                draft.coordinator.requireReadback(ticket)
+                            }
+                            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> {
                                 verifiedHash = null
                                 uncertain = true
-                                outcome = "Could not read server state. The earlier Add might have applied; inspect the transfer list before retrying."
-                            } finally {
-                                // A failed or incomplete read cannot revoke the last
-                                // actual coordinator-confirmed session acknowledgment.
-                                if (draft.attemptTicket === ticket && verifiedHash == null) {
-                                    val retained = retainedAcknowledgedHash(
-                                        verifiedHash, priorConfirmedHash, draft.coordinator.phase)
-                                    if (retained != null) {
-                                        verifiedHash = retained
-                                        outcome = outcome.orEmpty() +
-                                            " Previous exact-session confirmation is retained; " +
-                                            "you may acknowledge it without resending Add or Start."
-                                    }
+                                outcome = "The exact server job and Place are confirmed, but requested Start is unverified. " +
+                                    "You may explicitly acknowledge this incomplete result; no Add or Start was resent."
+                            }
+                            else -> {
+                                verifiedHash = null
+                                uncertain = true
+                                outcome = when {
+                                    !shouldProbeContradictoryRecheck(priorPhase) || readback == null ->
+                                        "Read-only check did not confirm this exact hash, destination and requested Start. No Add or Start was resent."
+                                    readback == UniversalAddCoordinator.Readback.NOT_OBSERVED ->
+                                        "A newer authenticated exact-job read confirms this hash is absent from the reviewed server. " +
+                                            "No Add or Start was resent."
+                                    else -> "A newer authenticated exact-job read could not confirm the reviewed destination. " +
+                                        "No Add or Start was resent."
                                 }
-                                rechecking = false
-                                onComplete()
                             }
                         }
-                    },
-                    enabled = !submitting && !rechecking,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp).testTag(ChunksSemantics.ADD_CHECK_STATUS)
-                ) {
-                    Text(if (rechecking) "Checking server…" else "Check server state (read only)")
+                        onComplete()
+                    }
                 }
             }
             // Production passes an app-root attempt scope. Leaving Add only

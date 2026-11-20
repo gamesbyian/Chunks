@@ -323,6 +323,9 @@ class ProtocolClientInstalledJourneyTest {
             stage("add-artwork-opt-out-selected")
             addJourney.submit()
             stage("add-dispatched-once")
+            val submittingAtRecreation = addJourney.hasReceiptState("Adding")
+            it.recreate()
+            stage(if (submittingAtRecreation) "recreated-while-submitting" else "submit-settled-before-recreation")
             waitFor("Add verified (shared receipt)", 90_000) { receiptVerified() }
             // The attempt is app-owned like Local and rTorrent: Activity recreation must
             // keep this exact receipt and must not re-enable a second Add of the same source.
@@ -367,7 +370,7 @@ class ProtocolClientInstalledJourneyTest {
 
             // Start a separate review and deliberately request an existing hash.
             // This must refuse while the exact independently witnessed job stays stopped.
-            clickOnce(ChunksSemantics.FOOTER_ADD, "Return to the Add receipt")
+            addJourney.activate(ChunksSemantics.FOOTER_ADD)
             addJourney.activate(ChunksSemantics.ADD_ANOTHER)
             typeInto(UniversalAddSourceText.FIELD_LABEL, magnet)
             ensureStartWhenAddedOff()
@@ -378,7 +381,7 @@ class ProtocolClientInstalledJourneyTest {
             assertEquals("Duplicate refusal must keep the existing job stopped", ClientRunState.STOPPED,
                 runBlocking { independentRead(second.infoHashV1) }?.runState)
             stage("add-another-duplicate-refused")
-            clickOnce(ChunksSemantics.FOOTER_TRANSFERS, "Return to exact client Transfers")
+            addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
 
             // Job-only Move of that exact job to This device (Local engine).
             val secondName = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(second.torrent).name
@@ -497,9 +500,7 @@ class ProtocolClientInstalledJourneyTest {
                 runCatching { rule.onNodeWithTag(keptPriority).assertTextEquals("High"); true }.getOrDefault(false)
             }
             stage("choices-kept-file-high")
-            val folderChoice = hasText("Change folder")
-            scrollToNode(folderChoice)
-            rule.onNode(folderChoice).performSemanticsAction(SemanticsActions.OnClick)
+            LazyComposeActions.activateOnce(rule, hasText("Change folder"))
             val customFolder = decoded("chunks_protocol_custom_folder_b64")
             typeInto("Absolute folder on ${profile.label}", customFolder)
             stage("choices-custom-folder-reviewed")

@@ -2836,7 +2836,8 @@ internal fun ChunksApp(
                             saved
                         },
                         onCustomPlaceVerified = { path ->
-                            val saved = runCatching {
+                            val exactAccount = server === connectedRemote && aliasScope == addSession.accountScope
+                            val saved = exactAccount && runCatching {
                                 recentPlaceStore.recordVerifiedCustom(aliasScope, path)
                             }.getOrDefault(false)
                             if (saved) recentPlaceRevision++
