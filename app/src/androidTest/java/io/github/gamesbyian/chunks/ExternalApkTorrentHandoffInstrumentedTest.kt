@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Process
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -47,19 +50,15 @@ class ExternalApkTorrentHandoffInstrumentedTest {
 
     private fun dispatch(mode: String) {
         require(mode == "view" || mode == "share")
-        // Launch the OTHER installed APK from Android's activity manager,
-        // as an external user/app launch. Calling Context.startActivity from
-        // the instrumentation runner can be background-launch restricted
-        // while the runner is not foreground, leaving the Pixel launcher up.
-        // The foreign Activity still creates its own source bytes and grants
-        // its own content URI to the real, separately installed Chunks app.
+        // The shell launches only the foreign Activity. That Activity writes
+        // the source and sends the grant from its own package UID.
         val command = "am start -W -n " + sourceApp.packageName +
             "/io.github.gamesbyian.chunks.external.ExternalSourceSenderActivity" +
             " --es fixture_mode " + mode +
             " --es fixture_target " + chunksApp.packageName
         val output = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
             .executeShellCommand(command)
-        assertTrue("The external APK was not launched by ActivityManager",
+        assertTrue("ActivityManager did not accept the external sender launch",
             output.contains("Status: ok") && !output.contains("Error:"))
     }
 
@@ -89,11 +88,13 @@ class ExternalApkTorrentHandoffInstrumentedTest {
                     val nameMatches = file?.preview?.name == name
                     val uriMatches = file?.originalDocument == expected
                     val bytesMatch = file?.bytes?.contentEquals(bytes) == true
+                    val canRead = activity.checkUriPermission(expected, Process.myPid(), Process.myUid(),
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED
                     val noDispatch = owner.session.attemptedTicket == null
                     lastState = "activityResumed=true alive=$alive loaded=${file != null} " +
                         "nameMatches=$nameMatches uriMatches=$uriMatches " +
-                        "bytesMatch=$bytesMatch noDispatch=$noDispatch"
-                    reviewed = alive && nameMatches && uriMatches && bytesMatch && noDispatch
+                        "bytesMatch=$bytesMatch readGrant=$canRead noDispatch=$noDispatch"
+                    reviewed = alive && nameMatches && uriMatches && bytesMatch && canRead && noDispatch
                 }
                 resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
                     .fetchSemanticsNodes().isNotEmpty()
@@ -147,10 +148,10 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         awaitSource(firstName, first, firstBytes)
 
         var originalTask = -1
-        withResumed { activity, owner ->
+        assertTrue("Chunks must still be resumed after the first review", withResumed { activity, owner ->
             originalTask = activity.taskId
             assertNull("The first foreign Open With does not submit Add", owner.session.attemptedTicket)
-        }
+        })
 
         val (second, secondBytes) = fixture("second")
         dispatch("share")
@@ -159,6 +160,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
             val resumed = withResumed { activity, owner ->
                 queued = activity.taskId == originalTask && !activity.isFinishing &&
                     owner.pendingSharedDocument.value == second &&
+                    owner.reviewedTorrent.value?.originalDocument == first &&
                     owner.reviewedTorrent.value?.bytes?.contentEquals(firstBytes) == true &&
                     owner.session.attemptedTicket == null
             }
@@ -171,13 +173,13 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         LazyComposeActions.activateOnce(compose,
             hasText("Use new source") and hasClickAction())
         awaitSource(secondName, second, secondBytes)
-        withResumed { activity, owner ->
+        assertTrue("Chunks must still be resumed after replacement", withResumed { activity, owner ->
             assertEquals("Both external intents must stay in the Chunks task",
                 originalTask, activity.taskId)
             assertFalse("The source app must not bounce Chunks out", activity.isFinishing)
             assertNull("Neither external intent may authorize Add or Start",
                 owner.session.attemptedTicket)
             assertArrayEquals(secondBytes, requireNotNull(owner.reviewedTorrent.value).bytes)
-        }
+        })
     }
 }
