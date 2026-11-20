@@ -15,8 +15,15 @@ import androidx.compose.runtime.mutableStateOf
 internal class AddArtworkDraftChoices {
     private val local = mutableStateOf(true)
     private val serverChoices = mutableMapOf<String, MutableState<Boolean>>()
+    private val protocolChoices = mutableMapOf<String, MutableState<Boolean>>()
 
     fun onLocal(): MutableState<Boolean> = local
+
+    /** One saved protocol profile is one Add identity, never a shared cross-client opt-out. */
+    fun onProtocol(exactProfileId: String): MutableState<Boolean> {
+        require(exactProfileId.isNotBlank()) { "An exact protocol profile is required" }
+        return protocolChoices.getOrPut(exactProfileId) { mutableStateOf(true) }
+    }
 
     /** The account scope includes the exact endpoint/numbered route AND principal. */
     fun onServer(exactAccountScope: String): MutableState<Boolean> {

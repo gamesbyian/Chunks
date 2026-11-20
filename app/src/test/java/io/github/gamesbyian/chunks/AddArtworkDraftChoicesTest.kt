@@ -28,6 +28,20 @@ class AddArtworkDraftChoicesTest {
         assertFalse(choices.onServer("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice").value)
     }
 
+    @Test fun protocolProfilesKeepIndependentDefaultCheckedChoices() {
+        val choices = AddArtworkDraftChoices()
+        val transmission = choices.onProtocol("transmission-profile")
+        val deluge = choices.onProtocol("deluge-profile")
+        assertTrue(transmission.value)
+        assertTrue(deluge.value)
+        transmission.value = false
+        assertFalse(choices.onProtocol("transmission-profile").value)
+        assertTrue(choices.onProtocol("deluge-profile").value)
+        assertTrue(choices.onLocal().value)
+        assertSame(transmission, choices.onProtocol("transmission-profile"))
+        assertTrue(runCatching { choices.onProtocol("") }.isFailure)
+    }
+
     @Test fun confirmedAddResetsOnlyItsOwnDraftChoice() {
         val choices = AddArtworkDraftChoices()
         val local = choices.onLocal()
