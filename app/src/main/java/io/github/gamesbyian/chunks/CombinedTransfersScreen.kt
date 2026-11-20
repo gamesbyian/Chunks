@@ -472,6 +472,10 @@ internal fun CombinedTransfersScreen(
     }
     fun update(next: UnifiedTransferQuery) {
         queryTouched = true
+        if (next.search != query.search) {
+            searchState?.value = next.search
+            onManualSearchEdited()
+        }
         query = next
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
