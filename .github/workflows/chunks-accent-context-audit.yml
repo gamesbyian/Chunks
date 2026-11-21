@@ -13,6 +13,12 @@ on:
       - 'tests/test_accent_context_audit.py'
       - 'assets/fonts/experimental/accent-studies/**'
   workflow_dispatch:
+# Superseded PR revisions should not keep spending runner minutes.
+# Manual and main-push executions use their unique run ID and are never cancelled.
+concurrency:
+  group: chunks-chunks-accent-context-audit-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 jobs:

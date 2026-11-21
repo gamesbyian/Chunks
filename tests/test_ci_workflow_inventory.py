@@ -22,6 +22,16 @@ class WorkflowInventoryTests(unittest.TestCase):
         path.write_text(value, encoding="utf-8")
         return path
 
+    def test_live_repository_has_no_uncancelled_pr_workflows(self):
+        # Every PR-triggered workflow gets independent per-PR supersession.
+        # Main-push and manual runs use unique run IDs and must stay intact.
+        report = collect(ROOT)
+        self.assertEqual([], report["missing_concurrency"])
+        self.assertEqual([], report["main_self_trigger_candidates"])
+        self.assertEqual([], report["artifact_default_retention_candidates"])
+        self.assertEqual([], [entry["path"] for entry in report["workflows"]
+                              if entry["max_timeout_minutes"] is None])
+
     def test_complete_scope_and_trigger_metadata(self):
         self.fixture("pr.yml", """name: PR safe
 on:

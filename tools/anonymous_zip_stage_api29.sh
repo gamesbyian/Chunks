@@ -2,6 +2,7 @@
 # Strict actual-Android29 acceptance for anonymous ZIP review.
 # No native torrent engine, external Downloads or protected host is exercised.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 api="$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')"
 if [[ "$api" != "29" ]]; then
   echo "::error::Anonymous ZIP acceptance must run on Android API 29 (got $api)"
@@ -23,7 +24,7 @@ install_checked -r "$tests"
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.storage.AnonymousZipReviewStageInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 exit_code=$?

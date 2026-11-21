@@ -2,6 +2,7 @@
 # Opt-in Android 15+ dataSync foreground-service timeout on a DISPOSABLE
 # emulator. Guard the exact witness and restore any temporary device_config.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 pkg=io.github.gamesbyian.chunks
 config=activity_manager
 timer=data_sync_fgs_timeout_duration
@@ -120,7 +121,7 @@ one_passing_test() {
   [[ "$(grep -Fxc 'OK (1 test)' <<< "$result" || true)" == 1 ]] &&
     ! grep -Eq 'AssumptionViolatedException|^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES!!!|^FAILURES:' <<< "$result"
 }
-if ! phase_a="$(adb shell am instrument -w -r \
+if ! phase_a="$(timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class "$cls#shortenedDataSyncLimitPausesWithNoticeAndKeepsBytes" \
   -e chunksFgsTimeout 1 \
   "$runner")"; then
@@ -140,7 +141,7 @@ fi
 # erases the very metadata and shared Downloads ownership we need to test.
 adb shell am force-stop "$pkg"
 adb logcat -c || true
-if ! phase_b="$(adb shell am instrument -w -r \
+if ! phase_b="$(timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class "$cls#coldRestoreAfterTimeoutRechecksSeedsAndKeepsPayload" \
   -e chunksFgsTimeout 1 -e chunksFgsColdRestore 1 \
   "$runner")"; then

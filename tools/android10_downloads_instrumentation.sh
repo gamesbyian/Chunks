@@ -4,6 +4,8 @@
 # picker classes. Fail if any test was skipped by an assumption, so a green
 # run cannot hide a test that never exercised Android 10.
 set -euo pipefail
+# Each installed invocation has its own deadline; a silent adb bridge must not consume
+# the entire hosted job. Timeout is a failure and existing receipt assertions remain.
 # Readbacks must have successful adb transport, not just plausible output.
 api="$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')" || {
   echo "CHUNKS_ANDROID10_DOWNLOADS: Android API readback failed" >&2
@@ -57,7 +59,7 @@ fail_if_skipped_or_failed() { # $1 status, $2 expected "OK (N tests)", $3 label
 }
 # 1. The real Android 10 permission dialog, reached from Chunks' own button.
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.Android10StoragePermissionDialogInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
@@ -66,7 +68,7 @@ grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAIL
 fail_if_skipped_or_failed "$status" 'OK (1 test)' "Android 10 permission dialog journey"
 # 2. Capability proof with the grant now in place.
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.LocalPublicDownloadsPlaceInstrumentedTest,io.github.gamesbyian.chunks.LocalDownloadPlacePickerInstrumentedTest,io.github.gamesbyian.chunks.LocalAddDestinationContinuityInstrumentedTest,io.github.gamesbyian.chunks.LocalPlaceWriteProbeRaceInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
@@ -76,7 +78,7 @@ fail_if_skipped_or_failed "$status" 'OK (19 tests)' "Android 10 shared Downloads
 # 3. The foreground download service and its notification on API 29
 #    (an API 31-only builder call once crashed it here).
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.LocalEngineServiceInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
@@ -86,7 +88,7 @@ fail_if_skipped_or_failed "$status" 'OK (3 tests)' "Android 10 foreground downlo
 # 4. Native resume reader must refuse FIFO/symlink/hardlink substitution on
 #    actual Android 10, not only API35 or synthetic desktop test fixtures.
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.engine.LocalResumeFileReaderInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
@@ -97,7 +99,7 @@ fail_if_skipped_or_failed "$status" 'OK (2 tests)' "Android 10 pinned native res
 #    without a blocking pathname reopen. This is independent of the native
 #    resume reader and must execute on real API29 (not only API35).
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournalInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
@@ -107,7 +109,7 @@ fail_if_skipped_or_failed "$status" 'OK (2 tests)' "Android 10 pinned private jo
 # 6. Actual immutable resume generations and native Remove/re-Add must hold
 #    on Android 10 itself, including FIFO/hardlink collision and tombstones.
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.engine.LocalResumeEventStoreInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
@@ -117,7 +119,7 @@ fail_if_skipped_or_failed "$status" 'OK (11 tests)' "Android 10 resume migration
 # 7. Remote server reads must run on the API 29 runtime itself (#1779):
 #    InputStream.readNBytes is API 33-only and threw NoSuchMethodError here.
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
  -e class io.github.gamesbyian.chunks.rpc.RemoteBoundedReadsInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?

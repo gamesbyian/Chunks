@@ -41,6 +41,8 @@ jobs:
       RU_SCGI_PORT: "5000"
     steps:
       - uses: actions/checkout@v4
+      - name: Validate instrumentation harness syntax
+        run: bash -n tools/installed_remote_delete_data.sh
       # The runner context is unavailable in job-level env; export paths here.
       - name: Disposable paths
         run: |

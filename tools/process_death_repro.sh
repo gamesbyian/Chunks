@@ -3,6 +3,7 @@
 # Phase A arms a seeding transfer under the service and SIGKILLs itself;
 # phase B (fresh process) checks honest restore. APKs must be installed.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 cls=io.github.gamesbyian.chunks.LocalEngineProcessDeathInstrumentedTest
@@ -48,8 +49,13 @@ sdk="$(printf '%s' "$sdk" | tr -d '\r\n')"
 }
 adb logcat -c || true
 set +e
-outA=$(adb shell am instrument -w -r -e class "$cls#phaseA_seedUnderServiceThenDieWithoutWarning" -e chunksDeathPhase a "$runner")
+outA=$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e class "$cls#phaseA_seedUnderServiceThenDieWithoutWarning" -e chunksDeathPhase a "$runner")
+phase_a_status=$?
 set -e
+if [[ "$phase_a_status" -eq 124 || "$phase_a_status" -eq 137 ]]; then
+  echo 'CHUNKS_DEATH: instrumentation timed out instead of completing the expected death'
+  exit 1
+fi
 echo "$outA" | tail -20
 # A healthy adb logcat producer can receive SIGPIPE from a `grep -q` pipeline.
 # Capture the complete successful command before looking for the arming witness.
@@ -61,7 +67,7 @@ grep -Fq "CHUNKS_DEATH armed" <<< "$logA" || {
 grep -Fq "Process crashed" <<< "$outA" || { echo "CHUNKS_DEATH: phase A did not die as intended"; exit 1; }
 sleep 3
 if adb shell pidof "$pkg" >/dev/null 2>&1; then echo "CHUNKS_DEATH: process still alive"; exit 1; fi
-outB=$(adb shell am instrument -w -r -e class "$cls#phaseB_restoredStoppedWithBytesIntactAndRechecks" -e chunksDeathPhase b "$runner")
+outB=$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e class "$cls#phaseB_restoredStoppedWithBytesIntactAndRechecks" -e chunksDeathPhase b "$runner")
 echo "$outB" | tail -20
 adb logcat -d -s ChunksDeath:I | tail -5
 # A streaming message may contain OK (1 test) even when no terminal

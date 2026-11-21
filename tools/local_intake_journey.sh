@@ -2,6 +2,8 @@
 # Real MainActivity -> Add -> peer bytes -> UI Stop -> death -> UI restore/seed.
 # Disposable emulator only. Preserve package data and scoped-storage ownership.
 set -euo pipefail
+# Each installed invocation has its own deadline; a silent adb bridge must not consume
+# the entire hosted job. Timeout is a failure and existing receipt assertions remain.
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 cls=io.github.gamesbyian.chunks.LocalIntakeJourneyInstrumentedTest
@@ -50,9 +52,14 @@ for kind in share magnet; do
   adb shell am force-stop "$pkg"
   adb logcat -c
   set +e
-  out_a="$(adb shell am instrument -w -r -e class "$cls#phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies" \
+  out_a="$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e class "$cls#phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies" \
     -e chunksIntakePhase a -e chunksIntakeKind "$kind" "$runner")"
+  phase_a_status=$?
   set -e
+  if [[ "$phase_a_status" -eq 124 || "$phase_a_status" -eq 137 ]]; then
+    echo 'CHUNKS_INTAKE: phase A timed out without completed process-death evidence'
+    exit 1
+  fi
   printf '%s\n' "$out_a"
   log_a="$(adb logcat -d -v raw -s ChunksIntake:I)"
   armed="$(grep -E "^CHUNKS_INTAKE kind=$kind armed reviewed=true bytes=524288 stopped=true sha256=[0-9a-f]{64}$" <<< "$log_a" || true)"
@@ -66,7 +73,7 @@ for kind in share magnet; do
   dead="$(adb shell "if pidof $pkg >/dev/null; then echo running; else echo stopped; fi" | tr -d '\r')"
   [[ "$dead" == stopped ]] || { echo 'CHUNKS_INTAKE: original process is still running or unobservable'; exit 1; }
 
-  out_b="$(adb shell am instrument -w -r -e class "$cls#phaseB_coldUiRestoreStartsSeedsToFreshPeerAndRemovesKeepingBytes" \
+  out_b="$(timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r -e class "$cls#phaseB_coldUiRestoreStartsSeedsToFreshPeerAndRemovesKeepingBytes" \
     -e chunksIntakePhase b -e chunksIntakeKind "$kind" "$runner")"
   printf '%s\n' "$out_b"
   log_b="$(adb logcat -d -v raw -s ChunksIntake:I)"
@@ -93,7 +100,7 @@ echo 'CHUNKS_INTAKE: both real Share/magnet UI journeys verified on this disposa
 # L6: production "Remove transfer and data" with independent absence/canary.
 adb shell am force-stop "$pkg"
 adb logcat -c
-out_d="$(adb shell am instrument -w -r -e class "$cls#phaseDelete_realUiRemoveTransferAndDataDeletesOnlyExactPayload" \
+out_d="$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e class "$cls#phaseDelete_realUiRemoveTransferAndDataDeletesOnlyExactPayload" \
   -e chunksIntakePhase delete "$runner")"
 printf '%s\n' "$out_d"
 log_d="$(adb logcat -d -v raw -s ChunksIntake:I)"
