@@ -19,6 +19,7 @@ jobs:
   publish:
     name: Build and deploy icon atlas
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: read
       pages: write
