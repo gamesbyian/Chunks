@@ -3,6 +3,7 @@ name: Test Chunks SVG composition workbench
 # Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/gallery.html'
       - 'docs/design/svg/mix-engine.js'

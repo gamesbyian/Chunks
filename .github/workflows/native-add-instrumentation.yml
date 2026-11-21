@@ -2,6 +2,7 @@ name: Chunks native Add review instrumentation
 
 on:
   pull_request:
+    branches: [main]
     paths:
       # Production sources too: instrumented fakes and UI tests assert exact
       # RPC calls and labels, so main-only changes (#460, #463) broke them

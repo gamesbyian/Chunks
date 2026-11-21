@@ -4,6 +4,7 @@ name: Check reproducibility of Chunks SVG source candidates
 # Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'tools/complete_svg_reference_assets.py'
       - 'docs/design/svg/fidelity/**'

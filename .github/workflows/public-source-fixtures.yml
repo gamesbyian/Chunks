@@ -2,6 +2,7 @@ name: Public torrent and Wikimedia fixture collector
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/public_fixture_collector.py"
       - "tools/test_public_fixture_collector.py"

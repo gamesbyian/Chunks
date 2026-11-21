@@ -12,6 +12,7 @@ on:
       - 'assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf'
       - 'docs/design/CHUNKS-REFERENCE-ACCENT-STUDIES.md'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/build_reference_accent_studies.py'
       - 'tools/render_reference_accent_studies.py'

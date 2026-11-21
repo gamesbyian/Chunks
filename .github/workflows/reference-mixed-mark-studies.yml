@@ -10,6 +10,7 @@ on:
       - 'assets/fonts/experimental/mixed-mark-studies/**'
       - 'docs/design/CHUNKS-REFERENCE-MIXED-MARKS.md'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/build_reference_mixed_marks.py'
       - 'tools/render_reference_mixed_marks.py'

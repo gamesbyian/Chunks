@@ -5,6 +5,7 @@ name: P0 protected native two-argument magnet peer-byte control
 # acceptance, no retry, no user torrent changes and no PR secrets.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/seedhost_magnet_twoarg_control_once.py"
       - ".github/workflows/seedhost-magnet-twoarg-control-once.yml"

@@ -2,6 +2,7 @@ name: Public fixture Seedhost Add acceptance
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/seedhost_public_add_smoke.py"
       - "tools/test_seedhost_public_add_smoke.py"

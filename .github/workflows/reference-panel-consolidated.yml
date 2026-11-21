@@ -22,6 +22,7 @@ on:
       - 'tools/reference_weight_profiles.json'
       - 'docs/design/CHUNKS-REFERENCE-CONSOLIDATED-FAMILY.md'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/build_reference_panel_consolidated.py'
       - 'tools/build_reference_punctuation_supplements.py'

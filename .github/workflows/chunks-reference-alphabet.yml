@@ -10,6 +10,7 @@ on:
       - 'docs/design/reference-images/03-typography-and-wordmark.png'
       - 'assets/fonts/source/reference-alphabet/**'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/trace_reference_alphabet.py'
       - 'tools/render_reference_alphabet.py'

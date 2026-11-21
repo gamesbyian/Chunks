@@ -4,6 +4,7 @@ name: Native post-Add collision witnesses
 # gate for production overwrite protection. Real peers are loopback-only.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalNativePostAddCollisionProbeTest.kt"
       - ".github/workflows/native-post-add-collision-witness.yml"

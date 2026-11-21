@@ -4,6 +4,7 @@ name: Experimental MediaStore owned-FD capability (non-shipping)
 # not a general app build gate or a claim of supported SAF/native storage.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/OwnedMediaStoreDescriptorInstrumentedTest.kt"
       - ".github/workflows/native-mediastore-owned-fd-probe.yml"

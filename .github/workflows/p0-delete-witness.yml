@@ -2,6 +2,7 @@ name: P0 independent delete-data witness (read-only)
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/p0_delete_payload_witness.py"
       - "tests/test_p0_delete_payload_witness.py"

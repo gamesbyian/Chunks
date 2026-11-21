@@ -2,6 +2,7 @@ name: Native owned-writer G0 experiment
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "experiments/native-owned-writer/**"
       # Documentation does not change the native build/ABI contract.

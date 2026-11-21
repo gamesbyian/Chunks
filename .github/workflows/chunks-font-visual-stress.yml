@@ -1,6 +1,7 @@
 name: Render Chunks font family and accent stress atlas
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'assets/fonts/**'
       - 'tools/render_font_family_stress.py'

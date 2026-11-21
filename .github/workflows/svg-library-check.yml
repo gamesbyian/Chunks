@@ -2,6 +2,7 @@ name: Validate Chunks SVG asset library
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/**'
       - 'docs/design/reference-images/**'

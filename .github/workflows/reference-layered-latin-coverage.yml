@@ -9,6 +9,7 @@ on:
       - 'assets/fonts/experimental/mixed-mark-studies/**'
       - 'docs/design/CHUNKS-REFERENCE-LAYERED-LATIN.md'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/audit_reference_layered_latin_coverage.py'
       - 'tests/test_reference_layered_latin_coverage.py'

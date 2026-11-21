@@ -8,6 +8,7 @@ on:
       - 'tests/test_accent_context_audit.py'
       - 'assets/fonts/experimental/accent-studies/**'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/audit_accent_context.py'
       - 'tests/test_accent_context_audit.py'

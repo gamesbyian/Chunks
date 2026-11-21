@@ -6,6 +6,7 @@ name: Experimental owned Android JNI link
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "experiments/native-owned-writer/**"
       # Documentation does not change the native build/ABI contract.

@@ -5,6 +5,7 @@ name: Installed Combined two real rTorrent servers
 # stopped on the runner's own servers.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
       # Navigation and remote header changes can break these real journeys.

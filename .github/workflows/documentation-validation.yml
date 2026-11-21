@@ -136,6 +136,7 @@ on:
       - 'tests/test_ci_avd_pilot_probe.py'
       - '.github/workflows/documentation-validation.yml'
   pull_request:
+    branches: [main]
     paths:
       - 'docs/**'
       - 'README.md'

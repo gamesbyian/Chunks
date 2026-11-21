@@ -2,6 +2,7 @@ name: Native owned writer process restart (host, no Android)
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/native_owned_process_restart_test.cc"
       - "tools/test_native_owned_process_restart.sh"

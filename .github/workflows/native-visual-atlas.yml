@@ -2,6 +2,7 @@ name: Native Android visual baseline atlas
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/native-visual-atlas.yml"
       - "tools/native_visual_atlas.py"

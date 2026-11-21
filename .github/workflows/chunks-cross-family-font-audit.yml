@@ -1,6 +1,7 @@
 name: Audit Chunks production and experimental OpenType families
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'assets/fonts/**'
       - 'app/src/main/res/font/**'

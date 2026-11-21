@@ -3,6 +3,7 @@ name: Verify Chunks outlined SVG variants
 # Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/**'
       - 'tools/build_svg_outlined_alternatives.py'

@@ -5,6 +5,7 @@ name: Chunks side-by-side remote-start field APK
 # Its scope is limited to this workflow; normal release publishing stays manual.
 on:
   pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/p0-remote-start-preview.yml"
   workflow_dispatch:

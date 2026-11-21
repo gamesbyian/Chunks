@@ -30,6 +30,7 @@ on:
         default: 600
         required: true
   pull_request:
+    branches: [main]
     # Python collector changes already have exact-head source/parser tests in
     # public-source-fixtures.yml. No torrent path is supplied to this PR job,
     # so the opt-in peer test is intentionally skipped on PRs.

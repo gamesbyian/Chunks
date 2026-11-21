@@ -1,6 +1,7 @@
 name: Chunks SVG mobile workbench browser acceptance
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/gallery.html'
       - 'docs/design/svg/mix-ui.js'

@@ -1,6 +1,7 @@
 name: Portable agent Skills integrity
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'skills/**'
       - '.github/workflows/portable-agent-skills.yml'

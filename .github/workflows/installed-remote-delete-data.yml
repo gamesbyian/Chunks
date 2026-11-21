@@ -4,6 +4,7 @@ name: Installed remote Remove transfer and data (disposable ruTorrent)
 # pinned upstream ruTorrent PHP tree. No secrets, no protected host.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt"
       # Navigation and remote header changes can break these real journeys.

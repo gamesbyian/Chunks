@@ -6,6 +6,7 @@ name: P0 one-time protected numbered-instance fixture provisioning
 # No automatic retry, Start, Stop, Erase, file deletion or arbitrary path input.
 on:
   pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/seedhost-p0-cohort-once.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/SeedhostP0CohortProvisionTest.kt"
