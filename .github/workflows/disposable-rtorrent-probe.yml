@@ -365,9 +365,24 @@ jobs:
           #!/bin/sh
           set -eu
           printf '%s\n' 'Server = https://archive.archlinux.org/repos/2026/10/24/$repo/os/$arch' > /etc/pacman.d/mirrorlist
-          pacman -Syyuu --noconfirm rtorrent
+          # Prefer the pinned historical build, including its matching libtorrent.
+          # ALA database endpoints repeatedly timed out on hosted runners (four
+          # failures, no Kotlin test executed). Fall back only on archive failure
+          # to an internally consistent full rolling upgrade, never a partial
+          # rtorrent install against stale native dependencies.
+          if timeout --signal=TERM --kill-after=10s 90s pacman -Syyuu --noconfirm rtorrent; then
+            echo "CHUNKS_ARCH_PACKAGE_SOURCE=historical-2026-10-24"
+          else
+            echo "CHUNKS_ARCH_PACKAGE_SOURCE=rolling-full-upgrade-fallback"
+            printf '%s\n' \
+              'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' \
+              'Server = https://fastly.mirror.pkgbuild.com/$repo/os/$arch' \
+              > /etc/pacman.d/mirrorlist
+            # -Syyu upgrades the container and rtorrent+libtorrent together.
+            # A failure remains terminal; no skip or legacy-engine substitution.
+            timeout --signal=TERM --kill-after=10s 180s pacman -Syyu --noconfirm rtorrent
+          fi
           mkdir -p /session
-          echo "CHUNKS_ARCH_SNAPSHOT=2026-10-24"
           rtorrent -h 2>&1 | head -n 1
           exec rtorrent -n -o import=/chunks-rc/rtorrent.rc
           EOF
