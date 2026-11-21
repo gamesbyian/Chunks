@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -134,7 +135,7 @@ internal class MainActivityRealMagnetJourney(
     private fun type(label: String, text: String) {
         // First interaction of the journey: the shared helper finds, reveals, re-finds and replaces
         // (idempotent), re-locating only for a row not yet composed or disposed before the focus request.
-        LazyComposeActions.replaceText(rule, hasText(label), text)
+        LazyComposeActions.replaceText(rule, hasText(label) and hasSetTextAction(), text)
         if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
             // Exercise the same Done IME action available to a real local user
             // instead of leaving the URL editor focused under an unseen IME.

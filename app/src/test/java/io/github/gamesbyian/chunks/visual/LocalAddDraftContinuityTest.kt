@@ -66,7 +66,11 @@ class LocalAddDraftContinuityTest {
         rule.onNodeWithText(choice).performScrollTo().performClick().assertIsOff()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
-        openArtworkChoice()
+        // The app-owned disclosure stays open. Clicking its heading again
+        // would close it and hide an otherwise unchanged opt-out.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText(choice).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText(choice).performScrollTo().assertIsOff()
     }
 

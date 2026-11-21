@@ -22,24 +22,8 @@ import org.robolectric.annotation.GraphicsMode
 class RemoteAddSessionContinuityTest {
     @get:Rule val rule = createComposeRule()
     private fun reveal(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
-    /**
-     * Discover the enabled Add action as often as needed, then invoke the *current*
-     * attached semantics node exactly once. A cached OnClick lambda may belong to a
-     * recycled LazyColumn Modifier node and throw before the user's Add can run.
-     * Never retry a dispatched mutation; tests below verify one exact submission.
-     */
-    private fun submitReviewedAddOnce() {
-        rule.waitUntil(15_000) {
-            runCatching {
-                rule.onNode(hasScrollToIndexAction())
-                    .performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
-                rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
-                true
-            }.getOrDefault(false)
-        }
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-    }
+    private fun submitReviewedAddOnce() =
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT), timeoutMillis = 15_000)
 
     @Test fun uncertainAttemptCannotBecomeAnotherAddAfterNavigation() {
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)

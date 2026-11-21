@@ -136,6 +136,13 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val pendingSharedDocument = mutableStateOf<Uri?>(null)
     val readingSharedDocument = mutableStateOf<Uri?>(null)
     val artworkChoices = AddArtworkDraftChoices()
+    val addDestination = mutableStateOf<UniversalAddRouteTarget>(UniversalAddRouteTarget.Local)
+    val routingAutoAppliedFor = mutableStateOf<String?>(null)
+    val routingPersonChoiceFor = mutableStateOf<String?>(null)
+    val artworkExpanded = mutableStateOf(false)
+    val sharedTorrentError = mutableStateOf<String?>(null)
+    val serverHandoffTorrent = mutableStateOf<ByteArray?>(null)
+    val serverHandoffDocument = mutableStateOf<Uri?>(null)
     val remoteSessions = RemoteAddSessions()
     // One Transmission/qBittorrent/Deluge Add attempt; RAM only, never persisted.
     val protocolAttempt = ProtocolAddAttempt()
@@ -330,7 +337,7 @@ internal class UniversalAddNavigationSearch {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the local device). */
@@ -474,14 +481,16 @@ internal fun ChunksApp(
         }
     }
 
-    // Navigation only: no session, command, draft or selected transfer survives restore.
-    // A restored remote route safely falls back to the local device when no server exists.
-    // This chooses the visible Universal Add target in the *same* Add route.
-    // Never restore account authority, a private source, or an attempted write.
-    var addUsingAuthenticatedRemote by remember { mutableStateOf(false) }
-    // Exact typed profile id (non-secret) of a Transmission/qBittorrent/Deluge
-    // Add target. Selecting Local or the rTorrent session clears it.
-    var addProtocolTargetId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Keep the exact selection through configuration changes, without saving credentials
+    // or letting a different authenticated session inherit the previous account's draft.
+    var addDestination by (retainedAddOwner?.addDestination
+        ?: remember { mutableStateOf<UniversalAddRouteTarget>(UniversalAddRouteTarget.Local) })
+    val addProtocolTargetId = (addDestination as? UniversalAddRouteTarget.Protocol)?.profileId
+    var localSnapshotAddReview by remember { mutableStateOf(false) }
+    LaunchedEffect(section) {
+        if (section != Section.ADD_CHOOSE) localSnapshotAddReview = false
+    }
+    val artworkExpanded = retainedAddOwner?.artworkExpanded ?: remember { mutableStateOf(false) }
     // The Transmission/qBittorrent/Deluge attempt lives in the same app-owned owner as
     // Local and rTorrent: its write already runs in that owner's scope, so the receipt,
     // busy state and one-Add claim must survive Activity recreation with it.
@@ -561,7 +570,7 @@ internal fun ChunksApp(
     val combinedSearch = rememberSaveable { mutableStateOf("") }
     val addTransferSearch = retainedAddOwner?.transferSearch ?: remember { UniversalAddNavigationSearch() }
     LaunchedEffect(section) {
-        if (section in setOf(Section.ADD_CHOOSE, Section.LOCAL_ADD, Section.ADD)) addTransferSearch.clear()
+        if (section == Section.ADD_CHOOSE) addTransferSearch.clear()
     }
     // Last read-only listings of other saved profiles survive navigation between
     // roots, but never a privacy lock/unlock or policy lifecycle change.
@@ -597,20 +606,20 @@ internal fun ChunksApp(
         ?: remember { mutableStateOf<Uri?>(null) })
     // Shared content:// documents are never persisted or sent to a remote server
     // as a URI. A selected remote receives only locally validated metainfo bytes.
-    var sharedTorrentReading by remember { mutableStateOf(false) }
-    var sharedTorrentError by remember { mutableStateOf<String?>(null) }
-    // The selected local review URI is separate from the still-unselected
-    // Android source: opening the local device inventory alone never consumes it.
-    var localHandoffTorrentUri by remember { mutableStateOf<Uri?>(null) }
+    val sharedTorrentReading = incomingDocumentRead != null
+    var sharedTorrentError by (retainedAddOwner?.sharedTorrentError
+        ?: remember { mutableStateOf<String?>(null) })
     var localHandoffMagnet by remember { mutableStateOf<String?>(null) }
     // A transfer opened from All environments: searched once on the local device list.
     var localSearchPrefill by remember { mutableStateOf<String?>(null) }
     // A local transfer's exported .torrent waiting for the server Add review.
     // Process memory only; consumed by that review, never auto-submitted.
-    var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
+    var serverHandoffTorrent by (retainedAddOwner?.serverHandoffTorrent
+        ?: remember { mutableStateOf<ByteArray?>(null) })
     // The person's own Android document behind those bytes, if any. The remote
     // review binds it to the exact byte digest, so a stale value cannot attach.
-    var serverHandoffDocument by remember { mutableStateOf<Uri?>(null) }
+    var serverHandoffDocument by (retainedAddOwner?.serverHandoffDocument
+        ?: remember { mutableStateOf<Uri?>(null) })
     // Account-scoped recovery outlives Add's composition, including privacy gates
     // and reconnects. Process memory only; Activity/process restoration is separate.
     val remoteAddSessions = retainedAddOwner?.remoteSessions ?: remember { RemoteAddSessions() }
@@ -646,8 +655,8 @@ internal fun ChunksApp(
             magnet = ""
             remoteReview.textAtFileSelection = ""
         }
-        addUsingAuthenticatedRemote = false
-        addProtocolTargetId = null
+        localSnapshotAddReview = false
+        addDestination = UniversalAddRouteTarget.Local
         section = Section.ADD_CHOOSE
     }
     fun selectAuthenticatedAddTarget() {
@@ -672,8 +681,7 @@ internal fun ChunksApp(
         } else if (magnet.isNotBlank() && !fileChosenOverCurrentText) {
             remoteReview.preferMagnet()
         }
-        addUsingAuthenticatedRemote = true
-        addProtocolTargetId = null
+        addDestination = UniversalAddRouteTarget.RTorrent(aliasScope)
         section = Section.ADD_CHOOSE
     }
     fun prepareRemoteMagnet(source: String) {
@@ -796,7 +804,11 @@ internal fun ChunksApp(
      * their explicit acknowledgement and no write is ever replayed.
      */
     fun releaseVerifiedAttemptsForNewSource() {
-        if (activeLocalAddAttempt.attemptedTicket != null &&
+        if (addDestination == UniversalAddRouteTarget.Local &&
+            activeLocalAddAttempt.attemptedTicket != null &&
+            localReviewedTorrent.value?.originalDocument == null &&
+            activeLocalAddAttempt.originalDocument.deletion == null &&
+            !activeLocalAddAttempt.originalDocument.deleting &&
             activeLocalAddAttempt.coordinator.phase ==
                 io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
             activeLocalAddAttempt.finishReviewedAttempt()) {
@@ -805,51 +817,98 @@ internal fun ChunksApp(
             serverHandoffTorrent = null
         }
         val remoteDraft = aliasScope.takeIf { it.isNotBlank() }?.let { remoteAddSessions.forAccount(it) }
-        if (remoteDraft != null && remoteDraft.alreadyAttempted && !remoteDraft.submitting &&
+        if (addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) &&
+            remoteDraft != null && remoteDraft.alreadyAttempted && !remoteDraft.submitting &&
+            remoteDraft.originalDocumentStatus.deletion == null &&
             remoteDraft.coordinator.phase ==
                 io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
             canCloseRemoteAddReview(remoteDraft.coordinator.phase, remoteDraft.verifiedHash,
                 remoteDraft.uncertain)) {
             val oldSource = remoteDraft.attemptSource
-            if (remoteDraft.beginNextDraft()) {
-                if (magnet == oldSource) magnet = ""
-                serverHandoffTorrent = null
+            val oldDocument = remoteDraft.selectedBytes
+            val currentDocument = localReviewedTorrent.value
+            val sameDraft = magnet == oldSource && serverHandoffTorrent == null &&
+                (currentDocument == null || completedRemoteReviewMatchesLocal(oldDocument, currentDocument))
+            if (remoteDraft.beginNextDraft() && sameDraft) {
+                magnet = ""
                 localReviewedTorrent.value = null
+                addArtworkChoices.onServer(aliasScope).value = true
+            }
+        }
+        val protocolId = addProtocolTargetId
+        if (protocolId != null && protocolAddAttempt.profileId == protocolId &&
+            protocolAddAttempt.coordinator(protocolId).phase ==
+                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
+            !protocolAddAttempt.originalDocument.deleting) {
+            val sameDraft = protocolAddAttempt.submittedDraftStillSelected(magnet, localReviewedTorrent.value)
+            if (protocolAddAttempt.clearSettled(protocolId) && sameDraft) {
+                localReviewedTorrent.value = null
+                magnet = ""
+                addArtworkChoices.onProtocol(protocolId).value = true
             }
         }
     }
 
+    fun selectedRemoteAddSession(): RemoteAddSession? {
+        val selected = addDestination as? UniversalAddRouteTarget.RTorrent
+        return remoteAddSessions.existingForAccount(selected?.accountScope ?: aliasScope)
+    }
+
     /** An unsubmitted draft or a not-yet-releasable attempt holds a new shared source. */
-    fun addSourceOccupied(): Boolean {
-        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
-            ?.let { remoteAddSessions.forAccount(it) }
+    fun addSourceOccupied(incomingText: String? = null): Boolean {
+        val remoteDraft = selectedRemoteAddSession()
         // A first Android document being read is an occupied draft even
         // before the new .torrent metainfo is visible on the Add form.
-        return sharedTorrentReading || incomingDocumentRead != null ||
-            magnet.isNotBlank() || localReviewedTorrent.value != null ||
+        return sharedTorrentReading ||
+            (magnet.isNotBlank() && magnet != incomingText) || localReviewedTorrent.value != null ||
             serverHandoffTorrent != null ||
             (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
             activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true
+            remoteDraft?.alreadyAttempted == true ||
+            (addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)
     }
 
-    /**
-     * #1786: an Open With that arrived while the previous Add was still settling was held
-     * (correctly: never replace an unfinished attempt) but nothing re-offered it once that
-     * Add verified, so the handoff silently vanished. Called when the Add screen observes its
-     * attempt reach a closable verified state: release exactly as a fresh share would and,
-     * only if nothing else occupies the draft, read the held document into the next review.
-     * Still no Add or Start; an unsubmitted draft keeps its explicit Use/Keep choice.
-     */
-    fun offerHeldSharedSourceAfterVerifiedAdd() {
-        val document = pendingSharedDocument ?: return
-        if (sharedTorrentReading || incomingDocumentRead != null) return
-        releaseVerifiedAttemptsForNewSource()
-        if (addSourceOccupied()) return
-        pendingSharedDocument = null
+    fun readSharedDocument(document: Uri) {
+        if (pendingSharedDocument == document) pendingSharedDocument = null
         sharedTorrentError = null
-        sharedTorrentReading = true
         incomingDocumentRead = document
+    }
+
+    // Intake is shared across destinations. A held source may proceed after a
+    // verified attempt settles only if there is no competing draft to replace.
+    val heldRemoteAdd = selectedRemoteAddSession()
+    val heldProtocolAdd = addProtocolTargetId?.takeIf { protocolAddAttempt.profileId == it }
+    val heldLocalObservation = retainedAddOwner?.attempts
+        ?.observationRevision(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
+    LaunchedEffect(
+        incomingTorrent, sharedMagnet, pendingSharedDocument, pendingSharedMagnet,
+        sharedTorrentReading, addDestination, aliasScope, localReviewedTorrent.value,
+        heldLocalObservation, activeLocalAddAttempt.coordinator.phase,
+        activeLocalAddAttempt.originalDocument.deletion,
+        activeLocalAddAttempt.originalDocument.deleting,
+        heldRemoteAdd?.coordinator?.phase, heldRemoteAdd?.verifiedHash, heldRemoteAdd?.submitting,
+        heldRemoteAdd?.originalDocumentStatus?.deletion, heldRemoteAdd?.originalDocumentStatus?.deleting,
+        heldProtocolAdd?.let { protocolAddAttempt.coordinator(it).phase }, protocolAddAttempt.busy,
+        protocolAddAttempt.originalDocument.deletion, protocolAddAttempt.originalDocument.deleting
+    ) {
+        val document = pendingSharedDocument
+        val text = pendingSharedMagnet
+        // MainActivity can queue the new URI before Compose consumes that same
+        // incoming event. Let the one-shot effect admit it before promoting
+        // anything already held, so one delivery cannot reappear as a second draft.
+        if (incomingTorrent != null || sharedMagnet != null || sharedTorrentReading ||
+            (document == null && text == null)) return@LaunchedEffect
+        releaseVerifiedAttemptsForNewSource()
+        if (addSourceOccupied()) return@LaunchedEffect
+        pendingSharedDocument = null
+        pendingSharedMagnet = null
+        sharedTorrentError = null
+        if (document != null) readSharedDocument(document)
+        else if (text != null) {
+            magnet = text
+            localHandoffMagnet = null
+            remoteAddSessions.selectMagnet(aliasScope)
+        }
     }
 
     // Share/Open With only admits source data, never a local or remote Add.
@@ -863,8 +922,7 @@ internal fun ChunksApp(
         if (addSourceOccupied()) {
             pendingSharedDocument = document
         } else {
-            sharedTorrentReading = true
-            incomingDocumentRead = document
+            readSharedDocument(document)
         }
         onIncomingTorrentConsumed()
         section = Section.ADD_CHOOSE
@@ -881,7 +939,6 @@ internal fun ChunksApp(
             remoteSession = aliasScope.takeIf { it.isNotBlank() }
                 ?.let(remoteAddSessions::forAccount)
         )
-        sharedTorrentReading = true
         sharedTorrentError = null
         var cancelledByLifecycle = false
         try {
@@ -894,11 +951,10 @@ internal fun ChunksApp(
                     magnet, localReviewedTorrent.value, serverHandoffTorrent,
                     currentRemoteDraft)) {
                 localReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes, document)
-                serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
+                serverHandoffTorrent = if (addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) && server != null &&
                     RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
                     reviewed.bytes.copyOf() else null
                 serverHandoffDocument = document.takeIf { serverHandoffTorrent != null }
-                localHandoffTorrentUri = null
                 magnet = ""
                 remoteAddSessions.clearPendingSourceSelection()
             } else if (incomingDocumentRead == document) {
@@ -918,7 +974,6 @@ internal fun ChunksApp(
                     isCurrentDocument = incomingDocumentRead == document,
                     lifecycleCancelled = cancelledByLifecycle)) {
                 incomingDocumentRead = null
-                sharedTorrentReading = false
             }
         }
     }
@@ -967,13 +1022,7 @@ internal fun ChunksApp(
         releaseVerifiedAttemptsForNewSource()
         sharedTorrentError = null
         pendingSharedDocument = null
-        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
-            ?.let { remoteAddSessions.forAccount(it) }
-        if ((magnet.isNotBlank() && magnet != proposed) ||
-            localReviewedTorrent.value != null || serverHandoffTorrent != null ||
-            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
-            activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true) {
+        if (addSourceOccupied(incomingText = proposed)) {
             pendingSharedMagnet = proposed
         } else {
             pendingSharedMagnet = null
@@ -1111,14 +1160,16 @@ internal fun ChunksApp(
         )
     }
 
-    // All entry points, including the footer and incoming Android Share, use
-    // Section.ADD_CHOOSE as one route. Its content is chosen *inline* by target;
-    // neither target choice nor a saved profile grants an Add ticket.
-    val addTargetIsAuthenticated = addUsingAuthenticatedRemote && server != null &&
-        RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null
-    val presentationSection = if (section == Section.ADD_CHOOSE) {
-        if (addTargetIsAuthenticated) Section.ADD else Section.LOCAL_ADD
-    } else section
+    val addTargetIsAuthenticated = addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) &&
+        server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null
+    val protocolAddProfile = addProtocolTargetId?.let { id ->
+        combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
+    }
+    val addTargetUnavailable = when (addDestination) {
+        UniversalAddRouteTarget.Local -> false
+        is UniversalAddRouteTarget.RTorrent -> !addTargetIsAuthenticated
+        is UniversalAddRouteTarget.Protocol -> protocolAddProfile == null
+    }
     val remoteAddLocked = if (server != null && aliasScope.isNotBlank())
         remoteAddSessions.forAccount(aliasScope).alreadyAttempted else false
     val addChoicesEnabled = activeLocalAddAttempt.attemptedTicket == null && !remoteAddLocked
@@ -1144,7 +1195,7 @@ internal fun ChunksApp(
         activeAddRemoteName, otherSavedAddTargets).first
     // Smart Routing: read the persisted policy off the composition thread
     // whenever Add is shown; suggest from the reviewed source's own names.
-    val routingAddVisible = section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD
+    val routingAddVisible = section == Section.ADD_CHOOSE
     var routingPolicy by remember(routingAddVisible) {
         mutableStateOf<io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Policy?>(null)
     }
@@ -1155,9 +1206,12 @@ internal fun ChunksApp(
                 as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
         }
     }
-    // Smart Routing pre-selection bookkeeping (process-only; never persisted).
-    var routingAutoAppliedFor by remember { mutableStateOf<String?>(null) }
-    var routingPersonChoiceFor by remember { mutableStateOf<String?>(null) }
+    // A configuration change must not let routing override the person's
+    // exact client selection for the same retained source.
+    var routingAutoAppliedFor by (retainedAddOwner?.routingAutoAppliedFor
+        ?: remember { mutableStateOf<String?>(null) })
+    var routingPersonChoiceFor by (retainedAddOwner?.routingPersonChoiceFor
+        ?: remember { mutableStateOf<String?>(null) })
     val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
     // A retained file is evidence only while it is the active source.
@@ -1211,8 +1265,7 @@ internal fun ChunksApp(
             id == connectedRTorrentId -> selectAuthenticatedAddTarget()
             combinedProtocolProfiles.any { it.id == id && it.operations != null } &&
                 (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) -> {
-                addUsingAuthenticatedRemote = false
-                addProtocolTargetId = id
+                addDestination = UniversalAddRouteTarget.Protocol(id)
                 section = Section.ADD_CHOOSE
             }
         }
@@ -1221,15 +1274,17 @@ internal fun ChunksApp(
     val routingSuggestionIsSelected = routingSuggestion?.environmentId?.let { id ->
         id == addProtocolTargetId ||
             (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
-            (addProtocolTargetId == null && !addTargetIsAuthenticated &&
+            (addDestination == UniversalAddRouteTarget.Local &&
                 id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
     } == true
-    LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect, section) {
-        if (section != Section.ADD_CHOOSE && section != Section.ADD) return@LaunchedEffect
+    LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect,
+        section, localSnapshotAddReview, addTargetUnavailable) {
+        if (section != Section.ADD_CHOOSE || localSnapshotAddReview || addTargetUnavailable)
+            return@LaunchedEffect
         if (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.shouldPreselect(
                 routingPolicy, routingSuggestion, routingSourceKey, routingAutoAppliedFor, routingPersonChoiceFor,
                 routingSuggestionIsSelected,
-                addInFlight = protocolAddAttempt.busy || activeLocalAddAttempt.attemptedTicket != null)) {
+                addInFlight = protocolAddAttempt.busy || !addChoicesEnabled)) {
             routingAutoAppliedFor = routingSourceKey
             useRoutingSuggestion()
         }
@@ -1244,6 +1299,7 @@ internal fun ChunksApp(
             onAliasChange = { addAliasDraft.value = it },
             sourceName = routingSource?.name ?: routingMagnetName,
             incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
+            canReplaceIncoming = !protocolAddAttempt.busy,
             importingSource = sharedTorrentReading,
             sourceError = sharedTorrentError,
             onAcceptIncoming = {
@@ -1253,14 +1309,12 @@ internal fun ChunksApp(
                 pendingSharedMagnet = null
                 sharedTorrentError = null
                 if (document != null) {
-                    sharedTorrentReading = true
-                    incomingDocumentRead = document
+                    readSharedDocument(document)
                 } else if (incomingText != null) {
                     // User-authorized replacement, not an automatic Android
                     // handoff. Keep the chosen target, Place and Start.
                     localReviewedTorrent.value = null
                     serverHandoffTorrent = null
-                    localHandoffTorrentUri = null
                     magnet = incomingText
                     remoteAddSessions.selectMagnet(aliasScope)
                 }
@@ -1279,6 +1333,8 @@ internal fun ChunksApp(
             routingSuggestionSelected = routingSuggestionIsSelected,
             onUseRoutingSuggestion = { useRoutingSuggestion() },
             selectedProtocolId = addProtocolTargetId,
+            localSelected = addDestination == UniversalAddRouteTarget.Local,
+            showDraftOptions = !addTargetUnavailable,
             displayNameSupported = when {
                 addProtocolTargetId != null -> UniversalAddClientCapabilities.protocol(null).displayName
                 addTargetIsAuthenticated -> UniversalAddClientCapabilities.RTORRENT.displayName
@@ -1287,8 +1343,7 @@ internal fun ChunksApp(
             onProtocol = { id ->
                 routingPersonChoiceFor = routingSourceKey
                 if (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) {
-                    addUsingAuthenticatedRemote = false
-                    addProtocolTargetId = id
+                    addDestination = UniversalAddRouteTarget.Protocol(id)
                     section = Section.ADD_CHOOSE
                 }
             },
@@ -1333,9 +1388,6 @@ internal fun ChunksApp(
             combinedProtocolProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
         }.distinctBy { it.environmentId }
     }
-    val protocolAddProfile = addProtocolTargetId?.let { id ->
-        combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
-    }
     fun viewAddedTransfer(client: io.github.gamesbyian.chunks.model.EnvironmentId, hash: String) {
         addTransferSearch.viewTransfer(hash)
         consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
@@ -1344,25 +1396,267 @@ internal fun ChunksApp(
         combinedFromLocal = !combinedFromConnections
         section = Section.COMBINED
     }
-    val protocolAddContent: @Composable (CombinedReadOnlyProtocolProfile) -> Unit = { profile ->
-        ProtocolAddScreen(
-            profileId = profile.id,
-            clientLabel = profile.label,
-            createOperations = requireNotNull(profile.operations),
-            destinationPicker = addDestinationPicker,
-            sourceDraft = addSourceDraft,
-            reviewedTorrent = localReviewedTorrent,
-            startState = localAddStart,
-            artworkState = addArtworkChoices.onProtocol(profile.id),
-            attempt = protocolAddAttempt,
-            attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
-            attemptController = retainedAddOwner?.attempts,
-            aliasState = addAliasDraft,
-            externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
-            onViewTransfer = { hash ->
-                viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentId(profile.id), hash)
+    fun returnFromAdd() {
+        section = Section.COMBINED
+        combinedFromConnections = false
+        returnToCatalogRevision++
+        refresh()
+    }
+    val protocolAddContent: (@Composable () -> Unit)? = if (protocolAddProfile == null) null else {
+        val profile = protocolAddProfile
+        val content: @Composable () -> Unit = {
+            ProtocolAddScreen(
+                profileId = profile.id,
+                clientLabel = profile.label,
+                createOperations = requireNotNull(profile.operations),
+                destinationPicker = addDestinationPicker,
+                sourceDraft = addSourceDraft,
+                reviewedTorrent = localReviewedTorrent,
+                startState = localAddStart,
+                artworkState = addArtworkChoices.onProtocol(profile.id),
+                attempt = protocolAddAttempt,
+                attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
+                attemptController = retainedAddOwner?.attempts,
+                aliasState = addAliasDraft,
+                artworkExpandedState = artworkExpanded,
+                onBack = ::returnFromAdd,
+                externalSourceReading = sharedTorrentReading,
+                onViewTransfer = { hash ->
+                    viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentId(profile.id), hash)
+                }
+            )
+        }
+        content
+    }
+    val localContent: @Composable (LocalPane) -> Unit = { pane ->
+        val connectedRemote = server
+        val localRemoteScope = connectedRemote?.let {
+            RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
+        }
+        LocalTransferPrivacyGate(
+            scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+            onBack = if (pane == LocalPane.ADD) ::returnFromAdd else ({ leaveLocal() }),
+            controlsInContent = true
+        ) {
+            LocalEngineScreen(
+                pane = pane,
+                showNavigationFooter = false,
+                listScroll = when (pane) {
+                    LocalPane.ADD -> localAddScroll
+                    LocalPane.OPTIONS -> localOptionsScroll
+                    else -> localListScroll
+                }, searchState = localSearch, optionsSearchState = localOptionsSearch,
+                optionsCategoryState = localOptionsCategory,
+                optionsReturnQueryState = localOptionsReturnQuery,
+                optionsIndexScrollState = localOptionsIndexScroll,
+                magnetDraftState = addSourceDraft,
+                addPlaceState = localAddPlace, addFolderState = localAddFolder, addStartState = localAddStart,
+                addArtworkState = addArtworkChoices.onLocal(),
+                addDestinationPicker = if (pane == LocalPane.ADD) addDestinationPicker else null,
+                addArtworkExpandedState = artworkExpanded,
+                onLeaveAdd = ::returnFromAdd,
+                addAliasState = addAliasDraft,
+                externalSourceReading = sharedTorrentReading,
+                pendingAddState = localReviewedTorrent,
+                localAddAttemptSession = activeLocalAddAttempt,
+                addAttemptScope = retainedAddOwner?.addAttemptScope,
+                addAttemptController = retainedAddOwner?.attempts,
+                onBack = { leaveLocal() },
+                onSeedingRules = { openTool(Section.SEEDING,
+                    if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                onMediaSettings = { openTool(Section.MEDIA,
+                    if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                onSmartRouting = { openTool(Section.ROUTING,
+                    if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                onCreateTorrent = { openTool(Section.CREATE,
+                    if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                onZipReview = { openTool(Section.ARCHIVES,
+                    if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                onCombined = {
+                    localFromCombined = false
+                    combinedFromLocal = true
+                    savedProfileCatalogFocus = null
+                    showAllEnvironmentsRevision++
+                    section = Section.COMBINED
+                },
+                showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
+                onConnections = { section = Section.SERVER },
+                onOpenAdd = { selectLocalAddTarget() },
+                onShowLocalSnapshotReview = {
+                    // Select Local for the recovery review WITHOUT routing
+                    // through ordinary Add's remote-source handoff.
+                    localSnapshotAddReview = true
+                    addDestination = UniversalAddRouteTarget.Local
+                    section = Section.ADD_CHOOSE
+                },
+                onOpenOptions = { section = Section.OPTIONS },
+                remoteEnvironmentLabel = aliasScope.takeIf { localRemoteScope != null }?.let(::serverEnvironmentLabel),
+                onRemotePlaces = if (localRemoteScope != null) ({ section = Section.PLACES }) else null,
+                onRemoteOrganize = if (localRemoteScope != null) ({ section = Section.ORGANIZE }) else null,
+                onRemoteNames = if (localRemoteScope != null) ({ section = Section.NAMES }) else null,
+                onRemoteSnapshot = if (localRemoteScope != null) ({ section = Section.SNAPSHOT }) else null,
+                initialMagnet = localHandoffMagnet,
+                initialSearch = localSearchPrefill,
+                onSearchConsumed = { localSearchPrefill = null },
+                onAcknowledgedAdd = { hash -> latestAdded = localAddedKey(hash) },
+                onViewAddTransfer = { hash ->
+                    viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, hash)
+                },
+                returnFocusTool = localReturnFocus, onReturnFocusConsumed = { localReturnFocus = null },
+                canReviewOnConnectedServer = connectedRemote != null,
+                serverCopy = if (connectedRemote == null || localRemoteScope == null) null
+                    else LocalServerCopyLink(runCatching {
+                        java.net.URI(aliasScope.substringBefore('\u0000').trim()).host
+                    }.getOrNull() ?: "your server") { bytes ->
+                        val place = connectedRemote.defaultDirectory()
+                            ?: error("The server reports no default download location")
+                        connectedRemote.loadStoppedTorrentBytes(bytes, place, useServerDefault = true)
+                    },
+                moveServer = if (connectedRemote == null || localRemoteScope == null) null
+                    else LocalMoveServer(aliasScope) { hash ->
+                        TransferMoveObservations.server(connectedRemote, hash)
+                    },
+                onPrefillConsumed = { localHandoffMagnet = null },
+                onPrepareRemote = { draft ->
+                    prepareRemoteMagnet(draft)
+                    if (connectedRemote == null) section = Section.TRANSFERS
+                    else selectAuthenticatedAddTarget()
+                },
+                onPrepareRemoteTorrent = { document ->
+                    prepareRemoteTorrent(document)
+                    if (connectedRemote == null) section = Section.TRANSFERS
+                    else selectAuthenticatedAddTarget()
+                }
+            )
+        }
+    }
+    val remoteAddContent: @Composable () -> Unit = remoteAdd@{
+        val connectedRemote = server ?: return@remoteAdd
+        val exactScope = aliasScope
+        val privacyScope = RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(exactScope)
+            ?: return@remoteAdd
+        RemoteTransferPrivacyGate(scope = privacyScope, onBack = ::returnFromAdd, controlsInContent = true) {
+            val beginRemoteMutation: () -> Boolean = {
+                if (server === connectedRemote && aliasScope == exactScope &&
+                    !loading && !stale && mutationGate.tryStart()) {
+                    stale = true
+                    true
+                } else false
             }
-        )
+            val settledRemoteMutation: () -> Unit = {
+                if (server === connectedRemote && aliasScope == exactScope) {
+                    mutationGate.settled()
+                    stale = true
+                    refresh()
+                }
+            }
+            val addSession = remember(aliasScope) {
+                remoteAddSessions.forAccount(aliasScope)
+            }
+            val recentPlaces = remember(aliasScope, recentPlaceRevision) {
+                if (aliasScope.isBlank()) emptyList()
+                else recentPlaceStore.places(aliasScope)
+            }
+            // Only this freshly authenticated server's inventory may
+            // suggest folders. A stale/other-account snapshot must not
+            // become an Add destination shortcut.
+            val observedPlaces = remember(aliasScope, transfers, stale) {
+                if (aliasScope.isBlank() || stale) emptyList()
+                else RemoteObservedAddPlaces.from(transfers)
+            }
+            VerifiedAddScreen(
+                remote = connectedRemote, magnet = magnet, destination = addSession.destination,
+                session = addSession,
+                // Configuration-retained owner, never a disposable
+                // Composable/Activity scope: rotating the device or
+                // returning to Transfers cannot cancel a sent Add.
+                // Process death remains uncertain and never auto-retries.
+                attemptScope = retainedAddOwner?.remoteAttemptScope ?: scope,
+                sharedAttemptController = retainedAddOwner?.attempts,
+                observedPlaces = observedPlaces,
+                initialTorrent = serverHandoffTorrent,
+                initialTorrentDocument = serverHandoffDocument,
+                onInitialTorrentConsumed = {
+                    serverHandoffTorrent = null
+                    serverHandoffDocument = null
+                },
+                onNextDraftStarted = { oldDocument ->
+                    // The remote session has just released a completed
+                    // attempt. Retire only its exact shared Local twin:
+                    // a newer Android document, even with the same
+                    // v1 hash, retains its own review authority.
+                    if (completedRemoteReviewMatchesLocal(oldDocument, localReviewedTorrent.value))
+                        localReviewedTorrent.value = null
+                    if (oldDocument != null &&
+                        serverHandoffTorrent?.contentEquals(oldDocument) == true) {
+                        serverHandoffTorrent = null
+                        serverHandoffDocument = null
+                    }
+                },
+                // The newest explicit server-form .torrent replaces any older local
+                // review, so a target switch can never resurrect the superseded file.
+                onTorrentAdopted = { preview, bytes, document ->
+                    localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
+                    serverHandoffTorrent = null
+                },
+                finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
+                environmentLabel = activeAddDisplayName,
+                onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
+                addStartState = localAddStart,
+                addArtworkState = addArtworkChoices.onServer(aliasScope),
+                addDestinationPicker = addDestinationPicker,
+                externalSourceReading = sharedTorrentReading,
+                externalSourceWaiting = pendingSharedDocument != null || pendingSharedMagnet != null,
+                addAliasState = addAliasDraft,
+                onVerifiedAlias = { hash, value ->
+                    // The frozen coordinator confirms a new exact job,
+                    // and a stale account/route cannot receive its label.
+                    val ticket = addSession.attemptTicket
+                    if (server !== connectedRemote ||
+                        aliasScope != addSession.accountScope ||
+                        ticket?.intent?.source?.expectedInfoHash?.equals(hash, true) != true) false
+                    else verifiedAliasStore.saveVerifiedNewAddAlias(aliasScope, hash, value)
+                },
+                onBack = ::returnFromAdd,
+                addArtworkExpandedState = artworkExpanded,
+                onComplete = refresh,
+                onVerifiedAdd = { hash ->
+                    if (server === connectedRemote) {
+                        remoteAdded = RemoteAddedRecord(
+                            aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name))
+                        latestAdded = remoteAdded?.combinedKey(aliasScope)
+                    }
+                },
+                onViewVerifiedTransfer = { hash ->
+                    if (server === connectedRemote && aliasScope == addSession.accountScope) {
+                        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)
+                            ?.let { viewAddedTransfer(it, hash) }
+                    }
+                },
+                onMutationStarted = beginRemoteMutation,
+                onMutationSettled = settledRemoteMutation,
+                recentPlaces = recentPlaces,
+                savedDefaultPlace = remember(aliasScope, recentPlaceRevision) {
+                    if (aliasScope.isBlank()) null
+                    else runCatching { recentPlaceStore.savedDefault(aliasScope) }.getOrNull()
+                },
+                onSaveDefaultPlace = { path ->
+                    val saved = aliasScope.isNotBlank() && runCatching {
+                        recentPlaceStore.setSavedDefault(aliasScope, path)
+                    }.getOrDefault(false)
+                    if (saved) recentPlaceRevision++
+                    saved
+                },
+                onCustomPlaceVerified = { path ->
+                    val exactAccount = server === connectedRemote && aliasScope == addSession.accountScope
+                    val saved = exactAccount && runCatching {
+                        recentPlaceStore.recordVerifiedCustom(aliasScope, path)
+                    }.getOrDefault(false)
+                    if (saved) recentPlaceRevision++
+                    saved
+                }
+            )
+        }
     }
     val paneTitle = ScreenPaneTitles.of(section.name, section.label,
         if (server != null && aliasScope.isNotBlank()) serverEnvironmentLabel(aliasScope) else null)
@@ -1481,21 +1775,21 @@ internal fun ChunksApp(
                 }
             }
         }
-        if (presentationSection == Section.ARCHIVES) {
+        if (section == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { leaveTool() }
             ) {
                 LocalZipReviewScreen(onBack = { leaveTool() })
             }
-        } else if (presentationSection == Section.SNAPSHOT_INSPECT) {
+        } else if (section == Section.SNAPSHOT_INSPECT) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { section = Section.TRANSFERS }
             ) {
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
-        } else if (presentationSection == Section.COMBINED) {
+        } else if (section == Section.COMBINED) {
             val addController = retainedAddOwner?.attempts
             val localId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
             val remoteId = connectedRTorrentId?.let { io.github.gamesbyian.chunks.model.EnvironmentId(it) }
@@ -1551,8 +1845,7 @@ internal fun ChunksApp(
                         environment == localId -> selectLocalAddTarget()
                         environment == remoteId -> selectAuthenticatedAddTarget()
                         combinedProtocolProfiles.any { it.environment == environment && it.operations != null } -> {
-                            addUsingAuthenticatedRemote = false
-                            addProtocolTargetId = environment.value
+                            addDestination = UniversalAddRouteTarget.Protocol(environment.value)
                             section = Section.ADD_CHOOSE
                         }
                     }
@@ -1606,10 +1899,10 @@ internal fun ChunksApp(
                 // Add action hands off the pending magnet to its review.
                 onAddToLocal = {
                     val selectedDocument = incomingTorrent
-                    if (selectedDocument != null) {
-                        localHandoffTorrentUri = selectedDocument
+                    if (selectedDocument != null && !sharedTorrentReading) {
+                        readSharedDocument(selectedDocument)
                         onIncomingTorrentConsumed()
-                    } else {
+                    } else if (selectedDocument == null) {
                         pendingSharedMagnet?.let { source ->
                             localHandoffMagnet = source
                             pendingSharedMagnet = null
@@ -1631,45 +1924,18 @@ internal fun ChunksApp(
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({
                     val sharedDocument = incomingTorrent
-                    if (sharedDocument != null && !sharedTorrentReading &&
-                        server != null && aliasScope.isNotBlank()) {
-                        // Selecting a remote authorizes only a bounded, read-only
-                        // local document parse. No rTorrent operation is attempted.
-                        val selectedServer = server
-                        val selectedScope = aliasScope
-                        sharedTorrentReading = true
-                        sharedTorrentError = null
-                        scope.launch {
-                            try {
-                                val reviewed = withContext(Dispatchers.IO) {
-                                    SharedTorrentDocument.read(context.contentResolver, sharedDocument)
-                                }
-                                if (server === selectedServer && aliasScope == selectedScope &&
-                                    incomingTorrent == sharedDocument && section == Section.COMBINED) {
-                                    // A newer, explicit document supersedes an older
-                                    // text draft; the remote Add form reviews these bytes.
-                                    magnet = ""
-                                    remoteAddSessions.clearPendingSourceSelection()
-                                    serverHandoffTorrent = reviewed.bytes
-                                    serverHandoffDocument = sharedDocument
-                                    onIncomingTorrentConsumed()
-                                    selectAuthenticatedAddTarget()
-                                } else {
-                                    sharedTorrentError =
-                                        "The shared source or signed-in server changed. Choose again; nothing was added."
-                                }
-                            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                throw cancel
-                            } catch (_: Exception) {
-                                sharedTorrentError =
-                                    "The shared .torrent could not be read or verified (v1 metainfo, maximum 2 MiB). Nothing was added."
-                            } finally {
-                                sharedTorrentReading = false
-                            }
+                    if (sharedDocument != null && !sharedTorrentReading) {
+                        if (RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null) {
+                            // The same retained reader validates the document and only
+                            // adopts it if this exact draft hasn't since changed.
+                            addDestination = UniversalAddRouteTarget.RTorrent(aliasScope)
+                            readSharedDocument(sharedDocument)
+                            onIncomingTorrentConsumed()
+                            section = Section.ADD_CHOOSE
+                        } else {
+                            sharedTorrentError =
+                                "This rTorrent account is no longer verified. Reconnect before reviewing this .torrent."
                         }
-                    } else if (sharedDocument != null && !sharedTorrentReading) {
-                        sharedTorrentError =
-                            "This rTorrent account is no longer verified. Reconnect before reviewing this .torrent."
                     } else if (sharedDocument == null) {
                         pendingSharedMagnet?.let { source ->
                             prepareRemoteMagnet(source)
@@ -1724,13 +1990,13 @@ internal fun ChunksApp(
                     }
                 }
             )
-        } else if (presentationSection == Section.SEEDING) {
+        } else if (section == Section.SEEDING) {
             SeedingRulesScreen(seedingEnvironments, onBack = { leaveTool() })
-        } else if (presentationSection == Section.MEDIA) {
+        } else if (section == Section.MEDIA) {
             MediaSettingsScreen(onBack = { leaveTool() })
-        } else if (presentationSection == Section.ROUTING) {
+        } else if (section == Section.ROUTING) {
             SmartRoutingSettingsScreen(smartRoutingTargets, onBack = { leaveTool() })
-        } else if (presentationSection == Section.CREATE && server == null) {
+        } else if (section == Section.CREATE && server == null) {
             val shownCreateRequest = createRequest
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(
                 onBack = {
@@ -1746,114 +2012,20 @@ internal fun ChunksApp(
                 },
                 retainedSourceState = retainedAddOwner?.createSource
             )
-        } else if (presentationSection == Section.LOCAL_ADD && protocolAddProfile != null) {
-            protocolAddContent(protocolAddProfile)
-        } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
-            val connectedRemote = server
-            val localRemoteScope = connectedRemote?.let {
-                RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
-            }
-            LocalTransferPrivacyGate(
-                scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                onBack = { leaveLocal() },
-                controlsInContent = true
-            ) {
-                LocalEngineScreen(
-                    pane = when (presentationSection) {
-                        Section.LOCAL_ADD -> LocalPane.ADD
-                        Section.OPTIONS -> LocalPane.OPTIONS
-                        else -> LocalPane.TRANSFERS
-                    },
-                    showNavigationFooter = false,
-                    listScroll = when (presentationSection) {
-                        Section.LOCAL_ADD -> localAddScroll
-                        Section.OPTIONS -> localOptionsScroll
-                        else -> localListScroll
-                    }, searchState = localSearch, optionsSearchState = localOptionsSearch,
-                    optionsCategoryState = localOptionsCategory,
-                    optionsReturnQueryState = localOptionsReturnQuery,
-                    optionsIndexScrollState = localOptionsIndexScroll,
-                    magnetDraftState = addSourceDraft,
-                    addPlaceState = localAddPlace, addFolderState = localAddFolder, addStartState = localAddStart,
-                    addArtworkState = addArtworkChoices.onLocal(),
-                    addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
-                    addAliasState = addAliasDraft,
-                    externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
-                    pendingAddState = localReviewedTorrent,
-                    localAddAttemptSession = activeLocalAddAttempt,
-                    addAttemptScope = retainedAddOwner?.addAttemptScope,
-                    addAttemptController = retainedAddOwner?.attempts,
-                    onBack = { leaveLocal() },
-                    onSeedingRules = { openTool(Section.SEEDING,
-                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onMediaSettings = { openTool(Section.MEDIA,
-                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onSmartRouting = { openTool(Section.ROUTING,
-                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onCreateTorrent = { openTool(Section.CREATE,
-                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onZipReview = { openTool(Section.ARCHIVES,
-                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onCombined = {
-                        localFromCombined = false
-                        combinedFromLocal = true
-                        savedProfileCatalogFocus = null
-                        showAllEnvironmentsRevision++
-                        section = Section.COMBINED
-                    },
-                    showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
-                    onConnections = { section = Section.SERVER },
-                    onOpenAdd = { selectLocalAddTarget() },
-                    onShowLocalSnapshotReview = {
-                        // Select Local for the recovery review WITHOUT routing
-                        // through ordinary Add's remote-source handoff.
-                        addUsingAuthenticatedRemote = false
-                        section = Section.LOCAL_ADD
-                    },
-                    onOpenOptions = { section = Section.OPTIONS },
-                    remoteEnvironmentLabel = aliasScope.takeIf { localRemoteScope != null }?.let(::serverEnvironmentLabel),
-                    onRemotePlaces = if (localRemoteScope != null) ({ section = Section.PLACES }) else null,
-                    onRemoteOrganize = if (localRemoteScope != null) ({ section = Section.ORGANIZE }) else null,
-                    onRemoteNames = if (localRemoteScope != null) ({ section = Section.NAMES }) else null,
-                    onRemoteSnapshot = if (localRemoteScope != null) ({ section = Section.SNAPSHOT }) else null,
-                    initialMagnet = localHandoffMagnet,
-                    initialSearch = localSearchPrefill,
-                    onSearchConsumed = { localSearchPrefill = null },
-                    onAcknowledgedAdd = { hash -> latestAdded = localAddedKey(hash) },
-                    onViewAddTransfer = { hash ->
-                        viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, hash)
-                    },
-                    returnFocusTool = localReturnFocus, onReturnFocusConsumed = { localReturnFocus = null },
-                    initialTorrentUri = localHandoffTorrentUri,
-                    canReviewOnConnectedServer = connectedRemote != null,
-                    serverCopy = if (connectedRemote == null || localRemoteScope == null) null
-                        else LocalServerCopyLink(runCatching {
-                            java.net.URI(aliasScope.substringBefore('\u0000').trim()).host
-                        }.getOrNull() ?: "your server") { bytes ->
-                            val place = connectedRemote.defaultDirectory()
-                                ?: error("The server reports no default download location")
-                            connectedRemote.loadStoppedTorrentBytes(bytes, place, useServerDefault = true)
-                        },
-                    moveServer = if (connectedRemote == null || localRemoteScope == null) null
-                        else LocalMoveServer(aliasScope) { hash ->
-                            TransferMoveObservations.server(connectedRemote, hash)
-                        },
-                    onTorrentConsumed = { consumed ->
-                        if (localHandoffTorrentUri == consumed) localHandoffTorrentUri = null
-                    },
-                    onPrefillConsumed = { localHandoffMagnet = null },
-                    onPrepareRemote = { draft ->
-                        prepareRemoteMagnet(draft)
-                        if (connectedRemote == null) section = Section.TRANSFERS
-                        else selectAuthenticatedAddTarget()
-                    },
-                    onPrepareRemoteTorrent = { document ->
-                        prepareRemoteTorrent(document)
-                        if (connectedRemote == null) section = Section.TRANSFERS
-                        else selectAuthenticatedAddTarget()
-                    }
-                )
-            }
+        } else if (section in setOf(Section.ADD_CHOOSE, Section.LOCAL, Section.OPTIONS)) {
+            UniversalAddRoute(
+                target = if (section == Section.ADD_CHOOSE) addDestination else UniversalAddRouteTarget.Local,
+                localPane = when (section) {
+                    Section.ADD_CHOOSE -> LocalPane.ADD
+                    Section.OPTIONS -> LocalPane.OPTIONS
+                    else -> LocalPane.TRANSFERS
+                },
+                local = localContent,
+                remote = if (addTargetIsAuthenticated) remoteAddContent else null,
+                protocol = protocolAddContent,
+                destinationPicker = addDestinationPicker,
+                onBack = ::returnFromAdd
+            )
         } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
                 loginRequested = savedAddReconnect.awaitingAuthentication,
@@ -2465,7 +2637,7 @@ internal fun ChunksApp(
             // Reuse the already-authorized destinations. No search-created
             // settings screen, saved login or implicit server Add target.
             val optionsDestinations = Section.entries.filter {
-                it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT &&
+                it != Section.NAMES && it != Section.SNAPSHOT &&
                     it != Section.SEEDING && it != Section.SNAPSHOT_INSPECT &&
                     it != Section.COMBINED
             }
@@ -2563,7 +2735,7 @@ internal fun ChunksApp(
             // Per-account list position survives visiting Places, Server or
             // other routes; a different account starts at the top.
             val remoteListState = remember(aliasScope) { remoteContinuity.listState(aliasScope) }
-            when (presentationSection) {
+            when (section) {
                 Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
                     TransfersScreen(
                     listState = remoteListState,
@@ -2726,7 +2898,6 @@ internal fun ChunksApp(
                                 // document to archive or remove, even if the bytes coincide
                                 // with an earlier Android document.
                                 localReviewedTorrent.value = null
-                                localHandoffTorrentUri = null
                                 serverHandoffDocument = null
                                 prepareRemoteTorrent(document)
                                 selectAuthenticatedAddTarget()
@@ -2817,115 +2988,6 @@ internal fun ChunksApp(
                         disconnectCurrentRemote()
                     }
                 )
-                Section.ADD -> {
-                    val addSession = remember(aliasScope) {
-                        remoteAddSessions.forAccount(aliasScope)
-                    }
-                    val recentPlaces = remember(aliasScope, recentPlaceRevision) {
-                        if (aliasScope.isBlank()) emptyList()
-                        else recentPlaceStore.places(aliasScope)
-                    }
-                    // Only this freshly authenticated server's inventory may
-                    // suggest folders. A stale/other-account snapshot must not
-                    // become an Add destination shortcut.
-                    val observedPlaces = remember(aliasScope, transfers, stale) {
-                        if (aliasScope.isBlank() || stale) emptyList()
-                        else RemoteObservedAddPlaces.from(transfers)
-                    }
-                    VerifiedAddScreen(
-                        remote = connectedRemote, magnet = magnet, destination = addSession.destination,
-                        session = addSession,
-                        // Configuration-retained owner, never a disposable
-                        // Composable/Activity scope: rotating the device or
-                        // returning to Transfers cannot cancel a sent Add.
-                        // Process death remains uncertain and never auto-retries.
-                        attemptScope = retainedAddOwner?.remoteAttemptScope ?: scope,
-                        sharedAttemptController = retainedAddOwner?.attempts,
-                        observedPlaces = observedPlaces,
-                        initialTorrent = serverHandoffTorrent,
-                        initialTorrentDocument = serverHandoffDocument,
-                        onInitialTorrentConsumed = {
-                            serverHandoffTorrent = null
-                            serverHandoffDocument = null
-                        },
-                        onNextDraftStarted = { oldDocument ->
-                            // The remote session has just released a completed
-                            // attempt. Retire only its exact shared Local twin:
-                            // a newer Android document, even with the same
-                            // v1 hash, retains its own review authority.
-                            if (completedRemoteReviewMatchesLocal(oldDocument, localReviewedTorrent.value))
-                                localReviewedTorrent.value = null
-                            if (oldDocument != null &&
-                                serverHandoffTorrent?.contentEquals(oldDocument) == true) {
-                                serverHandoffTorrent = null
-                                serverHandoffDocument = null
-                            }
-                        },
-                        // The newest explicit server-form .torrent replaces any older local
-                        // review, so a target switch can never resurrect the superseded file.
-                        onTorrentAdopted = { preview, bytes, document ->
-                            localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
-                            serverHandoffTorrent = null
-                            localHandoffTorrentUri = null
-                        },
-                        finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
-                        environmentLabel = activeAddDisplayName,
-                        onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
-                        addStartState = localAddStart,
-                        addArtworkState = addArtworkChoices.onServer(aliasScope),
-                        addDestinationPicker = addDestinationPicker,
-                        externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
-                        externalSourceWaiting = pendingSharedDocument != null || pendingSharedMagnet != null,
-                        onVerifiedAttemptWithWaitingSource = ::offerHeldSharedSourceAfterVerifiedAdd,
-                        addAliasState = addAliasDraft,
-                        onVerifiedAlias = { hash, value ->
-                            // The frozen coordinator confirms a new exact job,
-                            // and a stale account/route cannot receive its label.
-                            val ticket = addSession.attemptTicket
-                            if (server !== connectedRemote ||
-                                aliasScope != addSession.accountScope ||
-                                ticket?.intent?.source?.expectedInfoHash?.equals(hash, true) != true) false
-                            else verifiedAliasStore.saveVerifiedNewAddAlias(aliasScope, hash, value)
-                        },
-                        onBack = { section = Section.TRANSFERS },
-                        onComplete = refresh,
-                        onVerifiedAdd = { hash ->
-                            if (server === connectedRemote) {
-                                remoteAdded = RemoteAddedRecord(
-                                    aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name))
-                                latestAdded = remoteAdded?.combinedKey(aliasScope)
-                            }
-                        },
-                        onViewVerifiedTransfer = { hash ->
-                            if (server === connectedRemote && aliasScope == addSession.accountScope) {
-                                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)
-                                    ?.let { viewAddedTransfer(it, hash) }
-                            }
-                        },
-                        onMutationStarted = beginRemoteMutation,
-                        onMutationSettled = settledRemoteMutation,
-                        recentPlaces = recentPlaces,
-                        savedDefaultPlace = remember(aliasScope, recentPlaceRevision) {
-                            if (aliasScope.isBlank()) null
-                            else runCatching { recentPlaceStore.savedDefault(aliasScope) }.getOrNull()
-                        },
-                        onSaveDefaultPlace = { path ->
-                            val saved = aliasScope.isNotBlank() && runCatching {
-                                recentPlaceStore.setSavedDefault(aliasScope, path)
-                            }.getOrDefault(false)
-                            if (saved) recentPlaceRevision++
-                            saved
-                        },
-                        onCustomPlaceVerified = { path ->
-                            val exactAccount = server === connectedRemote && aliasScope == addSession.accountScope
-                            val saved = exactAccount && runCatching {
-                                recentPlaceStore.recordVerifiedCustom(aliasScope, path)
-                            }.getOrDefault(false)
-                            if (saved) recentPlaceRevision++
-                            saved
-                        }
-                    )
-                }
                 // These destinations render above, before remote-only routing.
                 else -> Unit
             }

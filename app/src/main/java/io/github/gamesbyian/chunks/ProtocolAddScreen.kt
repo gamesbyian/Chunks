@@ -185,6 +185,8 @@ internal fun ProtocolAddScreen(
     reviewedTorrent: MutableState<PendingLocalAdd?>,
     startState: MutableState<Boolean>,
     artworkState: MutableState<Boolean>? = null,
+    artworkExpandedState: MutableState<Boolean>? = null,
+    onBack: (() -> Unit)? = null,
     attempt: ProtocolAddAttempt,
     attemptScope: CoroutineScope,
     onViewTransfer: (String) -> Unit,
@@ -279,18 +281,9 @@ internal fun ProtocolAddScreen(
     }
     // Keep/Archive/Delete applies only to the person's own document behind the reviewed bytes.
     val originalDocument = torrent?.originalDocument?.takeIf { draft.isEmpty() }
-    var originalHandling by remember(originalDocument) { mutableStateOf<OriginalTorrentHandling?>(null) }
-    var originalDeletable by remember(originalDocument) { mutableStateOf(false) }
-    LaunchedEffect(originalDocument) {
-        val document = originalDocument ?: return@LaunchedEffect
-        val (saved, deletable) = withContext(Dispatchers.IO) {
-            OriginalTorrentHandlingStore(context).default to
-                OriginalTorrentDocuments.supportsDelete(context, document)
-        }
-        originalDeletable = deletable
-        originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
-            OriginalTorrentHandling.ARCHIVE else saved
-    }
+    val originalPolicy = rememberUniversalAddOriginalPolicy(originalDocument, torrent)
+    val originalHandling = originalPolicy?.handling
+    val originalDeletable = originalPolicy?.deletable == true
     val folder = if (useCustom) customFolder.trim() else null
     val defaultFolder = session?.defaultDownloadDirectory?.let { directory ->
         runCatching { ClientHashes.requireDirectory(directory) }.getOrNull()
@@ -421,9 +414,10 @@ internal fun ProtocolAddScreen(
         artwork = UniversalAddToggle(automaticArtwork, !attempt.busy && mine && !unresolved) {
             automaticArtwork = it
         },
+        artworkExpandedState = artworkExpandedState,
+        originalHandling = originalHandling?.takeIf { originalDocument != null && !attempt.busy },
+        onBack = onBack,
         options = {
-            originalHandling?.takeIf { originalDocument != null && !attempt.busy }
-                ?.let { OriginalTorrentHandlingSummary(it) }
             if (session != null && sourceRefusal != null) Text(sourceRefusal,
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
         },
@@ -603,14 +597,7 @@ internal fun ProtocolAddScreen(
                 Text(note, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             }
-            if (attempt.canStartAnother(profileId)) UniversalAddContinuationAction(ChunksSemantics.ADD_ANOTHER,
-                label = when (phase) {
-                    UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> "Acknowledge session and start another Add"
-                    UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> "Acknowledge registered job; Start unverified"
-                    UniversalAddCoordinator.Phase.REVIEWED -> "Review again"
-                    else -> "Start another Add"
-                }
-            ) {
+            if (attempt.canStartAnother(profileId)) UniversalAddNextAction(phase) {
                 // A newer Share/picker/text edit can occur while the old
                 // attempt is settling. Only retire the exact source captured
                 // by that old write; never drop a newer document or passkey.

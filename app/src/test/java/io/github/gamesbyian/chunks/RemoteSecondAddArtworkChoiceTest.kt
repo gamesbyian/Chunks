@@ -144,6 +144,13 @@ class RemoteSecondAddArtworkChoiceTest {
         rule.waitForIdle()
         assertEquals("Scrolling away cannot detach the second draft's choice",
             ToggleableState.Off, artworkChoice())
+        // The shared route must restore this same remote draft and disclosure
+        // after disposing its client UI. Returning to Transfers is read-only.
+        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_BACK_TO_TRANSFERS))
+        rule.onNodeWithTag(ChunksSemantics.ADD_BACK_TO_TRANSFERS).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        assertEquals("Returning to Add keeps the exact client's opt-out", ToggleableState.Off, artworkChoice())
+        assertEquals("Leaving and reopening Add did not dispatch another write", 1, server.loads().size)
         // A finished first Add's late verification effects must not re-check it.
         rule.mainClock.advanceTimeBy(10_000)
         rule.waitForIdle()

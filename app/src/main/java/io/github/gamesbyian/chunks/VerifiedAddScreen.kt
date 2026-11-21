@@ -115,6 +115,7 @@ internal fun VerifiedAddScreen(
     /** Parent-owned choice shared with local Add; no extra Save/Apply interaction. */
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    addArtworkExpandedState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addAliasState: androidx.compose.runtime.MutableState<String>? = null,
     /** Saves only the confirmed new exact-account Chunks list alias. */
     onVerifiedAlias: (String, String) -> Boolean = { _, _ -> false },
@@ -132,8 +133,6 @@ internal fun VerifiedAddScreen(
     externalSourceReading: Boolean = false,
     /** A shared Android source is held behind this screen's attempt (#1786). */
     externalSourceWaiting: Boolean = false,
-    /** The held source may now become the next review; the parent re-checks occupancy. */
-    onVerifiedAttemptWithWaitingSource: () -> Unit = {},
     /** Enables deterministic delayed-preference tests without touching external Add or RPC. */
     clipboardEnabledReader: suspend (android.content.Context) -> Boolean = { context ->
         withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
@@ -313,18 +312,9 @@ internal fun VerifiedAddScreen(
     // Keep/Archive/Delete applies only to the person's own document behind the
     // exact selected bytes; magnets, HTTPS fetches and local exports have none.
     val originalDocument = if (useFile) draft.originalDocumentFor(selectedBytes) else null
-    var originalHandling by remember(originalDocument) { mutableStateOf<OriginalTorrentHandling?>(null) }
-    var originalDeletable by remember(originalDocument) { mutableStateOf(false) }
-    LaunchedEffect(originalDocument) {
-        val document = originalDocument ?: return@LaunchedEffect
-        val (saved, deletable) = withContext(Dispatchers.IO) {
-            OriginalTorrentHandlingStore(context).default to
-                OriginalTorrentDocuments.supportsDelete(context, document)
-        }
-        originalDeletable = deletable
-        originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
-            OriginalTorrentHandling.ARCHIVE else saved
-    }
+    val originalPolicy = rememberUniversalAddOriginalPolicy(originalDocument, selectedBytes)
+    val originalHandling = originalPolicy?.handling
+    val originalDeletable = originalPolicy?.deletable == true
     LaunchedEffect(initialTorrent, alreadyAttempted) {
         val document = initialTorrent ?: return@LaunchedEffect
         if (submitting || alreadyAttempted) return@LaunchedEffect
@@ -504,13 +494,6 @@ internal fun VerifiedAddScreen(
                 outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
             else -> Unit
         }
-    }
-
-    // #1786: a held Open With must not vanish behind a finishing attempt. Presentation-only
-    // trigger; the parent re-runs its own verified-release and occupancy checks.
-    LaunchedEffect(addedByThisAttempt && canAcknowledge, externalSourceWaiting) {
-        if (addedByThisAttempt && canAcknowledge && externalSourceWaiting)
-            onVerifiedAttemptWithWaitingSource()
     }
 
     UniversalAddForm(
@@ -847,10 +830,12 @@ internal fun VerifiedAddScreen(
             automaticArtwork = it
             awaitingConfirmation = false
         },
+        artworkExpandedState = addArtworkExpandedState,
+        originalHandling = originalHandling?.takeIf { !alreadyAttempted && originalDocument != null },
+        onBack = onBack,
+        // Standalone calls may own the write scope. Production always retains it.
+        backEnabled = !submitting || attemptScope != null,
         options = {
-            val shownHandling = originalHandling
-            if (!alreadyAttempted && originalDocument != null && shownHandling != null)
-                OriginalTorrentHandlingSummary(shownHandling)
             // Finish-in-order is eligible only for multi-file .torrent sources
             // where every file downloads (it manages all file priorities).
             val fioStore = finishInOrderStore
@@ -1245,22 +1230,20 @@ internal fun VerifiedAddScreen(
             // The Add coordinator owns acknowledgment eligibility, not an
             // incomplete screen-only hash after a read-only Recheck.
             if (canAcknowledge) {
-                UniversalAddContinuationAction(ChunksSemantics.ADD_ANOTHER,
-                    label = when {
-                        registeredStartUnverified -> "Acknowledge registered job; Start unverified"
-                        exactSessionConfirmed -> "Acknowledge session and start another Add"
-                        else -> "Start another Add"
-                    },
+                UniversalAddNextAction(
+                    draft.coordinator.phase,
                     enabled = !submitting && !rechecking && !choosing && !linkFetching && !draft.originalDocumentStatus.deleting
                 ) {
                     val oldSource = draft.attemptSource
                     val oldDocument = draft.selectedBytes
+                    val sameDraft = magnet == oldSource && initialTorrent == null
                     // The single explicit click acknowledges a confirmed session
                     // or finishes an attested Add. Unresolved write latches stay
                     // fenced by RemoteAddSession.beginNextDraft().
                     if (draft.beginNextDraft()) {
                         onNextDraftStarted(oldDocument)
                         if (magnet == oldSource) onMagnet("")
+                        if (sameDraft) automaticArtwork = true
                         onDestination("")
                         awaitingConfirmation = false
                         fileError = null
@@ -1321,13 +1304,6 @@ internal fun VerifiedAddScreen(
                         onComplete()
                     }
                 }
-            }
-            // Production passes an app-root attempt scope. Leaving Add only
-            // removes the screen, never cancels its authorized RPC/readback.
-            // Standalone screen-owned tests retain the old cancellation gate.
-            OutlinedButton(onClick = onBack, enabled = !submitting || attemptScope != null,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
-                Text("Back to transfers")
             }
         }
     )

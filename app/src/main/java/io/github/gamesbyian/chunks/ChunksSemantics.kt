@@ -53,6 +53,7 @@ internal object ChunksSemantics {
     const val ADD_BODY_PROTOCOL = "chunks.add.body.protocol"
     const val ADD_SUBMIT = "chunks.add.submit"
     const val ADD_VIEW_TRANSFER = "chunks.add.viewTransfer"
+    const val ADD_BACK_TO_TRANSFERS = "chunks.add.backToTransfers"
     const val ADD_ANOTHER = "chunks.add.another"
     const val TRANSFERS_ADD_RECEIPT = "chunks.transfers.addReceipt"
     const val TRANSFERS_ADD_REVIEW = "chunks.transfers.addReview"
@@ -93,6 +94,7 @@ internal object ChunksSemantics {
     /** Inline Add-to choice for the one authenticated remote profile. */
     const val ADD_TARGET_REMOTE = "chunks.add.target.remote"
     /** The always-visible row of per-environment show/hide toggles above Transfers. */
+    const val TRANSFERS_ROW_DETAILS = "chunks.transfers.rowDetails"
     const val TRANSFERS_SEARCH = "chunks.transfers.search"
     const val TRANSFERS_ENVIRONMENT_TOGGLES = "chunks.transfers.environmentToggles"
     /** Search-adjacent disclosure for existing filter, sort and grouping controls. */
