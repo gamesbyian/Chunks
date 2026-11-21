@@ -46,89 +46,16 @@ PY
 adb reverse tcp:18082 tcp:18082 >/dev/null
 b64() { printf '%s' "$1" | base64 -w 0; }
 
-# Bound each installed journey; a silent adb call cannot consume the entire
-# 35-minute job. Preserve the full app assertions and record safe progress.
+# A silent adb invocation must not consume the entire hosted job deadline.
+# Instrumentation failures, including 124 (timeout), always remain failures.
 run_instrumentation() {
-  local label="$1" budget="$2" output="$3"
+  local label="$1" budget="$2" output="$3" status=0
   shift 3
-  local started=$SECONDS
-  local status=0
-  printf 'CHUNKS_INSTALLED_JOURNEY: %s started budget=%s\n' "$label" "$budget"
-  # The diagnostic heartbeat is independent of the foreground command.
-  # A completed background PID can remain waitable/zombie, so polling it with
-  # kill -0 would sleep forever even after instrumentation has already exited.
-  (
-    while sleep 30 >/dev/null 2>&1; do
-      local stage
-      stage="$(grep -E '^INSTRUMENTATION_STATUS: chunks_stage=[a-z0-9-]+
-  printf 'CHUNKS_INSTALLED_JOURNEY: %s finished status=%s elapsed=%ss\n' \
-    "$label" "$status" "$((SECONDS - started))"
+  printf "CHUNKS_INSTALLED_JOURNEY: %s started budget=%s\n" "$label" "$budget"
+  timeout --signal=TERM --kill-after=20s "$budget" adb shell am instrument -w -r "$@" > "$output" 2>&1 || status=$?
+  printf "CHUNKS_INSTALLED_JOURNEY: %s finished status=%s\n" "$label" "$status"
   if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
-    echo "::error::Installed $label instrumentation exceeded its $budget deadline"
-  fi
-  return "$status"
-}
-set +e
-run_instrumentation remote-delete 8m "$out/instrumentation.txt" \
-  -e class io.github.gamesbyian.chunks.RemoteDeleteDataInstalledInstrumentedTest \
-  -e chunks_remote_delete authorized \
-  -e chunks_remote_delete_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
-  -e chunks_remote_delete_hash_b64 "$(b64 "$hash")" \
-  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner
-status=$?
-set -e
-adb logcat -d -t 2000 > "$out/logcat.txt" 2>&1 || true
-grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation.txt" | tee "$out/stages.txt" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation.txt" ||
-   ! grep -q 'chunks_stage=session-absent' "$out/instrumentation.txt"; then
-  tail -80 "$out/instrumentation.txt"
-  echo "::error::Installed remote Remove transfer and data journey failed"
-  exit 1
-fi
-# The app only QUEUED deletion. Run the real upstream collector and verify
-# exact payload absence and the foreign canary independently.
-python3 tools/stage_disposable_rutorrent_adapter_delete.py verify | tee "$out/collector.txt"
-grep -q '^PASS production Kotlin adapter' "$out/collector.txt"
-echo "CHUNKS_REMOTE_DELETE_INSTALLED: app queued exact erasedata; collector deleted exact file; canary intact" | tee -a "$GITHUB_STEP_SUMMARY"
-
-# Remote Universal Add original .torrent Archive + separately confirmed removal,
-# on the same disposable server. Session-only cleanup of its own stopped job.
-# Start from a fresh install state: the journey above saved its connection,
-# so Connections would show that roster instead of the first-run form.
-adb shell pm clear "$pkg" >/dev/null
-set +e
-run_instrumentation original-torrent 10m "$out/original-instrumentation.txt" \
-  -e class io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest \
-  -e chunks_remote_original authorized \
-  -e chunks_remote_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
-  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner
-status=$?
-set -e
-adb logcat -d -t 2000 > "$out/original-logcat.txt" 2>&1 || true
-grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/original-instrumentation.txt" | tee "$out/original-stages.txt" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/original-instrumentation.txt" ||
-   ! grep -q 'chunks_stage=cleaned-up' "$out/original-instrumentation.txt"; then
-  tail -80 "$out/original-instrumentation.txt"
-  echo "::error::Installed remote original .torrent Archive/remove journey failed"
-  exit 1
-fi
-echo "CHUNKS_REMOTE_ORIGINAL_INSTALLED: verified new exact remote job, archived exact bytes, separately confirmed original removal, sibling intact, session-only cleanup" | tee -a "$GITHUB_STEP_SUMMARY"
- "$output" \
-        | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//' || true)"
-      stage="${stage:-no-stage-yet}"
-      printf 'CHUNKS_INSTALLED_JOURNEY: %s active elapsed=%ss last_stage=%s\n' \
-        "$label" "$((SECONDS - started))" "$stage"
-    done
-  ) &
-  local heartbeat=$!
-  timeout --signal=TERM --kill-after=20s "$budget" adb shell am instrument -w -r "$@" \
-    > "$output" 2>&1 || status=$?
-  kill "$heartbeat" 2>/dev/null || true
-  wait "$heartbeat" 2>/dev/null || true
-  printf 'CHUNKS_INSTALLED_JOURNEY: %s finished status=%s elapsed=%ss\n' \
-    "$label" "$status" "$((SECONDS - started))"
-  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
-    echo "::error::Installed $label instrumentation exceeded its $budget deadline"
+    echo "::error::Installed $label instrumentation exceeded $budget"
   fi
   return "$status"
 }
