@@ -14,6 +14,12 @@ on:
       - 'tools/render_font_family_stress.py'
       - 'tests/test_font_shaped_advance_audit.py'
   workflow_dispatch:
+# Superseded PR revisions should not keep spending runner minutes.
+# Manual and main-push executions use their unique run ID and are never cancelled.
+concurrency:
+  group: chunks-chunks-font-visual-stress-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 jobs:
