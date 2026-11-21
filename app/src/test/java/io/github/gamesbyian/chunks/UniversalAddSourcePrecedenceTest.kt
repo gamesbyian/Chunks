@@ -154,8 +154,8 @@ class UniversalAddSourcePrecedenceTest {
         pickTorrentThroughAndroidPicker(torrent("earlier-local.mkv"), "earlier-local.mkv")
 
         LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.FOOTER_OPTIONS))
-        LazyComposeActions.replaceText(rule, hasSetTextAction() and hasText("Search options"), "Server inventory backup")
-        LazyComposeActions.activateOnce(rule, hasText("Server inventory backup"))
+        LazyComposeActions.replaceText(rule, hasSetTextAction() and hasText("Search options"), "server backup")
+        LazyComposeActions.activateOnce(rule, hasText(LocalOptionsShortcut.SERVER_BACKUP.where))
         LazyComposeActions.activateOnce(rule, hasText("Compare saved snapshot with rTorrent server"))
 
         val name = "chosen-from-snapshot.mkv"
@@ -168,6 +168,7 @@ class UniversalAddSourcePrecedenceTest {
         val archiveUri = Uri.parse("content://chunks.test.documents/review.chunksnap")
         shadowOf(rule.activity.contentResolver).registerInputStream(archiveUri, archive.inputStream())
         LazyComposeActions.activateOnce(rule, hasText("Choose .chunksnap to compare"))
+        rule.waitForIdle()
         val picker = shadowOf(rule.activity).nextStartedActivityForResult
         assertEquals(Intent.ACTION_OPEN_DOCUMENT, picker.intent.action)
         shadowOf(rule.activity).receiveResult(picker.intent, Activity.RESULT_OK, Intent().setData(archiveUri))
