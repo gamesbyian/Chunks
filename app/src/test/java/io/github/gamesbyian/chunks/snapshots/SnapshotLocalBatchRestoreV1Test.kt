@@ -126,6 +126,20 @@ class SnapshotLocalBatchRestoreV1Test {
         assertTrue(target.entries.isEmpty())
     }
 
+    @Test fun changedTrackerOnLaterOriginalRefusesBeforeTheFirstAdd() {
+        val folder = temp.newFolder("changed-tracker")
+        val target = FakeTarget(folder)
+        val second = original("second")
+        val changed = second.bytes.toString(Charsets.UTF_8).replace("http://ignored", "http://changed")
+            .toByteArray(Charsets.UTF_8)
+        assertEquals(second.infoHashV1, TorrentMetainfoReader.preview(changed).infoHashV1)
+        assertFalse(second.bytes.contentEquals(changed))
+
+        val result = execute(listOf(original("first"), second.copy(bytes = changed)), folder, Store(), target)
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED, result.stop)
+        assertEquals(0, target.calls)
+    }
+
     @Test fun uncertainFirstAddStopsBatchAndIsNeverReplayedWithNewGroupReview() {
         val folder = temp.newFolder("uncertain")
         val store = Store()

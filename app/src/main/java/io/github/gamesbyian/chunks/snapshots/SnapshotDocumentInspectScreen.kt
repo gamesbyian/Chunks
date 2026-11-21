@@ -199,18 +199,19 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
                             try {
                                 val selected = SnapshotVerifiedTorrentDocumentV1.prepare(
                                     checked, item.infoHashV1)
+                                val originalBytes = selected.copyVerifiedBytes()
                                 savingTorrent = true
                                 saveNotice = null
                                 scope.launch {
                                     try {
-                                        if (inspected?.metainfoByHash?.get(selected.infoHashV1)
-                                            ?.contentEquals(selected.bytes) != true) {
+                                        if (inspected?.verifiedMetainfo(selected.infoHashV1)
+                                            ?.contentEquals(originalBytes) != true) {
                                             saveNotice = "Torrent selection expired or the source changed."
                                         } else {
                                             val uri = withContext(Dispatchers.IO) {
                                                 OwnedDiagnosticExportProvider.publish(context,
                                                     "chunks-original-${selected.infoHashV1}.torrent",
-                                                    selected.bytes)
+                                                    originalBytes)
                                             }
                                             OwnedDiagnosticShare.openChooser(context, uri,
                                                 "application/x-bittorrent", "original .torrent")

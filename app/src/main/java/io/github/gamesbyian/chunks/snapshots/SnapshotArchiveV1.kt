@@ -62,7 +62,7 @@ internal object SnapshotArchiveV1 {
         }
     }
 
-    private fun digest(bytes: ByteArray): String =
+    internal fun digest(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(Locale.ROOT, it.toInt() and 0xff) }
 

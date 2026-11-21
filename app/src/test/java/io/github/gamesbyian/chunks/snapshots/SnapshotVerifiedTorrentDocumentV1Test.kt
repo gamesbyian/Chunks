@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.snapshots
 
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.security.MessageDigest
 import org.junit.Assert.*
 import org.junit.Test
@@ -33,6 +34,21 @@ class SnapshotVerifiedTorrentDocumentV1Test {
         assertEquals("chunks-" + hash.take(12) + ".torrent", prepared.suggestedFilename)
         prepared.bytes[0] = 0
         assertArrayEquals(torrent, source.metainfoByHash.getValue(hash))
+    }
+
+    @Test fun authenticatesOriginalWholeDocumentEvenWhenTrackerChangesKeepTheSameInfohash() {
+        val source = verified()
+        val differentTracker = ("d8:announce17:http://other/test4:info" +
+            info.toString(Charsets.UTF_8) + "e").toByteArray()
+        assertEquals(hash, TorrentMetainfoReader.preview(differentTracker).infoHashV1)
+        assertFalse(torrent.contentEquals(differentTracker))
+
+        val substituted = source.copy(metainfoByHash = mapOf(hash to differentTracker))
+        reject { SnapshotVerifiedTorrentDocumentV1.prepare(substituted, hash) }
+
+        val prepared = SnapshotVerifiedTorrentDocumentV1.prepare(source, hash)
+        reject { prepared.copy(bytes = differentTracker).copyVerifiedBytes() }
+        assertArrayEquals(torrent, prepared.copyVerifiedBytes())
     }
 
     @Test fun inventoryOnlyAndUnknownOrNoncanonicalIdentifiersAreRefused() {
