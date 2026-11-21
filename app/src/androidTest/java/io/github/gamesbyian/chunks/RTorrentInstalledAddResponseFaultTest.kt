@@ -9,6 +9,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
