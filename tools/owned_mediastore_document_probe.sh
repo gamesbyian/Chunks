@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Exact-head, disposable real Android API29/35 provider identity test.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 expected="${1:?expected Android API 29 or 35}"
 [[ "$expected" == 29 || "$expected" == 35 ]] || {
   echo 'CHUNKS_OWNED_DOCS: unsupported API request' >&2
@@ -61,7 +62,7 @@ install_checked app/build/outputs/apk/androidTest/debug/app-debug-androidTest.ap
 out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleLibraryMediaStoreCopyInstrumentedTest,io.github.gamesbyian.chunks.LocalMultiZipMediaStoreExportInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$out" 2>&1
 status=$?
