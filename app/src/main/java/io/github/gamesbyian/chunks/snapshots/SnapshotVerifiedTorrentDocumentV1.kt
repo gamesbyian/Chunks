@@ -16,8 +16,15 @@ internal object SnapshotVerifiedTorrentDocumentV1 {
         val originalName: String,
         /** Deliberately avoids leaking private torrent names as document names. */
         val suggestedFilename: String,
-        val bytes: ByteArray
-    )
+        val bytes: ByteArray,
+        private val originalDigest: String = SnapshotArchiveV1.digest(bytes)
+    ) {
+        fun copyVerifiedBytes(): ByteArray = bytes.copyOf().also {
+            require(SnapshotArchiveV1.digest(it) == originalDigest) {
+                "Original torrent bytes changed after preparation"
+            }
+        }
+    }
 
     fun prepare(
         source: SnapshotManifestV1.Verified,
@@ -29,12 +36,11 @@ internal object SnapshotVerifiedTorrentDocumentV1 {
         require(item.recovery == SnapshotManifestV1.Recovery.METAINFO) {
             "This item has no complete original torrent definition"
         }
-        val original = source.metainfoByHash[infoHashV1]
+        val frozen = source.verifiedMetainfo(infoHashV1)
             ?: throw IllegalArgumentException("Verified torrent definition missing")
-        require(original.isNotEmpty() && original.size <= MAX_TORRENT_BYTES) {
+        require(frozen.isNotEmpty() && frozen.size <= MAX_TORRENT_BYTES) {
             "Torrent definition is empty or too large"
         }
-        val frozen = original.copyOf()
         val parsed = try {
             TorrentMetainfoReader.preview(frozen)
         } catch (invalid: Exception) {

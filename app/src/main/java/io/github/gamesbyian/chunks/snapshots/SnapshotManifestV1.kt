@@ -57,8 +57,15 @@ internal object SnapshotManifestV1 {
         val manifest: Manifest,
         val metainfoByHash: Map<String, ByteArray>,
         /** Contains full tracker metadata or tracker-bearing magnet context. */
-        val requiresSensitiveExportWarning: Boolean
+        val requiresSensitiveExportWarning: Boolean,
+        private val originalMetainfoDigests: Map<String, String>
     ) {
+        fun verifiedMetainfo(hash: String): ByteArray? = metainfoByHash[hash]?.copyOf()?.also { bytes ->
+            require(SnapshotArchiveV1.digest(bytes) == originalMetainfoDigests[hash]) {
+                "Original torrent bytes changed after verifying the snapshot"
+            }
+        }
+
         val restorableCount: Int get() = manifest.items.count {
             it.recovery == Recovery.METAINFO || it.recovery == Recovery.MAGNET
         }
@@ -125,10 +132,14 @@ internal object SnapshotManifestV1 {
             source,
             items
         )
-        return verify(manifest, contents.metainfoByHash)
+        val originals = contents.metainfoByHash
+        verify(manifest, originals)
+        return Verified(manifest, originals,
+            originals.isNotEmpty() || manifest.items.any { it.recovery == Recovery.MAGNET },
+            originals.mapValues { (_, bytes) -> SnapshotArchiveV1.digest(bytes) })
     }
 
-    private fun verify(manifest: Manifest, metainfo: Map<String, ByteArray>): Verified {
+    private fun verify(manifest: Manifest, metainfo: Map<String, ByteArray>) {
         require(manifest.producer == "chunks-android") { "Unknown snapshot producer" }
         require(manifest.createdAtUtc.length in 20..40 &&
             manifest.createdAtUtc.endsWith('Z') &&
@@ -195,11 +206,6 @@ internal object SnapshotManifestV1 {
                 "Snapshot original name differs from verified torrent metainfo"
             }
         }
-        return Verified(
-            manifest,
-            metainfo.mapValues { it.value.copyOf() },
-            required.isNotEmpty() || manifest.items.any { it.recovery == Recovery.MAGNET }
-        )
     }
 
     private fun fields(obj: Map<*, *>, allowed: Set<String>) {

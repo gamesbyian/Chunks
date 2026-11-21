@@ -62,7 +62,7 @@ internal object SnapshotLocalBatchRestoreV1 {
         val prepared = try {
             reviewed.map { candidate ->
                 require(v1.matches(candidate.infoHashV1))
-                val frozen = candidate.bytes.copyOf()
+                val frozen = candidate.copyVerifiedBytes()
                 val parsed = TorrentMetainfoReader.preview(frozen)
                 require(parsed.infoHashV1 == candidate.infoHashV1 &&
                     parsed.name == candidate.originalName)

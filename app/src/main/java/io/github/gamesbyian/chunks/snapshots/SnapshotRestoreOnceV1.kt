@@ -130,11 +130,10 @@ internal object SnapshotRestoreOnceV1 {
             java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
             return Outcome.REFUSED
         val hash = reviewed.infoHashV1
-        // Prepared.bytes is a mutable ByteArray shared with a document review.
-        // Freeze the exact source once, before validating it. A provider,
-        // navigation callback or another holder can otherwise change the
-        // original array between preview and the journaled native submission.
-        val frozenSource = reviewed.bytes.copyOf()
+        // The infohash covers the info dictionary, leaving tracker URLs and
+        // other top-level fields outside it. Recheck the full original bytes.
+        val frozenSource = try { reviewed.copyVerifiedBytes() }
+            catch (_: IllegalArgumentException) { return Outcome.REFUSED }
         val preview = try { TorrentMetainfoReader.preview(frozenSource) }
             catch (_: Exception) { return Outcome.REFUSED }
         if (preview.infoHashV1 != hash || preview.name != reviewed.originalName)

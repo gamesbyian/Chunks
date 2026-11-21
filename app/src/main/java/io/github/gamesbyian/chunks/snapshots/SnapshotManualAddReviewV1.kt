@@ -39,7 +39,7 @@ internal object SnapshotManualAddReviewV1 {
             "Original complete torrent definition is absent"
         }
         return SnapshotVerifiedTorrentDocumentV1
-            .prepare(verified, reviewedEntry.infoHashV1).bytes
+            .prepare(verified, reviewedEntry.infoHashV1).copyVerifiedBytes()
     }
 
     /**
