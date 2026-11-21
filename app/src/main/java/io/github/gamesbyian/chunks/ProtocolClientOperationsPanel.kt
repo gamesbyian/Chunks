@@ -283,7 +283,7 @@ internal fun ProtocolClientOperationsPanel(
                         } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
                         when (result) {
                             is ClientJobTransfer.CopyResult.Copied -> {
-                                copied = VerifiedMoveCopy(target, transfer, result)
+                                copied = VerifiedMoveCopy(target, requireNotNull(transfer), result)
                                 notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
                                 // The Chunks name follows the confirmed copy, never overwriting a
                                 // name the target already has. Nothing is sent to either client.
