@@ -1219,6 +1219,47 @@ class TransferMediaControllerTest {
         assertTrue(http.requests.isNotEmpty()) // same hash, independent environment
     }
 
+    @Test fun consentedFirstAddThenSecondAddOptOutKeepsProviderRequestCountUnchanged() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        val client = EnvironmentId("rtorrent:seedbox-2")
+        val first = UnifiedTransferKey.of(client, "a".repeat(40))
+        val second = UnifiedTransferKey.of(client, "b".repeat(40))
+        val secondKey = MediaTransferKey.of(second)
+        val secondName = "Babylon.5.S01E01.1080p.WEB-DL.mkv"
+        val c = controller()
+
+        // First Add is authorized. Its provider requests are the positive
+        // witness that consent is active and the fake HTTP adapter records use.
+        assertTrue(c.prepareForAdd(first, allowAutomaticLookup = true))
+        c.observe(server, name)
+        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(server to name)) }
+        assertTrue("Consented first Add must exercise the provider", http.requests.isNotEmpty())
+        val afterFirst = http.requests.size
+
+        // A second Add on the SAME authenticated client opts out before the
+        // exact job can appear in either the visible or full-inventory feed.
+        assertTrue(c.prepareForAdd(second, allowAutomaticLookup = false))
+        val secondState = c.observe(secondKey, secondName)
+        assertFalse("Second Add keeps its own independent opt-out",
+            secondState.value.automaticLookupEnabled)
+        kotlinx.coroutines.runBlocking {
+            c.enrichInventory(listOf(server to name, secondKey to secondName))
+        }
+        assertEquals("No provider request for opted-out second Add with consent active",
+            afterFirst, http.requests.size)
+
+        // Reconnect/restart with the same observed exact job cannot silently
+        // resume enrichment from fresh inventory or settings re-evaluation.
+        val restored = controller()
+        assertFalse(restored.observe(secondKey, secondName).value.automaticLookupEnabled)
+        kotlinx.coroutines.runBlocking {
+            restored.enrichInventory(listOf(secondKey to secondName))
+        }
+        restored.onSettingsChanged()
+        assertEquals("Second-Add opt-out survives a new controller and inventory",
+            afterFirst, http.requests.size)
+    }
+
     @Test fun addAdmissionExcludesBeforeTheFirstObservationAndSurvivesRestart() {
         val key = UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40))
         assertTrue(controller().prepareForAdd(key, allowAutomaticLookup = false))
