@@ -64,7 +64,7 @@ run_instrumentation() {
       local stage
       stage="$(grep -E '^INSTRUMENTATION_STATUS: chunks_stage=[a-z0-9-]+$' "$output" \
         | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//' || true)"
-      stage="\${stage:-no-stage-yet}"
+      stage="${stage:-no-stage-yet}"
       printf 'CHUNKS_INSTALLED_JOURNEY: %s active elapsed=%ss last_stage=%s\n' \
         "$label" "$((SECONDS - started))" "$stage"
     fi
