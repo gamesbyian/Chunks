@@ -196,12 +196,15 @@ internal class ClientOperations(
             }
         }
 
-    suspend fun remove(hash: String, deleteData: Boolean, beforeRemove: () -> String? = { null }): ClientOperationOutcome =
-        mutateExisting(hash,
-            if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
-            { client.remove(hash, deleteData) }, beforeWrite = beforeRemove) { observed ->
-            if (observed == null) null else "Still registered"
-        }
+    suspend fun remove(hash: String, deleteData: Boolean): ClientOperationOutcome =
+        removeChecked(hash, deleteData) { client.remove(hash, deleteData) }
+
+    suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome =
+        removeChecked(hash, deleteData = false) { client.removeJob(hash, beforeWrite) }
+
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome =
+        mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
+            send) { observed -> if (observed == null) null else "Still registered" }
 
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean): ClientOperationOutcome {
         ClientHashes.requireDirectory(directory)
@@ -259,7 +262,6 @@ internal class ClientOperations(
         capability: ClientCapability,
         send: suspend () -> Unit,
         expectedDirectory: String? = null,
-        beforeWrite: () -> String? = { null },
         unmet: (ClientTorrent?) -> String?
     ): ClientOperationOutcome {
         val exact = ClientHashes.requireHash(hash)
@@ -274,7 +276,6 @@ internal class ClientOperations(
                 !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))
                 return ClientOperationOutcome.Refused(exact, "Transfer is no longer in the reviewed folder")
         }
-        beforeWrite()?.let { return ClientOperationOutcome.Refused(exact, it) }
         write(exact) { send() }?.let { return it }
         return readback(exact, unmet)
     }

@@ -108,24 +108,27 @@ internal class RTorrentClientAdapter(
     }
 
     override suspend fun remove(hash: String, deleteData: Boolean) {
+        if (!deleteData) return removeJob(hash) {}
         val exact = ClientHashes.requireHash(hash)
         val row = torrentRow(exact)
-        if (deleteData) {
-            when (val outcome = remote.removeWithDataViaRuTorrent(exact, row.name, row.directory)) {
-                is RemoteDeleteDataOutcome.Unsupported -> throw ClientRefusedException("Remove + data is not available here")
-                is RemoteDeleteDataOutcome.Refused -> throw ClientRefusedException("rTorrent refused Remove + data (${outcome.reason})")
-                is RemoteDeleteDataOutcome.Uncertain, is RemoteDeleteDataOutcome.Partial ->
-                    throw ClientWriteUncertainException("rTorrent Remove + data not confirmed")
-                is RemoteDeleteDataOutcome.QueuedForCleanup ->
-                    throw ClientPostWritePendingException(
-                        "ruTorrent queued cleanup; downloaded-file deletion is not independently verified")
-            }
-        } else {
-            when (remote.eraseFromSession(exact, row.name, row.directory)) {
-                is SessionEraseOutcome.AlreadyAbsent -> throw ClientRefusedException("Transfer is not in this client")
-                is SessionEraseOutcome.Uncertain -> throw ClientWriteUncertainException("rTorrent erase reply lost")
-                else -> Unit
-            }
+        when (val outcome = remote.removeWithDataViaRuTorrent(exact, row.name, row.directory)) {
+            is RemoteDeleteDataOutcome.Unsupported -> throw ClientRefusedException("Remove + data is not available here")
+            is RemoteDeleteDataOutcome.Refused -> throw ClientRefusedException("rTorrent refused Remove + data (${outcome.reason})")
+            is RemoteDeleteDataOutcome.Uncertain, is RemoteDeleteDataOutcome.Partial ->
+                throw ClientWriteUncertainException("rTorrent Remove + data not confirmed")
+            is RemoteDeleteDataOutcome.QueuedForCleanup ->
+                throw ClientPostWritePendingException(
+                    "ruTorrent queued cleanup; downloaded-file deletion is not independently verified")
+        }
+    }
+
+    override suspend fun removeJob(hash: String, beforeWrite: () -> Unit) {
+        val exact = ClientHashes.requireHash(hash)
+        val row = torrentRow(exact)
+        when (remote.eraseFromSession(exact, row.name, row.directory, beforeWrite)) {
+            is SessionEraseOutcome.AlreadyAbsent -> throw ClientRefusedException("Transfer is not in this client")
+            is SessionEraseOutcome.Uncertain -> throw ClientWriteUncertainException("rTorrent erase reply lost")
+            else -> Unit
         }
     }
 

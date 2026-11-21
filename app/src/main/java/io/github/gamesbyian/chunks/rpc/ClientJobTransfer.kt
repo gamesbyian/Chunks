@@ -101,7 +101,8 @@ internal class ClientJobTransfer(
         if (stillOnTarget?.hash?.equals(exact, ignoreCase = true) != true)
             return@withLock ClientOperationOutcome.Refused(exact,
                 "The target no longer shows this job; source kept")
-        source.remove(exact, deleteData = false,
-            beforeRemove = { connectionChanged.takeUnless { stillAuthorized() } })
+        source.removeJob(exact) {
+            if (!stillAuthorized()) throw ClientRefusedException(connectionChanged)
+        }
     }
 }

@@ -6,6 +6,7 @@ import java.net.InetSocketAddress
 import java.net.InetAddress
 import java.util.Base64
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -560,6 +561,41 @@ class RTorrentRemoteFixtureTest {
                 fixture.methods.size)
             assertEquals(2, fixture.methods.count {
                 it.contains("<methodName>d.hash</methodName>") })
+            assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+    @Test fun eraseRefusesIfMoveConsentExpiresDuringWriteAuthentication() = runBlocking {
+        val hash = "C".repeat(40)
+        val authorized = AtomicBoolean(true)
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data>" +
+                        eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    Reply(200, result("<string>$hash</string>"))
+                request.contains("<methodName>system.client_version</methodName>") -> {
+                    authorized.set(false)
+                    Reply(401, "Write authentication challenge")
+                }
+                else -> Reply(200, fault(-32601, "Unexpected RPC method"))
+            }
+        }.use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "demo", "fixture-secret"))
+            val refusal = assertThrows(ClientRefusedException::class.java) {
+                runBlocking {
+                    remote.eraseFromSession(hash, "Example", "/data") {
+                        if (!authorized.get()) throw ClientRefusedException("Connection changed")
+                    }
+                }
+            }
+            assertEquals("Connection changed", refusal.message)
+            assertEquals(1, fixture.methods.count { it.contains("<methodName>system.client_version</methodName>") })
             assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
         }
     }
