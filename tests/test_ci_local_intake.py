@@ -30,6 +30,27 @@ class LocalIntakeDispatchTest(unittest.TestCase):
         self.assertIn(f"bash {MOCK}", text)
         self.assertIn("python3 -m unittest discover -s tests -p test_ci_local_intake.py", text)
 
+    def test_installed_android_invocations_have_independent_deadlines(self):
+        # A silent adb bridge must never consume the entire 30–40 minute job.
+        # Preserve every class, phase, negative assertion and actual engine test.
+        expected = {
+            "tools/installed_source_archive.sh": 1,
+            "tools/installed_partial_resume_death.sh": 2,
+            "tools/android10_downloads_instrumentation.sh": 7,
+            "tools/local_intake_journey.sh": 3,
+            "tools/android10_downloads_revocation.sh": 2,
+        }
+        bounded = re.compile(
+            r"timeout --signal=TERM --kill-after=15s [0-9]+m "
+            r"adb shell am instrument -w -r"
+        )
+        for path, count in expected.items():
+            with self.subTest(script=path):
+                source = (ROOT / path).read_text()
+                self.assertEqual(count, source.count("adb shell am instrument -w -r"))
+                self.assertEqual(count, len(bounded.findall(source)))
+                self.assertIn("set -euo pipefail", source)
+
     def test_ordinary_native_suite_cannot_execute_the_self_kill_phases(self):
         text = (ROOT / FIXTURE).read_text()
         self.assertIn('requirePhase("a")', text)

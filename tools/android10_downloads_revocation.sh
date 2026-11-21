@@ -4,6 +4,8 @@
 # Start -> grant restored -> stopped restore/recheck/seed/Remove keeping bytes.
 # Never clears app data, never deletes Downloads and never runs on a handset.
 set -euo pipefail
+# Each installed invocation has its own deadline; a silent adb bridge must not consume
+# the entire hosted job. Timeout is a failure and existing receipt assertions remain.
 
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
@@ -64,7 +66,7 @@ positive() {
   local phase="$1" marker="$2" result log
   adb shell am force-stop "$pkg"
   adb logcat -c
-  if ! result="$(adb shell am instrument -w -r \
+  if ! result="$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r \
       -e class "$class#phase$phase" \
       -e chunksGrantPhase "$(printf '%s' "${phase:0:1}" | tr '[:upper:]' '[:lower:]')" "$runner")"; then
     echo "CHUNKS_GRANT: instrumentation command failed in $phase" >&2; return 1
@@ -99,7 +101,7 @@ positive() {
 # syntax and exact uniqueness instead of hardcoding one known positive marker.
 adb shell am force-stop "$pkg"
 adb logcat -c
-if ! a="$(adb shell am instrument -w -r \
+if ! a="$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r \
   -e class "$class#phaseA_completeNativeSeedInSharedDownloadsThenStop" \
   -e chunksGrantPhase a "$runner")"; then
   echo 'CHUNKS_GRANT: phase A could not execute' >&2; exit 1

@@ -2,6 +2,8 @@
 # Source-only installed Android filesystem witness: no torrent engine, no
 # remote RPC, no ContentResolver delete and no original file mutation.
 set -euo pipefail
+# Each installed invocation has its own deadline; a silent adb bridge must not consume
+# the entire hosted job. Timeout is a failure and existing receipt assertions remain.
 
 api="${1:-}"
 [[ "$api" == 29 || "$api" == 35 ]] || {
@@ -35,7 +37,7 @@ bash tools/verify_installed_apk_bytes.sh \
 
 adb shell pm clear io.github.gamesbyian.chunks >/dev/null
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 6m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.SourceTorrentArchiveInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
   > "$out/instrumentation.txt" 2>&1

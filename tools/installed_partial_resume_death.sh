@@ -3,6 +3,8 @@
 # part-way, then a fresh app process restores the engine-owned checkpoint.
 # Disposable app-private fixture only; no user Place, remote, tracker or DHT.
 set -euo pipefail
+# Each installed invocation has its own deadline; a silent adb bridge must not consume
+# the entire hosted job. Timeout is a failure and existing receipt assertions remain.
 api="${1:-}"
 [[ "$api" == 29 || "$api" == 35 ]] || { echo "CHUNKS_RESUME_DEATH: invalid-api" >&2; exit 64; }
 [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || {
@@ -25,9 +27,14 @@ class=io.github.gamesbyian.chunks.engine.LocalPartialResumeProcessDeathInstrumen
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 adb logcat -c || true
 set +e
-adb shell am instrument -w -r -e chunks_resume_death_phase download-then-die \
+timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e chunks_resume_death_phase download-then-die \
   -e class "$class#downloadThenDie" "$runner" > "$out/phase1.txt" 2>&1
+phase1_status=$?
 set -e
+if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
+  echo "::error::Phase 1 timed out without a completed deliberate death witness"
+  exit 1
+fi
 adb logcat -d -s ChunksResumeDeath > "$out/phase1-log.txt" 2>&1 || true
 # Phase 1 must end by its own deliberate kill, never by a pass or an assertion.
 grep -q "CHUNKS_RESUME_DEATH: killing" "$out/phase1-log.txt" || {
@@ -39,7 +46,7 @@ for _ in $(seq 1 50); do adb shell pidof "$pkg" >/dev/null 2>&1 || break; sleep 
 adb shell pidof "$pkg" >/dev/null 2>&1 && { echo "::error::app process still alive after kill"; exit 1; }
 adb logcat -c || true
 set +e
-adb shell am instrument -w -r -e chunks_resume_death_phase restore \
+timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e chunks_resume_death_phase restore \
   -e class "$class#restoreKeepsCheckpointedPieces" "$runner" > "$out/phase2.txt" 2>&1
 status=$?
 set -e
