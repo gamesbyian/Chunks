@@ -1236,12 +1236,14 @@ internal fun VerifiedAddScreen(
                 ) {
                     val oldSource = draft.attemptSource
                     val oldDocument = draft.selectedBytes
+                    val sameDraft = magnet == oldSource && initialTorrent == null
                     // The single explicit click acknowledges a confirmed session
                     // or finishes an attested Add. Unresolved write latches stay
                     // fenced by RemoteAddSession.beginNextDraft().
                     if (draft.beginNextDraft()) {
                         onNextDraftStarted(oldDocument)
                         if (magnet == oldSource) onMagnet("")
+                        if (sameDraft) automaticArtwork = true
                         onDestination("")
                         awaitingConfirmation = false
                         fileError = null

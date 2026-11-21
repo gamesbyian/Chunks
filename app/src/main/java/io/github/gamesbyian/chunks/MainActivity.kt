@@ -828,10 +828,14 @@ internal fun ChunksApp(
             canCloseRemoteAddReview(remoteDraft.coordinator.phase, remoteDraft.verifiedHash,
                 remoteDraft.uncertain)) {
             val oldSource = remoteDraft.attemptSource
-            if (remoteDraft.beginNextDraft()) {
-                if (magnet == oldSource) magnet = ""
-                serverHandoffTorrent = null
+            val oldDocument = remoteDraft.selectedBytes
+            val currentDocument = localReviewedTorrent.value
+            val sameDraft = magnet == oldSource && serverHandoffTorrent == null &&
+                (currentDocument == null || completedRemoteReviewMatchesLocal(oldDocument, currentDocument))
+            if (remoteDraft.beginNextDraft() && sameDraft) {
+                magnet = ""
                 localReviewedTorrent.value = null
+                addArtworkChoices.onServer(aliasScope).value = true
             }
         }
         val protocolId = addProtocolTargetId
@@ -848,14 +852,18 @@ internal fun ChunksApp(
         }
     }
 
+    fun selectedRemoteAddSession(): RemoteAddSession? {
+        val selected = addDestination as? UniversalAddRouteTarget.RTorrent
+        return remoteAddSessions.existingForAccount(selected?.accountScope ?: aliasScope)
+    }
+
     /** An unsubmitted draft or a not-yet-releasable attempt holds a new shared source. */
-    fun addSourceOccupied(): Boolean {
-        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
-            ?.let { remoteAddSessions.forAccount(it) }
+    fun addSourceOccupied(incomingText: String? = null): Boolean {
+        val remoteDraft = selectedRemoteAddSession()
         // A first Android document being read is an occupied draft even
         // before the new .torrent metainfo is visible on the Add form.
         return sharedTorrentReading ||
-            magnet.isNotBlank() || localReviewedTorrent.value != null ||
+            (magnet.isNotBlank() && magnet != incomingText) || localReviewedTorrent.value != null ||
             serverHandoffTorrent != null ||
             (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
             activeLocalAddAttempt.attemptedTicket != null ||
@@ -865,10 +873,11 @@ internal fun ChunksApp(
 
     // Intake is shared across destinations. A held source may proceed after a
     // verified attempt settles only if there is no competing draft to replace.
-    val heldRemoteAdd = remoteAddSessions.existingForAccount(aliasScope)
+    val heldRemoteAdd = selectedRemoteAddSession()
     val heldProtocolAdd = addProtocolTargetId?.takeIf { protocolAddAttempt.profileId == it }
     LaunchedEffect(
-        pendingSharedDocument, pendingSharedMagnet, sharedTorrentReading, addDestination,
+        incomingTorrent, sharedMagnet, pendingSharedDocument, pendingSharedMagnet,
+        sharedTorrentReading, addDestination, aliasScope, localReviewedTorrent.value,
         activeLocalAddAttempt.coordinator.phase, activeLocalAddAttempt.originalDocument.deletion,
         activeLocalAddAttempt.originalDocument.deleting,
         heldRemoteAdd?.coordinator?.phase, heldRemoteAdd?.verifiedHash, heldRemoteAdd?.submitting,
@@ -878,7 +887,11 @@ internal fun ChunksApp(
     ) {
         val document = pendingSharedDocument
         val text = pendingSharedMagnet
-        if (sharedTorrentReading || (document == null && text == null)) return@LaunchedEffect
+        // MainActivity can queue the new URI before Compose consumes that same
+        // incoming event. Let the one-shot effect admit it before promoting
+        // anything already held, so one delivery cannot reappear as a second draft.
+        if (incomingTorrent != null || sharedMagnet != null || sharedTorrentReading ||
+            (document == null && text == null)) return@LaunchedEffect
         releaseVerifiedAttemptsForNewSource()
         if (addSourceOccupied()) return@LaunchedEffect
         pendingSharedDocument = null
@@ -1004,15 +1017,7 @@ internal fun ChunksApp(
         releaseVerifiedAttemptsForNewSource()
         sharedTorrentError = null
         pendingSharedDocument = null
-        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
-            ?.let { remoteAddSessions.forAccount(it) }
-        if ((magnet.isNotBlank() && magnet != proposed) ||
-            localReviewedTorrent.value != null || serverHandoffTorrent != null ||
-            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
-            activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true ||
-            sharedTorrentReading ||
-            (addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)) {
+        if (addSourceOccupied(incomingText = proposed)) {
             pendingSharedMagnet = proposed
         } else {
             pendingSharedMagnet = null
