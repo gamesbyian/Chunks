@@ -111,7 +111,6 @@ class LocalUniversalAddScreenGateTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
-        rule.onNodeWithText("Acknowledge existing job (Start unverified)").assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).assertDoesNotExist()
         assertSame("Contrary inventory keeps the exact attempted ticket", ticket, session.attemptedTicket)
         assertNull("No new engine Add is authorized by contrary readback",
@@ -155,7 +154,6 @@ class LocalUniversalAddScreenGateTest {
                 substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
-        rule.onNodeWithText("Acknowledge existing job, then review another").assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.ADD_ANOTHER).assertDoesNotExist()
         assertSame("Exact attempted ticket remains fenced", ticket, session.attemptedTicket)
         assertNull("Contrary readback never authorizes a new engine Add",

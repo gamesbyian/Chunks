@@ -11,25 +11,21 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.hasAnyDescendant
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasSetTextAction
@@ -260,41 +256,6 @@ class ChunksMainActivityAtlasTest {
         worker?.join(2500)
     }
 
-    /**
-     * An asynchronously refreshed LazyColumn may detach/recycle a semantics
-     * node between scrolling and dispatching its click action. Retry ONLY
-     * this specific pre-dispatch detachment; never retry a network mutation.
-     */
-    private fun openChangeListNameInPopulatedQueue() {
-        var detached = 0
-        while (detached < 3) {
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
-            rule.waitForIdle()
-            // Scrolling can compose a transient lazy row which is recycled
-            // before the click is dispatched. A missing semantics node is a
-            // pre-dispatch race, not a completed Add/Remove/rename operation.
-            if (rule.onAllNodesWithText("Change list name").fetchSemanticsNodes().isEmpty()) {
-                detached++
-                rule.waitForIdle()
-                continue
-            }
-            try {
-                rule.onAllNodesWithText("Change list name").onFirst()
-                    .performSemanticsAction(SemanticsActions.OnClick)
-                return
-            } catch (ex: IllegalStateException) {
-                if (ex.message?.contains("Modifier node is not currently attached") != true) throw ex
-                detached++
-                rule.waitForIdle()
-            } catch (ex: AssertionError) {
-                if (ex.message?.contains("There are no existing nodes for that selector") != true) throw ex
-                detached++
-                rule.waitForIdle()
-            }
-        }
-        throw AssertionError("Alias editor repeatedly detached during native navigation")
-    }
-
     @Test fun installedAppNavigatesPopulatedReadOnlyRpcScreens() {
         val policy = NetworkSecurityPolicy.getInstance()
         assertTrue("Literal loopback must be permitted for controlled Android QA",
@@ -448,84 +409,31 @@ class ChunksMainActivityAtlasTest {
             receivedMethods.toList().all {
                 it in setOf("system.client_version", "d.multicall2", "f.multicall", "directory.default")
             })
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
-        rule.onNodeWithText("Back to transfers").performClick()
-        rule.onNodeWithText("3 transfers", substring = true).assertExists()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_BACK_TO_TRANSFERS))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SCREEN).assertExists()
+        val exactEnvironment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(endpoint, "")
+        val clientChip = ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES + "." + exactEnvironment.value
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(clientChip))
+        rule.onNodeWithTag(clientChip).assertIsSelected()
 
-        // Identify the episodic fixture by its *original* server-reported name.
-        // The queue is name-sorted, so the first unfiltered card is not this item.
-        // Keeping this search after Save also proves the original remains searchable.
-        // Set the query through the field's own SetText action: IME text input
-        // occasionally raced focus here and left the queue unfiltered.
-        // Reporting and batch-export controls above this LazyColumn item can
-        // push Search beyond the initially composed viewport. Scroll to the
-        // actual editable field first, not merely to the queue's header.
-        // This keeps a real installed-app SetText + one-match assertion.
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Search names, aliases, folders or hashes"))
-        rule.onNodeWithText("Search names, aliases, folders or hashes").performTextReplacement("Public.Example")
+        // Search by the original server-reported name in the canonical list.
+        val search = hasTestTag(ChunksSemantics.TRANSFERS_SEARCH)
+        val matchingTransfer = androidx.compose.ui.test.hasContentDescription(
+            "Details for Public.Example.Long.Named.Archive.S01E01.mkv", substring = true)
+        val filteredCount = hasText("1 of 3 transfers", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(search)
+        rule.onNode(search).performTextReplacement("Public.Example")
         dismissSearchKeyboard()
-        // The long remote header can place the filtered result count outside
-        // the composed LazyColumn viewport when the keyboard closes. A query
-        // field can be valid while an offscreen item has zero semantics nodes.
-        // Resolve via LazyList ScrollToIndex, as other queue tests already do.
-        // A compact Transfers header merges the filtered count and the
-        // actionable sort criterion. Require both after the real UI search,
-        // preserving the one-match test instead of accepting the query alone.
-        // A narrowed list reads "1 of N shown"; an unnarrowed one "1 shown".
-        val oneMatchSort = (hasText("· 1 of ", substring = true) and
-            hasText(" shown · Sort:", substring = true) or
-            hasText("· 1 shown · Sort:", substring = true)) and hasClickAction()
-        try {
-            rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(oneMatchSort)
-            rule.onNode(oneMatchSort).assertExists()
-        } catch (failure: AssertionError) {
-            save("app-search-filter-timeout-diagnostic-real-compose")
-            val lines = rule.onRoot(useUnmergedTree = true).printToString()
-                .lineSequence()
-                .filter { it.contains("shown") ||
-                    it.contains("Search names, aliases, folders or hashes") ||
-                    it.contains("Public.Example") ||
-                    it.contains("InputText") }
-                .take(25).joinToString(" | ").take(2800)
-            throw AssertionError("Search did not show one match with its sort action. " +
-                "Visible relevant semantics=" + lines, failure)
-        }
-        // A collapsed row retains status/progress without composing its
-        // mutation actions. Disclosure is a user gesture; it sends no RPC.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More details"))
-        // A footer now overlays the bottom of the scrolling list. Bring the
-        // *actual* disclosure into the visible area before sending a tap;
-        // merely composing the lazy item does not guarantee an unobscured hit.
-        rule.onNodeWithText("More details").performScrollTo()
-            .assertIsDisplayed().performClick()
-        // Regression: before reserving the footer's viewport, this real tap
-        // landed on the overlapping + Add footer and navigated away instead
-        // of expanding the exact transfer.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(filteredCount)
+        rule.onNode(filteredCount).assertExists()
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(matchingTransfer)
+        rule.onNode(matchingTransfer).performScrollTo().assertIsDisplayed().performClick()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.onNodeWithText("Add a transfer").assertDoesNotExist()
-        try {
-            rule.waitUntil(10_000) {
-                rule.onAllNodesWithText("Hide details").fetchSemanticsNodes().isNotEmpty()
-            }
-            rule.onNodeWithText("Hide details").assertExists()
-        } catch (failure: Throwable) {
-            save("app-expand-details-timeout-diagnostic-real-compose")
-            val relevant = rule.onRoot(useUnmergedTree = true).printToString()
-                .lineSequence().filter { it.contains("details") ||
-                    it.contains("Public.Example") || it.contains("Options") }
-                .take(35).joinToString(" | ").take(3000)
-            throw AssertionError("Expanded transfer details were not observed. " +
-                "Relevant Compose semantics=" + relevant, failure)
-        }
-        // An actual installed-app queue action, not only an isolated editor
-        // component. Wait for the filtered count, not just the IME's text;
-        // rerendering the list can otherwise detach the click's modifier.
-        openChangeListNameInPopulatedQueue()
-        // Name suggestions are secondary to an editable draft. Disclose the
-        // same original suggestion list; no rename is sent until explicit Save.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Show name suggestions", substring = true))
+
+        // The alias editor works on the exact transfer's full Details screen.
+        rule.onNodeWithText("Change list name").performScrollTo().performClick()
         rule.onNodeWithText("Show name suggestions", substring = true)
             .performScrollTo().performClick()
         rule.waitUntil(10_000) {
@@ -554,11 +462,20 @@ class ChunksMainActivityAtlasTest {
         // fails. This distinguishes a real persistence/recomposition problem from a
         // semantics scroll issue on the actual installed MainActivity.
         save("app-alias-post-save-diagnostic-real-compose")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Original torrent: Public.Example.Long.Named.Archive.S01E01.mkv"))
-        rule.onNodeWithText("Original torrent: Public.Example.Long.Named.Archive.S01E01.mkv",
-            substring = true).assertExists()
+        val originalCaption = "Original torrent name: Public.Example.Long.Named.Archive.S01E01.mkv"
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText(originalCaption).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText(originalCaption).performScrollTo().assertExists()
         save("app-alias-saved-populated-real-compose")
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        // The unchanged original name still finds the newly named exact job.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(filteredCount)
+        rule.onNode(filteredCount).assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            androidx.compose.ui.test.hasContentDescription("Details for $recommended", substring = true))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(search)
+        rule.onNode(search).performTextReplacement("")
 
         // The root Options destination is searchable and routes to the
         // existing exact-account tools. No remote write is issued by navigation.

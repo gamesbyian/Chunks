@@ -609,9 +609,6 @@ internal fun ChunksApp(
     val sharedTorrentReading = incomingDocumentRead != null
     var sharedTorrentError by (retainedAddOwner?.sharedTorrentError
         ?: remember { mutableStateOf<String?>(null) })
-    // The selected local review URI is separate from the still-unselected
-    // Android source: opening the local device inventory alone never consumes it.
-    var localHandoffTorrentUri by remember { mutableStateOf<Uri?>(null) }
     var localHandoffMagnet by remember { mutableStateOf<String?>(null) }
     // A transfer opened from All environments: searched once on the local device list.
     var localSearchPrefill by remember { mutableStateOf<String?>(null) }
@@ -875,10 +872,13 @@ internal fun ChunksApp(
     // verified attempt settles only if there is no competing draft to replace.
     val heldRemoteAdd = selectedRemoteAddSession()
     val heldProtocolAdd = addProtocolTargetId?.takeIf { protocolAddAttempt.profileId == it }
+    val heldLocalObservation = retainedAddOwner?.attempts
+        ?.observationRevision(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
     LaunchedEffect(
         incomingTorrent, sharedMagnet, pendingSharedDocument, pendingSharedMagnet,
         sharedTorrentReading, addDestination, aliasScope, localReviewedTorrent.value,
-        activeLocalAddAttempt.coordinator.phase, activeLocalAddAttempt.originalDocument.deletion,
+        heldLocalObservation, activeLocalAddAttempt.coordinator.phase,
+        activeLocalAddAttempt.originalDocument.deletion,
         activeLocalAddAttempt.originalDocument.deleting,
         heldRemoteAdd?.coordinator?.phase, heldRemoteAdd?.verifiedHash, heldRemoteAdd?.submitting,
         heldRemoteAdd?.originalDocumentStatus?.deletion, heldRemoteAdd?.originalDocumentStatus?.deleting,
@@ -949,7 +949,6 @@ internal fun ChunksApp(
                     RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
                     reviewed.bytes.copyOf() else null
                 serverHandoffDocument = document.takeIf { serverHandoffTorrent != null }
-                localHandoffTorrentUri = null
                 magnet = ""
                 remoteAddSessions.clearPendingSourceSelection()
             } else if (incomingDocumentRead == document) {
@@ -1310,7 +1309,6 @@ internal fun ChunksApp(
                     // handoff. Keep the chosen target, Place and Start.
                     localReviewedTorrent.value = null
                     serverHandoffTorrent = null
-                    localHandoffTorrentUri = null
                     magnet = incomingText
                     remoteAddSessions.selectMagnet(aliasScope)
                 }
@@ -1330,6 +1328,7 @@ internal fun ChunksApp(
             onUseRoutingSuggestion = { useRoutingSuggestion() },
             selectedProtocolId = addProtocolTargetId,
             localSelected = addDestination == UniversalAddRouteTarget.Local,
+            showDraftOptions = !addTargetUnavailable,
             displayNameSupported = when {
                 addProtocolTargetId != null -> UniversalAddClientCapabilities.protocol(null).displayName
                 addTargetIsAuthenticated -> UniversalAddClientCapabilities.RTORRENT.displayName
@@ -1498,7 +1497,6 @@ internal fun ChunksApp(
                     viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, hash)
                 },
                 returnFocusTool = localReturnFocus, onReturnFocusConsumed = { localReturnFocus = null },
-                initialTorrentUri = localHandoffTorrentUri,
                 canReviewOnConnectedServer = connectedRemote != null,
                 serverCopy = if (connectedRemote == null || localRemoteScope == null) null
                     else LocalServerCopyLink(runCatching {
@@ -1512,9 +1510,6 @@ internal fun ChunksApp(
                     else LocalMoveServer(aliasScope) { hash ->
                         TransferMoveObservations.server(connectedRemote, hash)
                     },
-                onTorrentConsumed = { consumed ->
-                    if (localHandoffTorrentUri == consumed) localHandoffTorrentUri = null
-                },
                 onPrefillConsumed = { localHandoffMagnet = null },
                 onPrepareRemote = { draft ->
                     prepareRemoteMagnet(draft)
@@ -1597,7 +1592,6 @@ internal fun ChunksApp(
                 onTorrentAdopted = { preview, bytes, document ->
                     localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
                     serverHandoffTorrent = null
-                    localHandoffTorrentUri = null
                 },
                 finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                 environmentLabel = activeAddDisplayName,
@@ -1899,10 +1893,10 @@ internal fun ChunksApp(
                 // Add action hands off the pending magnet to its review.
                 onAddToLocal = {
                     val selectedDocument = incomingTorrent
-                    if (selectedDocument != null) {
-                        localHandoffTorrentUri = selectedDocument
+                    if (selectedDocument != null && !sharedTorrentReading) {
+                        incomingDocumentRead = selectedDocument
                         onIncomingTorrentConsumed()
-                    } else {
+                    } else if (selectedDocument == null) {
                         pendingSharedMagnet?.let { source ->
                             localHandoffMagnet = source
                             pendingSharedMagnet = null
@@ -1924,43 +1918,18 @@ internal fun ChunksApp(
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({
                     val sharedDocument = incomingTorrent
-                    if (sharedDocument != null && !sharedTorrentReading &&
-                        server != null && aliasScope.isNotBlank()) {
-                        // Selecting a remote authorizes only a bounded, read-only
-                        // local document parse. No rTorrent operation is attempted.
-                        val selectedServer = server
-                        val selectedScope = aliasScope
-                        sharedTorrentError = null
-                        scope.launch {
-                            try {
-                                val reviewed = withContext(Dispatchers.IO) {
-                                    SharedTorrentDocument.read(context.contentResolver, sharedDocument)
-                                }
-                                if (server === selectedServer && aliasScope == selectedScope &&
-                                    incomingTorrent == sharedDocument && section == Section.COMBINED) {
-                                    // A newer, explicit document supersedes an older
-                                    // text draft; the remote Add form reviews these bytes.
-                                    magnet = ""
-                                    remoteAddSessions.clearPendingSourceSelection()
-                                    serverHandoffTorrent = reviewed.bytes
-                                    serverHandoffDocument = sharedDocument
-                                    onIncomingTorrentConsumed()
-                                    selectAuthenticatedAddTarget()
-                                } else {
-                                    sharedTorrentError =
-                                        "The shared source or signed-in server changed. Choose again; nothing was added."
-                                }
-                            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                throw cancel
-                            } catch (_: Exception) {
-                                sharedTorrentError =
-                                    "The shared .torrent could not be read or verified (v1 metainfo, maximum 2 MiB). Nothing was added."
-                            } finally {
-                            }
+                    if (sharedDocument != null && !sharedTorrentReading) {
+                        if (RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null) {
+                            // The same retained reader validates the document and only
+                            // adopts it if this exact draft hasn't since changed.
+                            addDestination = UniversalAddRouteTarget.RTorrent(aliasScope)
+                            incomingDocumentRead = sharedDocument
+                            onIncomingTorrentConsumed()
+                            section = Section.ADD_CHOOSE
+                        } else {
+                            sharedTorrentError =
+                                "This rTorrent account is no longer verified. Reconnect before reviewing this .torrent."
                         }
-                    } else if (sharedDocument != null && !sharedTorrentReading) {
-                        sharedTorrentError =
-                            "This rTorrent account is no longer verified. Reconnect before reviewing this .torrent."
                     } else if (sharedDocument == null) {
                         pendingSharedMagnet?.let { source ->
                             prepareRemoteMagnet(source)
@@ -2923,7 +2892,6 @@ internal fun ChunksApp(
                                 // document to archive or remove, even if the bytes coincide
                                 // with an earlier Android document.
                                 localReviewedTorrent.value = null
-                                localHandoffTorrentUri = null
                                 serverHandoffDocument = null
                                 prepareRemoteTorrent(document)
                                 selectAuthenticatedAddTarget()

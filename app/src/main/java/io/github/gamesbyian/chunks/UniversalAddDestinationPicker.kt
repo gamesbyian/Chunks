@@ -87,6 +87,7 @@ internal fun UniversalAddDestinationPicker(
     protocolDestinations: List<UniversalAddSavedDestination> = emptyList(),
     selectedProtocolId: String? = null,
     localSelected: Boolean = !addingRemotely && selectedProtocolId == null,
+    showDraftOptions: Boolean = true,
     /** From the selected client's UniversalAddClientCapabilities; false explains instead of offering a name. */
     displayNameSupported: Boolean = selectedProtocolId == null,
     onProtocol: (String) -> Unit = {},
@@ -99,7 +100,7 @@ internal fun UniversalAddDestinationPicker(
     val (activeRemoteName, otherDestinations) = compactUniversalAddTargetLabels(
         authenticatedRemoteLabel, savedOtherProfiles)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (incomingSourceWaiting) {
+        if (showDraftOptions && incomingSourceWaiting) {
             Text("Another torrent source was shared. Keep the current draft or explicitly replace it; neither choice adds a transfer.",
                 style = MaterialTheme.typography.bodyMedium)
             FlowRow(Modifier.fillMaxWidth(),
@@ -116,7 +117,7 @@ internal fun UniversalAddDestinationPicker(
         sourceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Text("Add to", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() })
-        routingSuggestion?.let { (label, reason) ->
+        routingSuggestion?.takeIf { showDraftOptions }?.let { (label, reason) ->
             Text("Smart Routing suggests $label · $reason", style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.testTag("chunks.add.routing.suggestion"))
             if (!routingSuggestionSelected) OutlinedButton(onClick = onUseRoutingSuggestion, enabled = enabled,
@@ -156,6 +157,9 @@ internal fun UniversalAddDestinationPicker(
             "Saved connections need authentication before Add; selecting one keeps this draft.",
             style = MaterialTheme.typography.bodySmall)
 
+        // An offline exact account can reconnect or change target here, but
+        // its private draft stays behind its own privacy gate.
+        if (!showDraftOptions) return@Column
         // Chunks display names exist for Local and rTorrent transfers only. A name
         // typed for a Transmission/qBittorrent/Deluge Add would be silently dropped,
         // so the capability is explained instead of offered.
