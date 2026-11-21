@@ -29,7 +29,12 @@ adb logcat -c || true
 set +e
 timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e chunks_resume_death_phase download-then-die \
   -e class "$class#downloadThenDie" "$runner" > "$out/phase1.txt" 2>&1
+phase1_status=$?
 set -e
+if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
+  echo "::error::Phase 1 timed out without a completed deliberate death witness"
+  exit 1
+fi
 adb logcat -d -s ChunksResumeDeath > "$out/phase1-log.txt" 2>&1 || true
 # Phase 1 must end by its own deliberate kill, never by a pass or an assertion.
 grep -q "CHUNKS_RESUME_DEATH: killing" "$out/phase1-log.txt" || {
