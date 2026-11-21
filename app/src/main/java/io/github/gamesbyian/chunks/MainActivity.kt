@@ -2700,6 +2700,12 @@ internal fun ChunksApp(
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
                             onPrepareAdd = { document ->
+                                // This archive entry is a new source with no standalone
+                                // document to archive or remove, even if the bytes coincide
+                                // with an earlier Android document.
+                                localReviewedTorrent.value = null
+                                localHandoffTorrentUri = null
+                                serverHandoffDocument = null
                                 prepareRemoteTorrent(document)
                                 selectAuthenticatedAddTarget()
                             },

@@ -9,6 +9,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -23,6 +24,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore
 import io.github.gamesbyian.chunks.model.SmartRoutingPreview
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.InetAddress
@@ -143,6 +146,37 @@ class UniversalAddSourcePrecedenceTest {
 
     private fun assertNoWriteRpc() = assertFalse("Choosing sources/targets must not write: $methods",
         methods.any { it.startsWith("load.") || it == "d.start" || it == "d.erase" })
+
+    @Test fun serverSnapshotChoiceSupersedesAnEarlierLocalDocumentWithoutWriting() {
+        connect()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.FOOTER_ADD))
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_TARGET_DEVICE))
+        pickTorrentThroughAndroidPicker(torrent("earlier-local.mkv"), "earlier-local.mkv")
+
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.FOOTER_OPTIONS))
+        LazyComposeActions.replaceText(rule, hasSetTextAction() and hasText("Search options"), "Server inventory backup")
+        LazyComposeActions.activateOnce(rule, hasText("Server inventory backup"))
+        LazyComposeActions.activateOnce(rule, hasText("Compare saved snapshot with rTorrent server"))
+
+        val name = "chosen-from-snapshot.mkv"
+        val original = torrent(name)
+        val hash = requireNotNull(TorrentMetainfoReader.preview(original).infoHashV1)
+        val archive = SnapshotManifestV1.encode(SnapshotManifestV1.Manifest(
+            "chunks-android", "2026-11-21T07:00:00Z", SnapshotManifestV1.Source.LOCAL,
+            listOf(SnapshotManifestV1.Item(hash, name, SnapshotManifestV1.Recovery.METAINFO))
+        ), mapOf(hash to original))
+        val archiveUri = Uri.parse("content://chunks.test.documents/review.chunksnap")
+        shadowOf(rule.activity.contentResolver).registerInputStream(archiveUri, archive.inputStream())
+        LazyComposeActions.activateOnce(rule, hasText("Choose .chunksnap to compare"))
+        val picker = shadowOf(rule.activity).nextStartedActivityForResult
+        assertEquals(Intent.ACTION_OPEN_DOCUMENT, picker.intent.action)
+        shadowOf(rule.activity).receiveResult(picker.intent, Activity.RESULT_OK, Intent().setData(archiveUri))
+
+        LazyComposeActions.activateOnce(rule, hasText("Review original .torrent in server Add"))
+        waitForText(name)
+        assertTrue(rule.onAllNodesWithText("earlier-local.mkv", substring = true).fetchSemanticsNodes().isEmpty())
+        assertNoWriteRpc()
+    }
 
     /**
      * Regression for the #1649 defect class: an older typed magnet must not silently replace
