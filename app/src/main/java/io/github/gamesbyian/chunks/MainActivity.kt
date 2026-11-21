@@ -445,14 +445,10 @@ internal fun ChunksApp(
     var stale by remember { mutableStateOf(false) }
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
-    // A fresh install with no remembered authenticated server opens the useful
-    // local transfer inventory. Saved/verified remote users still enter their
-    // existing single-attempt reconnect journey. Restored routes keep their
-    // explicit prior section; this default grants no server mutation authority.
+    // Open the canonical catalog by default. A saved login can temporarily
+    // delegate its one read-only reconnect to the existing Connections owner.
     var section by rememberSaveable(saver = SectionRestoreSaver) {
-        // A saved login needs the existing one-shot authenticated reconnect
-        // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.COMBINED else Section.SERVER)
+        mutableStateOf(Section.COMBINED)
     }
     // Restored canonical Transfers cannot itself run an authenticated Connect.
     // Delegate exactly one eligible cold-start attempt to existing Connections,
@@ -467,6 +463,7 @@ internal fun ChunksApp(
                     explicitDisconnectSuppressed || connectionDraftEdited,
                 authenticated = server != null
             )) {
+            returnFromStartupConnectToCanonical = true
             section = Section.SERVER
         }
     }
@@ -1925,10 +1922,7 @@ internal fun ChunksApp(
                     alreadyAttempted = startupReconnectAttempted ||
                         explicitDisconnectSuppressed || connectionDraftEdited
                 ),
-                onStartupReconnectConsumed = {
-                    startupReconnectAttempted = true
-                    returnFromStartupConnectToCanonical = section == Section.SERVER && server == null
-                },
+                onStartupReconnectConsumed = { startupReconnectAttempted = true },
                 endpoint = endpoint, username = username, password = password,
                 connectionName = connectionName, onConnectionName = {
                     connectionName = it
@@ -2237,7 +2231,7 @@ internal fun ChunksApp(
                     connectionDraftEdited = true
                 },
                 onPassword = { password = it; connectionDraftEdited = true },
-                onConnect = {
+                onConnect = { automatic ->
                     // An advanced RPC path makes this one exact address: no discovery.
                     val target = try { RemoteSmartConnect.withExactPath(endpoint, rpcPath) }
                         catch (invalid: IllegalArgumentException) {
@@ -2256,7 +2250,7 @@ internal fun ChunksApp(
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(target, username, password)
                         val preferredConnectionName = connectionName.trim()
-                            .takeIf { it.isNotEmpty() && !returnFromStartupConnectToCanonical }
+                            .takeIf { it.isNotEmpty() && !automatic }
                         connectDiagnostics = ConnectionDiagnostics()
                         connectJob = scope.launch {
                             try {
@@ -2321,34 +2315,34 @@ internal fun ChunksApp(
                                     // A local-origin .torrent can be prepared before a
                                     // remote login. Keep its reviewed Add draft visible
                                     // after connecting, without submitting any RPC.
-                                    val startupReturn = returnFromStartupConnectToCanonical &&
+                                    val startupReturn = automatic && returnFromStartupConnectToCanonical &&
                                         section == Section.SERVER
                                     returnFromStartupConnectToCanonical = false
                                     // A saved-profile choice in Universal Add resumes only after THIS
                                     // exact route/principal is authenticated; no RPC is sent.
-                                    if (savedAddReconnect.consumeAuthenticated(aliasScope)) {
-                                        selectAuthenticatedAddTarget()
-                                    } else {
-                                    // Preserve any source draft without implicitly
-                                    // submitting it when the Connect probe finishes.
-                                    section = if (startupReturn) Section.COMBINED else Section.SERVER
-                                    val verifiedId = io.github.gamesbyian.chunks.model
-                                        .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
-                                    if (startupReturn) {
-                                        // An automatic cold-start reconnect is not a person's scope
-                                        // choice: restore canonical Transfers in its SAVED view
-                                        // (All, device, one or several servers). Focusing this one
-                                        // server here overwrote that saved selection every launch.
-                                        consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
-                                        combinedFromConnections = true
-                                    } else {
-                                        verifiedConnectionNotice = VerifiedConnectionNotice(
-                                            preferredConnectionName
-                                                ?: savedProfiles.firstOrNull { it.id == verifiedId }?.label
-                                                ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
-                                            saved = null // persistence has not been observed yet
-                                        )
-                                    }
+                                    when {
+                                        savedAddReconnect.consumeAuthenticated(aliasScope) ->
+                                            selectAuthenticatedAddTarget()
+                                        startupReturn -> {
+                                            // Complete the delegated reconnect without narrowing
+                                            // the person's saved Transfers scope to this server.
+                                            consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                                            combinedFromConnections = true
+                                            section = Section.COMBINED
+                                        }
+                                        !automatic -> {
+                                            section = Section.SERVER
+                                            val verifiedId = io.github.gamesbyian.chunks.model
+                                                .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                            verifiedConnectionNotice = VerifiedConnectionNotice(
+                                                preferredConnectionName
+                                                    ?: savedProfiles.firstOrNull { it.id == verifiedId }?.label
+                                                    ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
+                                                saved = null // persistence has not been observed yet
+                                            )
+                                        }
+                                        // A startup read completing after explicit navigation
+                                        // updates the session without moving the current screen.
                                     }
                                     currentView = ticket.view
                                     requestedView = ticket.view
@@ -2950,7 +2944,10 @@ internal fun ChunksApp(
                 }
                 section = Section.OPTIONS
             },
-            onConnections = { section = Section.SERVER },
+            onConnections = {
+                returnFromStartupConnectToCanonical = false
+                section = Section.SERVER
+            },
             addDescription = "Add a torrent",
             activeDestination = footerDestinationForVisibleScreen(section.name, server != null, toolOrigin)
         )
@@ -3006,7 +3003,7 @@ internal fun ConnectionScreen(
     onLocalEngine: () -> Unit,
     onCreateTorrent: () -> Unit = {},
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
-    onPassword: (String) -> Unit, onConnect: () -> Unit,
+    onPassword: (String) -> Unit, onConnect: (automatic: Boolean) -> Unit,
     loginRequested: Boolean = false,
     connectedSessionName: String? = null,
     connectedProfileId: String? = null,
@@ -3053,7 +3050,7 @@ internal fun ConnectionScreen(
         connectKeyboard?.hide()
         connectFocus.clearFocus()
         if (!loading && validName && connectedSessionName == null && canSubmitConnection) {
-            if (isRTorrentForm) onConnect() else onConnectReadOnlyBackend()
+            if (isRTorrentForm) onConnect(false) else onConnectReadOnlyBackend()
         }
     }
     var pendingForget by remember { mutableStateOf<String?>(null) }
@@ -3111,7 +3108,7 @@ internal fun ConnectionScreen(
     StartupRemoteReconnectEffect(
         eligible = startupReconnectEligible,
         onConsumed = onStartupReconnectConsumed,
-        onConnect = onConnect
+        onConnect = { onConnect(true) }
     )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

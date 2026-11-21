@@ -31,6 +31,16 @@ internal class InstalledAddResponseFault(appUrl: String) {
 
     fun hasWithheldReply() = counts().getInt("acknowledgments_withheld") == 1
 
+    fun holdNextConnectRead() {
+        request("hold-connect-read", post = true)
+    }
+
+    fun connectReadIsHeld() = counts().getInt("connect_reads_held") == 1
+
+    fun releaseConnectRead() {
+        request("release-connect-read", post = true)
+    }
+
     fun releaseDelayedResponse() {
         request("release", post = true)
     }

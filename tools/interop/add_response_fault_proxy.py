@@ -28,7 +28,8 @@ START = {
 CONTROL = "/__chunks_add_response_fault/"
 HOP_HEADERS = {"connection", "keep-alive", "proxy-connection", "transfer-encoding",
                "upgrade", "trailer", "te", "content-length", "host"}
-COUNTERS = ("adds", "acknowledgments_withheld", "starts", "upstream_errors", "view_mutations")
+COUNTERS = ("adds", "acknowledgments_withheld", "starts", "upstream_errors", "view_mutations",
+            "connect_reads_held")
 
 # All writes to rTorrent view membership/filter/order which the installed app
 # might send. The test's deliberate server-side hide uses the DIRECT 18090 RPC
@@ -66,6 +67,7 @@ class FaultState:
         self.lock = threading.Lock()
         self.mode = None
         self.release_signal = threading.Event()
+        self.connect_read_release = None
         self.counts = dict.fromkeys(COUNTERS, 0)
 
     def arm(self, mode):
@@ -79,6 +81,25 @@ class FaultState:
             if self.mode != "delay":
                 return False
             self.release_signal.set()
+            return True
+
+    def arm_connect_read(self):
+        with self.lock:
+            self.connect_read_release = threading.Event()
+            self.counts["connect_reads_held"] = 0
+
+    def hold_connect_read(self):
+        with self.lock:
+            if self.connect_read_release is None or self.counts["connect_reads_held"] != 0:
+                return None
+            self.counts["connect_reads_held"] = 1
+            return self.connect_read_release
+
+    def release_connect_read(self):
+        with self.lock:
+            if self.connect_read_release is None or self.counts["connect_reads_held"] != 1:
+                return False
+            self.connect_read_release.set()
             return True
 
     def begin(self, is_add, is_start, is_view_mutation=False):
@@ -154,6 +175,12 @@ class FaultProxy(BaseHTTPRequestHandler):
                 return self.respond(204)
             if self.command == "POST" and action == "release":
                 return self.respond(204 if state.release_delayed_response() else 409)
+            if kind == "rtorrent" and self.command == "POST":
+                if action == "hold-connect-read":
+                    state.arm_connect_read()
+                    return self.respond(204)
+                if action == "release-connect-read":
+                    return self.respond(204 if state.release_connect_read() else 409)
             if self.command == "GET" and action == "counts":
                 return self.respond(200, json.dumps(state.report()).encode())
             return self.respond(404)
@@ -187,6 +214,13 @@ class FaultProxy(BaseHTTPRequestHandler):
             return self.respond(502)
         finally:
             upstream.close()
+
+        # Keep the cold-start read in flight while the installed app selects
+        # Connections. The held Add and all of its counters remain untouched.
+        if kind == "rtorrent" and method == "system.client_version":
+            connect_release = state.hold_connect_read()
+            if connect_release is not None and not connect_release.wait(12):
+                return self.respond(503)
 
         # Transmission's CSRF challenge is issued before RPC dispatch.
         if mode is not None and kind == "transmission" and status == 409:
