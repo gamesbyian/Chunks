@@ -36,6 +36,7 @@ on:
       - 'tests/test_ci_native_concurrency.py'
       - 'tools/local_intake_journey.sh'
       - 'tools/test_local_intake_journey.sh'
+      - 'tests/test_ci_remote_instrumentation_deadlines.py'
       - 'tests/test_ci_local_intake.py'
       - '.github/workflows/native-owned-android-link.yml'
       - '.github/workflows/native-owned-writer-experiment.yml'
@@ -160,6 +161,7 @@ on:
       - 'tests/test_ci_native_concurrency.py'
       - 'tools/local_intake_journey.sh'
       - 'tools/test_local_intake_journey.sh'
+      - 'tests/test_ci_remote_instrumentation_deadlines.py'
       - 'tests/test_ci_local_intake.py'
       - '.github/workflows/native-owned-android-link.yml'
       - '.github/workflows/native-owned-writer-experiment.yml'
@@ -309,6 +311,8 @@ jobs:
         run: |
           bash tools/test_local_intake_journey.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_local_intake.py
+      - name: Check bounded installed remote and storage instrumentation commands
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_remote_instrumentation_deadlines.py
       - name: Validate installed real-source magnet reporting without secrets or emulator
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
       - name: Verify protected Seedhost dispatch gates offline
