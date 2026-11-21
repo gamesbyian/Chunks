@@ -123,7 +123,7 @@ class AddRoutingSessionsTest {
 
     @Test fun aChangedRTorrentSessionNeedsItsOwnValidDefault() {
         FakeRTorrent(directoryDefault = "/rTorrent/ready").use { first ->
-            FakeRTorrent(directoryDefault = "relative/path").use { second ->
+            FakeRTorrent(directoryDefault = "/rTorrent//unusable").use { second ->
                 val remote = mutableStateOf(RTorrentRemote(RemoteCredentials(first.endpoint, "", "")))
                 rule.setContent {
                     BasicText(rememberRTorrentRoutingDefault(true, remote.value) ?: "Default unavailable")

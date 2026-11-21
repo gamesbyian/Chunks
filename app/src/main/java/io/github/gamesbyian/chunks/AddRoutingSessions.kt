@@ -5,9 +5,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RuTorrentDeleteData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -50,7 +50,9 @@ internal fun rememberRTorrentRoutingDefault(
     LaunchedEffect(enabled, remote) {
         if (!enabled || remote == null) return@LaunchedEffect
         directory.value = readRoutingTarget {
-            remote.defaultDirectory()?.let(ClientHashes::requireDirectory)
+            remote.defaultDirectory()?.takeIf {
+                RuTorrentDeleteData.safeDirectory(it, allowRoot = true)
+            }
         }
     }
     return directory.value
