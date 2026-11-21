@@ -2,6 +2,7 @@
 # Disposable-only: installed app against the runner's loopback Transmission,
 # qBittorrent and Deluge daemons (one emulator boot, app data cleared per client).
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 out="$RUNNER_TEMP/interop/evidence"
 mkdir -p "$out"
 source_sha="$(git rev-parse HEAD)"
@@ -57,7 +58,7 @@ run_one() {
   set +e
   # Give instrumentation an explicit primary user; CURRENT (-2) is not resolved
   # reliably after repeated app/test process launches in this disposable AVD.
-  adb shell am instrument --user 0 -w -r \
+  timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
     -e class "$class#$test_method" \
     -e chunks_protocol_disposable authorized \
     -e chunks_protocol_kind_b64 "$(b64 "$kind")" \
@@ -111,7 +112,7 @@ rtorrent_test=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
 run_rtorrent_faults() {
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   local raw="$out/instrumentation-RTORRENT.txt" stages="$out/stages-RTORRENT.txt"
-  if ! adb shell am instrument --user 0 -w -r \
+  if ! timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
     -e class "$rtorrent_test#stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost" \
     -e chunks_rtorrent_add_fault authorized \
     "$runner" > "$raw" 2>&1 ||
@@ -134,7 +135,7 @@ run_rtorrent_death() {
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
-  adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#submitThenKillTheAppProcess" \
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#submitThenKillTheAppProcess" \
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || true
   adb logcat -d -s ChunksAddFault:I > "$out/process-death-boundary.txt" || return 1
   if ! grep -Fq 'process-death-real-write-awaits-ack' "$out/process-death-boundary.txt" ||
@@ -144,7 +145,7 @@ run_rtorrent_death() {
     echo "::error::The installed app did not die at the held Add write boundary"
     return 1
   fi
-  if ! adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
+  if ! timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 ||
     ! grep -q '^OK (1 test)' "$out/process-death-phase2.txt" ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=process-death-no-replay-no-start-original-unchanged' "$out/process-death-phase2.txt"; then
@@ -163,7 +164,7 @@ run_local_add_death() {
   adb logcat -c || return 1
   local class=io.github.gamesbyian.chunks.LocalInstalledAddProcessDeathTest
   local before="$out/local-add-death-phase1.txt" after="$out/local-add-death-phase2.txt"
-  adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
     -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || true
   adb logcat -d -s ChunksLocalAddDeath:I > "$out/local-add-death-boundary.txt" || return 1
   if ! grep -Fq 'exact-job-registered-start-unverified' "$out/local-add-death-boundary.txt" ||
@@ -172,7 +173,7 @@ run_local_add_death() {
     echo "::error::The installed app did not die during the Local Add observation"
     return 1
   fi
-  if ! adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
+  if ! timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
     -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 ||
     ! grep -q '^OK (1 test)' "$after"; then
     tail -80 "$after"
