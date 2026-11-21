@@ -336,7 +336,15 @@ class RTorrentInstalledAddResponseFaultTest {
             val exactProfile = hasTestTag("connection-profile-$exactProfileId")
             val connectedTransfers = hasTestTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS) and
                 hasAnyAncestor(exactProfile) and isEnabled()
-            LazyComposeActions.activateOnce(rule, connectedTransfers, timeoutMillis = 75_000)
+            val selectedTransfers = hasTestTag(ChunksSemantics.FOOTER_TRANSFERS) and isSelected()
+            rule.waitUntil(75_000) {
+                rule.onAllNodes(connectedTransfers).fetchSemanticsNodes().size == 1 ||
+                    rule.onAllNodes(selectedTransfers).fetchSemanticsNodes().size == 1
+            }
+            if (rule.onAllNodes(selectedTransfers).fetchSemanticsNodes().isNotEmpty())
+                stage("process-death-startup-reconnect-overrode-connections")
+            rule.onNode(selectedTransfers).assertDoesNotExist()
+            LazyComposeActions.activateOnce(rule, connectedTransfers)
             stage("process-death-reconnected-to-exact-profile-in-connections")
             rule.waitUntil(45_000) {
                 val name = hasText(processDeathName, substring = true)
