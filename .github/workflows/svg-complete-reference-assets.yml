@@ -1,5 +1,7 @@
 name: Check reproducibility of Chunks SVG source candidates
 
+# Workflow-only routing changes are checked by Documentation validation.
+# Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
     paths:
@@ -9,7 +11,6 @@ on:
       - 'docs/design/svg/master-inventory.json'
       - 'docs/design/reference-images/06-colour-illustrations-and-stickers.png'
       - 'assets/fonts/chunks/Chunks-ExtraBold.otf'
-      - '.github/workflows/svg-complete-reference-assets.yml'
   workflow_dispatch:
 
 # Superseded PR revisions should not keep spending runner minutes.
