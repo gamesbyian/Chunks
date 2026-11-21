@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.engine
 
 import java.io.File
 import java.io.RandomAccessFile
+import java.lang.ref.Reference
 import java.net.InetSocketAddress
 import java.util.Random
 import org.junit.After
@@ -183,8 +184,15 @@ class ExistingPayloadReuseFixturesTest {
     private fun v2Case(name: String, tail: Int, preallocated: Boolean) {
         val payload = payload(name, listOf("first.bin" to 8 * V2_PIECE, "second.bin" to 12 * V2_PIECE + tail),
             V2_PIECE, TorrentBuilder.V2_ONLY)
-        val hashes = TorrentInfo.bdecode(payload.torrent).infoHashes()
-        assertTrue("fixture is genuinely v2-only", !hashes.hasV1() && hashes.hasV2())
+        val decoded = TorrentInfo.bdecode(payload.torrent)
+        val expectedHash = try {
+            val hashes = decoded.infoHashes()
+            assertTrue("fixture is genuinely v2-only", !hashes.hasV1() && hashes.hasV2())
+            hashes.swig().getV2().to_hex().take(40).lowercase()
+        } finally {
+            // Save a JVM string before the native owner can be collected.
+            Reference.reachabilityFence(decoded)
+        }
         val (seeder, _) = seeder(payload)
         val destination = temp.newFolder("$name-dest")
         place(destination, payload, "first.bin").writeBytes(payload.files.getValue("first.bin"))
@@ -196,7 +204,7 @@ class ExistingPayloadReuseFixturesTest {
         val local = engine()
         val stopped = verifyStopped(local, payload, destination, seeder.listenPort())
         assertEquals("v2-only identity is libtorrent's best hash: SHA-256 truncated to 160 bits",
-            hashes.swig().getV2().to_hex().take(40).lowercase(), stopped.infoHash)
+            expectedHash, stopped.infoHash)
         assertTrue("the complete file verified and nothing beyond the valid bytes: ${stopped.doneBytes}",
             stopped.doneBytes in 8L * V2_PIECE..13L * V2_PIECE)
         startAndRequireExact(local, stopped.infoHash, payload, destination, seeder.listenPort(),

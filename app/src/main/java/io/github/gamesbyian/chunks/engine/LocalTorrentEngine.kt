@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
+import java.lang.ref.Reference
 import android.os.Build
 import android.system.Os
 import android.system.OsConstants
@@ -2462,10 +2463,13 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }.distinct().take(32)
     } catch (_: RuntimeException) { emptyList() }
 
-    private fun identity(info: TorrentInfo): String {
+    private fun identity(info: TorrentInfo): String = try {
         val hashes = info.infoHashes()
-        return if (hashes.hasV1()) hashes.v1.toHex().lowercase(Locale.ROOT)
+        if (hashes.hasV1()) hashes.v1.toHex().lowercase(Locale.ROOT)
         else hashes.best.toHex().lowercase(Locale.ROOT)
+    } finally {
+        // libtorrent4j's InfoHash borrows memory from this TorrentInfo.
+        Reference.reachabilityFence(info)
     }
 
     private fun normal(infoHash: String): String {
