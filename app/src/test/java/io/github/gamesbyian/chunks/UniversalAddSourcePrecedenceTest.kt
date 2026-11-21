@@ -72,6 +72,7 @@ class UniversalAddSourcePrecedenceTest {
             "system.client_version" -> str("0.9.8")
             "directory.default" -> str("/srv")
             "d.multicall2" -> "<value><array><data></data></array></value>"
+            "view.size_not_visible" -> "<value><int>0</int></value>"
             else -> return "<?xml version=\"1.0\"?><methodResponse><fault><value><struct>" +
                 "<member><name>faultCode</name><value><int>-506</int></value></member>" +
                 "<member><name>faultString</name><value><string>not in fixture</string></value></member>" +

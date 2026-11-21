@@ -49,6 +49,34 @@ class RTorrentDisposableAddRecoveryTest {
             remote.eraseFromSession(hash, "chunks-clean-new-add.bin", parent.toString()))
     }
 
+    @Test fun completeSnapshotSourceIncludesHiddenMainJobsAndRefusesAFilteredDefault() = runBlocking {
+        val (remote, parent) = client()
+        val name = "chunks-complete-snapshot-inventory.bin"
+        val bytes = metainfo(name)
+        val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
+        assertNull(remote.lookupName(hash))
+        assertEquals(RemoteAddOutcome.VerifiedStopped(hash, parent.toString()),
+            remote.loadStoppedTorrentBytes(bytes, parent.toString()))
+        try {
+            remote.call("view.set_not_visible", listOf(hash, "main"))
+            assertFalse(remote.listTransfers("main").any { it.hash.equals(hash, true) })
+            val observed = remote.listCompleteSessionTransfers().single { it.hash.equals(hash, true) }
+            assertEquals(name, observed.name)
+            assertFalse(observed.started)
+
+            remote.call("view.set_not_visible", listOf(hash, "default"))
+            assertThrows(IllegalStateException::class.java) {
+                runBlocking { remote.listCompleteSessionTransfers() }
+            }
+            assertEquals(name, remote.lookupName(hash))
+        } finally {
+            remote.call("view.set_visible", listOf(hash, "default"))
+            remote.call("view.set_visible", listOf(hash, "main"))
+            assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
+                remote.eraseFromSession(hash, name, parent.toString()))
+        }
+    }
+
     @Test fun unavailableStorageIsTruthfulAndTheSessionCanRecoverAfterExplicitRepair() = runBlocking {
         val (remote, parent) = client()
         val owned = Files.createTempDirectory(parent, "chunks-refused-storage-")
