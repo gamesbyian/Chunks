@@ -36,13 +36,16 @@ internal object RuTorrentSourceMetainfo {
         if (!hashPattern.matches(expectedInfoHash)) return@withContext null
         val url = endpoint(rpc) ?: return@withContext null
         val hash = expectedInfoHash.lowercase(Locale.ROOT)
+        // The upstream plugin uses the posted spelling as a filename. Both
+        // legacy and modern rTorrent write uppercase session basenames.
+        val sessionHash = hash.uppercase(Locale.ROOT)
         try {
-            val first = request(url, hash, authorization = null)
+            val first = request(url, sessionHash, authorization = null)
             val response = if (first.status == 401) {
                 val requestPath = url.rawPath.orEmpty()
                 val authorization = HttpRpcAuthorization.fromChallenge(
                     first.challenges, credentials, "POST", requestPath)
-                request(url, hash, authorization)
+                request(url, sessionHash, authorization)
             } else first
             if (response.status != 200) return@withContext null
             val bytes = response.body ?: return@withContext null

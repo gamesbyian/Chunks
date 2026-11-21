@@ -82,6 +82,11 @@ jobs:
                 include /etc/nginx/scgi_params;
                 scgi_pass 127.0.0.1:5000;
               }
+              location ~ ^/rutorrent1/plugins/(httprpc|source)/action[.]php$ {
+                auth_basic "Chunks disposable ruTorrent source";
+                auth_basic_user_file /etc/nginx/chunks-disposable-auth.htpasswd;
+                proxy_pass http://127.0.0.1:18082;
+              }
             }
           }
           EOF
@@ -179,7 +184,7 @@ jobs:
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest.xml
           grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$report"
           echo "CHUNKS_DIGEST_REAL: independent SHA-256 challenge and one exact real rTorrent Add/Remove passed" >> "$GITHUB_STEP_SUMMARY"
-      - name: Real ruTorrent PHP erasedata collector deletes exact payload and preserves canary
+      - name: Real ruTorrent Source read and erasedata collector
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
           CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
@@ -206,6 +211,12 @@ jobs:
             if curl -fsS --max-time 2 http://127.0.0.1:18082/rutorrent1/plugins/erasedata/plugin.info -o /dev/null; then break; fi
             sleep 1
           done
+          CHUNKS_DISPOSABLE_PHP_SOURCE_RPC=http://127.0.0.1:18080/rutorrent1/plugins/httprpc/action.php \
+            CHUNKS_DISPOSABLE_RT_SESSION="$RUNNER_TEMP/chunks-session" \
+            gradle --no-daemon :app:testDebugUnitTest \
+              --tests io.github.gamesbyian.chunks.rpc.RTorrentDisposableRealPhpSourceTest
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' \
+            app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableRealPhpSourceTest.xml
           python3 tools/verify_disposable_rutorrent_php_delete.py
           python3 tools/stage_disposable_rutorrent_adapter_delete.py stage
           if ! gradle --no-daemon :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.rpc.RTorrentDisposableRealPhpErasedataTest; then
