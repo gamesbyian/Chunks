@@ -1,9 +1,11 @@
 name: One-time public source real fixture acceptance
 
+# This is an explicitly one-time EXTERNAL Wikimedia/Archive.org acceptance.
+# Metadata-only workflow edits must never fetch public services or hit 429.
+# The documentation validator checks routing changes; use manual dispatch
+# when a fresh real-source proof is actually required.
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/one-time-public-source-acceptance.yml"
+  workflow_dispatch:
 
 # Superseded PR revisions should not keep spending runner minutes.
 # Manual and main-push executions use their unique run ID and are never cancelled.
