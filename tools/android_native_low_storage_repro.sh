@@ -2,6 +2,7 @@
 # Installed real JNI peer download with bounded *allocated* /data pressure.
 # Opt-in disposable API35 emulator ONLY. Never on a local or seeded user data.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 pkg=io.github.gamesbyian.chunks
 
 # Device pressure is irreversible while this controller runs. Refuse contradictory
@@ -58,7 +59,7 @@ adb logcat -c
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 12m adb shell am instrument -w -r \
   -e class "$pkg.AndroidNativeLowStorageRecoveryInstrumentedTest" \
   -e chunksLowSpace 1 \
   "$pkg.test/androidx.test.runner.AndroidJUnitRunner" >"$log" 2>&1
