@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.rpc
 
+import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewV1
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
@@ -60,9 +62,26 @@ class RTorrentDisposableAddRecoveryTest {
         try {
             remote.call("view.set_not_visible", listOf(hash, "main"))
             assertFalse(remote.listTransfers("main").any { it.hash.equals(hash, true) })
-            val observed = remote.listCompleteSessionTransfers().single { it.hash.equals(hash, true) }
+            val complete = remote.listCompleteSessionTransfers()
+            val observed = complete.single { it.hash.equals(hash, true) }
             assertEquals(name, observed.name)
             assertFalse(observed.started)
+            // A filtered Transfers view must not manufacture a "missing"
+            // snapshot restore candidate. The verified default view, not
+            // visible main rows, provides the comparison inventory.
+            val manifest = SnapshotManifestV1.Manifest(
+                "chunks-android", "2026-11-21T12:00:00Z",
+                SnapshotManifestV1.Source.RTORRENT,
+                listOf(SnapshotManifestV1.Item(hash, name, SnapshotManifestV1.Recovery.METAINFO))
+            )
+            val snapshot = SnapshotManifestV1.decode(
+                SnapshotManifestV1.encode(manifest, mapOf(hash to bytes)))
+            val preview = SnapshotRestorePreviewV1.plan(
+                snapshot, complete.map { it.hash }, targetInventoryComplete = true)
+            assertEquals(SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT,
+                preview.entries.single().decision)
+            assertEquals(0, preview.candidateCount)
+            assertEquals(0, preview.mutationsExecuted)
 
             remote.call("view.set_not_visible", listOf(hash, "default"))
             assertThrows(IllegalStateException::class.java) {
