@@ -53,6 +53,7 @@ internal object ChunksSemantics {
     const val ADD_BODY_PROTOCOL = "chunks.add.body.protocol"
     const val ADD_SUBMIT = "chunks.add.submit"
     const val ADD_VIEW_TRANSFER = "chunks.add.viewTransfer"
+    const val ADD_BACK_TO_TRANSFERS = "chunks.add.backToTransfers"
     const val ADD_ANOTHER = "chunks.add.another"
     const val TRANSFERS_ADD_RECEIPT = "chunks.transfers.addReceipt"
     const val TRANSFERS_ADD_REVIEW = "chunks.transfers.addReview"

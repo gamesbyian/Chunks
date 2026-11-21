@@ -340,7 +340,7 @@ class ProtocolClientInstalledJourneyTest {
             stage("add-dispatched-once")
             val submitting = addJourney.hasReceiptState("Adding")
             if (submitting) {
-                addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                addJourney.activate(ChunksSemantics.ADD_BACK_TO_TRANSFERS)
                 addJourney.awaitTransferReceipt("Adding", "Verified")
             }
             it.recreate()

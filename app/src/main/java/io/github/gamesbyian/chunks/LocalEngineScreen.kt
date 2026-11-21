@@ -357,6 +357,8 @@ internal fun LocalEngineScreen(
     addFolderState: androidx.compose.runtime.MutableState<String>? = null,
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    addArtworkExpandedState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    onLeaveAdd: (() -> Unit)? = null,
     /** Shared source-first Add target selector, embedded without creating a second route. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
     /** One parent-owned optional Chunks list label across local/server draft switches. */
@@ -1108,18 +1110,9 @@ internal fun LocalEngineScreen(
             var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
             // Null until the saved default and the provider's delete support are read on IO;
             // an Add confirmed before then keeps the original untouched.
-            var originalHandling by remember(add) { mutableStateOf<OriginalTorrentHandling?>(null) }
-            var originalDeletable by remember(add) { mutableStateOf(false) }
-            LaunchedEffect(add) {
-                val document = add?.originalDocument ?: return@LaunchedEffect
-                val (saved, deletable) = withContext(Dispatchers.IO) {
-                    OriginalTorrentHandlingStore(context).default to
-                        OriginalTorrentDocuments.supportsDelete(context, document)
-                }
-                originalDeletable = deletable
-                originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
-                    OriginalTorrentHandling.ARCHIVE else saved
-            }
+            val originalPolicy = rememberUniversalAddOriginalPolicy(add?.originalDocument, add)
+            val originalHandling = originalPolicy?.handling
+            val originalDeletable = originalPolicy?.deletable == true
             val seedingPreview = remember(add?.preview?.infoHashV1) {
                 add?.preview?.let { localSeedingPreview(context, it) }
             }
@@ -1748,6 +1741,11 @@ internal fun LocalEngineScreen(
                             onSkippedChange = { skippedFiles = it; fileLevels = fileLevels - it })
                 },
                 artwork = UniversalAddToggle(automaticArtwork, sourceEnabled) { automaticArtwork = it },
+                artworkExpandedState = addArtworkExpandedState,
+                originalHandling = originalHandling?.takeIf {
+                    magnet.isBlank() && add?.originalDocument != null && destination != null
+                },
+                onBack = onLeaveAdd,
                 options = {
                     if (magnetCheck is MagnetDraftCheck.Valid) Text(
                         "Seeding: your device Seeding rules choose a policy when this magnet's metadata " +
@@ -1789,10 +1787,6 @@ internal fun LocalEngineScreen(
                             onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
                         )
                     }
-                    val shownHandling = originalHandling
-                    if (magnet.isBlank() && add?.originalDocument != null && destination != null && shownHandling != null)
-                        // Read-only here: the single policy is chosen in Options → Add & files (#1786).
-                        OriginalTorrentHandlingSummary(shownHandling)
                     if (add != null && destination != null && magnet.isBlank()) LocalAddReview(
                         add.preview, proposedAddDestination ?: destination,
                         placeTitle = place?.title,
@@ -1875,17 +1869,7 @@ internal fun LocalEngineScreen(
                             if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
                                 Text("Acknowledging does not confirm payload Start or repeat Add. Inspect the existing transfer before starting it separately.",
                                     style = MaterialTheme.typography.bodySmall)
-                            UniversalAddContinuationAction(
-                                ChunksSemantics.ADD_ANOTHER,
-                                label = when (phase) {
-                                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ->
-                                        "Start another Add"
-                                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
-                                        "Acknowledge existing job (Start unverified)"
-                                    else -> "Acknowledge existing job, then review another"
-                                },
-                                enabled = !busy && !originalAddDocument.deleting
-                            ) {
+                            UniversalAddNextAction(phase, enabled = !busy && !originalAddDocument.deleting) {
                                 val done = if (phase ==
                                     io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
                                     localAddAttemptSession.acknowledgeObservedJob()

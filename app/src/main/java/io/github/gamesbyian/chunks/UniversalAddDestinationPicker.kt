@@ -75,6 +75,7 @@ internal fun UniversalAddDestinationPicker(
     /** The current source's own name, for filename-derived display-name suggestions. */
     sourceName: String? = null,
     incomingSourceWaiting: Boolean = false,
+    canReplaceIncoming: Boolean = true,
     importingSource: Boolean = false,
     sourceError: String? = null,
     onAcceptIncoming: () -> Unit = {},
@@ -85,6 +86,7 @@ internal fun UniversalAddDestinationPicker(
     /** Connected Transmission / qBittorrent / Deluge clients (exact typed profiles). */
     protocolDestinations: List<UniversalAddSavedDestination> = emptyList(),
     selectedProtocolId: String? = null,
+    localSelected: Boolean = !addingRemotely && selectedProtocolId == null,
     /** From the selected client's UniversalAddClientCapabilities; false explains instead of offering a name. */
     displayNameSupported: Boolean = selectedProtocolId == null,
     onProtocol: (String) -> Unit = {},
@@ -103,7 +105,7 @@ internal fun UniversalAddDestinationPicker(
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedButton(onClick = onAcceptIncoming, enabled = enabled && !importingSource,
+                OutlinedButton(onClick = onAcceptIncoming, enabled = enabled && canReplaceIncoming && !importingSource,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("Use new source") }
                 OutlinedButton(onClick = onKeepDraft, enabled = enabled && !importingSource,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("Keep current draft") }
@@ -124,7 +126,7 @@ internal fun UniversalAddDestinationPicker(
         FlowRow(Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            FilterChip(selected = !addingRemotely && selectedProtocolId == null, enabled = enabled,
+            FilterChip(selected = localSelected, enabled = enabled,
                 onClick = onLocal, label = { Text("Local") },
                 modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_DEVICE))
             activeRemoteName?.let { name ->
