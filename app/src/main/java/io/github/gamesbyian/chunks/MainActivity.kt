@@ -868,6 +868,12 @@ internal fun ChunksApp(
             (addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)
     }
 
+    fun readSharedDocument(document: Uri) {
+        if (pendingSharedDocument == document) pendingSharedDocument = null
+        sharedTorrentError = null
+        incomingDocumentRead = document
+    }
+
     // Intake is shared across destinations. A held source may proceed after a
     // verified attempt settles only if there is no competing draft to replace.
     val heldRemoteAdd = selectedRemoteAddSession()
@@ -897,7 +903,7 @@ internal fun ChunksApp(
         pendingSharedDocument = null
         pendingSharedMagnet = null
         sharedTorrentError = null
-        if (document != null) incomingDocumentRead = document
+        if (document != null) readSharedDocument(document)
         else if (text != null) {
             magnet = text
             localHandoffMagnet = null
@@ -916,7 +922,7 @@ internal fun ChunksApp(
         if (addSourceOccupied()) {
             pendingSharedDocument = document
         } else {
-            incomingDocumentRead = document
+            readSharedDocument(document)
         }
         onIncomingTorrentConsumed()
         section = Section.ADD_CHOOSE
@@ -1303,7 +1309,7 @@ internal fun ChunksApp(
                 pendingSharedMagnet = null
                 sharedTorrentError = null
                 if (document != null) {
-                    incomingDocumentRead = document
+                    readSharedDocument(document)
                 } else if (incomingText != null) {
                     // User-authorized replacement, not an automatic Android
                     // handoff. Keep the chosen target, Place and Start.
@@ -1894,7 +1900,7 @@ internal fun ChunksApp(
                 onAddToLocal = {
                     val selectedDocument = incomingTorrent
                     if (selectedDocument != null && !sharedTorrentReading) {
-                        incomingDocumentRead = selectedDocument
+                        readSharedDocument(selectedDocument)
                         onIncomingTorrentConsumed()
                     } else if (selectedDocument == null) {
                         pendingSharedMagnet?.let { source ->
@@ -1923,7 +1929,7 @@ internal fun ChunksApp(
                             // The same retained reader validates the document and only
                             // adopts it if this exact draft hasn't since changed.
                             addDestination = UniversalAddRouteTarget.RTorrent(aliasScope)
-                            incomingDocumentRead = sharedDocument
+                            readSharedDocument(sharedDocument)
                             onIncomingTorrentConsumed()
                             section = Section.ADD_CHOOSE
                         } else {
