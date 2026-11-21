@@ -156,8 +156,14 @@ internal class QBittorrentClient(
         form(method, "hashes" to ClientHashes.requireHash(hash))
     }
 
-    override suspend fun remove(hash: String, deleteData: Boolean) {
-        form("torrents/delete", "hashes" to ClientHashes.requireHash(hash), "deleteFiles" to deleteData.toString())
+    override suspend fun remove(hash: String, deleteData: Boolean) = removeChecked(hash, deleteData) {}
+
+    override suspend fun removeJob(hash: String, beforeWrite: () -> Unit) =
+        removeChecked(hash, deleteData = false, beforeWrite = beforeWrite)
+
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, beforeWrite: () -> Unit) {
+        form("torrents/delete", "hashes" to ClientHashes.requireHash(hash), "deleteFiles" to deleteData.toString(),
+            beforeWrite = beforeWrite)
     }
 
     override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) {
@@ -267,19 +273,20 @@ internal class QBittorrentClient(
         form("torrents/setUploadLimit", "hashes" to ClientHashes.requireHash(hash), "limit" to bytesPerSecond.toString())
     }
 
-    private suspend fun form(method: String, vararg fields: Pair<String, String>) {
+    private suspend fun form(method: String, vararg fields: Pair<String, String>, beforeWrite: () -> Unit = {}) {
         val body = fields.joinToString("&") { (k, v) -> k + "=" + URLEncoder.encode(v, "UTF-8") }
         request("POST", method, body.toByteArray(Charsets.UTF_8),
-            "application/x-www-form-urlencoded", mutating = true)
+            "application/x-www-form-urlencoded", mutating = true, beforeWrite = beforeWrite)
     }
 
     private suspend fun request(
         method: String, path: String, body: ByteArray? = null,
-        contentType: String = "application/x-www-form-urlencoded", mutating: Boolean = false
+        contentType: String = "application/x-www-form-urlencoded", mutating: Boolean = false, beforeWrite: () -> Unit = {}
     ): String = withContext(Dispatchers.IO) {
         var relogged = false
         while (true) {
             val session = cookie ?: login().also { cookie = it }
+            beforeWrite()
             val response = try {
                 wire.exchange(QBittorrentReadOnlyRpc.Request(
                     URI(webRoot.toString() + "api/v2/" + path), method, body, origin, session, contentType))

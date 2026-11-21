@@ -118,6 +118,42 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(1, target.adds)
     }
 
+    @Test fun replacedTargetConnectionWithdrawsTheFinishMoveAction() {
+        val source = Fake()
+        val target = Target()
+        val sourceOperations = { ClientOperations(source, 3, 1) }
+        var targetRevision by mutableStateOf(1)
+        var targetListed by mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Source", sourceClientId = "source",
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = sourceOperations, onChanged = {},
+                    moveConnections = mapOf("t" to targetRevision),
+                    moveTargets = listOfNotNull(ProtocolMoveTarget("t", "Target", connectionWitness = targetRevision) {
+                        ClientOperations(target, 3, 1)
+                    }.takeIf { targetListed })
+                )
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".t").performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).fetchSemanticsNodes().size == 1
+        }
+        val retire = rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE)
+        rule.runOnIdle { targetListed = false }
+        retire.assertExists()
+        rule.runOnIdle { targetRevision = 2 }
+        retire.assertDoesNotExist()
+        rule.runOnIdle { targetRevision = 1 }
+        retire.assertDoesNotExist()
+        assertEquals(0, source.writes)
+        assertEquals(true, source.present)
+        assertEquals(1, target.adds)
+    }
+
     @Test fun aConfirmedCopyCarriesTheChunksNameButNeverOverwritesTheTargets() {
         val aliases = TransferAliasStore(androidx.test.core.app.ApplicationProvider.getApplicationContext())
         val sourceScope = ProtocolAliasScope.of("source-qb")

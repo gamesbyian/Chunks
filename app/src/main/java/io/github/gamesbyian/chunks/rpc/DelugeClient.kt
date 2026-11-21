@@ -139,10 +139,15 @@ internal class DelugeClient(
         }
     }
 
-    override suspend fun remove(hash: String, deleteData: Boolean) {
+    override suspend fun remove(hash: String, deleteData: Boolean) = removeChecked(hash, deleteData) {}
+
+    override suspend fun removeJob(hash: String, beforeWrite: () -> Unit) =
+        removeChecked(hash, deleteData = false, beforeWrite = beforeWrite)
+
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, beforeWrite: () -> Unit) {
         connect()
-        val removed = call("core.remove_torrent",
-            JSONArray().put(ClientHashes.requireHash(hash)).put(deleteData), mutating = true)
+        val removed = call("core.remove_torrent", JSONArray().put(ClientHashes.requireHash(hash)).put(deleteData),
+            mutating = true, beforeWrite = beforeWrite)
         if (removed == false) throw ClientRefusedException("Deluge declined the removal")
     }
 
@@ -312,7 +317,9 @@ internal class DelugeClient(
         }
     }
 
-    private suspend fun call(method: String, params: JSONArray, mutating: Boolean = false): Any? =
+    private suspend fun call(
+        method: String, params: JSONArray, mutating: Boolean = false, beforeWrite: () -> Unit = {}
+    ): Any? =
         withContext(Dispatchers.IO) {
             var relogged = false
             while (true) {
@@ -320,6 +327,7 @@ internal class DelugeClient(
                 val id = nextId++
                 val body = JSONObject().put("method", method).put("params", params).put("id", id)
                     .toString().toByteArray(Charsets.UTF_8)
+                beforeWrite()
                 val response = try {
                     wire.exchange(DelugeReadOnlyRpc.Request(endpoint, body, session))
                 } catch (e: CancellationException) { throw e } catch (_: Exception) {
