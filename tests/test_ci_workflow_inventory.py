@@ -29,6 +29,8 @@ class WorkflowInventoryTests(unittest.TestCase):
         self.assertEqual([], report["missing_concurrency"])
         self.assertEqual([], report["main_self_trigger_candidates"])
         self.assertEqual([], report["artifact_default_retention_candidates"])
+        self.assertEqual([], [entry["path"] for entry in report["workflows"]
+                              if entry["max_timeout_minutes"] is None])
 
     def test_complete_scope_and_trigger_metadata(self):
         self.fixture("pr.yml", """name: PR safe
