@@ -45,6 +45,7 @@ internal object LazyComposeActions {
     }
 
     private const val NO_SCROLL_PARENT = "no parent layout with a Scroll"
+    private const val NO_SCROLL_TARGET = "No node found that matches"
 
     /**
      * Read/scroll-only reveal. Scroll a node only when exactly one matches: `performScrollTo` on a
@@ -60,7 +61,10 @@ internal object LazyComposeActions {
             else if (matches == 0 && rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().size == 1)
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(target)
         } catch (failure: AssertionError) {
-            if (failure.message?.contains(NO_SCROLL_PARENT) != true && !undispatched(failure)) throw failure
+            val missingDuringScroll = failure.message?.let {
+                it.contains(NO_SCROLL_PARENT) || it.contains(NO_SCROLL_TARGET)
+            } == true
+            if (!missingDuringScroll && !undispatched(failure)) throw failure
         } catch (failure: IllegalStateException) {
             if (!undispatched(failure)) throw failure
         }
