@@ -23,20 +23,22 @@ internal sealed interface UniversalAddRouteTarget {
 @Composable
 internal fun UniversalAddRoute(
     target: UniversalAddRouteTarget,
-    local: @Composable () -> Unit,
+    localPane: LocalPane,
+    local: @Composable (LocalPane) -> Unit,
     remote: (@Composable () -> Unit)?,
     protocol: (@Composable () -> Unit)?,
     destinationPicker: @Composable () -> Unit,
     onBack: () -> Unit
 ) {
-    // The exact account/profile keys disposable adapter UI. The owner retains the
-    // common source, options and write receipt above this route.
+    // Options can prepare a Local snapshot review before it opens Add.
+    // Keep that adapter mounted across Local pane changes so it retains the
+    // exact reviewed snapshot and journal. Remote UI is keyed by exact account.
+    if (target == UniversalAddRouteTarget.Local) {
+        local(localPane)
+        return
+    }
     key(target) {
-        val clientContent = when (target) {
-            UniversalAddRouteTarget.Local -> local
-            is UniversalAddRouteTarget.RTorrent -> remote
-            is UniversalAddRouteTarget.Protocol -> protocol
-        }
+        val clientContent = if (target is UniversalAddRouteTarget.RTorrent) remote else protocol
         if (clientContent != null) {
             clientContent()
         } else {

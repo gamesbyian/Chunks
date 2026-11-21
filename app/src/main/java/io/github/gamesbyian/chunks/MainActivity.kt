@@ -484,6 +484,10 @@ internal fun ChunksApp(
     var addDestination by (retainedAddOwner?.addDestination
         ?: remember { mutableStateOf<UniversalAddRouteTarget>(UniversalAddRouteTarget.Local) })
     val addProtocolTargetId = (addDestination as? UniversalAddRouteTarget.Protocol)?.profileId
+    var localSnapshotAddReview by remember { mutableStateOf(false) }
+    LaunchedEffect(section) {
+        if (section != Section.ADD_CHOOSE) localSnapshotAddReview = false
+    }
     val artworkExpanded = retainedAddOwner?.artworkExpanded ?: remember { mutableStateOf(false) }
     // The Transmission/qBittorrent/Deluge attempt lives in the same app-owned owner as
     // Local and rTorrent: its write already runs in that owner's scope, so the receipt,
@@ -652,6 +656,7 @@ internal fun ChunksApp(
             magnet = ""
             remoteReview.textAtFileSelection = ""
         }
+        localSnapshotAddReview = false
         addDestination = UniversalAddRouteTarget.Local
         section = Section.ADD_CHOOSE
     }
@@ -1249,8 +1254,9 @@ internal fun ChunksApp(
             (addDestination == UniversalAddRouteTarget.Local &&
                 id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
     } == true
-    LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect, section) {
-        if (section != Section.ADD_CHOOSE) return@LaunchedEffect
+    LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect,
+        section, localSnapshotAddReview) {
+        if (section != Section.ADD_CHOOSE || localSnapshotAddReview) return@LaunchedEffect
         if (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.shouldPreselect(
                 routingPolicy, routingSuggestion, routingSourceKey, routingAutoAppliedFor, routingPersonChoiceFor,
                 routingSuggestionIsSelected,
@@ -1377,7 +1383,7 @@ internal fun ChunksApp(
     }
     val protocolAddContent: (@Composable () -> Unit)? = if (protocolAddProfile == null) null else {
         val profile = protocolAddProfile
-        @Composable {
+        val content: @Composable () -> Unit = {
             ProtocolAddScreen(
                 profileId = profile.id,
                 clientLabel = profile.label,
@@ -1399,6 +1405,7 @@ internal fun ChunksApp(
                 }
             )
         }
+        content
     }
     val localContent: @Composable (LocalPane) -> Unit = { pane ->
         val connectedRemote = server
@@ -1457,6 +1464,7 @@ internal fun ChunksApp(
                 onShowLocalSnapshotReview = {
                     // Select Local for the recovery review WITHOUT routing
                     // through ordinary Add's remote-source handoff.
+                    localSnapshotAddReview = true
                     addDestination = UniversalAddRouteTarget.Local
                     section = Section.ADD_CHOOSE
                 },
@@ -2013,17 +2021,20 @@ internal fun ChunksApp(
                 },
                 retainedSourceState = retainedAddOwner?.createSource
             )
-        } else if (section == Section.ADD_CHOOSE) {
+        } else if (section in setOf(Section.ADD_CHOOSE, Section.LOCAL, Section.OPTIONS)) {
             UniversalAddRoute(
-                target = addDestination,
-                local = { localContent(LocalPane.ADD) },
+                target = if (section == Section.ADD_CHOOSE) addDestination else UniversalAddRouteTarget.Local,
+                localPane = when (section) {
+                    Section.ADD_CHOOSE -> LocalPane.ADD
+                    Section.OPTIONS -> LocalPane.OPTIONS
+                    else -> LocalPane.TRANSFERS
+                },
+                local = localContent,
                 remote = if (addTargetIsAuthenticated) remoteAddContent else null,
                 protocol = protocolAddContent,
                 destinationPicker = addDestinationPicker,
                 onBack = ::returnFromAdd
             )
-        } else if (section == Section.LOCAL || section == Section.OPTIONS) {
-            localContent(if (section == Section.OPTIONS) LocalPane.OPTIONS else LocalPane.TRANSFERS)
         } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
                 loginRequested = savedAddReconnect.awaitingAuthentication,
