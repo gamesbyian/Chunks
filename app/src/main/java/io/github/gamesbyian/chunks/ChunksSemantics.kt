@@ -94,6 +94,7 @@ internal object ChunksSemantics {
     /** Inline Add-to choice for the one authenticated remote profile. */
     const val ADD_TARGET_REMOTE = "chunks.add.target.remote"
     /** The always-visible row of per-environment show/hide toggles above Transfers. */
+    const val TRANSFERS_ROW_DETAILS = "chunks.transfers.rowDetails"
     const val TRANSFERS_SEARCH = "chunks.transfers.search"
     const val TRANSFERS_ENVIRONMENT_TOGGLES = "chunks.transfers.environmentToggles"
     /** Search-adjacent disclosure for existing filter, sort and grouping controls. */
