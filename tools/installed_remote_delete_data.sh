@@ -45,6 +45,86 @@ print("CHUNKS_REMOTE_DELETE_APK: source-bound-installed-identity-recorded")
 PY
 adb reverse tcp:18082 tcp:18082 >/dev/null
 b64() { printf '%s' "$1" | base64 -w 0; }
+
+# A silent adb instrumentation command can otherwise consume the entire
+# 35-minute job budget. Preserve each test's own assertions and give the
+# harness an independent wall-clock deadline plus bounded progress receipts.
+# On timeout, the caller still captures Android logcat and uploads evidence.
+run_instrumentation() {
+  local label="$1" budget="$2" output="$3"
+  shift 3
+  local started=$SECONDS
+  local status=0
+  printf 'CHUNKS_INSTALLED_JOURNEY: %s started budget=%s\n' "$label" "$budget"
+  timeout --signal=TERM --kill-after=20s "$budget" adb shell am instrument -w -r "$@" \
+    > "$output" 2>&1 &
+  local child=$!
+  while kill -0 "$child" 2>/dev/null; do
+    sleep 30
+    if kill -0 "$child" 2>/dev/null; then
+      # Status is app-provided fixed-stage evidence. Never echo source paths,
+      # URI values, tracker data or the instrumentation's raw output.
+      local stage
+      stage="$(grep -E '^INSTRUMENTATION_STATUS: chunks_stage=[a-z0-9-]+
+run_instrumentation remote-delete 8m "$out/instrumentation.txt" \
+  -e class io.github.gamesbyian.chunks.RemoteDeleteDataInstalledInstrumentedTest \
+  -e chunks_remote_delete authorized \
+  -e chunks_remote_delete_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
+  -e chunks_remote_delete_hash_b64 "$(b64 "$hash")" \
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner
+status=$?
+set -e
+adb logcat -d -t 2000 > "$out/logcat.txt" 2>&1 || true
+grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation.txt" | tee "$out/stages.txt" || true
+if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation.txt" ||
+   ! grep -q 'chunks_stage=session-absent' "$out/instrumentation.txt"; then
+  tail -80 "$out/instrumentation.txt"
+  echo "::error::Installed remote Remove transfer and data journey failed"
+  exit 1
+fi
+# The app only QUEUED deletion. Run the real upstream collector and verify
+# exact payload absence and the foreign canary independently.
+python3 tools/stage_disposable_rutorrent_adapter_delete.py verify | tee "$out/collector.txt"
+grep -q '^PASS production Kotlin adapter' "$out/collector.txt"
+echo "CHUNKS_REMOTE_DELETE_INSTALLED: app queued exact erasedata; collector deleted exact file; canary intact" | tee -a "$GITHUB_STEP_SUMMARY"
+
+# Remote Universal Add original .torrent Archive + separately confirmed removal,
+# on the same disposable server. Session-only cleanup of its own stopped job.
+# Start from a fresh install state: the journey above saved its connection,
+# so Connections would show that roster instead of the first-run form.
+adb shell pm clear "$pkg" >/dev/null
+set +e
+run_instrumentation original-torrent 10m "$out/original-instrumentation.txt" \
+  -e class io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest \
+  -e chunks_remote_original authorized \
+  -e chunks_remote_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner
+status=$?
+set -e
+adb logcat -d -t 2000 > "$out/original-logcat.txt" 2>&1 || true
+grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/original-instrumentation.txt" | tee "$out/original-stages.txt" || true
+if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/original-instrumentation.txt" ||
+   ! grep -q 'chunks_stage=cleaned-up' "$out/original-instrumentation.txt"; then
+  tail -80 "$out/original-instrumentation.txt"
+  echo "::error::Installed remote original .torrent Archive/remove journey failed"
+  exit 1
+fi
+echo "CHUNKS_REMOTE_ORIGINAL_INSTALLED: verified new exact remote job, archived exact bytes, separately confirmed original removal, sibling intact, session-only cleanup" | tee -a "$GITHUB_STEP_SUMMARY"
+ "$output" \
+        | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//' || true)"
+      stage="${stage:-no-stage-yet}"
+      printf 'CHUNKS_INSTALLED_JOURNEY: %s active elapsed=%ss last_stage=%s\n' \
+        "$label" "$((SECONDS - started))" "$stage"
+    fi
+  done
+  wait "$child" || status=$?
+  printf 'CHUNKS_INSTALLED_JOURNEY: %s finished status=%s elapsed=%ss\n' \
+    "$label" "$status" "$((SECONDS - started))"
+  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+    echo "::error::Installed $label instrumentation exceeded its $budget deadline"
+  fi
+  return "$status"
+}
 set +e
 adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.RemoteDeleteDataInstalledInstrumentedTest \
