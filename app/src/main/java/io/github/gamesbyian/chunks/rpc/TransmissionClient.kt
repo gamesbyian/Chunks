@@ -111,8 +111,13 @@ internal class TransmissionClient(
         call(if (started) "torrent-start" else "torrent-stop", ids(hash), mutating = true)
     }
 
-    override suspend fun remove(hash: String, deleteData: Boolean) {
-        call("torrent-remove", ids(hash).put("delete-local-data", deleteData), mutating = true)
+    override suspend fun remove(hash: String, deleteData: Boolean) = removeChecked(hash, deleteData) {}
+
+    override suspend fun removeJob(hash: String, beforeWrite: () -> Unit) =
+        removeChecked(hash, deleteData = false, beforeWrite = beforeWrite)
+
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, beforeWrite: () -> Unit) {
+        call("torrent-remove", ids(hash).put("delete-local-data", deleteData), mutating = true, beforeWrite = beforeWrite)
     }
 
     override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) {
@@ -238,13 +243,16 @@ internal class TransmissionClient(
      * One logical request. Pre-execution 401/409 are answered once each;
      * a mutator's transport failure or unparseable 2xx is uncertain.
      */
-    private suspend fun call(method: String, args: JSONObject, mutating: Boolean): JSONObject =
+    private suspend fun call(
+        method: String, args: JSONObject, mutating: Boolean, beforeWrite: () -> Unit = {}
+    ): JSONObject =
         withContext(Dispatchers.IO) {
             val body = JSONObject().put("method", method).put("arguments", args)
                 .toString().toByteArray(Charsets.UTF_8)
             var answeredAuth = false
             var answeredSession = false
             while (true) {
+                beforeWrite()
                 val response = try {
                     wire.exchange(TransmissionReadOnlyRpc.Request(endpoint, body, authorization, csrfSession))
                 } catch (e: CancellationException) {

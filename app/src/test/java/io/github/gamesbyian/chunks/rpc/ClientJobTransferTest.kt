@@ -19,10 +19,14 @@ class ClientJobTransferTest {
         var adds = 0
         var removes = 0
         var removedData: Boolean? = null
+        var onTorrentRead: () -> Unit = {}
         override suspend fun session() = ClientSessionInfo(kind, "1", "/d", caps)
         override suspend fun torrents() = jobs.map { t(it) }
         private fun t(h: String) = ClientTorrent(h, "n", ClientRunState.STOPPED, 1, 0, 0, 0, "/d")
-        override suspend fun torrent(hash: String) = if (hash in jobs) t(hash) else null
+        override suspend fun torrent(hash: String): ClientTorrent? {
+            onTorrentRead()
+            return if (hash in jobs) t(hash) else null
+        }
         override suspend fun files(hash: String) = emptyList<ClientFile>()
         override suspend fun add(request: ClientAddRequest) { adds++; jobs += request.source.infoHash }
         override suspend fun setStarted(hash: String, started: Boolean) = Unit
@@ -54,6 +58,23 @@ class ClientJobTransferTest {
         b.jobs.clear()
         assertTrue(t.retireSource(hash, copied) is ClientOperationOutcome.Refused)
         assertEquals(0, a.removes)
+    }
+
+    @Test fun changingConnectionDuringTheSourceReadKeepsTheJobAndConsumesConsent() = runBlocking {
+        val source = Fake("source", mutableSetOf(hash))
+        val target = Fake("target")
+        val move = transfer(source, target)
+        val copied = move.copy(hash, null, false) as ClientJobTransfer.CopyResult.Copied
+        var authorized = true
+        source.onTorrentRead = { authorized = false }
+
+        assertTrue(move.retireSource(hash, copied) { authorized } is ClientOperationOutcome.Refused)
+        source.onTorrentRead = {}
+        authorized = true
+        assertTrue(move.retireSource(hash, copied) { authorized } is ClientOperationOutcome.Refused)
+        assertEquals(0, source.removes)
+        assertEquals(setOf(hash), source.jobs)
+        assertEquals(setOf(hash), target.jobs)
     }
 
     @Test fun absentSourceOrUnfaithfulExportWritesNothing() = runBlocking {

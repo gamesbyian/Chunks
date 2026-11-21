@@ -197,11 +197,14 @@ internal class ClientOperations(
         }
 
     suspend fun remove(hash: String, deleteData: Boolean): ClientOperationOutcome =
-        mutateExisting(hash,
-            if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
-            { client.remove(hash, deleteData) }) { observed ->
-            if (observed == null) null else "Still registered"
-        }
+        removeChecked(hash, deleteData) { client.remove(hash, deleteData) }
+
+    suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome =
+        removeChecked(hash, deleteData = false) { client.removeJob(hash, beforeWrite) }
+
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome =
+        mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
+            send) { observed -> if (observed == null) null else "Still registered" }
 
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean): ClientOperationOutcome {
         ClientHashes.requireDirectory(directory)

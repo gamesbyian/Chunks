@@ -1195,8 +1195,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * No payload deletion, automatic retries, or implicit cleanup. An
      * HTTP timeout after d.erase is not proof of failure.
      */
-    suspend fun eraseFromSession(
-        hash: String, expectedName: String, expectedDirectory: String
+    suspend fun eraseFromSession(hash: String, expectedName: String, expectedDirectory: String): SessionEraseOutcome =
+        eraseFromSession(hash, expectedName, expectedDirectory) {}
+
+    internal suspend fun eraseFromSession(
+        hash: String, expectedName: String, expectedDirectory: String, beforeWrite: () -> Unit
     ): SessionEraseOutcome {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) {
             "Only exact 40-character torrent hashes can be erased"
@@ -1237,9 +1240,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             }
         }
         try {
-            call("d.erase", listOf(hash))
+            call("d.erase", listOf(hash), beforeWrite)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
+        } catch (refused: ClientRefusedException) {
+            throw refused
         } catch (_: Exception) {
             // Even a malformed success/fault envelope may follow an applied
             // erase. Never repeat an ambiguous session mutation.
@@ -2384,7 +2389,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
-    internal suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
+    internal suspend fun call(
+        method: String, params: List<Any> = emptyList(), beforeWrite: () -> Unit = {}
+    ): Any? =
         withContext(Dispatchers.IO) {
             // A challenge-based credential exchange is scoped to the *same*
             // HTTPS/loopback endpoint. Never enable redirects or set a
@@ -2416,6 +2423,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     // A deadline may expire during blocking auth preflight.
                     // It must revoke dispatch before a destructive body is sent.
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    beforeWrite()
                     connection.outputStream.use { it.write(request) }
                     val status = connection.responseCode
                     if (status == HttpURLConnection.HTTP_UNAUTHORIZED &&

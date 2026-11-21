@@ -14,10 +14,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +34,7 @@ import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientFile
 import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
+import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
@@ -46,7 +49,15 @@ internal data class ProtocolMoveTarget(
     val label: String,
     /** The target's exact Chunks display-alias scope; null when it is not privacy-visible. */
     val aliasScope: String? = null,
+    /** Stable for the current authenticated connection, even across a label change. */
+    val connectionWitness: Any = id,
     val createOperations: () -> ClientOperations
+)
+
+private data class VerifiedMoveCopy(
+    val target: ProtocolMoveTarget,
+    val transfer: ClientJobTransfer,
+    val receipt: ClientJobTransfer.CopyResult.Copied
 )
 
 /** Plain-language, credential-free outcome text shared by every protocol. */
@@ -83,6 +94,8 @@ internal fun ProtocolClientOperationsPanel(
     onChanged: () -> Unit,
     /** Other connected clients this job may be copied/moved to (job only). */
     moveTargets: List<ProtocolMoveTarget> = emptyList(),
+    /** Authorized destination connections can outlive a transient inventory refresh. */
+    moveConnections: Map<String, Any> = moveTargets.associate { it.id to it.connectionWitness },
     /** The rTorrent Details surface already owns its verified lifecycle/file controls. */
     moveOnly: Boolean = false,
     /** Smart Routing's advisory Move suggestion (target id to "why"); never acts by itself. */
@@ -119,10 +132,18 @@ internal fun ProtocolClientOperationsPanel(
             catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
         if (!names.isNullOrEmpty()) routingFileNames = names
     }
-    var copiedTo by remember(hash, sourceClientId) { mutableStateOf<ProtocolMoveTarget?>(null) }
-    var copiedTransfer by remember(hash, sourceClientId) { mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer?>(null) }
-    var copiedReceipt by remember(hash, sourceClientId) {
-        mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied?>(null)
+    var copied by remember(operations) { mutableStateOf<VerifiedMoveCopy?>(null) }
+    val currentConnections by rememberUpdatedState(moveConnections)
+    val currentOwner by rememberUpdatedState(operations.takeIf { current })
+    val completedCopy = copied
+    val finishableCopy = completedCopy?.takeIf { copy ->
+        moveConnections[copy.target.id] == copy.target.connectionWitness
+    }
+    if (completedCopy != null && finishableCopy == null) SideEffect {
+        if (copied === completedCopy) {
+            copied = null
+            notice = "Job copied to ${completedCopy.target.label}. The destination connection changed. The source job was kept."
+        }
     }
     var draft by remember(hash) { mutableStateOf<Map<Int, ClientFilePriority>>(emptyMap()) }
     // Change folder: the client's own set-location, verified by exact readback.
@@ -247,12 +268,12 @@ internal fun ProtocolClientOperationsPanel(
                 OutlinedButton(onClick = {
                     if (busy || latched) return@OutlinedButton
                     busy = true
-                    copiedTo = null; copiedTransfer = null; copiedReceipt = null
+                    copied = null
                     notice = "Copying job to ${target.label}…"
                     scope.launch {
                         val transfer = try {
                             val dst = target.createOperations()
-                            io.github.gamesbyian.chunks.rpc.ClientJobTransfer(
+                            ClientJobTransfer(
                                 operations, operations.client, dst, dst.client,
                                 sourceClientId = sourceClientId, targetClientId = target.id
                             )
@@ -261,8 +282,8 @@ internal fun ProtocolClientOperationsPanel(
                             transfer?.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true)
                         } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
                         when (result) {
-                            is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied -> {
-                                copiedTo = target; copiedTransfer = transfer; copiedReceipt = result
+                            is ClientJobTransfer.CopyResult.Copied -> {
+                                copied = VerifiedMoveCopy(target, requireNotNull(transfer), result)
                                 notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
                                 // The Chunks name follows the confirmed copy, never overwriting a
                                 // name the target already has. Nothing is sent to either client.
@@ -277,11 +298,11 @@ internal fun ProtocolClientOperationsPanel(
                                         notice = notice + " Its Chunks display name was not copied."
                                 }
                             }
-                            is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.NotCopied -> {
+                            is ClientJobTransfer.CopyResult.NotCopied -> {
                                 notice = ProtocolOperationText.describe("Copy to ${target.label}", result.outcome, target.label)
                                 if (result.outcome is ClientOperationOutcome.Uncertain) uncertainAt = inventoryWitness
                             }
-                            is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Refused ->
+                            is ClientJobTransfer.CopyResult.Refused ->
                                 notice = "Copy to ${target.label}: not changed. ${result.reason}."
                             null -> notice = "Copy to ${target.label}: could not reach both clients. Nothing was changed."
                         }
@@ -293,14 +314,14 @@ internal fun ProtocolClientOperationsPanel(
                     Text("Copy job to ${target.label}")
                 }
             }
-            val done = copiedTo
-            val transfer = copiedTransfer
-            val receipt = copiedReceipt
-            if (done != null && transfer != null && receipt != null) Button(onClick = {
-                run("Remove from $clientLabel after moving to ${done.label}") {
-                    transfer.retireSource(hash, receipt)
+            if (finishableCopy != null) Button(onClick = {
+                run("Remove from $clientLabel after moving to ${finishableCopy.target.label}") {
+                    finishableCopy.transfer.retireSource(hash, finishableCopy.receipt) {
+                        currentOwner === operations &&
+                            currentConnections[finishableCopy.target.id] == finishableCopy.target.connectionWitness
+                    }
                 }
-                copiedTo = null; copiedTransfer = null; copiedReceipt = null
+                copied = null
             }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .testTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE)) {
                 Text("Finish move: remove from $clientLabel (keep files)")
