@@ -54,7 +54,12 @@ for kind in share magnet; do
   set +e
   out_a="$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e class "$cls#phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies" \
     -e chunksIntakePhase a -e chunksIntakeKind "$kind" "$runner")"
+  phase_a_status=$?
   set -e
+  if [[ "$phase_a_status" -eq 124 || "$phase_a_status" -eq 137 ]]; then
+    echo 'CHUNKS_INTAKE: phase A timed out without completed process-death evidence'
+    exit 1
+  fi
   printf '%s\n' "$out_a"
   log_a="$(adb logcat -d -v raw -s ChunksIntake:I)"
   armed="$(grep -E "^CHUNKS_INTAKE kind=$kind armed reviewed=true bytes=524288 stopped=true sha256=[0-9a-f]{64}$" <<< "$log_a" || true)"
