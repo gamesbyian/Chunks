@@ -1,10 +1,11 @@
 name: Chunks SVG native-size icon review
+# Workflow-only routing changes are checked by Documentation validation.
+# Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
     paths:
       - 'docs/design/svg/**'
       - 'tools/svg_small_size_atlas.py'
-      - '.github/workflows/svg-small-size.yml'
   workflow_dispatch:
 # Superseded PR revisions should not keep spending runner minutes.
 # Manual and main-push executions use their unique run ID and are never cancelled.
