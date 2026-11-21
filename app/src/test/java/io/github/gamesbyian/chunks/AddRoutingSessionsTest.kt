@@ -131,9 +131,12 @@ class AddRoutingSessionsTest {
                 rule.waitUntil(5_000) {
                     rule.onAllNodesWithText("/rTorrent/ready").fetchSemanticsNodes().isNotEmpty()
                 }
-                rule.runOnIdle { remote.value = RTorrentRemote(RemoteCredentials(second.endpoint, "", "")) }
-                rule.waitUntil(5_000) { second.methods.contains("directory.default") }
+                val replacement = RTorrentRemote(RemoteCredentials(second.endpoint, "", ""))
+                rule.runOnIdle { remote.value = replacement }
+                // Synchronize the replacement with the rendered UI before
+                // polling the independent fake-server request record.
                 rule.onNodeWithText("Default unavailable").assertExists()
+                rule.waitUntil(5_000) { second.methods.contains("directory.default") }
                 rule.onNodeWithText("/rTorrent/ready").assertDoesNotExist()
             }
         }
