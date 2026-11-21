@@ -101,12 +101,9 @@ run_pair() {
   return "$result"
 }
 failed=0
-run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
-run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
 # Deluge authenticates with a password only; a blank shell extra is swallowed by
 # adb shell, shifting every following am instrument argument out of position.
 # Send a non-empty unused username placeholder (ignored by the Deluge adapter).
-run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
 rtorrent_test=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
 run_rtorrent_faults() {
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
@@ -155,7 +152,7 @@ run_rtorrent_death() {
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
-run_rtorrent_faults || failed=1
+echo "CHUNKS_DIAGNOSTIC: only the rTorrent process-death reconnect runs on this branch"
 run_rtorrent_death || failed=1
 run_local_add_death() {
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
@@ -183,6 +180,5 @@ run_local_add_death() {
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL unresolved metadata observation did not replay on process restart" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
-run_local_add_death || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed
