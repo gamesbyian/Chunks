@@ -361,6 +361,21 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
     }
 
+    /** The visible main view can hide jobs that still exist in this session. */
+    internal suspend fun listCompleteSessionTransfers(): List<RemoteTransfer> {
+        suspend fun requireUnfilteredDefault() {
+            // Every session job belongs to the default view, but that view can
+            // hide jobs. Verify its visibility before and after the inventory.
+            check(number(call("view.size_not_visible", listOf("", "default"))) == 0L) {
+                "Filtered session inventory"
+            }
+        }
+        requireUnfilteredDefault()
+        val transfers = listTransfers("default")
+        requireUnfilteredDefault()
+        return transfers
+    }
+
     /** Only server-owned view names, never XML-RPC command fragments. */
     suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
@@ -1359,22 +1374,6 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             !RuTorrentDeleteData.safeDirectory(expectedDirectory))
             return refused(RemoteDeleteRefusal.INVALID_REVIEW)
 
-        // The main view may exclude a stopped or custom-view torrent. A
-        // destructive payload removal must not rely on that partial catalog.
-        // rTorrent's unfiltered "default" view is the broad session inventory.
-        // If unavailable, inconsistent with main, or changing, refuse.
-        suspend fun fullSession(): List<RemoteTransfer> {
-            // All downloads belong to each view, but the visible subset can be filtered.
-            // download_list/default alone is not proof of complete session coverage.
-            check(number(call("view.size_not_visible", listOf("", "default"))) == 0L) {
-                "Filtered session inventory"
-            }
-            return listTransfers("default").also {
-                check(number(call("view.size_not_visible", listOf("", "default"))) == 0L) {
-                    "Filtered session inventory"
-                }
-            }
-        }
         fun identityRows(rows: List<RemoteTransfer>) = rows.map {
             Triple(it.hash.uppercase(java.util.Locale.ROOT), it.name, it.directory)
         }.toSet()
@@ -1399,7 +1398,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return refused(RemoteDeleteRefusal.TARGET_CHANGED)
 
         onStage(RemoteRemovalStage.SESSION)
-        val allSession = try { fullSession() }
+        val allSession = try { listCompleteSessionTransfers() }
         catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
         catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.INCOMPLETE_SESSION) }
         if (!coversMain(inventory, allSession)) return refused(RemoteDeleteRefusal.INCOMPLETE_SESSION)
@@ -1455,7 +1454,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
           catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.TARGET_CHANGED) }
         if (!fresh) return refused(RemoteDeleteRefusal.TARGET_CHANGED)
-        val latestSession = try { fullSession() }
+        val latestSession = try { listCompleteSessionTransfers() }
         catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
         catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.INCOMPLETE_SESSION) }
         if (identityRows(allSession) != identityRows(latestSession) ||

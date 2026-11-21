@@ -306,6 +306,12 @@ class MainActivity : ComponentActivity() {
 
 private data class VerifiedConnectionNotice(val label: String, val saved: Boolean?)
 
+private data class SnapshotServerInventory(
+    val account: RTorrentRemote,
+    val revision: Long,
+    val hashes: List<String>
+)
+
 // A cancelled composition cannot erase a document still owned by the
 // configuration-retained source review. Only the live completed reader consumes it.
 internal fun shouldConsumeReviewedSourceOnExit(
@@ -2676,6 +2682,25 @@ internal fun ChunksApp(
                 }
                 Section.SNAPSHOT -> {
                 val snapshotAccount = server
+                val inventoryRevision = snapshotRevision
+                val compareReady = snapshotAccount != null && currentView == "main" &&
+                    inventoryRevision > 0 && !stale && !loading
+                val verifiedInventory by androidx.compose.runtime.produceState<SnapshotServerInventory?>(
+                    initialValue = null, snapshotAccount, inventoryRevision, compareReady
+                ) {
+                    value = null
+                    if (!compareReady || snapshotAccount == null) return@produceState
+                    value = try {
+                        val hashes = snapshotAccount.listCompleteSessionTransfers().map { it.hash }
+                        SnapshotServerInventory(snapshotAccount, inventoryRevision, hashes)
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) { null }
+                }
+                val comparisonHashes = verifiedInventory?.takeIf { comparison ->
+                    compareReady && comparison.account === snapshotAccount &&
+                        comparison.revision == inventoryRevision
+                }?.hashes
                 // Give the nested callback an explicit suspend function type:
                 // let{} alone infers an ordinary Function1, not SuspendFunction1.
                 val originalReader: suspend (String) -> ByteArray? = { hash ->
@@ -2690,12 +2715,10 @@ internal fun ChunksApp(
                     sourceSessionIdentity = snapshotAccount,
                     accountStillCurrent = { server === snapshotAccount },
                     restorePanel = {
-                        // Only the complete "main" view is a whole-server
-                        // inventory; filtered views cannot prove absence.
                         SnapshotRestorePreviewPanel(
-                            targetHashes = transfers.map { it.hash },
+                            targetHashes = comparisonHashes.orEmpty(),
                             target = SnapshotRestoreTarget.SERVER,
-                            inventoryConfirmed = currentView == "main" && snapshotRevision > 0,
+                            inventoryConfirmed = comparisonHashes != null,
                             inventoryStale = stale,
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
