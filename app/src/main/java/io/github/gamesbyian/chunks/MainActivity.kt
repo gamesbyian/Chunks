@@ -1141,8 +1141,12 @@ internal fun ChunksApp(
         activeAddRemoteName, otherSavedAddTargets).first
     // Smart Routing: read the persisted policy off the composition thread
     // whenever Add is shown; suggest from the reviewed source's own names.
-    var routingPolicy by remember { mutableStateOf<io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Policy?>(null) }
-    LaunchedEffect(section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD) {
+    val routingAddVisible = section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD
+    var routingPolicy by remember(routingAddVisible) {
+        mutableStateOf<io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Policy?>(null)
+    }
+    LaunchedEffect(routingAddVisible) {
+        if (!routingAddVisible) return@LaunchedEffect
         routingPolicy = withContext(Dispatchers.IO) {
             (runCatching { io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore(context).read() }.getOrNull()
                 as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
@@ -1173,20 +1177,8 @@ internal fun ChunksApp(
     }
     // Capability-aware candidacy: each protocol client's own live session,
     // read off the main thread only while Add is shown and routing is on.
-    var routingSessions by remember { mutableStateOf<Map<String, io.github.gamesbyian.chunks.rpc.ClientSessionInfo>>(emptyMap()) }
-    val routingAddVisible = section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD
-    LaunchedEffect(routingAddVisible, routingPolicy?.enabled, combinedProtocolProfiles.map { it.id }) {
-        if (!routingAddVisible || routingPolicy?.enabled != true) return@LaunchedEffect
-        val read = combinedProtocolProfiles.filter { it.operations != null }.mapNotNull { profile ->
-            val session = withContext(Dispatchers.IO) {
-                runCatching {
-                    kotlinx.coroutines.withTimeout(20_000) { requireNotNull(profile.operations).invoke().session() }
-                }.getOrNull()
-            }
-            session?.let { profile.id to it }
-        }.toMap()
-        routingSessions = read
-    }
+    val routingSessions = rememberAddRoutingSessions(
+        routingAddVisible && routingPolicy?.enabled == true, combinedProtocolProfiles)
     val routingResult = remember(routingPolicy, routingSource, routingMagnetName, connectedRTorrentId,
         combinedProtocolProfiles, activeAddRemoteName, routingSessions, localAddStart.value) {
         val candidates = buildList {
