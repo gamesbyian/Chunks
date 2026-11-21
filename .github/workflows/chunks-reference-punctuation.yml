@@ -12,6 +12,7 @@ on:
       - 'assets/fonts/source/reference-punctuation/**'
       - 'docs/design/CHUNKS-REFERENCE-PUNCTUATION.md'
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/reference-images/03-typography-and-wordmark.png'
       - 'tools/trace_reference_punctuation.py'

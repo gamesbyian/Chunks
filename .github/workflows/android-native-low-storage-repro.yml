@@ -4,6 +4,7 @@ name: Android real low-storage native recovery (isolated)
 # an emulator. Never execute against a user handset or an unrelated PR.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
       - "tools/android_native_low_storage_repro.sh"

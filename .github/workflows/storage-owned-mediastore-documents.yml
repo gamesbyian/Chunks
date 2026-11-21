@@ -2,6 +2,7 @@ name: Research owned MediaStore document publication
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalSingleLibraryMediaStoreCopy.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalLibraryCopy.kt"

@@ -1,6 +1,7 @@
 name: Experimental Chunks font native Android text-size acceptance
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt'
       - 'assets/fonts/experimental/stacked-studies/**'

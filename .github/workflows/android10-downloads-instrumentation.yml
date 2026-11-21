@@ -4,6 +4,7 @@ name: Android 10 shared Downloads instrumentation
 # storage plus a runtime grant; the regular suite runs on API 35 only.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/AndroidManifest.xml"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlace*.kt"

@@ -12,6 +12,7 @@ on:
         required: true
         default: "12"
   pull_request:
+    branches: [main]
     paths:
       - tools/collect_public_magnet_catalog.py
       - tools/collect_linuxtracker_magnets.py

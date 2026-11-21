@@ -5,6 +5,7 @@ name: Chunks R8 minified smoke
 # shrinking stays off until this passes; see app/proguard-rules.pro.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/**"
       - "app/build.gradle.kts"

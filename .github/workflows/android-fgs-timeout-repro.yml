@@ -5,6 +5,7 @@ name: Android lifecycle repro (opt-in)
 # to the service timeout code only; not part of the ordinary native suite.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalServiceTimeoutNotice.kt"

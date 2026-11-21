@@ -3,6 +3,7 @@ name: Installed Universal Add (Local and four real remote clients)
 # Disposable loopback daemons on the runner only.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolConnect.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt"

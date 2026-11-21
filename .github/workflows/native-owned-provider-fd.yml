@@ -1,6 +1,7 @@
 name: Experimental native provider FD (host-only)
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/native_owned_provider_fd.*"
       - "tools/native_owned_provider_fd_test.cc"

@@ -2,6 +2,7 @@ name: Real public magnet discovery comparison
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/public_magnet_metadata_probe.py"
       - ".github/workflows/public-magnet-metadata-probe.yml"

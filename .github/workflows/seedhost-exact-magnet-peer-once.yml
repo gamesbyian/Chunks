@@ -5,6 +5,7 @@ name: P0 real BEP9 magnet metadata and peer-piece proof
 # No .torrent uploaded to rTorrent, no simulation, no shared user job altered.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/test/java/io/github/gamesbyian/chunks/interop/SeedhostExactMagnetPeerBytesOnceTest.kt"
       - "tools/parse_real_magnet_peer_receipt.py"

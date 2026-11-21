@@ -14,6 +14,7 @@ on:
       - 'assets/fonts/experimental/**'
       - 'docs/design/CHUNKS-REFERENCE-PANEL-FONT.md'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/build_reference_panel_candidate.py'
       - 'tools/render_reference_panel_comparison.py'

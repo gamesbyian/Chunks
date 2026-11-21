@@ -2,6 +2,7 @@ name: Chunks Android foundation
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/**"
       # API35 native Add workflow runs all instrumented classes and assembles
