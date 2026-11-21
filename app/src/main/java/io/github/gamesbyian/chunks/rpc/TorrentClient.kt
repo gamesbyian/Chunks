@@ -37,6 +37,12 @@ internal interface TorrentClient {
     suspend fun add(request: ClientAddRequest)
     suspend fun setStarted(hash: String, started: Boolean)
     suspend fun remove(hash: String, deleteData: Boolean)
+
+    /** Move's job-only removal. Implementations with preflight reads check after those reads. */
+    suspend fun removeJob(hash: String, beforeWrite: () -> Unit) {
+        beforeWrite()
+        remove(hash, deleteData = false)
+    }
     suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>)
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean)
     suspend fun recheck(hash: String)

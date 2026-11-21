@@ -165,13 +165,19 @@ internal class LocalTorrentClient(
         }
     }
 
-    override suspend fun remove(hash: String, deleteData: Boolean) {
+    override suspend fun remove(hash: String, deleteData: Boolean) = removeChecked(hash, deleteData) {}
+
+    override suspend fun removeJob(hash: String, beforeWrite: () -> Unit) =
+        removeChecked(hash, deleteData = false, beforeWrite = beforeWrite)
+
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, beforeWrite: () -> Unit) {
         val exact = ClientHashes.requireHash(hash)
         write { running ->
             val reviewed = running.status(exact) ?: throw ClientRefusedException("Transfer is not in this client")
             if (reviewed.nativeReviewToken.isBlank() || !reviewed.savePath.startsWith("/"))
                 throw ClientRefusedException("This transfer's identity cannot be verified right now")
             if (!deleteData) {
+                beforeWrite()
                 if (!running.removeKeepingDataIfMatching(
                         exact, reviewed.name, reviewed.savePath, reviewed.nativeReviewToken)) {
                     if (running.status(exact)?.nativeReviewToken != reviewed.nativeReviewToken)
