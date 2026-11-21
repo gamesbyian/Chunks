@@ -135,8 +135,13 @@ run_rtorrent_death() {
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
+  local phase1_status=0
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#submitThenKillTheAppProcess" \
-    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || true
+    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || phase1_status=$?
+  if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
+    echo "::error::rTorrent deliberate process death did not finish before its deadline"
+    return 1
+  fi
   adb logcat -d -s ChunksAddFault:I > "$out/process-death-boundary.txt" || return 1
   if ! grep -Fq 'process-death-real-write-awaits-ack' "$out/process-death-boundary.txt" ||
     grep -q '^OK (' "$out/process-death-phase1.txt" ||
@@ -164,8 +169,13 @@ run_local_add_death() {
   adb logcat -c || return 1
   local class=io.github.gamesbyian.chunks.LocalInstalledAddProcessDeathTest
   local before="$out/local-add-death-phase1.txt" after="$out/local-add-death-phase2.txt"
+  local phase1_status=0
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
-    -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || true
+    -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || phase1_status=$?
+  if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
+    echo "::error::Local deliberate process death did not finish before its deadline"
+    return 1
+  fi
   adb logcat -d -s ChunksLocalAddDeath:I > "$out/local-add-death-boundary.txt" || return 1
   if ! grep -Fq 'exact-job-registered-start-unverified' "$out/local-add-death-boundary.txt" ||
     grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
