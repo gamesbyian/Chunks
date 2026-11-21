@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Disposable-only D1/C1: installed app against two local real rTorrent daemons.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 receipt="$RUNNER_TEMP/chunks-combined/receipt.json"
 out="$RUNNER_TEMP/chunks-combined/evidence"
 mkdir -p "$out"
@@ -14,7 +15,7 @@ adb reverse tcp:18083 tcp:18083 >/dev/null
 b64() { printf '%s' "$1" | base64 -w 0; }
 field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$receipt" "$1"; }
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.CombinedTwoRealServersInstrumentedTest#combinedShowsSameHashOnTwoRealServersWithDistinctOriginsAndReconnects \
   -e chunks_combined_disposable authorized \
   -e chunks_combined_a_b64 "$(b64 http://127.0.0.1:18080/RPC2)" \
@@ -43,7 +44,7 @@ adb shell am force-stop io.github.gamesbyian.chunks
 dead="$(adb shell "if pidof io.github.gamesbyian.chunks >/dev/null; then echo running; else echo stopped; fi" | tr -d '\r')"
 [[ "$dead" == stopped ]] || { echo "::error::app process still running after force-stop"; exit 1; }
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.CombinedTwoRealServersInstrumentedTest#afterProcessDeathRememberedServerReconnects \
   -e chunks_combined_phase after-process-death \
   -e chunks_combined_b_b64 "$(b64 http://127.0.0.1:18082/RPC2)" \

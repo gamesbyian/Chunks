@@ -2,6 +2,7 @@
 # Two separate instrumented Android app processes. No real locals, no app data
 # clear and no permission mutations. Fixed nonsecret receipts only.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 api="$1"
 [[ "$api" == 29 || "$api" == 35 ]] || {
   echo 'CHUNKS_BATCH_COLD: unsupported SDK request' >&2; exit 1;
@@ -46,7 +47,7 @@ run_phase() {
   adb shell am force-stop "$pkg"
   adb logcat -c
   output="$(mktemp)"
-  if ! adb shell am instrument -w -r \
+  if ! timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
       -e class "$class#$test" \
       -e chunksBatchPhase "$phase" \
       -e chunksBatchRunId "$run_id" "$runner" >"$output" 2>&1; then
