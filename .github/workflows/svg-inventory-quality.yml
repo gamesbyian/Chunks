@@ -1,12 +1,13 @@
 name: Check Chunks SVG quality dossier
 
+# Workflow-only routing changes are checked by Documentation validation.
+# Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
     paths:
       - 'docs/design/svg/**'
       - 'docs/design/approved/chunks-app-icon-master.svg'
       - 'tools/audit_svg_inventory.py'
-      - '.github/workflows/svg-inventory-quality.yml'
   workflow_dispatch:
 
 # Superseded PR revisions should not keep spending runner minutes.
