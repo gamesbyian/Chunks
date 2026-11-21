@@ -2304,7 +2304,10 @@ private fun CombinedTransferRow(
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
         val toggle = onToggleExpanded ?: onDetails
+        val detailsTag = "${ChunksSemantics.TRANSFERS_ROW_DETAILS}.${row.key.environment.value}.${row.key.infoHash}"
+        val rowDetailsTag = if (onToggleExpanded == null) Modifier.testTag(detailsTag) else Modifier
         Column(Modifier.weight(1f).padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 8.dp)
+            .then(rowDetailsTag)
             .clickable(role = Role.Button,
                 onClickLabel = if (onToggleExpanded == null) "Open full transfer details"
                     else if (expanded) "Collapse transfer" else "Expand transfer controls",
@@ -2361,7 +2364,7 @@ private fun CombinedTransferRow(
                 // never toggles the row.
                 if (onToggleExpanded != null) androidx.compose.material3.TextButton(onClick = onDetails,
                     contentPadding = PaddingValues(horizontal = 8.dp),
-                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                    modifier = Modifier.heightIn(min = 48.dp).testTag(detailsTag).semantics {
                         contentDescription = "Details for ${row.displayName} on $environmentLabel"
                     }) { Text("Details", style = MaterialTheme.typography.labelMedium) }
             }
