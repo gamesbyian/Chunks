@@ -121,6 +121,35 @@ class AddRoutingSessionsTest {
         rule.onNodeWithText("/fast/default").assertExists()
     }
 
+    @Test fun delayedOldSessionCannotRepublishAfterReauthentication() {
+        val delayedOld = CompletableDeferred<String>()
+        val oldReads = AtomicInteger()
+        val newReads = AtomicInteger()
+        val chosen = mutableStateOf(client(id, 1L) {
+            oldReads.incrementAndGet()
+            delayedOld.await()
+        })
+        rule.setContent {
+            val sessions = rememberAddRoutingSessions(true, listOf(chosen.value))
+            BasicText(sessions[id]?.defaultDownloadDirectory ?: "Waiting")
+        }
+        rule.waitUntil(5_000) { oldReads.get() == 1 }
+        rule.runOnIdle {
+            chosen.value = client(id, 2L) {
+                newReads.incrementAndGet()
+                "/new/identity"
+            }
+        }
+        rule.waitUntil(5_000) {
+            newReads.get() == 1 &&
+                rule.onAllNodesWithText("/new/identity").fetchSemanticsNodes().isNotEmpty()
+        }
+        delayedOld.complete("/stale/identity")
+        rule.waitForIdle()
+        rule.onNodeWithText("/stale/identity").assertDoesNotExist()
+        rule.onNodeWithText("/new/identity").assertExists()
+    }
+
     @Test fun aChangedRTorrentSessionNeedsItsOwnValidDefault() {
         FakeRTorrent(directoryDefault = "/rTorrent/ready").use { first ->
             FakeRTorrent(directoryDefault = "/rTorrent//unusable").use { second ->

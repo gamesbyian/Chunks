@@ -77,6 +77,12 @@ run_one() {
     echo "::error::Installed protocol-client $mode journey failed for $kind"
     return 1
   fi
+  if [ "$mode" = positive ]; then
+    if ! grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=smart-routing-exact-live-default-no-write' "$stages"; then
+      echo "::error::Missing installed $kind exact-client Smart Routing and no-write witness"
+      return 1
+    fi
+  fi
   if [ "$mode" = fault ]; then
     for fault in drop timeout; do
       if ! grep -Fxq "INSTRUMENTATION_STATUS: chunks_stage=add-fault-$fault-one-write-present-origin-unverified" "$stages"; then

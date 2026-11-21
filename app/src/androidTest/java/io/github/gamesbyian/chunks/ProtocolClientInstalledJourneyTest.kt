@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -318,13 +319,49 @@ class ProtocolClientInstalledJourneyTest {
             val profileId = profile.id
             val second = fixture("add")
             val magnet = requireNotNull(second.magnet)
+            val routingForAdd = SmartRoutingPolicyStore(
+                InstrumentationRegistry.getInstrumentation().targetContext)
+            val previousRoutingForAdd = routingForAdd.read() as SmartRoutingPolicyStore.Read.Ready
+            val liveRule = SmartRoutingPreview.Rule("installed-add-live-client", 1,
+                SmartRoutingPreview.Kind.TV, 60, profileId)
+            assertEquals(SmartRoutingPolicyStore.Save.SAVED,
+                routingForAdd.save(previousRoutingForAdd.revision,
+                    SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(liveRule))))
             // Details may hide the footer: go back to Transfers first.
             if (rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_ADD)).fetchSemanticsNodes().isEmpty()) {
                 it.onActivity { activity -> activity.onBackPressedDispatcher.onBackPressed() }
             }
             waitFor("Add footer") { rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_ADD)).fetchSemanticsNodes().isNotEmpty() }
             rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
-            clickOnce("chunks.add.target.protocol.$profileId", "Add target chip", 30_000)
+            waitFor("Add source for live Smart Routing", 30_000) {
+                runCatching { scrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)); true }.getOrDefault(false)
+            }
+            val routingMagnet = "magnet:?xt=urn:btih:${second.infoHashV1}&dn=Show.S01E02.mkv"
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(routingMagnet)
+            val routingSuggestion = hasTestTag("chunks.add.routing.suggestion")
+            waitFor("real client offers its own checked default", 60_000) {
+                runCatching {
+                    scrollToNode(routingSuggestion)
+                    rule.onAllNodes(routingSuggestion and hasText(profile.label, substring = true))
+                        .fetchSemanticsNodes().size == 1
+                }.getOrDefault(false)
+            }
+            assertNull("Read-only routing may not Add",
+                runBlocking { independentRead(second.infoHashV1) })
+            clickOnce("chunks.add.routing.use", "exact-client routing suggestion")
+            waitFor("routing selected the exact live protocol client", 30_000) {
+                runCatching {
+                    scrollToNode(hasTestTag("chunks.add.target.protocol.$profileId"))
+                    rule.onNodeWithTag("chunks.add.target.protocol.$profileId").assertIsSelected()
+                    true
+                }.getOrDefault(false)
+            }
+            assertNull("Selecting a destination is only draft state",
+                runBlocking { independentRead(second.infoHashV1) })
+            stage("smart-routing-exact-live-default-no-write")
+            val refreshedRoutingForAdd = routingForAdd.read() as SmartRoutingPolicyStore.Read.Ready
+            assertEquals(SmartRoutingPolicyStore.Save.SAVED,
+                routingForAdd.save(refreshedRoutingForAdd.revision, previousRoutingForAdd.policy))
             waitFor("protocol Add review") {
                 runCatching { scrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)); true }.getOrDefault(false)
             }
