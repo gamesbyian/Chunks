@@ -67,11 +67,11 @@ class SmartRoutingAddSuggestionTest {
         assertTrue(!SmartRoutingAddSuggestion.candidateFor(qb, "qB", session(C.ADD_MAGNET, dir = null), true, true).placeKnown)
     }
 
-    @Test fun blankDaemonDefaultCannotMakeAnUnavailableClientLookReady() {
-        for (path in listOf("", " ", "\t", "\r\n")) {
+    @Test fun invalidDaemonDefaultCannotMakeAnUnavailableClientLookReady() {
+        for (path in listOf("", " ", "\t", "\r\n", "relative/path", "/srv/../other", "/srv/\u0000other")) {
             val unknownPlace = SmartRoutingAddSuggestion.candidateFor(qb, "qB",
                 session(C.ADD_MAGNET, C.ADD_STOPPED, dir = path), magnetSource = true, startNow = false)
-            assertTrue("A blank default cannot prove a Save to folder", !unknownPlace.placeKnown)
+            assertTrue("An invalid default cannot prove a Save to folder", !unknownPlace.placeKnown)
             assertTrue("The exact matching rule must not silently reroute",
                 SmartRoutingAddSuggestion.evaluate(policy, "Show.S01E02.mkv",
                     listOf("Show.S01E02.mkv"), listOf(unknownPlace, c(deluge, "Deluge")))
