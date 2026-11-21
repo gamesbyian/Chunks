@@ -2,6 +2,8 @@
 
 **Purpose:** one stable **go/no-go gate**, not an alternative feature backlog. Use [WORK-QUEUE](WORK-QUEUE.md) to dispatch remaining work, [TECHNICAL-COMPLETENESS-LEDGER](TECHNICAL-COMPLETENESS-LEDGER.md) for implemented-versus-missing status, [SPEC-COVERAGE](SPEC-COVERAGE.md) for requirement-to-test obligations and [QUALITY-LEDGER](QUALITY-LEDGER.md) for immutable executed receipts. This checklist does not itself declare any test passed.
 
+**Repository governance verification:** On the 2026-11-21 read, the public branch endpoint reported `main.protected=false` and an active ruleset exposed deletion/non-fast-forward restrictions, but no visible required-status rule. Classic branch-protection inspection was permission-denied. This is an **unverified release governance gate**, tracked in [#10](https://github.com/gamesbyian/Chunks/issues/10), not permission to presume no other rules exist or to silently waive source-exact checks. An authorized administrator must verify configured effective rules, PR-only merges and required status contexts. Required checks must be always-emitted or otherwise explicitly resolved for docs-only/path-filtered PRs; do not require absent optional jobs.
+
 ## Release identity
 
 Capture in the final release receipt, before publishing:
