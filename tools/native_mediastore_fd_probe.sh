@@ -3,6 +3,7 @@
 # The emulator runner's "script" input expects ONE executable command, not
 # a multiline YAML shell program (which it splits into independent sh calls).
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 api="${1:?expected 29 or 35}"
 [[ "$api" == 29 || "$api" == 35 ]] || {
   echo "CHUNKS_MEDIASTORE_FD: unsupported requested API $api" >&2
@@ -29,7 +30,7 @@ install_checked app/build/outputs/apk/androidTest/debug/app-debug-androidTest.ap
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.engine.OwnedMediaStoreDescriptorInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
