@@ -1,11 +1,12 @@
 name: Verify Chunks outlined SVG variants
+# Workflow-only routing changes are checked by Documentation validation.
+# Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
     paths:
       - 'docs/design/svg/**'
       - 'tools/build_svg_outlined_alternatives.py'
       - 'tools/audit_svg_inventory.py'
-      - '.github/workflows/svg-outlined-review.yml'
   workflow_dispatch:
 # Superseded PR revisions should not keep spending runner minutes.
 # Manual and main-push executions use their unique run ID and are never cancelled.
