@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install and exercise the same preview APK that can subsequently be offered.
 set -euo pipefail
+# Bound every Android instrumentation phase independently; timeouts are failures.
 umask 077
 milestone() { printf 'CHUNKS_INSTALLED_MAGNET_PREFLIGHT: %s\n' "$1"; }
 milestone 'checking source and fixture configuration'
@@ -85,7 +86,7 @@ if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   milestone 'running production local HTTPS and one-time Place journey'
   tunnel
   adb logcat -c
-  adb shell am instrument -w -r \
+  timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
     -e class io.github.gamesbyian.chunks.HttpsLocalAddJourneyInstrumentedTest \
     -e chunks_https_add authorized \
     "${candidate_package}.test/androidx.test.runner.AndroidJUnitRunner" \
@@ -108,7 +109,7 @@ milestone 'starting Android instrumentation'
 tunnel
 acceptance_started=$(date +%s)
 set +e
-adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest#installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace \
   -e chunks_real_add authorized -e chunks_live_url_b64 "$url64" "${args[@]}" \
   "${candidate_package}.test/androidx.test.runner.AndroidJUnitRunner" \
