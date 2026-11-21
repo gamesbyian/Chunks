@@ -45,14 +45,27 @@ print("CHUNKS_REMOTE_DELETE_APK: source-bound-installed-identity-recorded")
 PY
 adb reverse tcp:18082 tcp:18082 >/dev/null
 b64() { printf '%s' "$1" | base64 -w 0; }
+
+# A silent adb invocation must not consume the entire hosted job deadline.
+# Instrumentation failures, including 124 (timeout), always remain failures.
+run_instrumentation() {
+  local label="$1" budget="$2" output="$3" status=0
+  shift 3
+  printf "CHUNKS_INSTALLED_JOURNEY: %s started budget=%s\n" "$label" "$budget"
+  timeout --signal=TERM --kill-after=20s "$budget" adb shell am instrument -w -r "$@" > "$output" 2>&1 || status=$?
+  printf "CHUNKS_INSTALLED_JOURNEY: %s finished status=%s\n" "$label" "$status"
+  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+    echo "::error::Installed $label instrumentation exceeded $budget"
+  fi
+  return "$status"
+}
 set +e
-adb shell am instrument -w -r \
+run_instrumentation remote-delete 8m "$out/instrumentation.txt" \
   -e class io.github.gamesbyian.chunks.RemoteDeleteDataInstalledInstrumentedTest \
   -e chunks_remote_delete authorized \
   -e chunks_remote_delete_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
   -e chunks_remote_delete_hash_b64 "$(b64 "$hash")" \
-  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
-  > "$out/instrumentation.txt" 2>&1
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner
 status=$?
 set -e
 adb logcat -d -t 2000 > "$out/logcat.txt" 2>&1 || true
@@ -75,14 +88,14 @@ echo "CHUNKS_REMOTE_DELETE_INSTALLED: app queued exact erasedata; collector dele
 # so Connections would show that roster instead of the first-run form.
 adb shell pm clear "$pkg" >/dev/null
 set +e
-adb shell am instrument -w -r \
+run_instrumentation original-torrent 10m "$out/original-instrumentation.txt" \
   -e class io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest \
   -e chunks_remote_original authorized \
   -e chunks_remote_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
-  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
-  > "$out/original-instrumentation.txt" 2>&1
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner
 status=$?
 set -e
+adb logcat -d -t 2000 > "$out/original-logcat.txt" 2>&1 || true
 grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/original-instrumentation.txt" | tee "$out/original-stages.txt" || true
 if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/original-instrumentation.txt" ||
    ! grep -q 'chunks_stage=cleaned-up' "$out/original-instrumentation.txt"; then
