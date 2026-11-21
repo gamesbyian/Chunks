@@ -50,7 +50,12 @@ sdk="$(printf '%s' "$sdk" | tr -d '\r\n')"
 adb logcat -c || true
 set +e
 outA=$(timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e class "$cls#phaseA_seedUnderServiceThenDieWithoutWarning" -e chunksDeathPhase a "$runner")
+phase_a_status=$?
 set -e
+if [[ "$phase_a_status" -eq 124 || "$phase_a_status" -eq 137 ]]; then
+  echo 'CHUNKS_DEATH: instrumentation timed out instead of completing the expected death'
+  exit 1
+fi
 echo "$outA" | tail -20
 # A healthy adb logcat producer can receive SIGPIPE from a `grep -q` pipeline.
 # Capture the complete successful command before looking for the arming witness.
