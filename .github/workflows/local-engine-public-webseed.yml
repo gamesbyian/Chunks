@@ -13,6 +13,7 @@ on:
         default: "File:Example.ogg"
         required: true
   pull_request:
+    branches: [main]
     paths:
       - ".github/workflows/local-engine-public-webseed.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalEngineWebSeedTest.kt"

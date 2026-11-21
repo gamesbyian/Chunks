@@ -10,6 +10,7 @@ on:
       - 'assets/fonts/experimental/accent-studies/**'
       - 'assets/fonts/experimental/accent-kerned/**'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/build_reference_accent_kerned.py'
       - 'tools/render_reference_accent_kerned.py'

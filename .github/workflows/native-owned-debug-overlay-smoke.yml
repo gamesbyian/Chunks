@@ -4,6 +4,7 @@ name: Non-shipping native JNI staging policy (offline)
 # fail-closed disposable Gradle overlay generator and negative controls.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "tools/stage_owned_native_preview.py"
       - "tests/test_stage_owned_native_preview.py"

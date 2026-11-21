@@ -7,6 +7,7 @@ name: Real-client interop (Transmission, qBittorrent, Deluge, rTorrent)
 # and negative controls. Protected Seedhost runs stay manual-only.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/RemoteBackendIdentity.kt"

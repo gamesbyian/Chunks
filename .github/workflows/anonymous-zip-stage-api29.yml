@@ -2,6 +2,7 @@ name: Android 10 anonymous ZIP staging proof
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/storage/AnonymousZipReviewStage.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalZipArchiveReview.kt"

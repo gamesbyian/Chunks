@@ -14,6 +14,7 @@ on:
       - 'assets/fonts/chunks/**'
       - 'docs/design/CHUNKS-REFERENCE-DOTLESS-ACCENTS.md'
   pull_request:
+    branches: [main]
     paths:
       - 'tools/build_reference_dotless_accents.py'
       - 'tools/build_reference_accent_kerned.py'

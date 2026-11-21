@@ -3,6 +3,7 @@ name: Chunks SVG native-size icon review
 # Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/**'
       - 'tools/svg_small_size_atlas.py'

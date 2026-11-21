@@ -1,6 +1,7 @@
 name: Chunks real Android Compose system 200 percent font-scale acceptance
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt'
       - 'tools/run_compose_system_font_200pct.sh'

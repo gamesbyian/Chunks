@@ -4,6 +4,7 @@ name: Installed source torrent archive filesystem safety
 # delete, tracker, source-document mutation or real torrent payload.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/SourceTorrentArchiveTest.kt"

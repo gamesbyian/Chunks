@@ -3,6 +3,7 @@ name: Chunks reference SVG palette contrast audit
 # Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/palettes/**'
       - 'tools/audit_svg_palette_contrast.py'

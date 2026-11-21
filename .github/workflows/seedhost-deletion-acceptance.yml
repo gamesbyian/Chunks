@@ -1,6 +1,7 @@
 name: Protected Seedhost deletion acceptance
 on:
   pull_request:
+    branches: [main]
     paths:
       - tools/seedhost_deletion_acceptance.py
       - .github/workflows/seedhost-deletion-acceptance.yml

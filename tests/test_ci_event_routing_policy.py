@@ -83,12 +83,32 @@ class CiDispatchRelevance(unittest.TestCase):
             push = event_block(events, "push")
             with self.subTest(file=file.name):
                 if "  pull_request:" in events:
+                    # GitHub evaluates branches against the PR *base*, not head.
+                    # A main -> feature sync PR must never fan out 18+ hosted
+                    # workflows before the actual feature -> main PR is tested.
+                    self.assertEqual(("main",), push_branches(pr))
                     self.assertRegex(pr, r"(?m)^    paths:\s*$")
                     self.assertRegex(pr, r"(?m)^      - .+$")
                 if "  push:" in events:
                     self.assertRegex(push, r"(?m)^    paths:\s*$")
                     expected = (LEGACY_PUSH_BRANCHES[file.name],) if file.name in LEGACY_PUSH_BRANCHES else ("main",)
                     self.assertEqual(expected, push_branches(push))
+
+    def test_reverse_sync_prs_do_not_qualify_automatic_ci(self):
+        # Branch filters are evaluated against the destination. Ordinary
+        # feature -> main PRs remain eligible; main -> feature PRs are not.
+        checked = 0
+        for file in sorted((*WORKFLOWS.glob("*.yml"),
+                            *WORKFLOWS.glob("*.yaml"))):
+            scope = event_block(block(file.read_text(encoding="utf-8"), "on"),
+                                "pull_request")
+            if scope:
+                checked += 1
+                targets = push_branches(scope)
+                self.assertEqual(("main",), targets, file.name)
+                self.assertIn("main", targets, file.name)
+                self.assertNotIn("ci/temporary-branch-sync", targets, file.name)
+        self.assertGreaterEqual(checked, 60)
 
     def test_policy_only_changes_run_cheap_or_owning_workflows(self):
         foundation = workflow("android-check.yml")

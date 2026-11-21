@@ -4,6 +4,7 @@ on:
   # No automatic protected host mutations from a commit message or PR.
   # The real Seedhost test requires a manual dispatch with explicit Apply on main.
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/TorrentLinkImport.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"

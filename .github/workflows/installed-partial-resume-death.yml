@@ -5,6 +5,7 @@ name: Installed local resume after process death
 # Disposable app-private fixture only; no remote, tracker, DHT or user Place.
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt"

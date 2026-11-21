@@ -2,6 +2,7 @@ name: Research native delete-files boundary (Linux and Android 29/35)
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - "app/src/test/java/io/github/gamesbyian/chunks/engine/NativeDeleteFlagsLinuxProbeTest.kt"
       - ".github/workflows/native-delete-boundary-research.yml"

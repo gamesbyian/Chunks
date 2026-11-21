@@ -2,6 +2,7 @@ name: Render Chunks SVG visual atlas
 
 on:
   pull_request:
+    branches: [main]
     paths:
       - 'docs/design/svg/**'
       - 'tools/render_svg_atlas.py'
