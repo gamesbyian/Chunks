@@ -2677,7 +2677,12 @@ internal fun ChunksApp(
                 Section.SNAPSHOT -> {
                 val snapshotAccount = server
                 val inventoryRevision = snapshotRevision
-                val compareReady = snapshotAccount != null && currentView == "main" &&
+                // The selected Transfers view may be filtered. Compare a backup
+                // against an independently verified COMPLETE rTorrent session,
+                // never the currently visible subset (which may hide jobs).
+                // listCompleteSessionTransfers checks the unfiltered default
+                // before and after its read and refuses unavailable coverage.
+                val compareReady = snapshotAccount != null &&
                     inventoryRevision > 0 && !stale && !loading
                 val verifiedInventory by androidx.compose.runtime.produceState<SnapshotServerInventory?>(
                     initialValue = null, snapshotAccount, inventoryRevision, compareReady
