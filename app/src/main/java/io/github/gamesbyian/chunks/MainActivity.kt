@@ -137,6 +137,8 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val readingSharedDocument = mutableStateOf<Uri?>(null)
     val artworkChoices = AddArtworkDraftChoices()
     val addDestination = mutableStateOf<UniversalAddRouteTarget>(UniversalAddRouteTarget.Local)
+    val routingAutoAppliedFor = mutableStateOf<String?>(null)
+    val routingPersonChoiceFor = mutableStateOf<String?>(null)
     val artworkExpanded = mutableStateOf(false)
     val sharedTorrentError = mutableStateOf<String?>(null)
     val serverHandoffTorrent = mutableStateOf<ByteArray?>(null)
@@ -1150,6 +1152,14 @@ internal fun ChunksApp(
 
     val addTargetIsAuthenticated = addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) &&
         server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null
+    val protocolAddProfile = addProtocolTargetId?.let { id ->
+        combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
+    }
+    val addTargetUnavailable = when (addDestination) {
+        UniversalAddRouteTarget.Local -> false
+        is UniversalAddRouteTarget.RTorrent -> !addTargetIsAuthenticated
+        is UniversalAddRouteTarget.Protocol -> protocolAddProfile == null
+    }
     val remoteAddLocked = if (server != null && aliasScope.isNotBlank())
         remoteAddSessions.forAccount(aliasScope).alreadyAttempted else false
     val addChoicesEnabled = activeLocalAddAttempt.attemptedTicket == null && !remoteAddLocked
@@ -1186,9 +1196,12 @@ internal fun ChunksApp(
                 as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
         }
     }
-    // Smart Routing pre-selection bookkeeping (process-only; never persisted).
-    var routingAutoAppliedFor by remember { mutableStateOf<String?>(null) }
-    var routingPersonChoiceFor by remember { mutableStateOf<String?>(null) }
+    // A configuration change must not let routing override the person's
+    // exact client selection for the same retained source.
+    var routingAutoAppliedFor by (retainedAddOwner?.routingAutoAppliedFor
+        ?: remember { mutableStateOf<String?>(null) })
+    var routingPersonChoiceFor by (retainedAddOwner?.routingPersonChoiceFor
+        ?: remember { mutableStateOf<String?>(null) })
     val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
     // A retained file is evidence only while it is the active source.
@@ -1255,8 +1268,9 @@ internal fun ChunksApp(
                 id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
     } == true
     LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect,
-        section, localSnapshotAddReview) {
-        if (section != Section.ADD_CHOOSE || localSnapshotAddReview) return@LaunchedEffect
+        section, localSnapshotAddReview, addTargetUnavailable) {
+        if (section != Section.ADD_CHOOSE || localSnapshotAddReview || addTargetUnavailable)
+            return@LaunchedEffect
         if (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.shouldPreselect(
                 routingPolicy, routingSuggestion, routingSourceKey, routingAutoAppliedFor, routingPersonChoiceFor,
                 routingSuggestionIsSelected,
@@ -1363,9 +1377,6 @@ internal fun ChunksApp(
             savedProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
             combinedProtocolProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
         }.distinctBy { it.environmentId }
-    }
-    val protocolAddProfile = addProtocolTargetId?.let { id ->
-        combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
     }
     fun viewAddedTransfer(client: io.github.gamesbyian.chunks.model.EnvironmentId, hash: String) {
         addTransferSearch.viewTransfer(hash)
