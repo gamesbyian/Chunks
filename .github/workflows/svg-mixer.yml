@@ -1,4 +1,6 @@
 name: Test Chunks SVG composition workbench
+# Workflow-only routing changes are checked by Documentation validation.
+# Changes to executable commands require explicit workflow_dispatch on the candidate.
 on:
   pull_request:
     paths:
@@ -6,7 +8,6 @@ on:
       - 'docs/design/svg/mix-engine.js'
       - 'docs/design/svg/mix-ui.js'
       - 'tools/tests/svg_mixer.test.cjs'
-      - '.github/workflows/svg-mixer.yml'
   workflow_dispatch:
 # Superseded PR revisions should not keep spending runner minutes.
 # Manual and main-push executions use their unique run ID and are never cancelled.
