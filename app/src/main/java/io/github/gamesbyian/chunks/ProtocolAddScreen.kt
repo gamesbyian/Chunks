@@ -47,7 +47,6 @@ import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
-import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -244,20 +243,8 @@ internal fun ProtocolAddScreen(
         sourceScope.launch {
             val read = withContext(Dispatchers.IO) {
                 runCatching {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        // Bounded read without API 33-only InputStream calls (minSdk 29).
-                        val out = java.io.ByteArrayOutputStream()
-                        val buffer = ByteArray(16 * 1024)
-                        while (out.size() <= TorrentMetainfoReader.MAX_BYTES) {
-                            val n = input.read(buffer)
-                            if (n < 0) break
-                            out.write(buffer, 0, n)
-                        }
-                        val bytes = out.toByteArray()
-                        require(bytes.size <= TorrentMetainfoReader.MAX_BYTES) { "This .torrent is too large" }
-                        // The person's own document: eligible for the Keep/Archive/Delete policy.
-                        PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes, uri)
-                    } ?: error("Could not open the document")
+                    val reviewed = SharedTorrentDocument.read(context.contentResolver, uri)
+                    PendingLocalAdd(reviewed.preview, reviewed.bytes, uri)
                 }
             }
             readingTorrent = false

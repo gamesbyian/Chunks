@@ -7,6 +7,8 @@ on:
     branches: [main]
     paths:
       - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/java/io/github/gamesbyian/chunks/SharedTorrentDocument.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledOpenWithHandoffInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlace*.kt"
       # API 33-only stream reads crashed remote features on API 29-32 (#1779).
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/BoundedRead.kt"
@@ -94,4 +96,12 @@ jobs:
           profile: pixel_3a
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/android10_downloads_instrumentation.sh && bash tools/local_intake_journey.sh && bash tools/android10_downloads_revocation.sh
+          script: |
+            bash tools/android10_downloads_instrumentation.sh &&
+            adb shell am instrument -w -r \
+              -e class io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest#openWithDataOnlyUsesAndroidResolvedMimeAndRetainsTheExactReview,io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest#conflictingOpenWithClipDataCannotReplaceTheRetainedReview \
+              io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner > "$RUNNER_TEMP/api29-openwith.raw" &&
+            python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/api29-openwith.raw" --junit "$RUNNER_TEMP/api29-openwith.xml" &&
+            grep -Fx 'OK (2 tests)' "$RUNNER_TEMP/api29-openwith.raw" &&
+            bash tools/local_intake_journey.sh &&
+            bash tools/android10_downloads_revocation.sh

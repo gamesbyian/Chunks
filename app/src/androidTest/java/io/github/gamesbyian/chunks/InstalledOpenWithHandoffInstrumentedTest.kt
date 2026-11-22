@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
@@ -101,6 +102,70 @@ class InstalledOpenWithHandoffInstrumentedTest {
 
     private fun scenarioActivity(scenario: ActivityScenario<MainActivity>): ActivityHandle =
         ActivityHandle { block -> scenario.onActivity { block(it) } }
+
+    @Test fun openWithDataOnlyUsesAndroidResolvedMimeAndRetainsTheExactReview() {
+        val name = "android-resolved-mime.bin"
+        val uri = document(name)
+        val implicit = Intent(Intent.ACTION_VIEW, uri).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            setPackage(context.packageName)
+        }
+        assertNull("Android may dispatch a VIEW whose sender left type unset", implicit.type)
+        assertEquals("application/octet-stream", implicit.resolveType(context))
+        assertEquals(MainActivity::class.java.name, implicit.resolveActivity(context.packageManager)?.className)
+        val launch = Intent(implicit).setClass(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        ActivityScenario.launch<MainActivity>(launch).use { scenario ->
+            fun assertExactReview() {
+                waitForReview(name, scenarioActivity(scenario), uri)
+                scenario.onActivity { activity ->
+                    val owner = ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                    val reviewed = requireNotNull(owner.reviewedTorrent.value)
+                    assertEquals(uri, reviewed.originalDocument)
+                    assertArrayEquals(metainfo(name), reviewed.bytes)
+                    assertNull(owner.session.attemptedTicket)
+                    assertNull(LocalEngineHolder.current()?.status(reviewed.preview.infoHashV1))
+                }
+            }
+            assertExactReview()
+            compose.waitForIdle()
+            scenario.recreate()
+            assertExactReview()
+        }
+    }
+
+    @Test fun conflictingOpenWithClipDataCannotReplaceTheRetainedReview() {
+        val firstName = "retained-review.torrent-content"
+        val original = document(firstName)
+        val other = document("unselected-review.bin")
+        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
+            waitForReview(firstName, scenarioActivity(scenario), original)
+            val conflict = openWith(original).apply { clipData = ClipData.newRawUri("conflict", other) }
+            assertNull(SharedTorrentDocument.fromIntent(conflict))
+            val multiple = openWith(original).apply {
+                clipData = ClipData.newRawUri("first", original).also { it.addItem(ClipData.Item(other)) }
+            }
+            assertNull(SharedTorrentDocument.fromIntent(multiple))
+            assertEquals(original, SharedTorrentDocument.fromIntent(openWith(original).apply {
+                clipData = ClipData.newRawUri("matching", original)
+            }))
+            scenario.onActivity { activity ->
+                activity.startActivity(conflict)
+            }
+            compose.waitUntil(20_000) {
+                var delivered = false
+                scenario.onActivity { delivered = it.intent.clipData?.getItemAt(0)?.uri == other }
+                delivered
+            }
+            scenario.onActivity { activity ->
+                val owner = ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                assertEquals(original, owner.reviewedTorrent.value?.originalDocument)
+                assertNull(owner.pendingSharedDocument.value)
+                assertNull(owner.session.attemptedTicket)
+            }
+        }
+    }
 
     @Test fun unresolvedReplacementDoesNotRouteUsingRetainedTorrent() {
         val name = "Show.S01E02.mkv"

@@ -23,8 +23,22 @@ internal object SharedTorrentDocument {
 
     fun fromIntent(intent: Intent?): Uri? {
         if (intent == null) return null
+        val clip = when (intent.action) {
+            Intent.ACTION_VIEW, Intent.ACTION_SEND -> try {
+                intent.clipData
+            } catch (_: RuntimeException) {
+                return null
+            }
+            else -> return null
+        }
+        if (clip != null && clip.itemCount != 1) return null
+        val clipUri = clip?.getItemAt(0)?.uri
         val uri = when (intent.action) {
-            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_VIEW -> {
+                val viewed = intent.data ?: return null
+                if (clipUri != null && clipUri != viewed) return null
+                viewed
+            }
             Intent.ACTION_SEND -> {
                 // Android may supply EXTRA_STREAM and ClipData together to grant
                 // access to the same document. Never silently choose one of
@@ -43,13 +57,6 @@ internal object SharedTorrentDocument {
                 // back to a different ClipData URI, even when Android's
                 // getParcelableExtra returns null instead of throwing.
                 if (intent.hasExtra(Intent.EXTRA_STREAM) && streamUri == null) return null
-                val clip = try {
-                    intent.clipData
-                } catch (_: RuntimeException) {
-                    return null
-                }
-                if (clip != null && clip.itemCount != 1) return null
-                val clipUri = clip?.getItemAt(0)?.uri
                 if (streamUri != null && clipUri != null && streamUri != clipUri) return null
                 streamUri ?: clipUri
             }
@@ -63,7 +70,11 @@ internal object SharedTorrentDocument {
         // here could block Activity startup. Generic-binary MIME therefore
         // only provisionally admits a source. The review's strict 2 MiB parser
         // still rejects arbitrary files before any authorized Add/Start.
-        if (mime !in acceptedTypes && mime != "application/octet-stream") return null
+        // Android can resolve VIEW against the sending provider's MIME type
+        // without filling in Intent.type. Admit that handoff provisionally,
+        // as for generic binary, and require the same bounded metainfo read.
+        val androidResolvedViewType = mime == null && intent.action == Intent.ACTION_VIEW
+        if (!androidResolvedViewType && mime !in acceptedTypes && mime != "application/octet-stream") return null
         // Neither a filename, declared type nor URI is proof of metainfo.
         return uri
     }
