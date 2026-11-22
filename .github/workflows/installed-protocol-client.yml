@@ -19,6 +19,10 @@ on:
       - "tools/installed_protocol_client.sh"
       - "tools/verify_installed_apk_bytes.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledUniversalAddJourney.kt"
+      # The installed Add/Connect journey calls this shared semantics helper.
+      # A detached-node or one-shot action change must execute the real
+      # disposable five-client witness, not only Robolectric or native shards.
+      - "app/src/sharedTest/java/io/github/gamesbyian/chunks/LazyComposeActions.kt"
       - "tools/interop/**"
   workflow_dispatch:
 
