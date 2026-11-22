@@ -158,11 +158,13 @@ class OpenWithActivityIntakeTest {
         } finally {
             previous.destroy()
         }
-        // A separate ActivityController has a new ViewModelStore. Android
-        // running the original task Intent again must not read or replay it.
+        // Refresh the provider's stream so replay would still succeed. A
+        // separate ActivityController restores the same task with a new owner.
+        document("interrupted.torrent", "must-not-replay.mkv")
         val restored = org.robolectric.Robolectric.buildActivity(MainActivity::class.java, original).setup(state)
         try {
             waitForText(INTERRUPTED_DOCUMENT_REVIEW)
+            rule.onNode(hasText("must-not-replay.mkv", substring = true)).assertDoesNotExist()
             val owner = ViewModelProvider(restored.get())[LocalAddAttemptOwner::class.java]
             assertNull(owner.incomingTorrent.value)
             assertNull(owner.reviewedTorrent.value)
