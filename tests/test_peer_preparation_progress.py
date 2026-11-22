@@ -29,6 +29,13 @@ class PeerPreparationProgressTest(unittest.TestCase):
                           "publisher-prefix", "../../secret")
         self.assertFalse((self.root / NAME).exists())
 
+    def test_missing_directory_does_not_interrupt_source_preparation(self):
+        # The diagnostic must remain best effort even if it cannot write a
+        # milestone. Publisher/peer acceptance is owned by the real proof.
+        missing = self.root / "not-created"
+        self.assertFalse(write_progress(missing, "publisher-metainfo", "magnet"))
+        self.assertIsNone(read_progress(missing))
+
     def test_corrupt_or_untrusted_readback_is_not_printable(self):
         path = self.root / NAME
         for raw in ('{"phase":"publisher-prefix","fixture":"../../secret"}',
