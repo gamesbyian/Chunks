@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasTestTag
@@ -86,6 +87,28 @@ class LazyComposeActionsTest {
         rule.waitForIdle()
         assertEquals("seedbox.invalid", entered)
         assertEquals("the transient copy is never written", "", outgoing)
+    }
+
+    @Test fun draftReplacementDoesNotFocusAFieldThatReflowsOnFocus() {
+        var entered by mutableStateOf("")
+        var fieldFocused by mutableStateOf(false)
+        val target = hasTestTag("password-draft")
+        rule.setContent {
+            if (!fieldFocused) {
+                OutlinedTextField(
+                    value = entered,
+                    onValueChange = { entered = it },
+                    label = { Text("Password") },
+                    modifier = Modifier.testTag("password-draft").onFocusChanged {
+                        if (it.isFocused) fieldFocused = true
+                    }
+                )
+            }
+        }
+        LazyComposeActions.replaceText(rule, target, "unsent-fixture")
+        rule.onNode(target).assertExists()
+        assertEquals("unsent-fixture", entered)
+        assertEquals(false, fieldFocused)
     }
 
     @Test fun aTransientSecondButtonIsNeverClickedAndTheSurvivorIsClickedOnce() {
