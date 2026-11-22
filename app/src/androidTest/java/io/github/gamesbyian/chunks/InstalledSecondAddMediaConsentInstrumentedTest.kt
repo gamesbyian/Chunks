@@ -103,6 +103,11 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
         rule.onAllNodesWithTag(tag).fetchSemanticsNodes().size == 1
     }
 
+    private fun openInventory() {
+        add.activate(ChunksSemantics.FOOTER_TRANSFERS)
+        waitForTag(ChunksSemantics.TRANSFERS_SEARCH)
+    }
+
     private fun reviewAndAdd(
         scenario: ActivityScenario<MainActivity>,
         source: String,
@@ -181,15 +186,19 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
             add.activate(ChunksSemantics.FOOTER_ADD)
             reviewAndAdd(scenario, "first", first, optOut = false)
             assertExclusion(first, false)
+            // The canonical Transfers screen publishes the authorized inventory.
+            // Trigger automatic lookup through that production source before
+            // returning to the first receipt and choosing its next-Add action.
+            openInventory()
             rule.waitUntil(45_000) { count("search_first") > 0 }
             assertEquals(1, count("source_first"))
 
+            add.activate(ChunksSemantics.FOOTER_ADD)
             add.activate(ChunksSemantics.ADD_ANOTHER)
             reviewAndAdd(scenario, "excluded", excluded, optOut = true)
             assertEquals(1, count("source_excluded"))
             assertExclusion(excluded, true)
-            add.activate(ChunksSemantics.FOOTER_TRANSFERS)
-            waitForTag(ChunksSemantics.TRANSFERS_SEARCH)
+            openInventory()
             scenario.recreate()
             waitForTag(ChunksSemantics.TRANSFERS_SEARCH)
             assertExclusion(excluded, true)
@@ -209,13 +218,13 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
         assertExclusion(excluded, true)
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             waitForTag(ChunksSemantics.FOOTER_TRANSFERS)
-            add.activate(ChunksSemantics.FOOTER_TRANSFERS)
-            waitForTag(ChunksSemantics.TRANSFERS_SEARCH)
+            openInventory()
             rule.waitUntil(45_000) { LocalEngineHolder.current()?.status(excluded)?.stopped == true }
             assertNoExcludedRequests()
             add.activate(ChunksSemantics.FOOTER_ADD)
             reviewAndAdd(scenario, "control", control, optOut = false)
             assertExclusion(control, false)
+            openInventory()
             rule.waitUntil(45_000) { count("search_control") > 0 }
             assertEquals(1, count("source_control"))
             assertExclusion(excluded, true)
