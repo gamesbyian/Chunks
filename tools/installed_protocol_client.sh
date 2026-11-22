@@ -122,6 +122,10 @@ run_pair() {
   return "$result"
 }
 failed=0
+# AndroidJUnitRunner cannot itself kill the process whose stopped task
+# must survive; force-stop after the crashed instrumentation discards it.
+# Run the independent host-led task death before expensive daemon cases.
+bash tools/installed_external_document_process_loss.sh || exit 1
 run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
 run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
 # Deluge authenticates with a password only; a blank shell extra is swallowed by
@@ -225,65 +229,6 @@ run_local_add_death() {
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_local_add_death || failed=1
-run_external_document_restore() {
-  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
-  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
-  adb logcat -c || return 1
-  # The SAVE phase may start normally because no reviewed task exists
-  # yet. It kills the process after stopping its task. Only RESTORE uses
-  # --no-restart, and only after focusing the saved task into a live process.
-  local testcase=io.github.gamesbyian.chunks.ExternalDocumentProcessLossInstrumentedTest#externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument
-  local before="$out/document-restore-save.txt" after="$out/document-restore-return.txt"
-  local status=0
-  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 -w -r -e class "$testcase" \
-    -e chunks_document_restore_phase save "$runner" > "$before" 2>&1 || status=$?
-  abort_on_instrument_timeout "$status" "external-document-save"
-  adb logcat -d -s ChunksDocumentRestore:I > "$out/document-restore-boundary.txt" || return 1
-  if ! grep -Fq 'external-review-task-stopped-before-process-loss' "$out/document-restore-boundary.txt" ||
-    grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
-    echo "::error::Did not observe process death with the external source task stopped"
-    return 1
-  fi
-  # Save phase created and killed the app task. Revive that exact Android
-  # task with NO new torrent source Intent and NO provider grant, before
-  # --no-restart instrumentation attaches to the new live process.
-  local task_id
-  task_id="$(sed -nE 's/.*external-review-task-stopped-before-process-loss task=([0-9]+).*/\1/p' "$out/document-restore-boundary.txt" | tail -1)"
-  if [[ ! "$task_id" =~ ^[0-9]{1,7}$ ]]; then
-    tail -80 "$before"
-    echo "::error::Save phase did not supply a stopped task ID"
-    return 1
-  fi
-  timeout 15s adb shell am task focus "$task_id" > "$out/document-restore-focus.txt" 2>&1 || {
-    echo "::error::Could not focus the original stopped Android task"
-    return 1
-  }
-  if ! grep -Fq "Setting focus to task $task_id" "$out/document-restore-focus.txt"; then
-    echo "::error::Android did not confirm the exact saved task focus"
-    return 1
-  fi
-  local alive=false
-  for attempt in {1..40}; do
-    if adb shell pidof "$pkg" >/dev/null 2>&1; then alive=true; break; fi
-    sleep 0.25
-  done
-  if [ "$alive" != true ]; then
-    echo "::error::Saved task focus did not revive the Chunks process"
-    return 1
-  fi
-  status=0
-  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 --no-restart -w -r -e class "$testcase" \
-    -e chunks_document_restore_phase restore "$runner" > "$after" 2>&1 || status=$?
-  abort_on_instrument_timeout "$status" "external-document-return"
-  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after"; then
-    tail -80 "$after"
-    return 1
-  fi
-  adb logcat -d -s ChunksDocumentRestore:I > "$out/document-restore-boundary.txt" || return 1
-  grep -Fq 'same-task-new-process-notice-explicit-reopen-no-add' "$out/document-restore-boundary.txt" || return 1
-  echo "CHUNKS_INSTALLED_PROTOCOL: external document task restored after real process death and required explicit reopen" |
-    tee -a "$GITHUB_STEP_SUMMARY"
-}
-run_external_document_restore || failed=1
+
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed

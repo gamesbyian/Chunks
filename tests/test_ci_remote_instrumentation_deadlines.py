@@ -32,6 +32,20 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
                 self.assertEqual(count, len(re.findall(pattern, src)))
                 self.assertIn("set -euo pipefail", src)
 
+    def test_document_process_loss_is_host_driven_and_bounded(self):
+        runner = (ROOT / "tools/installed_protocol_client.sh").read_text()
+        host = (ROOT / "tools/installed_external_document_process_loss.sh").read_text()
+        self.assertIn("bash tools/installed_external_document_process_loss.sh || exit 1", runner)
+        self.assertLess(runner.index("bash tools/installed_external_document_process_loss.sh"),
+                        runner.index("run_pair TRANSMISSION"))
+        self.assertNotIn("am instrument", host)
+        self.assertIn("ro.kernel.qemu", host)
+        self.assertIn('run-as "$pkg" /system/bin/kill -9 "$old_pid"', host)
+        self.assertIn('if [[ "$new_task" != "$old_task" ]]', host)
+        self.assertIn('if [[ "$new_pid" == "$old_pid" ]]', host)
+        self.assertIn("Android restarted Chunks.", host)
+        self.assertIn("external-first.bin", host)
+
     def test_intentional_death_does_not_treat_a_host_timeout_as_a_success(self):
         for name in ("installed_protocol_client.sh", "process_death_repro.sh"):
             with self.subTest(name=name):
