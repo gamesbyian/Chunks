@@ -53,8 +53,7 @@ internal object SnapshotLocalBatchRestoreV1 {
             Result(total, 0, hash, reason)
         if (!userApproved || !mayContinue() || total !in 1..MAX_ITEMS ||
             reviewed.sumOf { it.bytes.size.toLong() } > MAX_TOTAL_METAINFO_BYTES ||
-            !chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
-            java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
+            !SnapshotRestoreOnceV1.reviewedPlaceMatches(chosenPlace, verifiedPlaceFingerprint))
             return fail(SnapshotRestoreOnceV1.Outcome.REFUSED)
 
         // A corrupt *later* definition must not permit an earlier item to be

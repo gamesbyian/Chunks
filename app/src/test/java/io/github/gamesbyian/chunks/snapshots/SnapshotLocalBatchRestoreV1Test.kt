@@ -11,7 +11,8 @@ class SnapshotLocalBatchRestoreV1Test {
     @get:Rule val temp = TemporaryFolder()
     private val archive = "a".repeat(64)
     private val targetId = "b".repeat(64)
-    private val placeId = "c".repeat(64)
+    private fun placeFor(folder: File) = LocalSnapshotRestoreFingerprint.of(
+        "chunks-place-v1:" + folder.canonicalPath)
 
     private fun original(name: String): SnapshotVerifiedTorrentDocumentV1.Prepared {
         val info = "d6:lengthi5e4:name" + name.toByteArray().size + ":" + name +
@@ -65,11 +66,12 @@ class SnapshotLocalBatchRestoreV1Test {
         originals: List<SnapshotVerifiedTorrentDocumentV1.Prepared>,
         folder: File, store: Store, target: FakeTarget,
         approved: Boolean = true, initial: List<String> = emptyList(),
-        mayContinue: () -> Boolean = { true }
+        mayContinue: () -> Boolean = { true },
+        fingerprint: String = placeFor(folder)
     ) = SnapshotLocalBatchRestoreV1.execute(
         reviewed = originals, archiveFingerprint = archive,
         targetFingerprint = targetId, chosenPlace = folder,
-        verifiedPlaceFingerprint = placeId, frozenHashes = initial,
+        verifiedPlaceFingerprint = fingerprint, frozenHashes = initial,
         userApproved = approved, store = store, target = target,
         mayContinue = mayContinue)
 
@@ -192,8 +194,8 @@ class SnapshotLocalBatchRestoreV1Test {
         val journal = SnapshotRestoreJournalV1.open(
             store, SnapshotRestoreOnceV1.itemArchiveFingerprint(archive, later.infoHashV1),
             targetId, listOf(later.infoHashV1))
-        journal.prepare(later.infoHashV1, placeId)
-        journal.beforeAdd(later.infoHashV1, placeId)
+        journal.prepare(later.infoHashV1, placeFor(folder))
+        journal.beforeAdd(later.infoHashV1, placeFor(folder))
 
         val result = execute(originals, folder, store, target)
         assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED, result.stop)
@@ -201,6 +203,19 @@ class SnapshotLocalBatchRestoreV1Test {
         assertEquals(0, result.verified)
         assertEquals("A pending later item must not partially restore earlier items",
             0, target.calls)
+    }
+
+    @Test fun aBatchCannotUseAReviewFingerprintFromAnotherFolder() {
+        val intended = temp.newFolder("batch-reviewed-place")
+        val changed = temp.newFolder("batch-unreviewed-place")
+        val store = Store()
+        val target = FakeTarget(changed)
+        val items = listOf(original("one"), original("two"))
+        val result = execute(items, changed, store, target,
+            fingerprint = placeFor(intended))
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED, result.stop)
+        assertEquals(0, result.verified)
+        assertEquals(0, target.calls)
     }
 
     @Test fun consentOrStaleInventoryRefusesBeforeFirstWrite() {

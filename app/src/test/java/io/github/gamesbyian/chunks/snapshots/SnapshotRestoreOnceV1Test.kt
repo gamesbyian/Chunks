@@ -16,7 +16,9 @@ class SnapshotRestoreOnceV1Test {
     @get:Rule val temp = TemporaryFolder()
     private val archive = "a".repeat(64)
     private val targetId = "b".repeat(64)
-    private val place = "c".repeat(64)
+    private val place = "c".repeat(64) // Journal-only scope fixtures, not an authorized directory.
+    private fun placeFor(folder: File) = LocalSnapshotRestoreFingerprint.of(
+        "chunks-place-v1:" + folder.canonicalPath)
 
     private class Store : SnapshotRestoreJournalV1.Store {
         private val content = mutableMapOf<String, String>()
@@ -75,7 +77,7 @@ class SnapshotRestoreOnceV1Test {
                 targetId, listOf(source.infoHashV1))
             val target = SnapshotRestoreOnceV1.localEngine(engine)
             assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
-                SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+                SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder),
                     emptyList(), userApproved = true, target = target))
             val status = requireNotNull(engine.status(source.infoHashV1))
             assertTrue(status.stopped)
@@ -85,7 +87,7 @@ class SnapshotRestoreOnceV1Test {
                 SnapshotRestoreJournalV1.open(store, archive, targetId,
                     listOf(source.infoHashV1)).entries().single().phase)
             assertEquals(SnapshotRestoreOnceV1.Outcome.STALE_TARGET,
-                SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+                SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder),
                     emptyList(), userApproved = true, target = target))
             assertTrue(store.persisted().contains("VERIFIED"))
             assertFalse(store.persisted().contains(folder.absolutePath))
@@ -103,15 +105,49 @@ class SnapshotRestoreOnceV1Test {
         } finally { reopened.close() }
     }
 
+    @Test fun aDifferentPlaceCannotBorrowAnExistingReviewFingerprintForNativeAdd() {
+        val source = original()
+        val reviewed = temp.newFolder("approved-restore-place")
+        val changed = temp.newFolder("different-restore-place")
+        val journal = SnapshotRestoreJournalV1.open(
+            Store(), archive, targetId, listOf(source.infoHashV1))
+        val fake = FakeTarget()
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
+            SnapshotRestoreOnceV1.execute(journal, source, changed,
+                placeFor(reviewed), emptyList(), userApproved = true, target = fake))
+        assertEquals("Mismatched Place must be refused before any native call", 0, fake.writes)
+        assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW, journal.entries().single().phase)
+    }
+
+    @Test fun recoveryCannotRelabelAStoppedJobAtAnUnreviewedPlace() {
+        val source = original()
+        val reviewed = temp.newFolder("original-recovery-place")
+        val changed = temp.newFolder("unreviewed-recovery-place")
+        val journal = SnapshotRestoreJournalV1.open(
+            Store(), archive, targetId, listOf(source.infoHashV1))
+        journal.prepare(source.infoHashV1, placeFor(reviewed))
+        journal.beforeAdd(source.infoHashV1, placeFor(reviewed))
+        val fake = FakeTarget().apply {
+            hashes = listOf(source.infoHashV1)
+            observedPlace = changed
+        }
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
+            SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
+                changed, placeFor(reviewed), fake))
+        assertEquals(0, fake.writes)
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, journal.entries().single().phase)
+    }
+
     @Test fun failedDurablePreAddCommitNeverCallsTheEngine() {
         val source = original()
         val store = Store()
         val journal = SnapshotRestoreJournalV1.open(store, archive, targetId, listOf(source.infoHashV1))
         store.failWrites = true
         val fake = FakeTarget()
+        val folder = temp.newFolder()
         assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
-            SnapshotRestoreOnceV1.execute(journal, source, temp.newFolder(),
-                place, emptyList(), true, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder,
+                placeFor(folder), emptyList(), true, fake))
         assertEquals(0, fake.writes)
         assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
             journal.entries().single().phase)
@@ -124,13 +160,13 @@ class SnapshotRestoreOnceV1Test {
         val fake = FakeTarget().apply { throwOnWrite = true }
         val folder = temp.newFolder()
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place, emptyList(), true, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder), emptyList(), true, fake))
         assertEquals(1, fake.writes)
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
             SnapshotRestoreJournalV1.open(store, archive, targetId,
                 listOf(source.infoHashV1)).entries().single().phase)
         assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place, emptyList(), true, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder), emptyList(), true, fake))
         assertEquals(1, fake.writes)
     }
 
@@ -142,13 +178,13 @@ class SnapshotRestoreOnceV1Test {
         val fake = FakeTarget().apply { hashes = listOf(other) }
         val folder = temp.newFolder()
         assertEquals(SnapshotRestoreOnceV1.Outcome.STALE_TARGET,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place, emptyList(), true, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder), emptyList(), true, fake))
         fake.hashes = listOf(other, other.uppercase())
         assertEquals(SnapshotRestoreOnceV1.Outcome.STALE_TARGET,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place, fake.hashes, true, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder), fake.hashes, true, fake))
         fake.hashes = emptyList()
         assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place, emptyList(), false, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder), emptyList(), false, fake))
         assertEquals(0, fake.writes)
     }
 
@@ -172,12 +208,12 @@ class SnapshotRestoreOnceV1Test {
         }
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
             SnapshotRestoreOnceV1.execute(journal, source, destination,
-                place, emptyList(), true, fake))
+                placeFor(destination), emptyList(), true, fake))
         assertEquals(SnapshotRestoreJournalV1.Phase.ACK_UNVERIFIED,
             journal.entries().single().phase)
         assertEquals(SnapshotRestoreOnceV1.Outcome.STALE_TARGET,
             SnapshotRestoreOnceV1.execute(journal, source, destination,
-                place, emptyList(), true, fake))
+                placeFor(destination), emptyList(), true, fake))
         assertEquals(1, fake.additions)
     }
 
@@ -189,7 +225,7 @@ class SnapshotRestoreOnceV1Test {
             listOf(source.infoHashV1))
         val fake = FakeTarget().apply { throwOnWrite = true }
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder),
                 emptyList(), true, fake))
         assertEquals(1, fake.writes)
         // A real native Add could have registered the job before its caller
@@ -200,12 +236,12 @@ class SnapshotRestoreOnceV1Test {
             listOf(source.infoHashV1))
         assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
             SnapshotRestoreOnceV1.reconcilePending(reopened, source.infoHashV1,
-                folder, place, fake))
+                folder, placeFor(folder), fake))
         assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
             reopened.entries().single().phase)
         assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
             SnapshotRestoreOnceV1.reconcilePending(reopened, source.infoHashV1,
-                folder, place, fake))
+                folder, placeFor(folder), fake))
         assertEquals(1, fake.writes)
     }
 
@@ -219,18 +255,18 @@ class SnapshotRestoreOnceV1Test {
         val fake = FakeTarget().apply { throwOnWrite = true }
         assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
             SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
-                folder, place, fake))
+                folder, placeFor(folder), fake))
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder),
                 emptyList(), true, fake))
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
             SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
-                folder, place, fake))
+                folder, placeFor(folder), fake))
         fake.hashes = listOf(source.infoHashV1)
         fake.observedPlace = wrongFolder
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
             SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
-                folder, place, fake))
+                folder, placeFor(folder), fake))
         assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
             SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
                 wrongFolder, "d".repeat(64), fake))
@@ -238,7 +274,7 @@ class SnapshotRestoreOnceV1Test {
         fake.nowStopped = false
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
             SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
-                folder, place, fake))
+                folder, placeFor(folder), fake))
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
             journal.entries().single().phase)
         assertEquals(1, fake.writes)
@@ -282,9 +318,10 @@ class SnapshotRestoreOnceV1Test {
         val journal = SnapshotRestoreJournalV1.open(store, archive, targetId,
             listOf(source.infoHashV1))
         val fake = FakeTarget().apply { nowStopped = null }
+        val folder = temp.newFolder()
         assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
-            SnapshotRestoreOnceV1.execute(journal, source, temp.newFolder(),
-                place, emptyList(), true, fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder,
+                placeFor(folder), emptyList(), true, fake))
         assertEquals(1, fake.writes)
         assertEquals(SnapshotRestoreJournalV1.Phase.ACK_UNVERIFIED,
             journal.entries().single().phase)
@@ -317,7 +354,7 @@ class SnapshotRestoreOnceV1Test {
         }
 
         assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
-            SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+            SnapshotRestoreOnceV1.execute(journal, source, folder, placeFor(folder),
                 emptyList(), userApproved = true, target = target))
         assertTrue("Regression setup changed the shared review source",
             source.bytes.all { it == 0.toByte() })
@@ -333,10 +370,11 @@ class SnapshotRestoreOnceV1Test {
         val journal = SnapshotRestoreJournalV1.open(
             Store(), archive, targetId, listOf(source.infoHashV1))
         val fake = FakeTarget()
+        val folder = temp.newFolder()
 
         assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
-            SnapshotRestoreOnceV1.execute(journal, source, temp.newFolder(),
-                place, emptyList(), userApproved = true, target = fake))
+            SnapshotRestoreOnceV1.execute(journal, source, folder,
+                placeFor(folder), emptyList(), userApproved = true, target = fake))
         assertEquals(0, fake.writes)
         assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
             journal.entries().single().phase)
