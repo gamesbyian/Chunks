@@ -21,13 +21,15 @@ import androidx.compose.ui.test.performTextReplacement
  *   scroll or recomposition.
  * - Presence, uniqueness and enabled state are read from the node's own semantics: defined
  *   conditions, not caught assertions.
- * - A row disposed between that read and the action surfaces in one of two ways, both raised while
- *   the interaction re-fetches its node, i.e. BEFORE any action is dispatched:
+ * - A row disposed between the read and an action can produce either of these
+ *   re-fetch failures, BEFORE any action is dispatched:
  *   - a plain [IllegalStateException] "unattached node";
  *   - an [AssertionError] from the re-fetch that found no node, or more than one ("Expected exactly
  *     '1' node but ..."). The installed Connect journey hit this as an immediate failure on its
  *     first field.
- *   Only these cases are matched by message; everything else propagates.
+ *   A read-only performScrollTo may also report "The node is no longer in the
+ *   tree"; re-find that scroll target, but never re-dispatch an actual action.
+ *   Only these known pre-action cases are matched; everything else propagates.
  * - A transient second match (an outgoing and an incoming screen composed together for a frame)
  *   is not acted on; the loop waits for exactly one. An ambiguity that persists until the deadline
  *   fails loudly.
@@ -46,6 +48,24 @@ internal object LazyComposeActions {
 
     private const val NO_SCROLL_PARENT = "no parent layout with a Scroll"
     private const val NO_SCROLL_TARGET = "No node found that matches"
+    private const val DETACHED_DURING_SCROLL = "The node is no longer in the tree"
+
+    /**
+     * The CI JVM run 44963652692 observed a node disappear between the
+     * read-only count and performScrollTo. Compose reports this as an
+     * AssertionError with the last known semantics, not as an unattached-node
+     * IllegalStateException. This decision is ONLY for a scroll, before any
+     * Add/Connect/Remove click is even attempted; action failures still fail.
+     */
+    internal fun retryableScrollFailure(failure: AssertionError): Boolean {
+        val message = failure.message.orEmpty()
+        val detachedScroll =
+            (message.startsWith("Action performScrollTo() failed.") ||
+                message.startsWith("Action performScrollToNode() failed.")) &&
+                message.contains(DETACHED_DURING_SCROLL)
+        return message.contains(NO_SCROLL_PARENT) || message.contains(NO_SCROLL_TARGET) ||
+            detachedScroll || undispatched(failure)
+    }
 
     /**
      * Read/scroll-only reveal. Scroll a node only when exactly one matches: `performScrollTo` on a
@@ -61,10 +81,7 @@ internal object LazyComposeActions {
             else if (matches == 0 && rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().size == 1)
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(target)
         } catch (failure: AssertionError) {
-            val missingDuringScroll = failure.message?.let {
-                it.contains(NO_SCROLL_PARENT) || it.contains(NO_SCROLL_TARGET)
-            } == true
-            if (!missingDuringScroll && !undispatched(failure)) throw failure
+            if (!retryableScrollFailure(failure)) throw failure
         } catch (failure: IllegalStateException) {
             if (!undispatched(failure)) throw failure
         }

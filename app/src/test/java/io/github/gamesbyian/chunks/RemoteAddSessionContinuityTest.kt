@@ -23,7 +23,7 @@ class RemoteAddSessionContinuityTest {
     @get:Rule val rule = createComposeRule()
     private fun reveal(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
     private fun submitReviewedAddOnce() =
-        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT), timeoutMillis = 30_000)
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT), timeoutMillis = 15_000)
 
     @Test fun uncertainAttemptCannotBecomeAnotherAddAfterNavigation() {
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
