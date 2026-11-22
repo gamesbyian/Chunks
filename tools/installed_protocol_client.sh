@@ -128,6 +128,8 @@ run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chun
 run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
 rtorrent_test=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
 run_rtorrent_faults() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT response faults started (12m instrumentation deadline)"
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   local raw="$out/instrumentation-RTORRENT.txt" stages="$out/stages-RTORRENT.txt"
   if ! timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
@@ -145,11 +147,14 @@ run_rtorrent_faults() {
   done
   grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=add-fault-hidden-main-session-found-with-origin-unverified' "$stages" ||
     return 1
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT response faults finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT installed document Add and post-write response loss/timeout passed" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 
 run_rtorrent_death() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT process-death journey started"
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
@@ -176,12 +181,15 @@ run_rtorrent_death() {
     echo "::error::Fresh-process rTorrent Add safety verification failed"
     return 1
   fi
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT process-death journey finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_rtorrent_faults || failed=1
 run_rtorrent_death || failed=1
 run_local_add_death() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey started"
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
@@ -209,6 +217,7 @@ run_local_add_death() {
     return 1
   fi
   adb logcat -d -s ChunksLocalAddDeath:I | grep -Fq 'fresh-review-without-replayed-add' || return 1
+  echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL unresolved metadata observation did not replay on process restart" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
