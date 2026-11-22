@@ -42,9 +42,12 @@ public final class ExternalSourceSenderActivity extends Activity {
                 .setType(ExternalTorrentTestProvider.MIME_TYPE)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
         if (view) {
-            // Start with a fresh Chunks task. Share must reenter that same task.
             handoff.setDataAndType(uri, ExternalTorrentTestProvider.MIME_TYPE);
-            handoff.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            // The initial fixture starts a clean task. An explicit reopen
+            // after process loss must grant the same task a fresh source.
+            if (!getIntent().getBooleanExtra("fixture_keep_task", false)) {
+                handoff.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            }
         } else {
             handoff.putExtra(Intent.EXTRA_STREAM, uri);
         }
