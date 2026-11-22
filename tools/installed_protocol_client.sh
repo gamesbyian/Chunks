@@ -50,6 +50,8 @@ run_one() {
   local test_method=protocolClientConnectTransfersDetailsAddAndRemove
   if [ "$mode" = fault ]; then test_method=installedAddAfterTheDaemonResponseIsWithheld; fi
   local raw="$out/instrumentation-$kind-$mode.txt" stages="$out/stages-$kind-$mode.txt"
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode started (12m instrumentation deadline)"
   local custom_folder="$RUNNER_TEMP/interop/dl/custom-${kind,,}"
   mkdir -p "$custom_folder"
   # Android shell sometimes resolves 'current' to USER_CURRENT (-2) after prior instrumentation.
@@ -68,12 +70,16 @@ run_one() {
     -e chunks_protocol_user_b64 "$(b64 "$user")" \
     -e chunks_protocol_pass_b64 "$(b64 "$pass")" \
     "$runner" \
-    > "$raw" 2>&1
-  local status=$?
+    2>&1 | tee "$raw" | awk '/^INSTRUMENTATION_STATUS: chunks_stage=/ { sub(/\r$/, ""); print; fflush() }'
+  local status=${PIPESTATUS[0]}
   set -e
-  tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' | tee "$stages" || true
+  tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' > "$stages" || true
+  echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode finished after $((SECONDS - phase_started))s (instrumentation status=$status)"
   if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
     tail -80 "$raw"
+    if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+      echo "::error::Installed $kind $mode instrumentation hit its 12m timeout; evidence retained"
+    fi
     echo "::error::Installed protocol-client $mode journey failed for $kind"
     return 1
   fi
