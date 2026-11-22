@@ -110,6 +110,29 @@ class CombinedTransfersScreenTest {
         } }
     }
 
+    @Test fun interruptedDocumentNoticeAloneShowsSourcePanelWithoutAnyAdd() {
+        var addReviews = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface(color = ChunksColors.Background) {
+                    CombinedTransfersScreen(
+                        server = null,
+                        savedProfiles = emptyList(),
+                        onOpenLocal = { addReviews++ },
+                        onOpenServer = null,
+                        onBack = {},
+                        enableFirstRunWelcome = true,
+                        showNavigationFooter = false,
+                        sharedTorrentError = INTERRUPTED_DOCUMENT_REVIEW
+                    )
+                }
+            }
+        }
+        revealText(INTERRUPTED_DOCUMENT_REVIEW)
+        rule.onNodeWithText(INTERRUPTED_DOCUMENT_REVIEW).assertIsDisplayed()
+        assertEquals("A restored source notice must not dispatch Add", 0, addReviews)
+    }
+
     @Test fun cardProgressAndTitleStayToRightOfNaturalRatioArtwork() {
         show()
         revealText("Big Archive")

@@ -1071,7 +1071,8 @@ internal fun CombinedTransfersScreen(
         !localRunning && !localConfirmed && savedProfiles.isEmpty() && server == null &&
         !hasRememberedRemoteLogin &&
         !CombinedViewPreferences.narrowingActive(query) && localPrivacy.mayShow &&
-        !pendingSharedMagnet && !pendingSharedTorrent && !readingSharedTorrent
+        !pendingSharedMagnet && !pendingSharedTorrent && !readingSharedTorrent &&
+        sharedTorrentError == null
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
     val secure = (localPrivacy.needsSecureWindow && localPrivacy.mayShow) ||

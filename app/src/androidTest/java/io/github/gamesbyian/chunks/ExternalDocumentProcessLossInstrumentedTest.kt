@@ -163,7 +163,7 @@ class ExternalDocumentProcessLossInstrumentedTest {
                 stopped
             }
             instrumentation.waitForIdleSync()
-            Log.i("ChunksDocumentRestore", "external-review-task-stopped-before-process-loss")
+            Log.i("ChunksDocumentRestore", "external-review-task-stopped-before-process-loss task=$taskId")
             Process.killProcess(Process.myPid())
             return
         }
@@ -172,6 +172,10 @@ class ExternalDocumentProcessLossInstrumentedTest {
         val oldPid = markers.getInt("pid", -1)
         assertTrue(taskId >= 0 && oldPid > 0)
         assertNotEquals("The saved task must restart in a new process", oldPid, Process.myPid())
+        // Host reactivates the stopped task before no-restart can attach.
+        // Cycle Home/focus after instrumentation attaches so the task's
+        // RESUMED lifecycle is visible to the AndroidJUnit4 monitor.
+        assertTrue(device.pressHome())
         val focus = device.executeShellCommand("am task focus $taskId").trim()
         assertEquals("Focus existing task without re-delivering source Intent",
             "Setting focus to task $taskId", focus)
