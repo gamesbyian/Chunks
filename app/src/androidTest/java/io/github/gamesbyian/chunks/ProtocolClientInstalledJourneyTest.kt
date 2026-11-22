@@ -24,6 +24,11 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
+import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
+import io.github.gamesbyian.chunks.engine.LocalEngineConfig
+import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
+import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore
 import io.github.gamesbyian.chunks.model.SmartRoutingPreview
@@ -37,6 +42,8 @@ import io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTorrentClients
 import io.github.gamesbyian.chunks.rpc.TransmissionReadOnlyRpc
+import java.io.File
+import java.net.InetSocketAddress
 import java.net.URI
 import java.security.SecureRandom
 import kotlinx.coroutines.runBlocking
@@ -681,6 +688,60 @@ class ProtocolClientInstalledJourneyTest {
                 runBlocking { independentRead(episodesHash) }?.runState)
             stage("fio-e01-high-verified-independently")
             runBlocking { witness.remove(episodesHash, deleteData = false) }
+
+            // Observe the same open Move review before and after live BEP 9 metadata.
+            // Run this Local-to-remote transition once in the shared five-client campaign.
+            if (kind == RemoteBackendKind.TRANSMISSION) {
+                val root = java.nio.file.Files.createTempDirectory(context.cacheDir.toPath(), "move-metadata-").toFile()
+                val publisher = File(root, "publisher").apply { check(mkdir()) }
+                val receiver = File(root, "receiver").apply { check(mkdir()) }
+                val title = "Chunks Metadata Fixture S01E02.mkv"
+                val payload = ByteArray(32 * 1024).also(SecureRandom()::nextBytes)
+                File(publisher, title).writeBytes(payload)
+                val definition = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(title,
+                    listOf(TorrentMetainfoBuilder.Entry(listOf(title), payload.size.toLong()) { payload.inputStream() }),
+                    trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
+                val lateHash = definition.infoHashV1
+                val savedRouting = routing.read() as SmartRoutingPolicyStore.Read.Ready
+                val ruleForRemote = SmartRoutingPreview.Rule("late", 1, SmartRoutingPreview.Kind.TV, 60, profileId)
+                assertEquals(SmartRoutingPolicyStore.Save.SAVED, routing.save(savedRouting.revision,
+                    SmartRoutingPolicyStore.Policy(enabled = true, rules = listOf(ruleForRemote))))
+                try {
+                    LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+                        allowMultipleConnectionsPerIp = true, enableDht = false)).use { publisherEngine ->
+                        publisherEngine.start()
+                        assertTrue(publisherEngine.addStopped(definition.torrent, publisher) is LocalAddResult.AddedStopped)
+                        assertEquals(LocalCommandOutcome.VERIFIED, publisherEngine.resume(lateHash).outcome)
+                        waitFor("independently verified publisher seed") {
+                            publisherEngine.status(lateHash)?.state == LocalTransferState.SEEDING
+                        }
+                        val magnetWithoutPeer = requireNotNull(definition.magnet)
+                        assertTrue(local.addMagnet(magnetWithoutPeer, receiver) is LocalAddResult.FetchingMetadata)
+                        addJourney.activate(ChunksSemantics.FOOTER_TRANSFERS)
+                        clickOnce("$rowTag.$localId.$lateHash", "exact metadata-pending Local Details", 90_000)
+                        clickOnce(ChunksSemantics.PROTOCOL_MOVE, "Open metadata-pending job Move review")
+                        assertEquals(false, local.status(lateHash)?.metadataKnown)
+                        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION).assertDoesNotExist()
+                        assertNull(runBlocking { independentRead(lateHash) })
+                        stage("move-late-metadata-pending-no-advice")
+
+                        assertTrue(local.connectPeer(lateHash, InetSocketAddress("127.0.0.1", publisherEngine.listenPort())))
+                        waitFor("peer metadata and stopped Local readback") {
+                            local.status(lateHash)?.let { it.metadataKnown && it.stopped } == true
+                        }
+                        waitFor("same open Move review suggests the Transmission destination") {
+                            rule.onAllNodes(advice).fetchSemanticsNodes().size == 1
+                        }
+                        assertNull("Advice leaves the remote inventory unchanged", runBlocking { independentRead(lateHash) })
+                        assertEquals(0L, local.status(lateHash)?.payloadDownloadedBytes)
+                        stage("move-late-metadata-advice-no-write")
+                    }
+                } finally {
+                    if (local.status(lateHash) != null) assertTrue(local.removeKeepingData(lateHash))
+                    val latestRouting = routing.read() as SmartRoutingPolicyStore.Read.Ready
+                    assertEquals(SmartRoutingPolicyStore.Save.SAVED, routing.save(latestRouting.revision, savedRouting.policy))
+                }
+            }
 
             // Smart Seeding through the installed UI: this client's default upload limit and its
             // explicit "Apply while Chunks is open" switch. A transfer added after activation gets

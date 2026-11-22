@@ -36,6 +36,7 @@ import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
+import io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import kotlinx.coroutines.CancellationException
@@ -135,6 +136,28 @@ internal fun ProtocolClientOperationsPanel(
             catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
         if (!names.isNullOrEmpty()) routingFileNames = names
     }
+    val proposedMove = if (!current || !showMove || routingMetadataPending == true) null
+        else routingFileNames?.let { suggestForFiles?.invoke(it) }
+            ?: if (routingFileNames == null) suggestedTarget else null
+    val proposedDestination = moveTargets.singleOrNull { it.id == proposedMove?.first }
+    val destinationId = proposedDestination?.id
+    val destinationConnection = proposedDestination?.connectionWitness
+    val startOnDestination = observedStarted == true
+    var verifiedMoveDestination by remember(destinationId, destinationConnection, startOnDestination) {
+        mutableStateOf(false)
+    }
+    LaunchedEffect(destinationId, destinationConnection, startOnDestination) {
+        val destination = proposedDestination ?: return@LaunchedEffect
+        val destinationSession = readRoutingTarget { destination.createOperations().session(refresh = true) }
+        // Copy prefers original metainfo and can fall back to a public magnet.
+        // Check both formats without exporting private source data for an advisory.
+        val file = SmartRoutingAddSuggestion.candidateFor(destination.id, destination.label, destinationSession,
+            magnetSource = false, startNow = startOnDestination)
+        val magnet = SmartRoutingAddSuggestion.candidateFor(destination.id, destination.label, destinationSession,
+            magnetSource = true, startNow = startOnDestination)
+        verifiedMoveDestination = file.live && file.placeKnown && file.acceptsAdd && magnet.acceptsAdd
+    }
+    val routingSuggestion = proposedMove?.takeIf { verifiedMoveDestination }
     var copied by remember(operations) { mutableStateOf<VerifiedMoveCopy?>(null) }
     val currentConnections by rememberUpdatedState(moveConnections)
     val currentOwner by rememberUpdatedState(operations.takeIf { current })
@@ -254,9 +277,6 @@ internal fun ProtocolClientOperationsPanel(
             }
         }
         if (showMove) {
-            val names = routingFileNames
-            val routingSuggestion = if (!current || routingMetadataPending == true) null
-                else if (names == null) suggestedTarget else suggestForFiles?.invoke(names)
             Text("Copies only the torrent job. The other client downloads its files itself; " +
                 "nothing on $clientLabel is changed unless you then remove it here.",
                 style = MaterialTheme.typography.bodySmall)

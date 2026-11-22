@@ -5,11 +5,13 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
-import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.text.AnnotatedString
 
 /**
  * The lazy-container interaction contract (docs/TEST-ARCHITECTURE.md) as two reusable actions, so a
@@ -128,8 +130,9 @@ internal object LazyComposeActions {
     }
 
     /**
-     * Replace the text of [target]. Text replacement is idempotent and submits nothing, so
-     * re-locating after a not-yet-composed or disposed row is safe.
+     * Edit a draft using its SetText semantics. A separate focus request can
+     * open the keyboard, resize the viewport and dispose the field before SetText.
+     * Tests that exercise focus or an IME action must do so explicitly.
      */
     fun replaceText(
         rule: ComposeTestRule,
@@ -140,13 +143,16 @@ internal object LazyComposeActions {
     ) {
         val deadline = SystemClock.elapsedRealtime() + timeoutMillis
         var detached: Throwable? = null
-        var present = 0
+        val editable = target and hasSetTextAction() and isEnabled()
         while (true) {
             scrollIntoView(rule, target, useUnmergedTree)
-            present = rule.onAllNodes(target, useUnmergedTree).fetchSemanticsNodes().size
-            if (present == 1) {
+            val nodes = rule.onAllNodes(target, useUnmergedTree).fetchSemanticsNodes()
+            val present = nodes.size
+            if (nodes.singleOrNull()?.let(editable::matches) == true) {
                 try {
-                    rule.onNode(target, useUnmergedTree).performTextReplacement(text)
+                    rule.onNode(target, useUnmergedTree).performSemanticsAction(SemanticsActions.SetText) { setText ->
+                        check(setText(AnnotatedString(text))) { "Editable field rejected its SetText action" }
+                    }
                     return
                 } catch (failure: Throwable) {
                     if (!undispatched(failure)) throw failure
