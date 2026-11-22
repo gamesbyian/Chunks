@@ -54,13 +54,11 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
                 null
             }
             check(stillCurrent()) { "The server inventory or account changed during export" }
-            // The archive has a tighter 2 MiB *per definition* bound than
-            // the aggregate budget. A legitimate original with a huge comment
-            // field could otherwise be accepted here and make the *entire*
-            // export fail when SnapshotArchiveV1.encode rejects that member.
-            // Refuse oversized definitions BEFORE parsing/copying them, keep
-            // the rest of the source inventory recoverable, and never truncate
-            // or silently alter a private tracker-bearing .torrent.
+            // Parser and archive both cap an original at 2 MiB. Previously
+            // the parser rejected larger responses as simply "unavailable",
+            // concealing the actionable size limit. Classify size first and
+            // keep the other independently recoverable definitions intact.
+            // Never truncate or alter a private tracker-bearing .torrent.
             if (candidate != null &&
                 candidate.size > SnapshotArchiveV1.MAX_TORRENT_BYTES) {
                 tooLarge++
