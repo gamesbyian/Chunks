@@ -78,7 +78,13 @@ run_one() {
   if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
     tail -80 "$raw"
     if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
-      echo "::error::Installed $kind $mode instrumentation hit its 12m timeout; evidence retained"
+      # Killing the host-side adb wait does not prove instrumentation has
+      # stopped on the device. Continuing could collide with its stale write.
+      # Fail the run immediately and let the always() artifact step preserve
+      # the raw log and any available emulator logcat.
+      echo "::error::Installed $kind $mode instrumentation hit its 12m timeout; stopping the campaign"
+      timeout 15s adb logcat -d -t 3000 > "$out/logcat-timeout-$kind-$mode.txt" 2>&1 || true
+      exit 124
     fi
     echo "::error::Installed protocol-client $mode journey failed for $kind"
     return 1
