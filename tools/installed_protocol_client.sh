@@ -225,5 +225,35 @@ run_local_add_death() {
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_local_add_death || failed=1
+run_external_document_restore() {
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
+  adb logcat -c || return 1
+  local testcase=io.github.gamesbyian.chunks.ExternalApkTorrentHandoffInstrumentedTest#externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument
+  local before="$out/document-restore-save.txt" after="$out/document-restore-return.txt"
+  local status=0
+  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 -w -r -e class "$testcase" \
+    -e chunks_document_restore_phase save "$runner" > "$before" 2>&1 || status=$?
+  abort_on_instrument_timeout "$status" "external-document-save"
+  adb logcat -d -s ChunksDocumentRestore:I > "$out/document-restore-boundary.txt" || return 1
+  if ! grep -Fq 'external-review-task-stopped-before-process-loss' "$out/document-restore-boundary.txt" ||
+    grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
+    echo "::error::Did not observe process death with the external source task stopped"
+    return 1
+  fi
+  status=0
+  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 -w -r -e class "$testcase" \
+    -e chunks_document_restore_phase restore "$runner" > "$after" 2>&1 || status=$?
+  abort_on_instrument_timeout "$status" "external-document-return"
+  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after"; then
+    tail -80 "$after"
+    return 1
+  fi
+  adb logcat -d -s ChunksDocumentRestore:I > "$out/document-restore-boundary.txt" || return 1
+  grep -Fq 'same-task-new-process-notice-explicit-reopen-no-add' "$out/document-restore-boundary.txt" || return 1
+  echo "CHUNKS_INSTALLED_PROTOCOL: external document task restored after real process death and required explicit reopen" |
+    tee -a "$GITHUB_STEP_SUMMARY"
+}
+run_external_document_restore || failed=1
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed

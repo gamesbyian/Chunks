@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Process
+import android.util.Log
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -12,6 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
+import androidx.test.uiautomator.UiDevice
 import io.github.gamesbyian.chunks.external.ExternalTorrentTestProvider
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
@@ -20,6 +22,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -133,6 +136,66 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         // would seize foreground/task focus from unrelated instrumented UI
         // cases. The disposable test APK is uninstalled by the runner, which
         // removes both tiny test documents without a cross-package action.
+    }
+
+    @Test fun externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument() {
+        val phase = InstrumentationRegistry.getArguments().getString("chunks_document_restore_phase")
+        assumeTrue("Only the disposable two-phase runner may kill the app process", phase in setOf("save", "restore"))
+        val device = UiDevice.getInstance(instrumentation)
+        assertEquals("1", device.executeShellCommand("getprop ro.kernel.qemu").trim())
+        val markers = chunksApp.getSharedPreferences("document-restore-instrumentation", 0)
+        val (uri, bytes) = fixture("first")
+        if (phase == "save") {
+            dispatch("view")
+            awaitSource("external-first.bin", uri, bytes)
+            var taskId = -1
+            assertTrue(withResumed { activity, owner ->
+                taskId = activity.taskId
+                assertNull(owner.session.attemptedTicket)
+            })
+            assertTrue(taskId >= 0)
+            assertTrue(markers.edit().putInt("task", taskId).putInt("pid", Process.myPid()).commit())
+            assertTrue(device.pressHome())
+            compose.waitUntil(15_000) {
+                var stopped = false
+                instrumentation.runOnMainSync {
+                    stopped = ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.STOPPED)
+                        .any { it is MainActivity && it.taskId == taskId }
+                }
+                stopped
+            }
+            instrumentation.waitForIdleSync()
+            Log.i("ChunksDocumentRestore", "external-review-task-stopped-before-process-loss")
+            Process.killProcess(Process.myPid())
+            return
+        }
+
+        val taskId = markers.getInt("task", -1)
+        val oldPid = markers.getInt("pid", -1)
+        assertTrue(taskId >= 0 && oldPid > 0)
+        assertNotEquals("The resumed task must be hosted by a fresh process", oldPid, Process.myPid())
+        val focused = device.executeShellCommand("am task focus $taskId").trim()
+        assertEquals("Resume the saved task without sending another source Intent",
+            "Setting focus to task $taskId", focused)
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(hasText(INTERRUPTED_DOCUMENT_REVIEW)).fetchSemanticsNodes().size == 1
+        }
+        assertTrue(withResumed { activity, owner ->
+            assertEquals(taskId, activity.taskId)
+            assertNull(owner.incomingTorrent.value)
+            assertNull(owner.reviewedTorrent.value)
+            assertNull(owner.session.attemptedTicket)
+        })
+        // An explicit new provider grant and VIEW can recover the original
+        // user goal. Restoring the task above did neither of these automatically.
+        dispatch("view")
+        awaitSource("external-first.bin", uri, bytes)
+        assertTrue(withResumed { activity, owner ->
+            assertEquals(taskId, activity.taskId)
+            assertNull(owner.sharedTorrentError.value)
+            assertNull(owner.session.attemptedTicket)
+        })
+        Log.i("ChunksDocumentRestore", "same-task-new-process-notice-explicit-reopen-no-add")
     }
 
     @Test fun externalProviderOpenWithThenShareRetainsExactUnsubmittedSource() {
