@@ -258,7 +258,7 @@ class ShardedNativeAddTests(unittest.TestCase):
                 ("RTorrentInstalledAddResponseFaultTest", "freshProcessDoesNotReplayTheHeldAdd"),
                 ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
                 ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
-                ("ExternalApkTorrentHandoffInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
+                ("ExternalDocumentProcessLossInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
             )
         }
         expected.update(installed_fault_ids)
