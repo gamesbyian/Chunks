@@ -26,7 +26,8 @@ internal object SnapshotArchiveV1 {
     private const val MAX_ARCHIVE_BYTES = 64 * 1024 * 1024
     private const val MAX_TOTAL_UNCOMPRESSED = 64 * 1024 * 1024
     private const val MAX_MANIFEST_BYTES = 512 * 1024
-    private const val MAX_TORRENT_BYTES = 2 * 1024 * 1024
+    /** Per-definition transport limit also used to classify remote capture failures. */
+    internal const val MAX_TORRENT_BYTES = 2 * 1024 * 1024
     private const val MAX_TORRENTS = 512
     private const val CHECKSUM_NAME = "checksums.json"
     private const val MANIFEST_NAME = "manifest.json"
