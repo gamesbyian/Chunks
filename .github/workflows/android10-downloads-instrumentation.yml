@@ -96,11 +96,11 @@ jobs:
           profile: pixel_3a
           emulator-boot-timeout: 600
           disable-animations: true
-          script: |
+          script: >-
             bash tools/android10_downloads_instrumentation.sh &&
-            adb shell am instrument -w -r \
-              -e class io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest#openWithDataOnlyUsesAndroidResolvedMimeAndRetainsTheExactReview,io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest#conflictingOpenWithClipDataCannotReplaceTheRetainedReview \
-              io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner > "$RUNNER_TEMP/api29-openwith.raw" &&
+            timeout 180s adb shell am instrument -w -r
+            -e class io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest#openWithDataOnlyUsesAndroidResolvedMimeAndRetainsTheExactReview,io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest#conflictingOpenWithClipDataCannotReplaceTheRetainedReview
+            io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner > "$RUNNER_TEMP/api29-openwith.raw" &&
             python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/api29-openwith.raw" --junit "$RUNNER_TEMP/api29-openwith.xml" &&
             grep -Fx 'OK (2 tests)' "$RUNNER_TEMP/api29-openwith.raw" &&
             bash tools/local_intake_journey.sh &&
