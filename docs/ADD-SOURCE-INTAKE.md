@@ -29,6 +29,8 @@ Admission requires **one** `content://` document with a supported torrent or `ap
 
 Automated acceptance must include manifest resolver matching for opaque generic content URIs, actual MainActivity cold Open With review, generic SEND, malformed/ambiguous source refusal, valid metainfo and bogus binary rejection. Android Files, Downloads and Drive on the **owner Pixel**, real URI permission delivery, app-task continuity, and large-font/TalkBack behavior remain distinct physical-device proof.
 
+Android can restore a task after releasing Chunks' process memory. When the saved task had a document review, Chunks tells the person to check Transfers and reopen the file. The saved state carries only a presence flag. Opening the file again goes through the same explicit review, and Activity recreation keeps an intact in-memory draft.
+
 ### Owner Pixel evidence for #1786
 
 - Record the installed Chunks version and Android build. Use two disposable .torrent documents with known, distinct v1 hashes. From Files and browser Downloads, open the first with Chunks on a cold launch. From Drive, try Open With and Share with a locally available copy and an online-only copy. Record the exact reviewed hash and whether the Android task stays open.
