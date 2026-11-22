@@ -1086,8 +1086,12 @@ internal fun CombinedTransfersScreen(
     // A shared Android magnet must expose its exact destination choices even
     // when the Combined list was last visited far below its Add card. This
     // changes only the view position, never authorizes an Add or remote call.
-    LaunchedEffect(pendingSharedMagnet, pendingSharedTorrent) {
-        if (pendingSharedMagnet || pendingSharedTorrent) listState.scrollToItem(COMBINED_ADD_ITEM_INDEX)
+    LaunchedEffect(pendingSharedMagnet, pendingSharedTorrent, readingSharedTorrent, sharedTorrentError) {
+        // A process-restored external .torrent has no surviving URI, draft or
+        // pending source. Its interruption notice is still essential: reveal
+        // the same source/destination panel without replaying the old Intent.
+        if (pendingSharedMagnet || pendingSharedTorrent || readingSharedTorrent ||
+            sharedTorrentError != null) listState.scrollToItem(COMBINED_ADD_ITEM_INDEX)
     }
     // Reading LazyListState.layoutInfo during composition creates a feedback
     // loop: layout publishes info, composition reads it, then remeasures.
@@ -1623,7 +1627,8 @@ internal fun CombinedTransfersScreen(
         } else {
         // Add lives in its own destination when this is the app's primary list.
         // A shared source still surfaces a target choice, never auto-submits.
-        if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
+        if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent ||
+            readingSharedTorrent || sharedTorrentError != null) item(key = COMBINED_ADD_ITEM_KEY) {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId } ||
