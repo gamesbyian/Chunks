@@ -136,6 +136,25 @@ class AndroidCiTriggerContract(unittest.TestCase):
         self.assertTrue(dispatches_for_changed_paths(
             docs, (".github/workflows/native-add-instrumentation.yml",)))
 
+    def test_shared_one_shot_compose_helper_selects_all_executing_installed_owners(self):
+        # The shared lazy semantics helper drives actual installed Add,
+        # Connect and removal gestures. Its owner workflow was previously
+        # missing from the PR path matrix even though JVM and native Add ran.
+        # Pin narrow routing rather than enabling every sharedTest edit.
+        helper = "app/src/sharedTest/java/io/github/gamesbyian/chunks/LazyComposeActions.kt"
+        for workflow in (
+            "installed-protocol-client.yml",
+            "installed-rtorrent-magnets.yml",
+            "native-add-instrumentation.yml",
+        ):
+            with self.subTest(workflow=workflow):
+                source = (ROOT / ".github/workflows" / workflow).read_text()
+                self.assertTrue(dispatches_for_changed_paths(source, (helper,)))
+        # Dedicated 200% system-font captures test unrelated geometric
+        # behavior and should not allocate another emulator for this helper.
+        font = (ROOT / ".github/workflows/compose-system-font-200pct.yml").read_text()
+        self.assertFalse(dispatches_for_changed_paths(font, (helper,)))
+
     def test_remote_real_peer_helper_is_compiled_in_its_own_installed_journey(self):
         # It has no independent Android @Test. All its actual execution is
         # through the real installed SeedhostAndroidAddUi test, and that test
