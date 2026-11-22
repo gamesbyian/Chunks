@@ -65,6 +65,21 @@ internal object SnapshotRestoreOnceV1 {
     }
 
     /**
+     * The persisted journal stores only a hash of the explicitly reviewed
+     * destination. Refuse a caller that pairs an old approval hash with a new
+     * directory, even when that new directory happens to be writable. This
+     * check belongs at the native-write boundary as well as in the UI.
+     */
+    internal fun reviewedPlaceMatches(chosenPlace: File, verifiedPlaceFingerprint: String): Boolean {
+        if (!chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
+            java.nio.file.Files.isSymbolicLink(chosenPlace.toPath())) return false
+        val canonical = try { chosenPlace.canonicalPath }
+            catch (_: Exception) { return false }
+        return LocalSnapshotRestoreFingerprint.of("chunks-place-v1:" + canonical) ==
+            verifiedPlaceFingerprint
+    }
+
+    /**
      * Read-only recovery after a lost Add acknowledgement, Activity loss or
      * process restart. The user reselects the current local Place and the
      * verified archive identity; no source bytes and no historical path are
@@ -89,8 +104,7 @@ internal object SnapshotRestoreOnceV1 {
                 SnapshotRestoreJournalV1.Phase.VERIFIED
             ) || entry.placeFingerprint != verifiedPlaceFingerprint)
             return Outcome.JOURNAL_BLOCKED
-        if (!chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
-            java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
+        if (!reviewedPlaceMatches(chosenPlace, verifiedPlaceFingerprint))
             return Outcome.REFUSED
 
         val observed = canonicalInventory(try { target.completeHashes() }
@@ -126,8 +140,7 @@ internal object SnapshotRestoreOnceV1 {
         target: LocalTarget
     ): Outcome {
         if (!userApproved) return Outcome.REFUSED
-        if (!chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
-            java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
+        if (!reviewedPlaceMatches(chosenPlace, verifiedPlaceFingerprint))
             return Outcome.REFUSED
         val hash = reviewed.infoHashV1
         // The infohash covers the info dictionary, leaving tracker URLs and
