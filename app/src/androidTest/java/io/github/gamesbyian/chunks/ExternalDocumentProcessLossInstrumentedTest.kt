@@ -87,7 +87,7 @@ class ExternalDocumentProcessLossInstrumentedTest {
             var exact = false
             val resumed = withResumed { activity, owner ->
                 val reviewed = owner.reviewedTorrent.value
-                exact = reviewed?.originalDocument == uri &&
+                exact = reviewed != null && reviewed.originalDocument == uri &&
                     reviewed.bytes.contentEquals(bytes) &&
                     reviewed.preview.name == "external-first.bin" &&
                     owner.session.attemptedTicket == null &&
