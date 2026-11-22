@@ -119,6 +119,27 @@ class LazyComposeActionsTest {
         assertEquals(0, clicks)
     }
 
+    @Test fun aDetachedNodeDuringReadOnlyScrollMayBeRefoundButActionFailuresMayNot() {
+        val observed = AssertionError(
+            "Action performScrollTo() failed.\n" +
+                "The node is no longer in the tree, last known semantics:\n" +
+                "Node #10516, Tag: 'chunks.add.submit'")
+        assertTrue("Observed CI scroll-only detachment is safe to re-find",
+            LazyComposeActions.retryableScrollFailure(observed))
+        val lazy = AssertionError(
+            "Action performScrollToNode() failed.\nThe node is no longer in the tree")
+        assertTrue(LazyComposeActions.retryableScrollFailure(lazy))
+        assertTrue("Existing no-parent scroll behavior stays retryable",
+            LazyComposeActions.retryableScrollFailure(
+                AssertionError("no parent layout with a Scroll")))
+        assertTrue("An action handler failure must never be classified as an undispatched scroll",
+            !LazyComposeActions.retryableScrollFailure(
+                AssertionError("Click handler failed after Add transfer")))
+        assertTrue("An unrelated scroll assertion remains visible",
+            !LazyComposeActions.retryableScrollFailure(
+                AssertionError("Action performScrollTo() failed. Unexpected semantics assertion")))
+    }
+
     @Test fun aFailureAfterTheActionIsNeverRetried() {
         var clicks = 0
         rule.setContent {

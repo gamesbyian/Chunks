@@ -1234,15 +1234,19 @@ internal fun ChunksApp(
     }
     // Capability-aware candidacy: each protocol client's own live session,
     // read off the main thread only while Add is shown and routing is on.
-    val routingSessions = rememberAddRoutingSessions(
-        routingAddVisible && routingPolicy?.enabled == true, combinedProtocolProfiles)
+    val routingEnabled = routingAddVisible && routingPolicy?.enabled == true
+    val routingSessions = rememberAddRoutingSessions(routingEnabled, combinedProtocolProfiles)
+    val routingRTorrent = server.takeIf { connectedRTorrentId != null && !stale }
+    val routingRTorrentPlace = rememberRTorrentRoutingDefault(routingEnabled, routingRTorrent)
     val routingResult = remember(routingPolicy, routingSource, routingMagnetName, connectedRTorrentId,
-        combinedProtocolProfiles, activeAddRemoteName, routingSessions, localAddStart.value) {
+        combinedProtocolProfiles, activeAddRemoteName, routingSessions, routingRTorrent, routingRTorrentPlace,
+        localAddStart.value) {
         val candidates = buildList {
             add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
                 io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local", true, true, true))
             connectedRTorrentId?.let { add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
-                it, activeAddRemoteName ?: "rTorrent", true, true, true)) }
+                it, activeAddRemoteName ?: "rTorrent", live = routingRTorrent != null,
+                acceptsAdd = true, placeKnown = routingRTorrentPlace != null)) }
             combinedProtocolProfiles.filter { it.operations != null }.forEach {
                 add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.candidateFor(
                     it.id, it.label, routingSessions[it.id],

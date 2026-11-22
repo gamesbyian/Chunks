@@ -44,12 +44,24 @@ for port in 19091 18080 18112 18090 19191 18180 18212 18190; do
   adb reverse tcp:$port tcp:$port >/dev/null
 done
 b64() { printf '%s' "$1" | base64 -w 0; }
+# A timed-out host adb command does not guarantee its Android instrumentation
+# process has stopped. Never start the next mutating journey against that AVD.
+abort_on_instrument_timeout() {
+  local status=$1 phase=$2
+  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+    echo "::error::Installed $phase instrumentation exceeded its deadline; stopping the campaign"
+    timeout 15s adb logcat -d -t 3000 > "$out/logcat-timeout-$phase.txt" 2>&1 || true
+    exit 124
+  fi
+}
 run_one() {
   local kind=$1 url=$2 app_url=$3 user=$4 pass=$5 mode=$6
   local class=io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest
   local test_method=protocolClientConnectTransfersDetailsAddAndRemove
   if [ "$mode" = fault ]; then test_method=installedAddAfterTheDaemonResponseIsWithheld; fi
   local raw="$out/instrumentation-$kind-$mode.txt" stages="$out/stages-$kind-$mode.txt"
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode started (12m instrumentation deadline)"
   local custom_folder="$RUNNER_TEMP/interop/dl/custom-${kind,,}"
   mkdir -p "$custom_folder"
   # Android shell sometimes resolves 'current' to USER_CURRENT (-2) after prior instrumentation.
@@ -68,14 +80,22 @@ run_one() {
     -e chunks_protocol_user_b64 "$(b64 "$user")" \
     -e chunks_protocol_pass_b64 "$(b64 "$pass")" \
     "$runner" \
-    > "$raw" 2>&1
-  local status=$?
+    2>&1 | tee "$raw" | awk '/^INSTRUMENTATION_STATUS: chunks_stage=/ { sub(/\r$/, ""); print; fflush() }'
+  local status=${PIPESTATUS[0]}
   set -e
-  tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' | tee "$stages" || true
+  tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' > "$stages" || true
+  echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode finished after $((SECONDS - phase_started))s (instrumentation status=$status)"
   if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
     tail -80 "$raw"
+    abort_on_instrument_timeout "$status" "$kind-$mode"
     echo "::error::Installed protocol-client $mode journey failed for $kind"
     return 1
+  fi
+  if [ "$mode" = positive ]; then
+    if ! grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=smart-routing-exact-live-default-no-write' "$stages"; then
+      echo "::error::Missing installed $kind exact-client Smart Routing and no-write witness"
+      return 1
+    fi
   fi
   if [ "$mode" = fault ]; then
     for fault in drop timeout; do
@@ -110,13 +130,17 @@ run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chun
 run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
 rtorrent_test=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
 run_rtorrent_faults() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT response faults started (12m instrumentation deadline)"
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   local raw="$out/instrumentation-RTORRENT.txt" stages="$out/stages-RTORRENT.txt"
-  if ! timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
+  local status=0
+  timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
     -e class "$rtorrent_test#stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost" \
     -e chunks_rtorrent_add_fault authorized \
-    "$runner" > "$raw" 2>&1 ||
-    ! grep -q '^OK (1 test)' "$raw"; then
+    "$runner" > "$raw" 2>&1 || status=$?
+  abort_on_instrument_timeout "$status" "RTORRENT-response-faults"
+  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
     tail -80 "$raw"
     echo "::error::Installed rTorrent Add response fault journey failed"
     return 1
@@ -127,21 +151,21 @@ run_rtorrent_faults() {
   done
   grep -Fxq 'INSTRUMENTATION_STATUS: chunks_stage=add-fault-hidden-main-session-found-with-origin-unverified' "$stages" ||
     return 1
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT response faults finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT installed document Add and post-write response loss/timeout passed" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 
 run_rtorrent_death() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT process-death journey started"
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
   local phase1_status=0
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#submitThenKillTheAppProcess" \
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || phase1_status=$?
-  if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
-    echo "::error::rTorrent deliberate process death did not finish before its deadline"
-    return 1
-  fi
+  abort_on_instrument_timeout "$phase1_status" "RTORRENT-death-phase1"
   adb logcat -d -s ChunksAddFault:I > "$out/process-death-boundary.txt" || return 1
   if ! grep -Fq 'process-death-real-write-awaits-ack' "$out/process-death-boundary.txt" ||
     grep -q '^OK (' "$out/process-death-phase1.txt" ||
@@ -150,20 +174,26 @@ run_rtorrent_death() {
     echo "::error::The installed app did not die at the held Add write boundary"
     return 1
   fi
-  if ! timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
-    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 ||
+  local phase2_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
+    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 || phase2_status=$?
+  abort_on_instrument_timeout "$phase2_status" "RTORRENT-death-phase2"
+  if [ "$phase2_status" -ne 0 ] ||
     ! grep -q '^OK (1 test)' "$out/process-death-phase2.txt" ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=process-death-no-replay-no-start-original-unchanged' "$out/process-death-phase2.txt"; then
     tail -80 "$out/process-death-phase2.txt"
     echo "::error::Fresh-process rTorrent Add safety verification failed"
     return 1
   fi
+  echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT process-death journey finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_rtorrent_faults || failed=1
 run_rtorrent_death || failed=1
 run_local_add_death() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey started"
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
@@ -172,10 +202,7 @@ run_local_add_death() {
   local phase1_status=0
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
     -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || phase1_status=$?
-  if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
-    echo "::error::Local deliberate process death did not finish before its deadline"
-    return 1
-  fi
+  abort_on_instrument_timeout "$phase1_status" "LOCAL-death-phase1"
   adb logcat -d -s ChunksLocalAddDeath:I > "$out/local-add-death-boundary.txt" || return 1
   if ! grep -Fq 'exact-job-registered-start-unverified' "$out/local-add-death-boundary.txt" ||
     grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
@@ -183,14 +210,17 @@ run_local_add_death() {
     echo "::error::The installed app did not die during the Local Add observation"
     return 1
   fi
-  if ! timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
-    -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 ||
-    ! grep -q '^OK (1 test)' "$after"; then
+  local phase2_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
+    -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 || phase2_status=$?
+  abort_on_instrument_timeout "$phase2_status" "LOCAL-death-phase2"
+  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after"; then
     tail -80 "$after"
     echo "::error::Fresh-process Local Add safety verification failed"
     return 1
   fi
   adb logcat -d -s ChunksLocalAddDeath:I | grep -Fq 'fresh-review-without-replayed-add' || return 1
+  echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL unresolved metadata observation did not replay on process restart" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
