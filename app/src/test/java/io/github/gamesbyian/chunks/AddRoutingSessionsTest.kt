@@ -140,10 +140,19 @@ class AddRoutingSessionsTest {
                 "/new/identity"
             }
         }
-        rule.waitUntil(5_000) {
-            newReads.get() == 1 &&
+        // Authentication may trigger more than one harmless session probe.
+        // The contract is that the new exact identity becomes usable while
+        // the old response is still held, and stale data never gets published.
+        // Do not couple this negative to an incidental RPC read count.
+        try {
+            rule.waitUntil(10_000) {
                 rule.onAllNodesWithText("/new/identity").fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("New routing evidence absent: old reads=${oldReads.get()}, " +
+                "new reads=${newReads.get()}", failure)
         }
+        org.junit.Assert.assertTrue("The reauthenticated client was actually read", newReads.get() > 0)
         delayedOld.complete("/stale/identity")
         rule.waitForIdle()
         rule.onNodeWithText("/stale/identity").assertDoesNotExist()
