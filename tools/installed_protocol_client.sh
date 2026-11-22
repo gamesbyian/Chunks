@@ -231,7 +231,7 @@ run_external_document_restore() {
   adb logcat -c || return 1
   # Normal instrumentation teardown force-stops the package and can discard
   # the very Android task this journey is intended to restore.
-  local testcase=io.github.gamesbyian.chunks.ExternalApkTorrentHandoffInstrumentedTest#externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument
+  local testcase=io.github.gamesbyian.chunks.ExternalDocumentProcessLossInstrumentedTest#externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument
   local before="$out/document-restore-save.txt" after="$out/document-restore-return.txt"
   local status=0
   timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 --no-restart -w -r -e class "$testcase" \
