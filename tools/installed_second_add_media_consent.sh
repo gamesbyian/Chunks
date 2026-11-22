@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 # Disposable emulator only. The receiver never forwards to a public provider.
 set -euo pipefail
-test "${GITHUB_EVENT_NAME:-}" = workflow_dispatch
-test "${CHUNKS_CONTROLLED_MEDIA:-}" = true
+test "${CHUNKS_NATIVE_ADD_SHARD_INDEX:-}" = 0
 test "$(adb shell getprop ro.kernel.qemu | tr -d '[:space:]')" = 1
 test "$(git rev-parse HEAD)" = "${GITHUB_SHA:?}"
 
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 case_class="$pkg.InstalledSecondAddMediaConsentInstrumentedTest"
-candidate=app/build/outputs/apk/debug/app-debug.apk
-test_apk=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+candidate="$RUNNER_TEMP/chunks-prebuilt/chunks-app.apk"
+test "$(cat "$RUNNER_TEMP/chunks-prebuilt/source-sha")" = "$GITHUB_SHA"
 out="${RUNNER_TEMP:?}/chunks-second-add-media"
 mkdir -p "$out"
 scratch="$(mktemp -d)"
@@ -22,8 +21,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-adb install -r "$candidate" >/dev/null
-adb install -r "$test_apk" >/dev/null
+adb shell am force-stop "$pkg"
 adb shell pm clear "$pkg" | grep -Fx Success
 device_path="$(adb shell pm path "$pkg" | tr -d '[:space:]' | grep '^package:' | head -1 | cut -d: -f2-)"
 aapt="${ANDROID_HOME:?}/build-tools/36.0.0/aapt"

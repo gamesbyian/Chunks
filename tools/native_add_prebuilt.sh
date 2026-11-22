@@ -27,7 +27,7 @@ raw="$RUNNER_TEMP/chunks-prebuilt-status-$index.txt"
 junit="app/build/outputs/androidTest-results/connected/prebuilt-shard-$index/TEST-chunks-prebuilt-$index.xml"
 set +e
 timeout 900 adb shell am instrument -w -r \
-  -e notClass io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest,io.github.gamesbyian.chunks.InstalledRealMediaInstrumentedTest \
+  -e notClass io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest,io.github.gamesbyian.chunks.InstalledRealMediaInstrumentedTest,io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest \
   -e numShards "$count" -e shardIndex "$index" \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner > "$raw" 2>&1
 adb_status=$?
@@ -48,3 +48,9 @@ if (( adb_status != 0 || junit_status != 0 )); then
   exit 1
 fi
 echo "CHUNKS_PREBUILT_INSTRUMENT: shard=$index completed with real JUnit and screenshots"
+
+# Use the same API35 emulator and immutable APKs after the shard's evidence is collected.
+# This fixture cannot contact public providers or protected servers.
+if (( index == 0 )); then
+  bash tools/installed_second_add_media_consent.sh
+fi
