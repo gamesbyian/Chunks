@@ -119,6 +119,25 @@ class SnapshotRestoreOnceV1Test {
         assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW, journal.entries().single().phase)
     }
 
+    @Test fun aPreviouslyReadyJournalCannotAuthorizeADifferentPlace() {
+        // A valid READY journal still belongs to its originally reviewed
+        // absolute directory. A changed destination must refuse before it can
+        // rewrite READY, mark IN_FLIGHT or invoke the native Add.
+        val source = original()
+        val approved = temp.newFolder("ready-reviewed-place")
+        val changed = temp.newFolder("ready-different-place")
+        val journal = SnapshotRestoreJournalV1.open(
+            Store(), archive, targetId, listOf(source.infoHashV1))
+        journal.prepare(source.infoHashV1, placeFor(approved))
+        assertEquals(SnapshotRestoreJournalV1.Phase.READY, journal.entries().single().phase)
+        val fake = FakeTarget()
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
+            SnapshotRestoreOnceV1.execute(journal, source, changed,
+                placeFor(approved), emptyList(), userApproved = true, target = fake))
+        assertEquals(0, fake.writes)
+        assertEquals(SnapshotRestoreJournalV1.Phase.READY, journal.entries().single().phase)
+    }
+
     @Test fun aCanonicalFingerprintCannotAuthorizeARelativePlace() {
         // The reviewed digest alone is insufficient. Even a genuine canonical
         // digest must not turn a relative/current-working-directory selection
