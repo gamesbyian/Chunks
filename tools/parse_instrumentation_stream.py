@@ -158,7 +158,7 @@ _SAFE_MEDIA_FIRST_TEST = (
     "phaseA_submitTwoSourcesAndRefreshInventory",
 )
 _MEDIA_FIRST_FINGERPRINT = re.compile(
-    r"^java\\.lang\\.AssertionError: Controlled first metadata request absent: "
+    r"^java\.lang\.AssertionError: Controlled first metadata request absent: "
     r"sourceFetched=(true|false) online=(true|false) "
     r"metered=(true|false) powerSaver=(true|false) "
     r"onlineConsent=(true|false) automatic=(true|false) "
