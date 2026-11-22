@@ -23,6 +23,13 @@ adb install -r -t "$dir/chunks-app.apk"
 adb install -r -t "$dir/chunks-test.apk"
 adb shell pm list instrumentation | grep -F \
   'instrumentation:io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner (target=io.github.gamesbyian.chunks)'
+# The controlled HTTPS first-positive and opt-out is an independent hard
+# requirement. Test it first, before the expensive main shard, then restore
+# the shard's original clean app-data starting point. Same APK bytes.
+if (( index == 0 )); then
+  bash tools/installed_second_add_media_consent.sh
+  adb shell pm clear --user 0 io.github.gamesbyian.chunks | grep -Fx Success
+fi
 raw="$RUNNER_TEMP/chunks-prebuilt-status-$index.txt"
 junit="app/build/outputs/androidTest-results/connected/prebuilt-shard-$index/TEST-chunks-prebuilt-$index.xml"
 set +e
@@ -49,8 +56,3 @@ if (( adb_status != 0 || junit_status != 0 )); then
 fi
 echo "CHUNKS_PREBUILT_INSTRUMENT: shard=$index completed with real JUnit and screenshots"
 
-# Use the same API35 emulator and immutable APKs after the shard's evidence is collected.
-# This fixture cannot contact public providers or protected servers.
-if (( index == 0 )); then
-  bash tools/installed_second_add_media_consent.sh
-fi

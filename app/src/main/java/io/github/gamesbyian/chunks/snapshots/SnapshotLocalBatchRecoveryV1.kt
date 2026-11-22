@@ -119,6 +119,13 @@ internal object SnapshotLocalBatchRecoveryV1 {
             val state = when {
                 entry == null || entry.infoHashV1 != hash ->
                     State.JOURNAL_UNAVAILABLE
+                // READY and REFUSED may already carry the immutable Place
+                // chosen for a prior review. Classify a mismatch *before*
+                // treating these non-submitted phases as harmless. REVIEW
+                // and a refusal made directly from REVIEW have no Place yet.
+                entry.placeFingerprint != null &&
+                    entry.placeFingerprint != verifiedPlaceFingerprint ->
+                    State.DIFFERENT_REVIEWED_PLACE
                 entry.phase in setOf(
                     SnapshotRestoreJournalV1.Phase.REVIEW,
                     SnapshotRestoreJournalV1.Phase.READY,
