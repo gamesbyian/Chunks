@@ -151,9 +151,9 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 source = (ROOT / ".github/workflows" / workflow).read_text()
                 self.assertTrue(dispatches_for_changed_paths(source, (helper,)))
         protocol = (ROOT / ".github/workflows/installed-protocol-client.yml").read_text()
-        self.assertFalse("The route is intentionally limited to the executed helper",
-            dispatches_for_changed_paths(protocol, (
-                "app/src/sharedTest/java/io/github/gamesbyian/chunks/UnrelatedFixture.kt",)))
+        self.assertFalse(dispatches_for_changed_paths(protocol, (
+            "app/src/sharedTest/java/io/github/gamesbyian/chunks/UnrelatedFixture.kt",)),
+            "The route is intentionally limited to the executed helper")
         # Dedicated 200% system-font captures test unrelated geometric
         # behavior and should not allocate another emulator for this helper.
         font = (ROOT / ".github/workflows/compose-system-font-200pct.yml").read_text()
