@@ -146,6 +146,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         assertEquals("1", device.executeShellCommand("getprop ro.kernel.qemu").trim())
         val markers = chunksApp.getSharedPreferences("document-restore-instrumentation", 0)
         val (uri, bytes) = fixture("first")
+        val hash = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes).infoHashV1
         if (phase == "save") {
             dispatch("view")
             awaitSource("external-first.bin", uri, bytes)
@@ -155,6 +156,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
                 assertNull(owner.session.attemptedTicket)
             })
             assertTrue(taskId >= 0)
+            assertNull(LocalEngineHolder.current()?.status(hash))
             assertTrue(markers.edit().putInt("task", taskId).putInt("pid", Process.myPid()).commit())
             assertTrue(device.pressHome())
             compose.waitUntil(15_000) {
@@ -196,6 +198,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
             assertNull(owner.sharedTorrentError.value)
             assertNull(owner.session.attemptedTicket)
         })
+        assertNull(LocalEngineHolder.current()?.status(hash))
         Log.i("ChunksDocumentRestore", "same-task-new-process-notice-explicit-reopen-no-add")
     }
 

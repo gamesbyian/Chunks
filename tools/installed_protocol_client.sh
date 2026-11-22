@@ -229,10 +229,12 @@ run_external_document_restore() {
   [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   adb logcat -c || return 1
+  # Normal instrumentation teardown force-stops the package and can discard
+  # the very Android task this journey is intended to restore.
   local testcase=io.github.gamesbyian.chunks.ExternalApkTorrentHandoffInstrumentedTest#externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument
   local before="$out/document-restore-save.txt" after="$out/document-restore-return.txt"
   local status=0
-  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 -w -r -e class "$testcase" \
+  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 --no-restart -w -r -e class "$testcase" \
     -e chunks_document_restore_phase save "$runner" > "$before" 2>&1 || status=$?
   abort_on_instrument_timeout "$status" "external-document-save"
   adb logcat -d -s ChunksDocumentRestore:I > "$out/document-restore-boundary.txt" || return 1
@@ -242,7 +244,7 @@ run_external_document_restore() {
     return 1
   fi
   status=0
-  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 -w -r -e class "$testcase" \
+  timeout --signal=TERM --kill-after=15s 3m adb shell am instrument --user 0 --no-restart -w -r -e class "$testcase" \
     -e chunks_document_restore_phase restore "$runner" > "$after" 2>&1 || status=$?
   abort_on_instrument_timeout "$status" "external-document-return"
   if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after"; then
