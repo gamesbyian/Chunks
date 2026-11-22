@@ -372,9 +372,13 @@ class ProtocolClientOperationsPanelTest {
         }
         for (unsupported in listOf(noPlace, noStopped)) {
             rule.runOnIdle { destination = unsupported }
-            rule.waitUntil(5_000) { unsupported.sessionReads.get() == 1 }
+            val manualTarget = rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".same-id")
+            // Read Compose semantics after replacing the connection so the
+            // recomposition starts the new probe before we await its result.
+            manualTarget.assertExists()
+            rule.waitUntil(5_000) { unsupported.sessionReads.get() > 0 }
             suggestion.assertDoesNotExist()
-            rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".same-id").assertExists()
+            assertEquals("one read for the replacement connection", 1, unsupported.sessionReads.get())
         }
         assertEquals(0, source.writes)
         assertEquals(0, verified.adds + noPlace.adds + noStopped.adds)
