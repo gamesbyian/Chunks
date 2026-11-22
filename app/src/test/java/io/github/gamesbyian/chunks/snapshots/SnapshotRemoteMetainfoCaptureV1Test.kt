@@ -63,6 +63,44 @@ class SnapshotRemoteMetainfoCaptureV1Test {
         assertEquals(0, result.recovered)
     }
 
+    @Test fun oversizedValidRemoteOriginalRemainsInventoryOnlyWithoutKillingOtherExports() = runBlocking {
+        // The remote source may return a perfectly valid, very large
+        // non-info dictionary field. Its infohash stays correct, but the
+        // transport cannot embed an original larger than 2 MiB.
+        val comment = "x".repeat(SnapshotArchiveV1.MAX_TORRENT_BYTES)
+        val oversized = ("d8:announce14:http://ignored7:comment" +
+            "${comment.length}:" + comment + "4:info" + info + "e")
+            .toByteArray(Charsets.UTF_8)
+        val secondInfo = info.replace("8:test.txt", "8:work.txt")
+        val second = ("d8:announce14:http://ignored4:info" + secondInfo + "e")
+            .toByteArray(Charsets.UTF_8)
+        val secondHash = TorrentMetainfoReader.preview(second).infoHashV1
+        assertNotEquals(hash, secondHash)
+        assertTrue(oversized.size > SnapshotArchiveV1.MAX_TORRENT_BYTES)
+        val capture = SnapshotInventoryCaptureV1.remote(
+            listOf(row(hash, "test.txt"), row(secondHash, "work.txt")),
+            Instant.parse("2026-11-17T12:00:00Z")
+        )
+        val queries = mutableListOf<String>()
+        val result = SnapshotRemoteMetainfoCaptureV1.collect(capture, { id ->
+            queries += id
+            if (id == hash) oversized else second
+        })
+        assertEquals(listOf(hash, secondHash), queries)
+        assertEquals(1, result.sizeLimited)
+        assertEquals(0, result.unavailable)
+        assertEquals(1, result.recovered)
+        assertEquals(2, result.inspected)
+        val restored = SnapshotManifestV1.decode(result.archive)
+        assertEquals(SnapshotManifestV1.Recovery.INVENTORY,
+            restored.manifest.items.first().recovery)
+        assertEquals(SnapshotManifestV1.Recovery.METAINFO,
+            restored.manifest.items.last().recovery)
+        assertFalse(restored.metainfoByHash.containsKey(hash))
+        assertArrayEquals(second, restored.verifiedMetainfo(secondHash))
+        assertTrue(restored.manifest.items.all { it.sourceDirectoryHint == null })
+    }
+
     @Test fun revokesChangedInventoryBeforeCreatingAnyArchive() = runBlocking {
         var valid = true
         val inventory = inventory()
