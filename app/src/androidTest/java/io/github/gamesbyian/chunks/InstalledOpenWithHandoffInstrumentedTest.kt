@@ -193,6 +193,14 @@ class InstalledOpenWithHandoffInstrumentedTest {
                 }
                 LazyComposeActions.replaceText(compose, sourceField, "https://fixture.invalid/next.torrent")
                 showDestination()
+                // SetText edits the draft synchronously, but the derived
+                // routing suggestion is disposed on a subsequent Compose
+                // frame. Wait for the negative state, then keep the strict
+                // absence assertion. Never accept a suggestion for the
+                // superseded source.
+                compose.waitUntil(10_000) {
+                    compose.onAllNodes(suggestion).fetchSemanticsNodes().isEmpty()
+                }
                 compose.onNode(suggestion).assertDoesNotExist()
                 scenario.onActivity { activity ->
                     val owner = ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
@@ -204,6 +212,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
 
                 LazyComposeActions.replaceText(compose, sourceField, "")
                 showDestination()
+                // Clearing the newer draft reselects the retained, reviewed
+                // .torrent. Check that exact positive rule becomes visible.
+                compose.waitUntil(10_000) {
+                    compose.onAllNodes(suggestion).fetchSemanticsNodes().size == 1
+                }
                 compose.onNode(suggestion).assertExists()
             }
         } finally {
