@@ -119,6 +119,24 @@ class SnapshotRestoreOnceV1Test {
         assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW, journal.entries().single().phase)
     }
 
+    @Test fun aCanonicalFingerprintCannotAuthorizeARelativePlace() {
+        // The reviewed digest alone is insufficient. Even a genuine canonical
+        // digest must not turn a relative/current-working-directory selection
+        // into an authorized native restore destination.
+        val relative = File(".")
+        assertTrue(relative.isDirectory)
+        assertFalse(relative.isAbsolute)
+        val source = original()
+        val journal = SnapshotRestoreJournalV1.open(
+            Store(), archive, targetId, listOf(source.infoHashV1))
+        val fake = FakeTarget()
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
+            SnapshotRestoreOnceV1.execute(journal, source, relative,
+                placeFor(relative), emptyList(), userApproved = true, target = fake))
+        assertEquals(0, fake.writes)
+        assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW, journal.entries().single().phase)
+    }
+
     @Test fun recoveryCannotRelabelAStoppedJobAtAnUnreviewedPlace() {
         val source = original()
         val reviewed = temp.newFolder("original-recovery-place")
