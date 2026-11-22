@@ -124,6 +124,8 @@ class InstalledOpenWithHandoffInstrumentedTest {
                     val reviewed = requireNotNull(owner.reviewedTorrent.value)
                     assertEquals(uri, reviewed.originalDocument)
                     assertArrayEquals(metainfo(name), reviewed.bytes)
+                    assertNull("Activity recreation retains the live review without an interruption notice",
+                        owner.sharedTorrentError.value)
                     assertNull(owner.session.attemptedTicket)
                     assertNull(LocalEngineHolder.current()?.status(reviewed.preview.infoHashV1))
                 }
