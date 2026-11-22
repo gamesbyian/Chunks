@@ -72,7 +72,7 @@ class ControlledMediaFailureFingerprintTest(unittest.TestCase):
     )
 
     def status(self, klass=None, test=None, failure=None, code="-2"):
-        return "\\n".join([
+        return "\n".join([
             "INSTRUMENTATION_STATUS: class=" + (klass or self.CLASS),
             "INSTRUMENTATION_STATUS: test=" + (test or self.TEST),
             "INSTRUMENTATION_STATUS: stack=" + (failure or self.DIAGNOSTIC),
