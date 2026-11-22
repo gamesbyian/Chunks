@@ -24,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import libtorrent as lt
 from public_fixture_collector import bstr, debian_fixture, parse_bencode
 from real_peer_stage_budget import stage_prefix_lengths
+from peer_preparation_progress import write_progress
 from disposable_tracker_isolation import isolated_public_v1_metainfo
 
 
@@ -64,10 +65,12 @@ def fetch(url, limit, offset=0):
 def prepare(root):
     sources = {}
     for label, architecture in (("magnet", "arm64"), ("magnet3", "amd64"), ("magnet5", "ppc64el")):
+        write_progress(root, "publisher-metainfo", label)
         manifest, raw = debian_fixture(2 * 1024**3, architecture=architecture)
         sources[label] = (raw, manifest["torrent_url"].replace("/bt-cd/", "/iso-cd/").removesuffix(".torrent"),
                           manifest["source_url"], manifest["license"])
     for label, title in (("magnet2", "sintel"), ("magnet4", "big-buck-bunny")):
+        write_progress(root, "publisher-metainfo", label)
         source = "https://webtorrent.io/torrents/" + title + ".torrent"
         with urllib.request.urlopen(source, timeout=30) as response:
             raw = response.read(2_097_153)
@@ -78,6 +81,7 @@ def prepare(root):
                           "Blender Foundation, CC BY 3.0, " + license_url)
     fixtures = {}
     for label, (raw, payload_source, source, license_text) in sources.items():
+        write_progress(root, "publisher-prefix", label)
         source_meta_sha256 = hashlib.sha256(raw).hexdigest()
         isolate_discovery = (os.getenv("CHUNKS_DISPOSABLE") == "1" and
                              os.getenv("CHUNKS_PUBLIC_DISCOVERY") != "1")
@@ -210,6 +214,8 @@ class Peer:
             raise ValueError("Invalid fixture or phase")
         if stage != "preflight" and (type(port) is not int or not 1 <= port <= 65535):
             raise ValueError("Invalid observed peer port")
+        if stage == "preflight":
+            write_progress(self.root, "native-piece-check", label)
         with self.lock:
             item = self.fixtures[label]
             if stage in item["stages"]:
@@ -357,6 +363,7 @@ def main():
         peer = Peer(args.root, args.peer_host, fixtures)
         for label in fixtures:
             peer.new_seed(label, "preflight")
+        write_progress(args.root, "source-verified", "all")
         threading.Thread(target=peer.monitor, daemon=True).start()
 
         class Handler(BaseHTTPRequestHandler):

@@ -91,6 +91,9 @@ on:
       - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
       - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
+      # Fast fail-closed peer readiness diagnostics, without a 24-minute emulator.
+      - 'tools/peer_preparation_progress.py'
+      - 'tests/test_peer_preparation_progress.py'
       - 'tests/test_minified_smoke_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
@@ -224,6 +227,9 @@ on:
       - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
       - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
+      # Fast fail-closed peer readiness diagnostics, without a 24-minute emulator.
+      - 'tools/peer_preparation_progress.py'
+      - 'tests/test_peer_preparation_progress.py'
       - 'tests/test_minified_smoke_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
@@ -287,6 +293,10 @@ jobs:
         run: |
           bash tools/test_physical_android_preflight.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
+      - name: Verify bounded real-peer preparation milestones (offline)
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_peer_preparation_progress.py
+          python3 -m py_compile tools/peer_preparation_progress.py tools/real_magnet_peer.py
       - name: Verify fail-closed manual AVD pilot with mocked ADB (no emulator)
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_avd_pilot_probe.py
       - name: Verify CI JVM fork experiment remains scoped and covered

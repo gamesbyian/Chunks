@@ -16,6 +16,8 @@ on:
       - "app/src/sharedTest/**"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
       - "tools/real_magnet_peer.py"
+      - "tools/peer_preparation_progress.py"
+      - "tests/test_peer_preparation_progress.py"
       - "tools/disposable_tracker_isolation.py"
       - "tests/test_disposable_tracker_isolation.py"
       - "tools/real_peer_stage_budget.py"
@@ -101,12 +103,13 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_peer_stage_budget.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_peer_preparation_progress.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_disposable_tracker_isolation.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_journey_gate.py
           bash -n tools/installed_real_media.sh tools/installed_rtorrent_with_optional_media.sh
-          python3 -m py_compile tools/real_magnet_peer.py tools/disposable_tracker_isolation.py tools/finish_installed_magnet_evidence.py
+          python3 -m py_compile tools/real_magnet_peer.py tools/peer_preparation_progress.py tools/disposable_tracker_isolation.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
           bash -n tools/verify_installed_apk_bytes.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py
@@ -173,11 +176,19 @@ jobs:
             if curl -fsS --max-time 2 http://127.0.0.1:18081/ready \
                 -o "$RUNNER_TEMP/chunks-peer-ready.json"; then exit 0; fi
             if [ -f "$RUNNER_TEMP/chunks-real-peer/PREPARATION-FAILURE.json" ]; then
+              python3 tools/peer_preparation_progress.py "$RUNNER_TEMP/chunks-real-peer"
               echo '::error::Public source preparation or independent native piece recheck failed; no Add'
               exit 1
             fi
             sleep 1
           done
+          # Only fixed phase/fixture names are printed, never raw peer logs,
+          # tracker URLs, source URLs, filenames or credentials.
+          python3 tools/peer_preparation_progress.py "$RUNNER_TEMP/chunks-real-peer"
+          if [ -f "$RUNNER_TEMP/chunks-real-peer.pid" ] &&
+              ! kill -0 "$(cat "$RUNNER_TEMP/chunks-real-peer.pid")" 2>/dev/null; then
+            echo '::error::Peer preparation process exited without a readiness response'
+          fi
           echo '::error::Known real metadata-serving peer unavailable; no Add'
           exit 1
       - name: Preload one genuine fixture on the disposable server only
