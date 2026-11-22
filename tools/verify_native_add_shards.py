@@ -91,6 +91,7 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
         ("RTorrentInstalledAddResponseFaultTest", "freshProcessDoesNotReplayTheHeldAdd"),
         ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
         ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
+        ("ExternalDocumentProcessLossInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
     )
 )
 

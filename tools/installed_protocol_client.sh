@@ -122,6 +122,10 @@ run_pair() {
   return "$result"
 }
 failed=0
+# AndroidJUnitRunner cannot itself kill the process whose stopped task
+# must survive; force-stop after the crashed instrumentation discards it.
+# Run the independent host-led task death before expensive daemon cases.
+bash tools/installed_external_document_process_loss.sh || exit 1
 run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
 run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
 # Deluge authenticates with a password only; a blank shell extra is swallowed by
@@ -225,5 +229,6 @@ run_local_add_death() {
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_local_add_death || failed=1
+
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed

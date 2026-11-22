@@ -48,14 +48,15 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         return uri to ExternalTorrentTestProvider.torrent(name)
     }
 
-    private fun dispatch(mode: String) {
+    private fun dispatch(mode: String, preserveTask: Boolean = false) {
         require(mode == "view" || mode == "share")
         // The shell launches only the foreign Activity. That Activity writes
         // the source and sends the grant from its own package UID.
         val command = "am start -W -n " + sourceApp.packageName +
             "/io.github.gamesbyian.chunks.external.ExternalSourceSenderActivity" +
             " --es fixture_mode " + mode +
-            " --es fixture_target " + chunksApp.packageName
+            " --es fixture_target " + chunksApp.packageName +
+            if (preserveTask) " --ez fixture_keep_task true" else ""
         val output = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
             .executeShellCommand(command)
         assertTrue("ActivityManager did not accept the external sender launch",

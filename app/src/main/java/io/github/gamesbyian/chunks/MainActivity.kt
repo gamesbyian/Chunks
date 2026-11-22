@@ -168,7 +168,15 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     // The one app-owned execution/observation owner for every client's Add
     // write and read-only recheck: Local, rTorrent and the protocol clients.
     val attempts = UniversalAddAttemptController { viewModelScope }
+
+    fun hasDocumentReview(): Boolean =
+        incomingTorrent.value != null || pendingSharedDocument.value != null ||
+            readingSharedDocument.value != null || reviewedTorrent.value?.originalDocument != null
 }
+
+internal const val SAVED_DOCUMENT_REVIEW = "chunks.add.document-review-present"
+internal const val INTERRUPTED_DOCUMENT_REVIEW =
+    "Android restarted Chunks. Check Transfers, then reopen the .torrent to review it again."
 
 class MainActivity : ComponentActivity() {
     // Retained across Activity recreation, never persisted on process death.
@@ -252,7 +260,12 @@ class MainActivity : ComponentActivity() {
         // its source may already have been consumed or superseded. Replaying
         // it would re-open an old Add review and overwrite a newer draft.
         // Genuine new shares still enter through onNewIntent().
-        if (savedInstanceState == null) accept(intent)
+        if (savedInstanceState == null) {
+            accept(intent)
+        } else if (savedInstanceState.getBoolean(SAVED_DOCUMENT_REVIEW) &&
+            !localAddAttemptOwner.hasDocumentReview()) {
+            localAddAttemptOwner.sharedTorrentError.value = INTERRUPTED_DOCUMENT_REVIEW
+        }
         setContent {
             ChunksTheme {
                 // One process-wide media controller for rows, details and settings alike.
@@ -290,6 +303,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // A restored task may explain why its document review is missing. The
+        // marker carries neither the source nor authority to reopen or submit it.
+        if (localAddAttemptOwner.hasDocumentReview())
+            outState.putBoolean(SAVED_DOCUMENT_REVIEW, true)
     }
 
     override fun onStart() {
