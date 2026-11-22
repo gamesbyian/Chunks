@@ -36,6 +36,7 @@ import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
+import io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import kotlinx.coroutines.CancellationException
@@ -137,7 +138,7 @@ internal fun ProtocolClientOperationsPanel(
     }
     val proposedMove = if (!current || !showMove || routingMetadataPending == true) null
         else routingFileNames?.let { suggestForFiles?.invoke(it) }
-            ?: suggestedTarget.takeIf { routingFileNames == null }
+            ?: if (routingFileNames == null) suggestedTarget else null
     val proposedDestination = moveTargets.singleOrNull { it.id == proposedMove?.first }
     val destinationId = proposedDestination?.id
     val destinationConnection = proposedDestination?.connectionWitness
@@ -147,13 +148,12 @@ internal fun ProtocolClientOperationsPanel(
     }
     LaunchedEffect(destinationId, destinationConnection, startOnDestination) {
         val destination = proposedDestination ?: return@LaunchedEffect
-        val destinationSession = readRoutingTarget { destination.createOperations().session() }
-        val routing = io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion
+        val destinationSession = readRoutingTarget { destination.createOperations().session(refresh = true) }
         // Copy prefers original metainfo and can fall back to a public magnet.
         // Check both formats without exporting private source data for an advisory.
-        val file = routing.candidateFor(destination.id, destination.label, destinationSession,
+        val file = SmartRoutingAddSuggestion.candidateFor(destination.id, destination.label, destinationSession,
             magnetSource = false, startNow = startOnDestination)
-        val magnet = routing.candidateFor(destination.id, destination.label, destinationSession,
+        val magnet = SmartRoutingAddSuggestion.candidateFor(destination.id, destination.label, destinationSession,
             magnetSource = true, startNow = startOnDestination)
         verifiedMoveDestination = file.live && file.placeKnown && file.acceptsAdd && magnet.acceptsAdd
     }

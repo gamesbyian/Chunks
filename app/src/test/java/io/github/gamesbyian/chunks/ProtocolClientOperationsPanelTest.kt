@@ -81,7 +81,9 @@ class ProtocolClientOperationsPanelTest {
         var present = false
         var defaultDirectory: String? = "/d"
         var capabilities = ClientCapability.entries.toSet()
-        override suspend fun session() = ClientSessionInfo(kind, "2", defaultDirectory, capabilities)
+        val sessionReads = java.util.concurrent.atomic.AtomicInteger()
+        override suspend fun session(): ClientSessionInfo =
+            ClientSessionInfo(kind, "2", defaultDirectory, capabilities).also { sessionReads.incrementAndGet() }
         override suspend fun torrents() = listOfNotNull(torrent(hash))
         override suspend fun torrent(hash: String) = if (present) ClientTorrent(hash, "n",
             ClientRunState.STOPPED, 1, 0, 0, 0, "/d") else null
@@ -370,6 +372,7 @@ class ProtocolClientOperationsPanelTest {
         }
         for (unsupported in listOf(noPlace, noStopped)) {
             rule.runOnIdle { destination = unsupported }
+            rule.waitUntil(5_000) { unsupported.sessionReads.get() == 1 }
             suggestion.assertDoesNotExist()
             rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".same-id").assertExists()
         }
