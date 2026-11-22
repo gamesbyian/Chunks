@@ -101,6 +101,9 @@ class SmartRoutingAddSuggestionTest {
         // Metadata still pending, unknown name, routing off or target offline: nothing.
         assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", true, "local", targets))
         assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, null, false, "local", targets))
+        assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02", null, "local", targets))
+        assertEquals(qb, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02", null, "local", targets,
+            fileNames = listOf("Show.S01E02.mkv"))?.environmentId)
         assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy.copy(enabled = false),
             "Show.S01E02.1080p.mkv", false, "local", targets))
         assertEquals(null, SmartRoutingAddSuggestion.moveSuggestion(policy, "Show.S01E02.1080p.mkv", false, "local",

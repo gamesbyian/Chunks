@@ -57,6 +57,7 @@ class RemoteProtocolObservationsTest {
         assertEquals(750_000, a.progressPpm)
         assertEquals(400_000, b.progressPpm)
         assertEquals(1_000_000, c.progressPpm)
+        assertEquals(listOf(false, false, false), listOf(a, b, c).map { it.metadataPending })
     }
 
     @Test fun transmissionNativeIdsAreNeverUsedAsUnifiedTransferKeys() {
@@ -78,7 +79,7 @@ class RemoteProtocolObservationsTest {
         assertNull(q.started)
         assertNull(q.peers)
         assertNull(q.ratioThousandths)
-        assertNull(q.metadataPending)
+        assertEquals(true, q.metadataPending)
         assertNull(q.addedAtEpochMillis)
         val d = RemoteProtocolObservations.deluge(envD,
             deluge(delugeRow(total = null, done = null))).single()

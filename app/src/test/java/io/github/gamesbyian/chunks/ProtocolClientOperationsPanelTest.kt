@@ -342,6 +342,7 @@ class ProtocolClientOperationsPanelTest {
         val source = Fake(); val destination = Target()
         val sourceOperations = { ClientOperations(source, 3, 1) }
         var destinationCurrent by mutableStateOf(true)
+        var metadataPending by mutableStateOf(true)
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
@@ -351,6 +352,7 @@ class ProtocolClientOperationsPanelTest {
                     moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
                         ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
                     moveOnly = true, suggestedTarget = null,
+                    routingMetadataPending = metadataPending,
                     suggestForFiles = { names ->
                         if (destinationCurrent && names == listOf("a")) "de" to "book rule" else null
                     })
@@ -360,6 +362,9 @@ class ProtocolClientOperationsPanelTest {
         assertEquals("nothing is read before Copy/Move is opened", 0, source.fileReads)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
         val suggestion = rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
+        suggestion.assertDoesNotExist()
+        assertEquals("an open Move review must wait for known pending metadata", 0, source.fileReads)
+        rule.runOnIdle { metadataPending = false }
         rule.waitUntil(5_000) {
             rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION).fetchSemanticsNodes().isNotEmpty()
         }
