@@ -4,12 +4,16 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Bundle
+import androidx.lifecycle.ViewModelProvider
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -142,12 +146,47 @@ class OpenWithActivityIntakeTest {
         }
     }
 
+    @Test fun restoredTaskWithANewOwnerExplainsItsLostReviewWithoutReplayingTheIntent() {
+        val original = view(document("interrupted.torrent", "interrupted-open-with.mkv"),
+            "application/x-bittorrent")
+        val previous = org.robolectric.Robolectric.buildActivity(MainActivity::class.java, original).setup()
+        val state = Bundle()
+        try {
+            waitForText("interrupted-open-with.mkv")
+            previous.pause().saveInstanceState(state).stop()
+            assertTrue(state.getBoolean(SAVED_DOCUMENT_REVIEW))
+        } finally {
+            previous.destroy()
+        }
+        // A separate ActivityController has a new ViewModelStore. Android
+        // running the original task Intent again must not read or replay it.
+        val restored = org.robolectric.Robolectric.buildActivity(MainActivity::class.java, original).setup(state)
+        try {
+            waitForText(INTERRUPTED_DOCUMENT_REVIEW)
+            val owner = ViewModelProvider(restored.get())[LocalAddAttemptOwner::class.java]
+            assertNull(owner.incomingTorrent.value)
+            assertNull(owner.reviewedTorrent.value)
+            assertNull(owner.session.attemptedTicket)
+            restored.newIntent(view(document("reopened.torrent", "explicitly-reopened.mkv"),
+                "application/x-bittorrent"))
+            waitForText("explicitly-reopened.mkv")
+            assertNull(owner.sharedTorrentError.value)
+            assertNull(owner.session.attemptedTicket)
+        } finally {
+            restored.pause().stop().destroy()
+        }
+    }
+
     @Test fun recreationKeepsTheOpenedTorrentReview() {
         ActivityScenario.launch<MainActivity>(view(document("recreate.torrent", "recreated-open-with.mkv"),
             "application/x-bittorrent")).use { scenario ->
             waitForText("recreated-open-with.mkv")
             scenario.recreate()
             waitForText("recreated-open-with.mkv")
+            scenario.onActivity { activity ->
+                val owner = ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                assertNull(owner.sharedTorrentError.value)
+            }
         }
     }
 }
