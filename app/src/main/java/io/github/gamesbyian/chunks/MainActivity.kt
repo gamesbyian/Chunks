@@ -309,8 +309,7 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
         // A restored task may explain why its document review is missing. The
         // marker carries neither the source nor authority to reopen or submit it.
-        val owner = localAddAttemptOwner
-        if (owner.hasDocumentReview() || owner.sharedTorrentError.value == INTERRUPTED_DOCUMENT_REVIEW)
+        if (localAddAttemptOwner.hasDocumentReview())
             outState.putBoolean(SAVED_DOCUMENT_REVIEW, true)
     }
 
