@@ -44,6 +44,16 @@ for port in 19091 18080 18112 18090 19191 18180 18212 18190; do
   adb reverse tcp:$port tcp:$port >/dev/null
 done
 b64() { printf '%s' "$1" | base64 -w 0; }
+# A timed-out host adb command does not guarantee its Android instrumentation
+# process has stopped. Never start the next mutating journey against that AVD.
+abort_on_instrument_timeout() {
+  local status=$1 phase=$2
+  if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+    echo "::error::Installed $phase instrumentation exceeded its deadline; stopping the campaign"
+    timeout 15s adb logcat -d -t 3000 > "$out/logcat-timeout-$phase.txt" 2>&1 || true
+    exit 124
+  fi
+}
 run_one() {
   local kind=$1 url=$2 app_url=$3 user=$4 pass=$5 mode=$6
   local class=io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest
@@ -77,15 +87,7 @@ run_one() {
   echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode finished after $((SECONDS - phase_started))s (instrumentation status=$status)"
   if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
     tail -80 "$raw"
-    if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
-      # Killing the host-side adb wait does not prove instrumentation has
-      # stopped on the device. Continuing could collide with its stale write.
-      # Fail the run immediately and let the always() artifact step preserve
-      # the raw log and any available emulator logcat.
-      echo "::error::Installed $kind $mode instrumentation hit its 12m timeout; stopping the campaign"
-      timeout 15s adb logcat -d -t 3000 > "$out/logcat-timeout-$kind-$mode.txt" 2>&1 || true
-      exit 124
-    fi
+    abort_on_instrument_timeout "$status" "$kind-$mode"
     echo "::error::Installed protocol-client $mode journey failed for $kind"
     return 1
   fi
@@ -132,11 +134,13 @@ run_rtorrent_faults() {
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT response faults started (12m instrumentation deadline)"
   adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
   local raw="$out/instrumentation-RTORRENT.txt" stages="$out/stages-RTORRENT.txt"
-  if ! timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
+  local status=0
+  timeout --signal=TERM --kill-after=15s 12m adb shell am instrument --user 0 -w -r \
     -e class "$rtorrent_test#stoppedDocumentAddRemainsUnattributedAfterTheRealServerReplyIsLost" \
     -e chunks_rtorrent_add_fault authorized \
-    "$runner" > "$raw" 2>&1 ||
-    ! grep -q '^OK (1 test)' "$raw"; then
+    "$runner" > "$raw" 2>&1 || status=$?
+  abort_on_instrument_timeout "$status" "RTORRENT-response-faults"
+  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
     tail -80 "$raw"
     echo "::error::Installed rTorrent Add response fault journey failed"
     return 1
@@ -161,10 +165,7 @@ run_rtorrent_death() {
   local phase1_status=0
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#submitThenKillTheAppProcess" \
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase1.txt" 2>&1 || phase1_status=$?
-  if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
-    echo "::error::rTorrent deliberate process death did not finish before its deadline"
-    return 1
-  fi
+  abort_on_instrument_timeout "$phase1_status" "RTORRENT-death-phase1"
   adb logcat -d -s ChunksAddFault:I > "$out/process-death-boundary.txt" || return 1
   if ! grep -Fq 'process-death-real-write-awaits-ack' "$out/process-death-boundary.txt" ||
     grep -q '^OK (' "$out/process-death-phase1.txt" ||
@@ -173,8 +174,11 @@ run_rtorrent_death() {
     echo "::error::The installed app did not die at the held Add write boundary"
     return 1
   fi
-  if ! timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
-    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 ||
+  local phase2_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$rtorrent_test#freshProcessDoesNotReplayTheHeldAdd" \
+    -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 || phase2_status=$?
+  abort_on_instrument_timeout "$phase2_status" "RTORRENT-death-phase2"
+  if [ "$phase2_status" -ne 0 ] ||
     ! grep -q '^OK (1 test)' "$out/process-death-phase2.txt" ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=process-death-no-replay-no-start-original-unchanged' "$out/process-death-phase2.txt"; then
     tail -80 "$out/process-death-phase2.txt"
@@ -198,10 +202,7 @@ run_local_add_death() {
   local phase1_status=0
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#killAfterRealLocalRegistrationWhileStartIsUnverified" \
     -e chunks_local_add_death authorized "$runner" > "$before" 2>&1 || phase1_status=$?
-  if [ "$phase1_status" -eq 124 ] || [ "$phase1_status" -eq 137 ]; then
-    echo "::error::Local deliberate process death did not finish before its deadline"
-    return 1
-  fi
+  abort_on_instrument_timeout "$phase1_status" "LOCAL-death-phase1"
   adb logcat -d -s ChunksLocalAddDeath:I > "$out/local-add-death-boundary.txt" || return 1
   if ! grep -Fq 'exact-job-registered-start-unverified' "$out/local-add-death-boundary.txt" ||
     grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
@@ -209,9 +210,11 @@ run_local_add_death() {
     echo "::error::The installed app did not die during the Local Add observation"
     return 1
   fi
-  if ! timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
-    -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 ||
-    ! grep -q '^OK (1 test)' "$after"; then
+  local phase2_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
+    -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 || phase2_status=$?
+  abort_on_instrument_timeout "$phase2_status" "LOCAL-death-phase2"
+  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after"; then
     tail -80 "$after"
     echo "::error::Fresh-process Local Add safety verification failed"
     return 1
