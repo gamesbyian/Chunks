@@ -1267,6 +1267,7 @@ internal fun CombinedTransfersScreen(
                     moveTargets = protocolTargets,
                     moveConnections = moveConnections,
                     suggestedTarget = moveSuggestionFor(protocolTargets),
+                    routingMetadataPending = details.observation?.metadataPending,
                     suggestForFiles = { names -> moveSuggestionFor(protocolTargets, names) },
                     sourceAliasScope = aliasScopes[focusedKey.environment]
                 )
@@ -1329,6 +1330,7 @@ internal fun CombinedTransfersScreen(
                             moveConnections = moveConnections,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(outbound),
+                            routingMetadataPending = details.observation?.metadataPending,
                             suggestForFiles = { names -> moveSuggestionFor(outbound, names) },
                             sourceAliasScope = aliasScopes[focusedKey.environment]
                         )
@@ -1402,6 +1404,7 @@ internal fun CombinedTransfersScreen(
                             moveConnections = moveConnections,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(connectedTargets),
+                            routingMetadataPending = details.observation?.metadataPending,
                             suggestForFiles = { names -> moveSuggestionFor(connectedTargets, names) },
                             sourceAliasScope = aliasScopes[focusedKey.environment]
                         )

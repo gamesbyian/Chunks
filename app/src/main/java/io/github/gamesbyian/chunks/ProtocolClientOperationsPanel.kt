@@ -100,6 +100,7 @@ internal fun ProtocolClientOperationsPanel(
     moveOnly: Boolean = false,
     /** Smart Routing's advisory Move suggestion (target id to "why"); never acts by itself. */
     suggestedTarget: Pair<String, String>? = null,
+    routingMetadataPending: Boolean? = null,
     /**
      * The same advisory rule evaluation with the job's own file paths, read once
      * (read-only) when Copy/Move is opened; replaces the name-only [suggestedTarget].
@@ -124,9 +125,11 @@ internal fun ProtocolClientOperationsPanel(
     var showMove by remember(hash, sourceClientId) { mutableStateOf(false) }
     // Retain source evidence for this authenticated job. Destination eligibility
     // can change while the panel is open, so derive the advice from current inputs.
-    var routingFileNames by remember(operations) { mutableStateOf<List<String>?>(null) }
-    val inspectRoutingFiles = current && showMove && suggestForFiles != null
-    LaunchedEffect(operations, inspectRoutingFiles) {
+    var routingFileNames by remember(operations, hash, routingMetadataPending) {
+        mutableStateOf<List<String>?>(null)
+    }
+    val inspectRoutingFiles = current && showMove && suggestForFiles != null && routingMetadataPending != true
+    LaunchedEffect(operations, hash, routingMetadataPending, inspectRoutingFiles) {
         if (!inspectRoutingFiles || routingFileNames != null) return@LaunchedEffect
         val names = try { filesOf(operations, hash).map { it.path } }
             catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
@@ -252,7 +255,7 @@ internal fun ProtocolClientOperationsPanel(
         }
         if (showMove) {
             val names = routingFileNames
-            val routingSuggestion = if (!current) null
+            val routingSuggestion = if (!current || routingMetadataPending == true) null
                 else if (names == null) suggestedTarget else suggestForFiles?.invoke(names)
             Text("Copies only the torrent job. The other client downloads its files itself; " +
                 "nothing on $clientLabel is changed unless you then remove it here.",

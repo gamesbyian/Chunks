@@ -32,6 +32,7 @@ internal object RemoteProtocolObservations {
             downloadBytesPerSecond = transfer.downloadBytesPerSecond,
             uploadBytesPerSecond = transfer.uploadBytesPerSecond,
             peers = null,
+            metadataPending = false.takeIf { transfer.totalBytes > 0 },
             // The server's directory is presentation evidence, never Place
             // authorization or proof that any path exists on this device.
             reportedSaveFolder = transfer.reportedDirectory.takeIf { it.isNotBlank() }
@@ -60,6 +61,11 @@ internal object RemoteProtocolObservations {
             uploadBytesPerSecond = transfer.uploadBytesPerSecond,
             peers = null,
             hasError = transfer.state in setOf("error", "missingFiles"),
+            metadataPending = when {
+                transfer.state in setOf("metaDL", "forcedMetaDL") -> true
+                (transfer.totalSizeBytes ?: 0) > 0 -> false
+                else -> null
+            },
             reportedSaveFolder = transfer.reportedSavePath?.takeIf { it.isNotBlank() }
         )
     })
@@ -83,6 +89,7 @@ internal object RemoteProtocolObservations {
             uploadBytesPerSecond = transfer.uploadBytesPerSecond,
             peers = null,
             hasError = transfer.state == "Error",
+            metadataPending = false.takeIf { (transfer.totalSizeBytes ?: 0) > 0 },
             reportedSaveFolder = transfer.reportedSavePath?.takeIf { it.isNotBlank() }
         )
     })
