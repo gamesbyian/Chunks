@@ -181,6 +181,21 @@ class AndroidCiTriggerContract(unittest.TestCase):
         for name in ("TorrentLinkImport.kt", "LocalEngineScreen.kt"):
             self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
 
+    def test_peer_preparation_progress_routes_to_cheap_and_installed_owners(self):
+        # A changed diagnostic must run the bounded offline parser checks,
+        # while the real-source job remains the sole installed evidence owner.
+        docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
+        installed = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
+        foundation = WORKFLOW.read_text()
+        for path in ("tools/peer_preparation_progress.py",
+                     "tests/test_peer_preparation_progress.py"):
+            with self.subTest(path=path):
+                self.assertTrue(dispatches_for_changed_paths(docs, (path,)))
+                self.assertTrue(dispatches_for_changed_paths(installed, (path,)))
+                self.assertFalse(dispatches_for_changed_paths(foundation, (path,)))
+        self.assertIn("test_peer_preparation_progress.py", docs)
+        self.assertIn("python3 tools/peer_preparation_progress.py", installed)
+
     def test_disposable_peer_numeric_diagnostic_selects_own_future_edits(self):
         source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
         paths = pull_request_paths(source)
