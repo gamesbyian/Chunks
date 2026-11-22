@@ -89,7 +89,8 @@ class ExternalDocumentProcessLossInstrumentedTest {
         // UiAutomator's visible-window text match may not expose Compose's
         // merged/offscreen source node even when these authority checks pass.
         var lastState = "activityResumed=false"
-        await(60_000, "exact source review: " + lastState) {
+        try {
+            await(60_000, "exact foreign-UID source review") {
             var exact = false
             val resumed = withResumed { activity, owner ->
                 val reviewed = owner.reviewedTorrent.value
@@ -105,6 +106,9 @@ class ExternalDocumentProcessLossInstrumentedTest {
                 exact = uriMatches && bytesMatch && nameMatches && granted && noAdd
             }
             resumed && exact
+            }
+        } catch (timeout: AssertionError) {
+            throw AssertionError("Exact foreign-UID review did not settle: $lastState", timeout)
         }
         assertTrue(withResumed { activity, owner ->
             val reviewed = requireNotNull(owner.reviewedTorrent.value)
