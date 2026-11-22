@@ -82,19 +82,29 @@ class ExternalDocumentProcessLossInstrumentedTest {
     }
 
     private fun awaitExactReview(uri: Uri, bytes: ByteArray) {
-        // Neither the provider URI nor the original metainfo is printed.
-        await(60_000, "source is granted, reviewed and shown") {
+        // The ordinary cross-UID installed Compose journey separately proves
+        // the source name is visible in Add. This lifecycle-only process-loss
+        // witness must establish the reviewed identity, real foreign UID grant,
+        // and absence of any Add before killing its instrumentation process.
+        // UiAutomator's visible-window text match may not expose Compose's
+        // merged/offscreen source node even when these authority checks pass.
+        var lastState = "activityResumed=false"
+        await(60_000, "exact source review: " + lastState) {
             var exact = false
             val resumed = withResumed { activity, owner ->
                 val reviewed = owner.reviewedTorrent.value
-                exact = reviewed != null && reviewed.originalDocument == uri &&
-                    reviewed.bytes.contentEquals(bytes) &&
-                    reviewed.preview.name == "external-first.bin" &&
-                    owner.session.attemptedTicket == null &&
-                    activity.checkUriPermission(uri, Process.myPid(), Process.myUid(),
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED
+                val uriMatches = reviewed?.originalDocument == uri
+                val bytesMatch = reviewed?.bytes?.contentEquals(bytes) == true
+                val nameMatches = reviewed?.preview?.name == "external-first.bin"
+                val granted = activity.checkUriPermission(uri, Process.myPid(), Process.myUid(),
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION) == PackageManager.PERMISSION_GRANTED
+                val noAdd = owner.session.attemptedTicket == null
+                lastState = "activityResumed=true reviewed=${reviewed != null} " +
+                    "uriMatches=$uriMatches bytesMatch=$bytesMatch " +
+                    "nameMatches=$nameMatches readGrant=$granted noAdd=$noAdd"
+                exact = uriMatches && bytesMatch && nameMatches && granted && noAdd
             }
-            resumed && exact && device.hasObject(By.textContains("external-first.bin"))
+            resumed && exact
         }
         assertTrue(withResumed { activity, owner ->
             val reviewed = requireNotNull(owner.reviewedTorrent.value)
