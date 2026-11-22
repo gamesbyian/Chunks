@@ -222,6 +222,14 @@ class ShardedNativeAddTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "overlapping shard identity"):
             self.check()
 
+    def test_controlled_https_positive_runs_first_without_contaminating_native_shard(self):
+        runner = (ROOT / "tools/native_add_prebuilt.sh").read_text()
+        self.assertEqual(1, runner.count("bash tools/installed_second_add_media_consent.sh"))
+        self.assertLess(runner.index("bash tools/installed_second_add_media_consent.sh"),
+                        runner.index("timeout 900 adb shell am instrument"))
+        self.assertIn("adb shell pm clear --user 0 io.github.gamesbyian.chunks | grep -Fx Success",
+                      runner)
+
     def test_only_exact_dedicated_workflow_cases_can_extend_existing_skip_ceiling(self):
         # Both phases need a real process kill between them, so they execute only
         # in installed-partial-resume-death.yml; native Add reports them skipped.

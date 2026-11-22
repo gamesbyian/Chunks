@@ -150,6 +150,52 @@ def safe_openwith_failure(text: str) -> str | None:
     return None
 
 
+# This installed controlled-HTTPS case uses only fixed booleans and the
+# recognizer's bounded enum, never names, requests, tracker URLs or hashes.
+# Retain the original test failure. This is diagnostic, not acceptance.
+_SAFE_MEDIA_FIRST_TEST = (
+    "io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest",
+    "phaseA_submitTwoSourcesAndRefreshInventory",
+)
+_MEDIA_FIRST_FINGERPRINT = re.compile(
+    r"^java\.lang\.AssertionError: Controlled first metadata request absent: "
+    r"sourceFetched=(true|false) online=(true|false) "
+    r"metered=(true|false) powerSaver=(true|false) "
+    r"onlineConsent=(true|false) automatic=(true|false) "
+    r"showArtwork=(true|false) downloadArtwork=(true|false) "
+    r"tvmazeEnabled=(true|false) localTransferPresent=(true|false) "
+    r"kind=([A-Z][A-Z0-9_]{0,39})$"
+)
+
+
+def safe_media_first_positive_failure(text: str) -> str | None:
+    """Allow only a fixed diagnostic signature for the installed positive case."""
+    fields: dict[str, str] = {}
+    stack: str | None = None
+    for line in text.splitlines():
+        if line.startswith(STATUS):
+            value = line[len(STATUS):]
+            if value.startswith("class="):
+                fields["class"] = value[len("class="):]
+            elif value.startswith("test="):
+                fields["test"] = value[len("test="):]
+            elif value.startswith("stack="):
+                stack = value[len("stack="):]
+        elif line.startswith(STATUS_CODE):
+            if (line[len(STATUS_CODE):].strip() == "-2" and
+                    (fields.get("class"), fields.get("test")) == _SAFE_MEDIA_FIRST_TEST and
+                    stack is not None):
+                match = _MEDIA_FIRST_FINGERPRINT.fullmatch(stack)
+                if match:
+                    keys = ("sourceFetched", "online", "metered", "powerSaver",
+                            "onlineConsent", "automatic", "showArtwork",
+                            "downloadArtwork", "tvmazeEnabled", "localTransferPresent", "kind")
+                    return " ".join(f"{key}={value}" for key, value in zip(keys, match.groups()))
+            fields = {}
+            stack = None
+    return None
+
+
 @dataclass(frozen=True)
 class TestResult:
     classname: str
@@ -256,6 +302,9 @@ def main() -> None:
         safe_openwith = safe_openwith_failure(raw)
         if safe_openwith is not None:
             print("CHUNKS_PREBUILT_SAFE_OPENWITH: " + safe_openwith)
+        safe_media = safe_media_first_positive_failure(raw)
+        if safe_media is not None:
+            print("CHUNKS_PREBUILT_SAFE_MEDIA_FIRST: " + safe_media)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 

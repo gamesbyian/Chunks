@@ -158,6 +158,58 @@ class SnapshotLocalBatchRecoveryV1Test {
             journal(store, one).entries().single().phase)
     }
 
+    @Test fun readyInOtherReviewedPlaceDoesNotAppearAsUnsubmittedAtThisPlace() {
+        val originallyApproved = temp.newFolder("ready-original")
+        val currentlyChosen = temp.newFolder("ready-new")
+        val store = Store()
+        val target = FakeTarget()
+        val ready = journal(store, one)
+        ready.prepare(one, placeFingerprint(originallyApproved))
+        // The durable READY state has not submitted Add, but it belongs to
+        // another review. Reporting it as if it were authorized here hides
+        // the mismatch even though recovery itself cannot mutate the engine.
+        val oldJournalBytes = store.values.toMap()
+
+        val report = recovery(listOf(one), currentlyChosen, store, target)
+        assertTrue(report.completed)
+        assertEquals(SnapshotLocalBatchRecoveryV1.State.DIFFERENT_REVIEWED_PLACE,
+            report.items.single().state)
+        assertEquals(0, report.reviewOnlyCount)
+        assertEquals(1, report.unresolvedCount)
+        assertEquals(SnapshotRestoreJournalV1.Phase.READY,
+            journal(store, one).entries().single().phase)
+        assertEquals(oldJournalBytes, store.values)
+        assertEquals(0, target.submissions)
+    }
+
+    @Test fun refusedReviewedPlaceKeepsItsProvenanceButUnboundReviewStaysUnsubmitted() {
+        val originallyApproved = temp.newFolder("refused-original")
+        val currentlyChosen = temp.newFolder("refused-new")
+        val store = Store()
+        val target = FakeTarget()
+        val previouslyPrepared = journal(store, one)
+        previouslyPrepared.prepare(one, placeFingerprint(originallyApproved))
+        previouslyPrepared.refuse(one)
+        val neverPrepared = journal(store, two)
+        neverPrepared.refuse(two)
+        val stillReview = journal(store, three)
+        assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+            stillReview.entries().single().phase)
+        val oldJournalBytes = store.values.toMap()
+
+        val report = recovery(listOf(one, two, three), currentlyChosen, store, target)
+        assertTrue(report.completed)
+        assertEquals(listOf(
+            SnapshotLocalBatchRecoveryV1.State.DIFFERENT_REVIEWED_PLACE,
+            SnapshotLocalBatchRecoveryV1.State.NO_SUBMISSION_IN_THIS_JOURNAL,
+            SnapshotLocalBatchRecoveryV1.State.NO_SUBMISSION_IN_THIS_JOURNAL
+        ), report.items.map { it.state })
+        assertEquals(1, report.unresolvedCount)
+        assertEquals(2, report.reviewOnlyCount)
+        assertEquals(oldJournalBytes, store.values)
+        assertEquals(0, target.submissions)
+    }
+
     @Test fun forgedPlaceFingerprintCannotBePairedWithDifferentFolder() {
         val folder = temp.newFolder("forged")
         val store = Store()

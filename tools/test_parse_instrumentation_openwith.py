@@ -1,7 +1,7 @@
 """Privacy and evidence gate for Open With instrumentation diagnostics."""
 import unittest
 
-from tools.parse_instrumentation_stream import safe_openwith_failure
+from tools.parse_instrumentation_stream import (safe_openwith_failure, safe_media_first_positive_failure)
 
 
 class OpenWithFailureFingerprintTest(unittest.TestCase):
@@ -59,6 +59,45 @@ class OpenWithFailureFingerprintTest(unittest.TestCase):
     def test_only_failed_instrumentation_is_reported(self):
         self.assertIsNone(safe_openwith_failure(self.status(code="0")))
         self.assertIsNone(safe_openwith_failure(self.status(code="-1")))
+
+
+class ControlledMediaFailureFingerprintTest(unittest.TestCase):
+    CLASS = "io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest"
+    TEST = "phaseA_submitTwoSourcesAndRefreshInventory"
+    DIAGNOSTIC = (
+        "java.lang.AssertionError: Controlled first metadata request absent: "
+        "sourceFetched=true online=true metered=false powerSaver=false "
+        "onlineConsent=true automatic=true showArtwork=true downloadArtwork=true "
+        "tvmazeEnabled=true localTransferPresent=true kind=TV_EPISODE"
+    )
+
+    def status(self, klass=None, test=None, failure=None, code="-2"):
+        return "\n".join([
+            "INSTRUMENTATION_STATUS: class=" + (klass or self.CLASS),
+            "INSTRUMENTATION_STATUS: test=" + (test or self.TEST),
+            "INSTRUMENTATION_STATUS: stack=" + (failure or self.DIAGNOSTIC),
+            "INSTRUMENTATION_STATUS_CODE: " + code,
+        ])
+
+    def test_exact_safe_positive_witness_is_decoded(self):
+        expected = self.DIAGNOSTIC.split("absent: ", 1)[1]
+        self.assertEqual(expected, safe_media_first_positive_failure(self.status()))
+
+    def test_other_test_and_success_cannot_expose_diagnostic(self):
+        self.assertIsNone(safe_media_first_positive_failure(self.status(test="other")))
+        self.assertIsNone(safe_media_first_positive_failure(self.status(klass="secret.Test")))
+        self.assertIsNone(safe_media_first_positive_failure(self.status(code="0")))
+
+    def test_private_suffix_uri_arbitrary_kind_or_newline_is_rejected(self):
+        for extra in (" uri=content://secret/item", "\\nhttps://secret.example", 
+                      " hash=private", " kind=./secret"):
+            self.assertIsNone(safe_media_first_positive_failure(self.status(
+                failure=self.DIAGNOSTIC + extra)))
+        self.assertIsNone(safe_media_first_positive_failure(self.status(
+            failure=self.DIAGNOSTIC.replace("kind=TV_EPISODE", "kind=secret/name"))))
+        self.assertIsNone(safe_media_first_positive_failure(self.status(
+            failure="java.lang.AssertionError: token=passkey")))
+
 
 
 if __name__ == "__main__":
