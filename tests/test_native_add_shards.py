@@ -258,21 +258,23 @@ class ShardedNativeAddTests(unittest.TestCase):
                 ("RTorrentInstalledAddResponseFaultTest", "freshProcessDoesNotReplayTheHeldAdd"),
                 ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
                 ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
+                ("ExternalApkTorrentHandoffInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
             )
         }
         expected.update(installed_fault_ids)
         self.assertEqual(expected, DEDICATED_WORKFLOW_OPT_IN_IDS)
 
         def reviewed_skips(d):
-            for case in d["test_cases"][:40]:
+            skipped = 34 + len(installed_fault_ids)
+            for case in d["test_cases"][:skipped]:
                 case["outcome"] = "skipped"
-            for case, identity in zip(d["test_cases"][34:40], sorted(installed_fault_ids)):
+            for case, identity in zip(d["test_cases"][34:skipped], sorted(installed_fault_ids)):
                 case["id_sha256"] = identity
-            d["junit"]["executed"] = 141
-            d["junit"]["skipped"] = 40
+            d["junit"]["executed"] = len(d["test_cases"]) - skipped
+            d["junit"]["skipped"] = skipped
 
         self.change(0, reviewed_skips)
-        self.assertEqual(40, self.check()["junit"]["skipped"])
+        self.assertEqual(34 + len(installed_fault_ids), self.check()["junit"]["skipped"])
         # No other test can borrow one of the dedicated exemptions.
         self.change(0, lambda d: d["test_cases"][39].update(id_sha256="e" * 64))
         with self.assertRaisesRegex(ValueError, "excessive skips"):
