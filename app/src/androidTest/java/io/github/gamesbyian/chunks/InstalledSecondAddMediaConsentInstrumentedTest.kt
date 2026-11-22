@@ -171,6 +171,31 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
         }
     }
 
+    /** Failure-only bounded diagnostics. Never report source names, URLs,
+     *  credentials, hashes or provider request contents. */
+    private fun awaitFirstMetadataRequest(firstHash: String) {
+        try {
+            rule.waitUntil(45_000) { count("search_first") > 0 }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            val net = media.currentNetworkState()
+            val s = media.loadSettings()
+            val localPresent = runCatching {
+                LocalEngineHolder.current()?.status(firstHash) != null
+            }.getOrDefault(false)
+            val kind = media.controller.recognize("Babylon.5.S02E07.mkv").kind
+            throw AssertionError(
+                "Controlled first metadata request absent: " +
+                    "sourceFetched=${count("source_first") > 0} " +
+                    "online=${net.online} metered=${net.metered} powerSaver=${net.powerSaver} " +
+                    "onlineConsent=${s.onlineLookupConsent} automatic=${s.automaticLookup} " +
+                    "showArtwork=${s.showArtwork} downloadArtwork=${s.downloadArtwork} " +
+                    "tvmazeEnabled=${"tvmaze" !in s.disabledProviders} " +
+                    "localTransferPresent=$localPresent kind=$kind",
+                timeout
+            )
+        }
+    }
+
     @Test fun phaseA_submitTwoSourcesAndRefreshInventory() = withControlledHttps {
         val first = hash("first")
         val excluded = hash("excluded")
@@ -190,7 +215,7 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
             // Trigger automatic lookup through that production source before
             // returning to the first receipt and choosing its next-Add action.
             openInventory()
-            rule.waitUntil(45_000) { count("search_first") > 0 }
+            awaitFirstMetadataRequest(first)
             assertEquals(1, count("source_first"))
 
             add.activate(ChunksSemantics.FOOTER_ADD)
