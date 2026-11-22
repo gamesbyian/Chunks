@@ -79,7 +79,9 @@ class ProtocolClientOperationsPanelTest {
         override val kind = TorrentClientKind.DELUGE
         var adds = 0
         var present = false
-        override suspend fun session() = ClientSessionInfo(kind, "2", "/d", ClientCapability.entries.toSet())
+        var defaultDirectory: String? = "/d"
+        var capabilities = ClientCapability.entries.toSet()
+        override suspend fun session() = ClientSessionInfo(kind, "2", defaultDirectory, capabilities)
         override suspend fun torrents() = listOfNotNull(torrent(hash))
         override suspend fun torrent(hash: String) = if (present) ClientTorrent(hash, "n",
             ClientRunState.STOPPED, 1, 0, 0, 0, "/d") else null
@@ -331,11 +333,48 @@ class ProtocolClientOperationsPanelTest {
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
         rule.waitForIdle()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
             .assertTextContains("Seedbox Deluge (tv episode rule)", substring = true)
         rule.waitForIdle()
         assertEquals("a suggestion never copies anything", 0, destination.adds)
         org.junit.Assert.assertTrue(source.present)
+    }
+
+    @Test fun moveAdviceRequiresTheCurrentDestinationsDefaultAndCapabilities() {
+        val source = Fake()
+        val verified = Target()
+        val noPlace = Target().apply { defaultDirectory = null }
+        val noStopped = Target().apply { capabilities -= ClientCapability.ADD_STOPPED }
+        val sourceOperations = { ClientOperations(source, 3, 1) }
+        var destination by mutableStateOf(verified)
+        rule.setContent {
+            ChunksTheme {
+                val selected = destination
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Source", sourceClientId = "source", observedStarted = false,
+                    current = true, inventoryWitness = 1L,
+                    createOperations = sourceOperations, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("same-id", "Destination",
+                        connectionWitness = selected) { ClientOperations(selected, 3, 1) }),
+                    suggestedTarget = "same-id" to "tv episode rule"
+                )
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        val suggestion = rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION)
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION).fetchSemanticsNodes().isNotEmpty()
+        }
+        for (unsupported in listOf(noPlace, noStopped)) {
+            rule.runOnIdle { destination = unsupported }
+            suggestion.assertDoesNotExist()
+            rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".same-id").assertExists()
+        }
+        assertEquals(0, source.writes)
+        assertEquals(0, verified.adds + noPlace.adds + noStopped.adds)
     }
 
     @Test fun openingMoveRefinesTheSuggestionFromTheJobsOwnFilesWithoutWriting() {
@@ -374,6 +413,9 @@ class ProtocolClientOperationsPanelTest {
         suggestion.assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".de").assertExists()
         rule.runOnIdle { destinationCurrent = true }
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION).fetchSemanticsNodes().isNotEmpty()
+        }
         suggestion.assertTextContains("Seedbox Deluge (book rule)", substring = true)
         assertEquals("target refreshes reuse the exact job's file read", 1, source.fileReads)
         assertEquals("reading files writes nothing", 0, source.writes)

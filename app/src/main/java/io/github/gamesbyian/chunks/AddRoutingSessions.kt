@@ -58,7 +58,7 @@ internal fun rememberRTorrentRoutingDefault(
     return directory.value
 }
 
-private suspend fun <T> readRoutingTarget(read: suspend () -> T): T? {
+internal suspend fun <T> readRoutingTarget(read: suspend () -> T): T? {
     return try {
         withTimeoutOrNull(20_000) { withContext(Dispatchers.IO) { read() } }
     } catch (cancelled: CancellationException) {
