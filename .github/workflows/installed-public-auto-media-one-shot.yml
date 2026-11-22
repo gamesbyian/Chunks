@@ -1,9 +1,14 @@
 name: Installed public automatic artwork and offline restart
 
-# Deliberate public-provider HTTP only; never run from PR/push or against owner accounts.
+# Disposable emulator only. Public provider HTTP requires the separate public_media input.
 on:
   workflow_dispatch:
     inputs:
+      controlled_media:
+        description: "Run the disposable second-Add consent proof against a local HTTPS fixture"
+        type: boolean
+        default: false
+        required: true
       public_media:
         description: "Authorize this bounded disposable-emulator TVmaze/CDN proof"
         type: boolean
@@ -19,17 +24,19 @@ concurrency:
 
 jobs:
   live-public-tvmaze-offline-restart:
-    if: github.event_name == 'workflow_dispatch' && inputs.public_media
+    if: github.event_name == 'workflow_dispatch' && (inputs.public_media || inputs.controlled_media)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       CHUNKS_PUBLIC_MEDIA_AUTHORIZED: bounded-public-tvmaze
+      CHUNKS_CONTROLLED_MEDIA: ${{ inputs.controlled_media }}
       CHUNKS_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - name: Verify one-shot script and safe installed-byte test contract before toolchain allocation
         run: |
           bash -n tools/installed_public_auto_media.sh tools/verify_installed_apk_bytes.sh
+          bash -n tools/installed_second_add_media_consent.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_public_auto_media_authorization.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
@@ -55,6 +62,7 @@ jobs:
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
       - name: Installed public provider request, real CDN JPEG, cold offline restore and canonical pixels
+        if: inputs.public_media
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -66,7 +74,7 @@ jobs:
           disable-animations: true
           script: bash tools/installed_public_auto_media.sh
       - name: Retain public-only proof (no APKs, URLs, trackers, raw instrumentation or tokens)
-        if: always()
+        if: always() && inputs.public_media
         uses: actions/upload-artifact@v4
         with:
           name: chunks-one-shot-real-auto-media
@@ -80,3 +88,24 @@ jobs:
             ${{ runner.temp }}/chunks-public-auto-media/*.png
           retention-days: 14
           if-no-files-found: warn
+
+      - name: Installed second HTTPS Add with runner-observed provider traffic
+        if: inputs.controlled_media
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_second_add_media_consent.sh
+      - name: Retain controlled receiver counts and installed-byte evidence
+        if: always() && inputs.controlled_media
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-installed-second-add-media
+          path: ${{ runner.temp }}/chunks-second-add-media/
+          retention-days: 14
+          if-no-files-found: error
