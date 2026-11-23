@@ -31,10 +31,13 @@ test ! -e "$out/installed-pull-tmp.apk"
 # An explicit authorization flag, emulator-only guard, and fresh stopped public
 # fixture are enforced again inside the test. No real tracker or owner account.
 adb logcat -c
+restore_network() {
+  adb shell cmd connectivity airplane-mode disable >/dev/null
+  adb shell svc wifi enable >/dev/null
+  adb shell svc data enable >/dev/null
+}
 cleanup() {
-  adb shell settings put global airplane_mode_on 0 >/dev/null 2>&1 || true
-  adb shell svc wifi enable >/dev/null 2>&1 || true
-  adb shell svc data enable >/dev/null 2>&1 || true
+  restore_network 2>/dev/null || true
   adb logcat -d -v raw -s ChunksAutoMedia:I 2>/dev/null |
     grep '^CHUNKS_AUTO_PUBLIC ' > "$out/public-witness.txt" || true
   adb pull "/sdcard/Android/data/$pkg/files/auto-real-media-evidence/." "$out/" >/dev/null 2>&1 || true
@@ -67,10 +70,16 @@ adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/
 run_phase phaseB_offlineColdProcessRestoresRealArtwork
 adb shell am force-stop "$pkg"
 
+# Real TVmaze requests before and after a second Add that explicitly excludes artwork.
+restore_network
+run_phase phaseC_liveSecondAddOptOutStaysSilent
+adb shell am force-stop "$pkg"
+
 adb logcat -d -v raw -s ChunksAutoMedia:I |
   grep '^CHUNKS_AUTO_PUBLIC ' > "$out/public-witness.txt"
 grep -Fx 'CHUNKS_AUTO_PUBLIC phase=online consent=true automatic=true verified=true row_pixels=true details_poster=true sanitized=true' "$out/public-witness.txt"
 grep -Fx 'CHUNKS_AUTO_PUBLIC phase=offline new_process=true persisted=true row_pixels=true requests=0' "$out/public-witness.txt"
+grep -Fx 'CHUNKS_AUTO_PUBLIC phase=second_add positive_controls=2 excluded_provider_requests=0 exact_disk_exclusion=true' "$out/public-witness.txt"
 adb pull "/sdcard/Android/data/$pkg/files/auto-real-media-evidence/." "$out/" >/dev/null 2>&1
 test -s "$out/online.png" && test -s "$out/offline.png"
-echo 'CHUNKS_AUTO_PUBLIC_ACCEPTANCE: passed phases=2 real_tvmaze_http=true real_cdn_jpeg=true offscreen=true canonical_pixels=true offline_restart=true'
+echo 'CHUNKS_AUTO_PUBLIC_ACCEPTANCE: passed phases=3 real_tvmaze_http=true real_cdn_jpeg=true offscreen=true canonical_pixels=true offline_restart=true second_add_opt_out=true'

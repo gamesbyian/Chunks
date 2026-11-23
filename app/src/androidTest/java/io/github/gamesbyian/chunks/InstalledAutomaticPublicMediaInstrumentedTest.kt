@@ -2,14 +2,19 @@ package io.github.gamesbyian.chunks
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.state.ToggleableState
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import io.github.gamesbyian.chunks.media.*
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
@@ -247,4 +252,134 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
             prefs.edit().clear().commit()
         }
     }
+    /** Public lookup remains live across a second, explicitly excluded Add. */
+    @Test fun phaseC_liveSecondAddOptOutStaysSilent() {
+        gate()
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+        rule.waitUntil(30_000) { cm.activeNetwork != null }
+        media.updateSettings(MediaPrivacySettings(
+            showArtwork = true, downloadArtwork = true, onlineLookupConsent = true, automaticLookup = true,
+            disabledProviders = setOf("tmdb", "wikidata", "anilist", "musicbrainz", "openlibrary")
+        ))
+        val original = ProxySelector.getDefault()
+        val network = Observer(original, offline = false)
+        val add = InstalledUniversalAddJourney(rule)
+        val hashes = mutableListOf<String>()
+        fun fixture(name: String): Pair<Intent, String> {
+            val raw = ("d4:infod6:lengthi5e4:name${name.length}:$name" +
+                "12:piece lengthi16384e6:pieces20:012345678901234567897:privatei1eee").toByteArray()
+            val hash = TorrentMetainfoReader.preview(raw).infoHashV1
+            hashes += hash
+            val uri = OwnedDiagnosticExportProvider.publish(context, "public-${hash.take(12)}.torrent", raw)
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_VIEW
+                setDataAndType(uri, "application/x-bittorrent")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            return intent to hash
+        }
+        fun assignment(hash: String): TransferMediaAssignment? =
+            FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json"))
+                .get(MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentSnapshots.LOCAL, hash)))
+        fun searches(): List<String> = synchronized(network.uris) {
+            network.uris.filter { it.host == "api.tvmaze.com" && it.path == "/search/shows" }
+                .map { java.net.URLDecoder.decode(it.rawQuery.orEmpty(), "UTF-8") }
+        }
+        fun waitForProvider(hash: String, title: String, expectedId: String) {
+            try {
+                rule.waitUntil(45_000) {
+                    assignment(hash)?.let {
+                        it.state == MediaAssignmentState.AUTOMATIC && it.match?.ref?.provider == "tvmaze" &&
+                            it.match?.ref?.externalId == expectedId
+                    } == true
+                }
+            } catch (timeout: ComposeTimeoutException) {
+                val attempted = searches().any { it.equals("q=$title", true) }
+                val assigned = assignment(hash)?.state?.name ?: "none"
+                throw AssertionError("Public positive control did not settle; " +
+                    "requestAttempted=$attempted assignmentState=$assigned online=${cm.activeNetwork != null}", timeout)
+            }
+        }
+        fun submittedStopped(scenario: ActivityScenario<MainActivity>, hash: String, optOut: Boolean) {
+            rule.waitUntil(30_000) {
+                var reviewed = false
+                scenario.onActivity {
+                    reviewed = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value?.preview?.infoHashV1 == hash
+                }
+                reviewed
+            }
+            assertNull("Opening a source cannot register it", LocalEngineHolder.current()?.status(hash))
+            add.chooseStopped()
+            val disclosure = hasText("Artwork & metadata") and hasClickAction()
+            if (rule.onAllNodes(disclosure and hasStateDescription("Expanded")).fetchSemanticsNodes().isEmpty())
+                LazyComposeActions.activateOnce(rule, disclosure and hasStateDescription("Collapsed"))
+            val artwork = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+            rule.onNode(artwork).performScrollTo()
+            assertEquals(ToggleableState.On,
+                rule.onNode(artwork).fetchSemanticsNode().config[SemanticsProperties.ToggleableState])
+            if (optOut) {
+                add.activate(ChunksSemantics.ADD_ARTWORK_CHOICE)
+                assertEquals(ToggleableState.Off,
+                    rule.onNode(artwork).fetchSemanticsNode().config[SemanticsProperties.ToggleableState])
+            }
+            add.submit()
+            rule.waitUntil(35_000) { LocalEngineHolder.current()?.status(hash)?.stopped == true }
+            assertEquals(0L, requireNotNull(LocalEngineHolder.current()?.status(hash)).payloadDownloadedBytes)
+        }
+        fun next(intent: Intent) {
+            add.activate(ChunksSemantics.FOOTER_ADD)
+            add.activate(ChunksSemantics.ADD_ANOTHER)
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        }
+
+        ProxySelector.setDefault(network)
+        try {
+            // Public search for "Lost" returns several exactly named shows.
+            // Distinct series keep this a consent test rather than a ranking test.
+            val (firstIntent, first) = fixture("Stargate.Atlantis.S01E01.mkv")
+            val (excludedIntent, excluded) = fixture("Fringe.S02E07.mkv")
+            val (controlIntent, control) = fixture("Firefly.S01E01.mkv")
+            assertTrue("The opted-out fixture must be eligible for television metadata",
+                media.controller.recognize("Fringe.S02E07.mkv").kind.isTv)
+            ActivityScenario.launch<MainActivity>(firstIntent).use { scenario ->
+                try {
+                    submittedStopped(scenario, first, optOut = false)
+                    openCanonicalTransfers()
+                    waitForProvider(first, "Stargate Atlantis", "206")
+                    next(excludedIntent)
+                    submittedStopped(scenario, excluded, optOut = true)
+                    openCanonicalTransfers()
+                    val key = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentSnapshots.LOCAL, excluded))
+                    assertTrue(FileMediaAutomationPreferences(File(context.filesDir, "media/automation.json"))
+                        .isExcluded(key))
+                    next(controlIntent)
+                    submittedStopped(scenario, control, optOut = false)
+                    openCanonicalTransfers()
+                    waitForProvider(control, "Firefly", "180")
+                    assertNull("An excluded Add cannot have a media assignment", assignment(excluded))
+                    val requests = synchronized(network.uris) { network.uris.toList() }
+                    val searches = searches()
+                    assertTrue("Both public positive controls dispatched real lookups",
+                        searches.any { it.equals("q=Stargate Atlantis", true) } && searches.any { it.equals("q=Firefly", true) })
+                    assertFalse("Excluded title must never reach TVmaze",
+                        searches.any { it.equals("q=Fringe", true) })
+                    assertFalse("Excluded identity must never enter episode enrichment",
+                        requests.any { it.host == "api.tvmaze.com" && it.path.startsWith("/shows/158/") })
+                    android.util.Log.i("ChunksAutoMedia",
+                        "CHUNKS_AUTO_PUBLIC phase=second_add positive_controls=2 excluded_provider_requests=0 exact_disk_exclusion=true")
+                } finally {
+                    // ActivityScenario matches close by the original Intent.
+                    // Restore the monitor's launch identity after production has handled both new intents.
+                    scenario.onActivity { it.intent = firstIntent }
+                }
+            }
+        } finally {
+            ProxySelector.setDefault(original)
+            LocalEngineHolder.current()?.let { engine -> hashes.forEach { hash -> engine.removeKeepingData(hash) } }
+            runBlocking { media.clearAllMediaData().join() }
+            media.updateSettings(MediaPrivacySettings())
+        }
+    }
+
 }
