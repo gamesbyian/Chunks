@@ -63,6 +63,7 @@ internal class SnapshotRemoteBatchStoppedRestore(
         private const val MAX_ITEMS = 32
         private const val MAX_TOTAL_METAINFO_BYTES = 24 * 1024 * 1024
         private val v1 = Regex("[0-9a-f]{40}")
+        private val observedHash = Regex("[0-9a-f]{40}([0-9a-f]{24})?")
     }
 
     /**
@@ -180,8 +181,14 @@ internal class SnapshotRemoteBatchStoppedRestore(
 
             val outcome = readOrNull { one.restore(fresh, confirmed = true) }
                 ?: return refuse(Stop.UNVERIFIED_WRITE, verified, original.hash)
-            if (outcome != SnapshotRemoteDefinitionRestore.Outcome.VERIFIED)
-                return refuse(Stop.UNVERIFIED_WRITE, verified, original.hash)
+            if (outcome != SnapshotRemoteDefinitionRestore.Outcome.VERIFIED) {
+                val reason = when (outcome) {
+                    SnapshotRemoteDefinitionRestore.Outcome.BLOCKED -> Stop.JOURNAL_BLOCKED
+                    SnapshotRemoteDefinitionRestore.Outcome.STALE -> Stop.STALE
+                    else -> Stop.UNVERIFIED_WRITE
+                }
+                return refuse(reason, verified, original.hash)
+            }
 
             verified++
             expected += original.hash
@@ -197,7 +204,7 @@ internal class SnapshotRemoteBatchStoppedRestore(
         val rows = remote.listCompleteSessionTransfers()
         val identities = rows.map { it.hash.lowercase(Locale.ROOT) }
         if (rows.size > 20_000 || identities.size != identities.toSet().size ||
-            identities.any { !v1.matches(it) }) return null
+            identities.any { !observedHash.matches(it) }) return null
         return identities.toSet()
     }
 
