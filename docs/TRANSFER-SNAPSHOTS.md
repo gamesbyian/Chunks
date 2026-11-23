@@ -102,11 +102,29 @@ ordinary stopped Add. Success requires a complete-session identity read and
 separate exact stopped, inactive and directory readback. **Check previous server
 restore** reopens the journal for that archive, item and account without
 repeating a write. If a reply was lost, the observed stopped registration may
-be verified without attributing who added it. The first slice uses the
-current server default for both restore and recovery. A changed Place leaves
-a previous restore unresolved. Nothing starts, moves or copies downloaded
-payload. For saved priorities, compare the archive again and use the existing
-per-file review and explicit Apply confirmation.
+be verified without attributing who added it. The accepted first slice uses the current server default for both restore and
+recovery. A changed Place leaves a previous restore unresolved. Nothing starts,
+moves or copies downloaded payload. For saved priorities, compare the archive
+again and use the existing per-file review and explicit Apply confirmation.
+
+**Selected-Place candidate (#2004 or successor):** The user can choose a
+nondefault folder in the exact authenticated account's existing ruTorrent
+browser. A picked or typed path is only a draft: before the restore confirmation
+and again immediately before the one stopped Add, Chunks must read the mount's
+current root and the selected directory independently through the same tenant's
+read-only `_getdir` endpoint, with strict canonical path and root-containment
+checks. No browsing support, failed authentication, another tenant's root or
+changed folder must refuse the write. The nondefault Add sets the exact
+`d.directory.set` parent; the default Add continues to omit that setter. The
+confirmation identifies which of those two modes is being used. Selected and
+default Places receive distinct hash-only journal fingerprints, so an uncertain
+old default Add cannot be recast as authorization for a newly selected folder.
+An explicit selected-Place previous-restore check may inspect the existing
+journal and stopped session read-only even when the folder plugin later becomes
+unavailable. This candidate remains unaccepted until real authenticated
+selected-folder installed proof passes; unsupported hosts retain the accepted
+default-only flow. No arbitrary remote filesystem mutation, Start, payload
+copy or automatic retry is added.
 
 ## Current implementation checkpoint (2026-11-17)
 
