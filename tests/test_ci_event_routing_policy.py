@@ -161,6 +161,23 @@ class CiDispatchRelevance(unittest.TestCase):
                 self.assertTrue(dispatches_for_changed_paths(
                     native, (path, APP_TEST_ROOT + "NewSharedInstrumentedTest.kt")))
 
+    def test_numbered_seedhost_readonly_probes_select_only_account_generic_case(self):
+        generic = "actualKotlinAdapterListsOwnerApprovedDevSeedbox"
+        primary_only = "realPrimarySeedhostReportsExactScopedReadOnlySeedingEvidence"
+        numbered = workflow("seedhost-instances-readonly.yml")
+        compatibility = workflow("seedhost-endpoint-compatibility.yml")
+        self.assertIn("--tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest." + generic,
+                      numbered)
+        self.assertNotIn(primary_only, numbered)
+        self.assertIn('selected_tests=(--tests "$test_class.' + generic + '")', compatibility)
+        self.assertRegex(compatibility,
+                         r'if \[\[ "\$CHUNKS_ENDPOINT_PROFILE" == primary-rutorrent-https \]\]; then\n'
+                         r'\s+selected_tests\+=\(--tests "\$test_class\.' + primary_only + r'"\)')
+        for source in (numbered, compatibility):
+            self.assertIn("if: github.ref == 'refs/heads/main'", source)
+            self.assertIn("workflow_dispatch:", block(source, "on"))
+            self.assertNotIn("pull_request:", block(source, "on"))
+
     def test_manual_public_artwork_test_runs_only_in_its_explicit_installed_gate(self):
         path = APP_TEST_ROOT + "InstalledAutomaticPublicMediaInstrumentedTest.kt"
         native = workflow("native-add-instrumentation.yml")
