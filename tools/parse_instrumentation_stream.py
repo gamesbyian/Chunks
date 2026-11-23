@@ -196,6 +196,54 @@ def safe_media_first_positive_failure(text: str) -> str | None:
     return None
 
 
+
+# The controlled HTTPS second-Add fixture may fail *before* metadata is
+# reviewed. Only local fixture counts and exact Boolean UI-state witnesses are
+# allowed into CI. Untrusted stack messages remain redacted in full.
+_MEDIA_REVIEW_FAILURE_TESTS = {
+    ("io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest",
+     "phaseA_submitTwoSourcesAndRefreshInventory"),
+    ("io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest",
+     "phaseB_restoredExclusionAndFreshPositiveControl"),
+}
+_MEDIA_REVIEW_FINGERPRINT = re.compile(
+    r"^java\.lang\.AssertionError: Controlled HTTPS review was not retained: "
+    r"fixtureSourceRequests=(unavailable|0|[1-9][0-9]{0,3}) "
+    r"ownerHasAnyReviewedTorrent=(true|false|unavailable) "
+    r"addFooterVisible=(true|false|unavailable) "
+    r"sourceFieldVisible=(true|false|unavailable) "
+    r"intakeProblem=(NONE|UNAVAILABLE|NO_HOST|LOCAL_NETWORK|OFFLINE|TIMEOUT|"
+    r"REFUSED|NOT_FOUND|NOT_TORRENT|UNEXPECTED|BUSY|DOWNGRADE|WEB_PAGE|TOO_LARGE)$"
+)
+
+
+def safe_media_review_failure(text: str) -> str | None:
+    """One bounded failure-only fingerprint; no source URL, hash or stack."""
+    fields: dict[str, str] = {}
+    stack: str | None = None
+    for line in text.splitlines():
+        if line.startswith(STATUS):
+            value = line[len(STATUS):]
+            if value.startswith("class="):
+                fields["class"] = value[len("class="):]
+            elif value.startswith("test="):
+                fields["test"] = value[len("test="):]
+            elif value.startswith("stack="):
+                stack = value[len("stack="):]
+        elif line.startswith(STATUS_CODE):
+            if (line[len(STATUS_CODE):].strip() == "-2" and
+                    (fields.get("class"), fields.get("test")) in _MEDIA_REVIEW_FAILURE_TESTS and
+                    stack is not None):
+                match = _MEDIA_REVIEW_FINGERPRINT.fullmatch(stack)
+                if match:
+                    names = ("fixtureSourceRequests", "ownerHasAnyReviewedTorrent",
+                             "addFooterVisible", "sourceFieldVisible", "intakeProblem")
+                    return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
+            fields = {}
+            stack = None
+    return None
+
+
 @dataclass(frozen=True)
 class TestResult:
     classname: str
@@ -305,6 +353,9 @@ def main() -> None:
         safe_media = safe_media_first_positive_failure(raw)
         if safe_media is not None:
             print("CHUNKS_PREBUILT_SAFE_MEDIA_FIRST: " + safe_media)
+        safe_source = safe_media_review_failure(raw)
+        if safe_source is not None:
+            print("CHUNKS_PREBUILT_SAFE_MEDIA_REVIEW: " + safe_source)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 

@@ -1,7 +1,7 @@
 """Privacy and evidence gate for Open With instrumentation diagnostics."""
 import unittest
 
-from tools.parse_instrumentation_stream import (safe_openwith_failure, safe_media_first_positive_failure)
+from tools.parse_instrumentation_stream import (safe_openwith_failure, safe_media_first_positive_failure, safe_media_review_failure)
 
 
 class OpenWithFailureFingerprintTest(unittest.TestCase):
@@ -98,6 +98,57 @@ class ControlledMediaFailureFingerprintTest(unittest.TestCase):
         self.assertIsNone(safe_media_first_positive_failure(self.status(
             failure="java.lang.AssertionError: token=passkey")))
 
+
+
+
+class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
+    CLASS = "io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest"
+    PHASE_A = "phaseA_submitTwoSourcesAndRefreshInventory"
+    PHASE_B = "phaseB_restoredExclusionAndFreshPositiveControl"
+    GOOD = (
+        "java.lang.AssertionError: Controlled HTTPS review was not retained: "
+        "fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+        "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST"
+    )
+
+    def status(self, klass=None, test=None, failure=None, code="-2"):
+        return "\n".join([
+            "INSTRUMENTATION_STATUS: class=" + (klass or self.CLASS),
+            "INSTRUMENTATION_STATUS: test=" + (test or self.PHASE_A),
+            "INSTRUMENTATION_STATUS: stack=" + (failure or self.GOOD),
+            "INSTRUMENTATION_STATUS_CODE: " + code,
+        ])
+
+    def test_exact_failure_whitelist_produces_only_bounded_nonsecret_values(self):
+        result = ("fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+                  "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
+        self.assertEqual(result, safe_media_review_failure(self.status()))
+        self.assertEqual(result, safe_media_review_failure(self.status(test=self.PHASE_B)))
+        self.assertEqual(
+            result.replace("Requests=0", "Requests=9999"),
+            safe_media_review_failure(self.status(
+                failure=self.GOOD.replace("Requests=0", "Requests=9999"))),
+        )
+
+    def test_other_class_method_and_success_or_error_are_silent(self):
+        self.assertIsNone(safe_media_review_failure(self.status(klass="secret.Class")))
+        self.assertIsNone(safe_media_review_failure(self.status(test="unrelated")))
+        self.assertIsNone(safe_media_review_failure(self.status(code="0")))
+        self.assertIsNone(safe_media_review_failure(self.status(code="-1")))
+
+    def test_secret_suffix_and_unbounded_or_negative_counts_are_rejected(self):
+        for invalid in (
+            self.GOOD + " token=private",
+            self.GOOD + " uri=content://private.test/secret",
+            self.GOOD + "\nhttp://tracker.invalid/private",
+            self.GOOD.replace("Requests=0", "Requests=10000"),
+            self.GOOD.replace("Requests=0", "Requests=-1"),
+            self.GOOD.replace("addFooterVisible=true", "addFooterVisible=secret"),
+            self.GOOD.replace("intakeProblem=NO_HOST", "intakeProblem=private-url"),
+            "java.lang.AssertionError: HTTPS error token=private",
+        ):
+            with self.subTest(invalid=invalid[:50]):
+                self.assertIsNone(safe_media_review_failure(self.status(failure=invalid)))
 
 
 if __name__ == "__main__":

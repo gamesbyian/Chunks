@@ -147,12 +147,34 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
                 rule.onAllNodesWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
                     .fetchSemanticsNodes().isNotEmpty()
             }.getOrNull()
+            val refusalCategory = runCatching {
+                // Examine only whether one of Chunks' fixed public error messages
+                // is present. Never copy UI source text, URI, query or credentials.
+                listOf(
+                    "NO_HOST" to TorrentLinkResult.NO_HOST,
+                    "LOCAL_NETWORK" to TorrentLinkResult.LOCAL_NETWORK,
+                    "OFFLINE" to TorrentLinkResult.OFFLINE,
+                    "TIMEOUT" to TorrentLinkResult.TIMEOUT,
+                    "REFUSED" to TorrentLinkResult.REFUSED,
+                    "NOT_FOUND" to TorrentLinkResult.NOT_FOUND,
+                    "NOT_TORRENT" to TorrentLinkResult.NOT_TORRENT,
+                    "UNEXPECTED" to TorrentLinkResult.UNEXPECTED,
+                    "BUSY" to TorrentLinkResult.BUSY,
+                    "DOWNGRADE" to TorrentLinkResult.DOWNGRADE,
+                    "WEB_PAGE" to TorrentLinkResult.WEB_PAGE,
+                    "TOO_LARGE" to TorrentLinkResult.TOO_LARGE
+                ).firstOrNull { (_, message) ->
+                    rule.onAllNodes(hasText(message, substring = true))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }?.first ?: "NONE"
+            }.getOrDefault("UNAVAILABLE")
             throw AssertionError(
                 "Controlled HTTPS review was not retained: " +
                     "fixtureSourceRequests=${sourceRequests ?: "unavailable"} " +
                     "ownerHasAnyReviewedTorrent=${ownerHasReview ?: "unavailable"} " +
                     "addFooterVisible=${addFooterVisible ?: "unavailable"} " +
-                    "sourceFieldVisible=${sourceFieldVisible ?: "unavailable"}",
+                    "sourceFieldVisible=${sourceFieldVisible ?: "unavailable"} " +
+                    "intakeProblem=$refusalCategory",
                 timeout
             )
         }
