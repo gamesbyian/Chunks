@@ -107,7 +107,7 @@ recovery. A changed Place leaves a previous restore unresolved. Nothing starts,
 moves or copies downloaded payload. For saved priorities, compare the archive
 again and use the existing per-file review and explicit Apply confirmation.
 
-**Selected-Place candidate (#2004 or successor):** The user can choose a
+**Selected Place (merged #2004):** The user can choose a
 nondefault folder in the exact authenticated account's existing ruTorrent
 browser. A picked or typed path is only a draft: before the restore confirmation
 and again immediately before the one stopped Add, Chunks must read the mount's
@@ -121,10 +121,36 @@ default Places receive distinct hash-only journal fingerprints, so an uncertain
 old default Add cannot be recast as authorization for a newly selected folder.
 An explicit selected-Place previous-restore check may inspect the existing
 journal and stopped session read-only even when the folder plugin later becomes
-unavailable. This candidate remains unaccepted until real authenticated
-selected-folder installed proof passes; unsupported hosts retain the accepted
-default-only flow. No arbitrary remote filesystem mutation, Start, payload
+unavailable. The source-exact installed two-server campaign
+[#2004 acceptance](https://github.com/gamesbyian/Chunks/actions/runs/45279072543)
+passed both the authenticated folder picker and one stopped selected-folder
+restore, including independent target/hash/Place readback, wrong-tenant
+refusal, unchanged second server and no second Add. Unsupported hosts retain
+the default-only flow. No arbitrary remote filesystem mutation, Start, payload
 copy or automatic retry is added.
+
+**Read-only interrupted server group (new candidate):** After comparing a
+verified `.chunksnap` with the current whole rTorrent session, the user may
+ask to check all previously attempted metainfo definitions **at the currently
+reviewed server default or explicitly selected Place**. This is a new,
+bounded, opt-in **observation and Chunks-owned journal reconciliation**, not
+remote batch restore and not authorization to replay even an absent or
+unverified Add. The coordinator opens only pre-existing, item-scoped journals
+for that exact archive/account, independently verifies the current stopped
+hash, original name and destination for each submitted item, then compares
+the complete session again before publishing an aggregate result. It never
+creates a journal for an absent item, changes a server job, sends an Add,
+starts a transfer, copies data or retries a previous uncertain operation.
+A missing or damaged journal is explicitly **unknown**, and a journal
+fingerprint for another reviewed Place is distinctly **different Place**,
+not a successful recovery. A REVIEW, READY or REFUSED record can say only
+that **this exact journal** recorded no submission. Valid independently
+verified previous attempts may advance their hash-only Chunks-owned receipt
+to VERIFIED. The UI shows counts and a bounded group of actionable item
+statuses; the individual read-only journal check remains available for
+details. Large snapshots are bounded to 512 metainfo records per check.
+This candidate requires dedicated real installed exact-account and native
+acceptance before being called complete.
 
 ## Current implementation checkpoint (2026-11-17)
 
