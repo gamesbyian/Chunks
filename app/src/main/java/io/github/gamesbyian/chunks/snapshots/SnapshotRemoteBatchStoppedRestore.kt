@@ -4,6 +4,7 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteReadAuthEvidence
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,14 +28,24 @@ internal class SnapshotRemoteBatchStoppedRestore(
     private val remote: RTorrentRemote,
     private val store: SnapshotRestoreJournalV1.Store,
     private val stillCurrent: () -> Boolean,
-    admitWrite: () -> Boolean,
-    settleWrite: () -> Unit
+    private val admitBatch: () -> Boolean,
+    private val settleBatch: () -> Unit
 ) {
+    // One Compose-owned exclusive mutation lease spans the ENTIRE user-approved
+    // series. The accepted single writer still enforces its own prewrite intent
+    // and stopped/hash/Place readback per item, but must not reacquire the
+    // global UI readback gate after every constituent RPC. A fresh UI readback
+    // releases that gate only AFTER the group settles or stops.
+    private val running = AtomicBoolean(false)
+    private val batchLease = AtomicBoolean(false)
     private val one = SnapshotRemoteDefinitionRestore(
-        remote, store, stillCurrent, admitWrite, settleWrite)
+        remote, store, stillCurrent,
+        admitWrite = { batchLease.get() && stillCurrent() },
+        settleWrite = {})
 
     enum class Stop {
-        NOT_CONFIRMED, STALE, JOURNAL_BLOCKED, UNVERIFIED_WRITE, SESSION_CHANGED
+        NOT_CONFIRMED, STALE, JOURNAL_BLOCKED, UNVERIFIED_WRITE, SESSION_CHANGED,
+        LEASE_UNAVAILABLE
     }
 
     data class Result(
@@ -141,63 +152,81 @@ internal class SnapshotRemoteBatchStoppedRestore(
         fun refuse(why: Stop, done: Int = 0, hash: String? = null) =
             Result(total, done, hash, why)
         if (!confirmed || draft.owner !== this) return refuse(Stop.NOT_CONFIRMED)
-        if (!stillCurrent() || !authenticated() ||
-            remote.addAccountScope() != draft.scope) return refuse(Stop.STALE)
-
-        val current = readOrNull { currentRoster() } ?: return refuse(Stop.STALE)
-        if (current != draft.frozenHashes) return refuse(Stop.SESSION_CHANGED)
-        val target = accountKey(draft.scope)
-        val journalsOk = readOrNull {
-            withContext(Dispatchers.IO) {
-                draft.frozen.all { review ->
-                    val journal = SnapshotRestoreJournalV1.openExisting(
-                        store, review.journalIdentity, target, listOf(review.hash))
-                    safeJournal(journal, review)
-                }
-            }
-        } ?: false
-        if (!journalsOk) return refuse(Stop.JOURNAL_BLOCKED)
-
-        val expected = current.toMutableSet()
-        var verified = 0
-        for (original in draft.frozen) {
+        if (!running.compareAndSet(false, true)) return refuse(Stop.LEASE_UNAVAILABLE)
+        try {
             if (!stillCurrent() || !authenticated() ||
-                remote.addAccountScope() != draft.scope)
-                return refuse(Stop.STALE, verified, original.hash)
-            val before = readOrNull { currentRoster() }
-                ?: return refuse(Stop.SESSION_CHANGED, verified, original.hash)
-            if (before != expected)
-                return refuse(Stop.SESSION_CHANGED, verified, original.hash)
+                remote.addAccountScope() != draft.scope) return refuse(Stop.STALE)
 
-            val fresh = readOrNull {
-                one.review(draft.archive, original.hash, expected.toList(),
-                    recoveryOnly = false, selectedPlace = draft.selectedPlace)
-            } ?: return refuse(Stop.STALE, verified, original.hash)
-            if (fresh.place != original.place ||
-                fresh.serverDefault != original.serverDefault ||
-                fresh.name != original.name ||
-                fresh.journalIdentity != original.journalIdentity)
-                return refuse(Stop.STALE, verified, original.hash)
-
-            val outcome = readOrNull { one.restore(fresh, confirmed = true) }
-                ?: return refuse(Stop.UNVERIFIED_WRITE, verified, original.hash)
-            if (outcome != SnapshotRemoteDefinitionRestore.Outcome.VERIFIED) {
-                val reason = when (outcome) {
-                    SnapshotRemoteDefinitionRestore.Outcome.BLOCKED -> Stop.JOURNAL_BLOCKED
-                    SnapshotRemoteDefinitionRestore.Outcome.STALE -> Stop.STALE
-                    else -> Stop.UNVERIFIED_WRITE
+            val current = readOrNull { currentRoster() } ?: return refuse(Stop.STALE)
+            if (current != draft.frozenHashes) return refuse(Stop.SESSION_CHANGED)
+            val target = accountKey(draft.scope)
+            val journalsOk = readOrNull {
+                withContext(Dispatchers.IO) {
+                    draft.frozen.all { review ->
+                        val journal = SnapshotRestoreJournalV1.openExisting(
+                            store, review.journalIdentity, target, listOf(review.hash))
+                        safeJournal(journal, review)
+                    }
                 }
-                return refuse(reason, verified, original.hash)
-            }
+            } ?: false
+            if (!journalsOk) return refuse(Stop.JOURNAL_BLOCKED)
 
-            verified++
-            expected += original.hash
-            val after = readOrNull { currentRoster() }
-                ?: return refuse(Stop.SESSION_CHANGED, verified, original.hash)
-            if (after != expected)
-                return refuse(Stop.SESSION_CHANGED, verified, original.hash)
+            // The same global mutation gate used by ordinary Add is acquired
+            // ONCE and remains held through every constituent verified Add.
+            // Therefore unrelated UI commands cannot interleave, and no
+            // second gate acquisition is needed before a proper batch readback.
+            if (!admitBatch()) return refuse(Stop.LEASE_UNAVAILABLE)
+            batchLease.set(true)
+            try {
+                val expected = current.toMutableSet()
+                var verified = 0
+                for (original in draft.frozen) {
+                    if (!stillCurrent() || !authenticated() ||
+                        remote.addAccountScope() != draft.scope)
+                        return refuse(Stop.STALE, verified, original.hash)
+                    val before = readOrNull { currentRoster() }
+                        ?: return refuse(Stop.SESSION_CHANGED, verified, original.hash)
+                    if (before != expected)
+                        return refuse(Stop.SESSION_CHANGED, verified, original.hash)
+
+                    val fresh = readOrNull {
+                        one.review(draft.archive, original.hash, expected.toList(),
+                            recoveryOnly = false, selectedPlace = draft.selectedPlace)
+                    } ?: return refuse(Stop.STALE, verified, original.hash)
+                    if (fresh.place != original.place ||
+                        fresh.serverDefault != original.serverDefault ||
+                        fresh.name != original.name ||
+                        fresh.journalIdentity != original.journalIdentity)
+                        return refuse(Stop.STALE, verified, original.hash)
+
+                    val outcome = readOrNull { one.restore(fresh, confirmed = true) }
+                        ?: return refuse(Stop.UNVERIFIED_WRITE, verified, original.hash)
+                    if (outcome != SnapshotRemoteDefinitionRestore.Outcome.VERIFIED) {
+                        val reason = when (outcome) {
+                            SnapshotRemoteDefinitionRestore.Outcome.BLOCKED -> Stop.JOURNAL_BLOCKED
+                            SnapshotRemoteDefinitionRestore.Outcome.STALE -> Stop.STALE
+                            else -> Stop.UNVERIFIED_WRITE
+                        }
+                        return refuse(reason, verified, original.hash)
+                    }
+
+                    verified++
+                    expected += original.hash
+                    val after = readOrNull { currentRoster() }
+                        ?: return refuse(Stop.SESSION_CHANGED, verified, original.hash)
+                    if (after != expected)
+                        return refuse(Stop.SESSION_CHANGED, verified, original.hash)
+                }
+                return Result(total, verified, null, null)
+            } finally {
+                // Even an unknown ACK or cancellation must leave the outer
+                // gate latched until the ordinary NEW UI readback finishes.
+                batchLease.set(false)
+                settleBatch()
+            }
+        } finally {
+            running.set(false)
         }
-        return Result(total, verified, null, null)
     }
 
     private suspend fun currentRoster(): Set<String>? {
