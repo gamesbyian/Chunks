@@ -16,7 +16,8 @@ def pull_request_paths(source: str) -> set[str]:
     # Match only the path allowlist under on.pull_request, not unrelated
     # lists of checkout steps, artifacts, or workflow_dispatch entries.
     match = re.search(
-        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?    paths:\s*\n"
+        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
+        r"(?:    \#[^\n]*\n)*(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -35,7 +36,8 @@ def dispatches_for_changed_paths(source: str, changed: tuple[str, ...]) -> bool:
     Assertions also pin the exact GitHub-compatible patterns and their order.
     """
     match = re.search(
-        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?    paths:\s*\n"
+        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
+        r"(?:    \#[^\n]*\n)*(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -71,6 +73,20 @@ class AndroidCiTriggerContract(unittest.TestCase):
             sample, ("app/src/main/java/Example.kt",)))
         self.assertFalse(dispatches_for_changed_paths(
             sample, ("app/src/androidTest/java/Example.kt",)))
+        with_types = sample.replace(
+            "    paths:\n",
+            "    types: [opened, reopened, synchronize, ready_for_review]\n    paths:\n",
+        )
+        self.assertEqual(pull_request_paths(sample), pull_request_paths(with_types))
+        with_comment = with_types.replace(
+            "    types:",
+            "    # Draft iterations must not run expensive jobs.\n    types:",
+        )
+        self.assertEqual(pull_request_paths(sample), pull_request_paths(with_comment))
+        self.assertTrue(dispatches_for_changed_paths(
+            with_comment, ("app/src/main/java/Example.kt",)))
+        self.assertTrue(dispatches_for_changed_paths(
+            with_types, ("app/src/main/java/Example.kt",)))
 
     def test_preflight_tool_edits_trigger_only_cheap_docs_validation(self):
         android = pull_request_paths(WORKFLOW.read_text(encoding="utf-8"))
@@ -218,7 +234,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         source = WORKFLOW.read_text(encoding="utf-8")
         allowed = pull_request_paths(source)
         self.assertIn("app/**", allowed)
-        self.assertNotIn(".github/workflows/android-check.yml", allowed)
+        self.assertIn(".github/workflows/android-check.yml", allowed)
         docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
         self.assertTrue(dispatches_for_changed_paths(
             docs, (".github/workflows/android-check.yml",)))
@@ -238,6 +254,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             (("app/src/test/java/io/github/gamesbyian/chunks/ExampleTest.kt",),
              (True, False, False)),
             (("tools/physical_android_preflight.sh",), (False, True, False)),
+            ((".github/workflows/android-check.yml",), (True, True, False)),
             (("tests/test_ci_trigger_contract.py",), (False, True, False)),
             (("app/src/androidTest/java/Test.kt", "app/src/main/java/Real.kt"),
              (True, False, True)),
@@ -317,6 +334,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn(path, r8_paths)
                 self.assertTrue(dispatches_for_changed_paths(r8, (path,)))
 
+    def test_disposable_rtorrent_legacy_and_modern_defer_drafts(self):
+        # An entire two-engine integration probe on every speculative draft
+        # edit is excessive, but ready-for-review and manual dispatch still
+        # require both engines and the exact mutation/readback fixtures.
+        source = (ROOT / ".github/workflows/disposable-rtorrent-probe.yml").read_text()
+        self.assertIn(
+            "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+            source,
+        )
+        self.assertIn("workflow_dispatch:", source)
+        self.assertEqual(2, source.count(
+            "if: github.event_name != 'pull_request' || !github.event.pull_request.draft"
+        ))
+        self.assertIn("  legacy-real-engine:", source)
+        self.assertIn("  modern-real-engine:", source)
+        self.assertIn("RTorrentDisposableMutationTest", source)
+        self.assertIn("RTorrentDisposableFullJourneyTest", source)
+        self.assertIn("RTorrentLibtorrentInteropTest", source)
+        self.assertIn("cancel-in-progress: true", source)
+        self.assertNotIn("continue-on-error: true", source)
+        self.assertIn(".github/workflows/disposable-rtorrent-probe.yml",
+                      pull_request_paths(source))
+
     def test_expensive_r8_and_visual_atlas_wait_for_review_ready_pr(self):
         # Preserve both real installed-device classes and R8 exact-case checks;
         # only draft event scheduling should change.
@@ -341,6 +381,61 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn("cancel-in-progress: true", source)
                 for retained in obligatory:
                     self.assertIn(retained, source)
+                self.assertNotIn("continue-on-error: true", source)
+
+    def test_foundation_selects_changes_to_its_own_workflow(self):
+        # A change to JVM/build validation must not evade its own gate just
+        # because app source and Gradle scripts are unchanged.
+        source = (ROOT / ".github/workflows" / "android-check.yml").read_text()
+        self.assertIn(".github/workflows/android-check.yml",
+                      pull_request_paths(source))
+
+    def test_foundation_and_api29_defer_drafts_but_recheck_on_ready(self):
+        # The selectors and real assertions stay intact; only costly draft
+        # scheduling is postponed, never a manual dispatch or ready PR.
+        for filename, job, must_keep in (
+            ("android-check.yml", "build",
+             (":app:testDebugUnitTest :app:assembleDebug", "app/**")),
+            ("android10-downloads-instrumentation.yml", "api29-downloads",
+             ("tools/android10_downloads_instrumentation.sh",
+              "app/src/main/AndroidManifest.xml")),
+        ):
+            with self.subTest(workflow=filename):
+                source = (ROOT / ".github/workflows" / filename).read_text()
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source)
+                self.assertIn("workflow_dispatch:", source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source)
+                self.assertIn(f"  {job}:", source)
+                self.assertIn("cancel-in-progress: true", source)
+                for retained in must_keep:
+                    self.assertIn(retained, source)
+                self.assertNotIn("continue-on-error: true", source)
+
+    def test_disposable_installed_workflows_defer_draft_but_resume_on_ready(self):
+        # Preserve complete expensive real-daemon acceptance when a PR is ready;
+        # experimental draft edits and conversions must stay cost-free.
+        for filename, job, script in (
+            ("installed-remote-delete-data.yml", "remote-delete-data",
+             "tools/installed_remote_delete_data.sh"),
+            ("installed-combined-two-servers.yml", "two-server-combined",
+             "tools/installed_combined_two_servers.sh"),
+        ):
+            with self.subTest(workflow=filename):
+                source = (ROOT / ".github/workflows" / filename).read_text()
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source)
+                self.assertIn(f"  {job}:", source)
+                self.assertIn("workflow_dispatch:", source)
+                self.assertIn("cancel-in-progress: true", source)
+                self.assertIn(script, source)
                 self.assertNotIn("continue-on-error: true", source)
 
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):

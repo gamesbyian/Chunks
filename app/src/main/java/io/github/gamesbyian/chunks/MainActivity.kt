@@ -106,6 +106,7 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityApply
 import io.github.gamesbyian.chunks.snapshots.applyRemoteSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
@@ -2990,6 +2991,61 @@ internal fun ChunksApp(
                                             prior.sizeBytes != after.sizeBytes) null
                                         else SnapshotRemotePriorityComparison.plan(entry, after, observed)
                                     }
+                                }
+                            },
+                            onApplyRemotePriorities = { entry, review, generation, send ->
+                                val account = snapshotAccount
+                                val expectedScope = snapshotAliasScope
+                                if (account == null || server !== account ||
+                                    aliasScope != expectedScope || stale || loading ||
+                                    snapshotRevision != generation) {
+                                    send("The exact rTorrent session changed. No priorities were submitted.")
+                                } else scope.launch {
+                                    val result = try {
+                                        SnapshotRemotePriorityApply.apply(
+                                            accountScope = expectedScope,
+                                            entry = entry, reviewed = review,
+                                            confirmed = true,
+                                            stillCurrent = {
+                                                server === account && aliasScope == expectedScope &&
+                                                    !stale && !loading && snapshotRevision == generation
+                                            },
+                                            port = object : SnapshotRemotePriorityApply.Port {
+                                                override suspend fun completeSession(): List<RemoteTransfer> =
+                                                    account.listCompleteSessionTransfers()
+                                                override suspend fun readFiles(hash: String): List<RemoteFile> =
+                                                    account.readSnapshotFiles(hash)
+                                                override suspend fun setFilePriority(
+                                                    hash: String, index: Int, path: String,
+                                                    sizeBytes: Long, expected: Int, desired: Int
+                                                ): io.github.gamesbyian.chunks.rpc.FilePriorityOutcome =
+                                                    account.setFilePriority(hash, index, path,
+                                                        sizeBytes, expected, desired)
+                                            }
+                                        )
+                                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        SnapshotRemotePriorityApply.Result(
+                                            SnapshotRemotePriorityApply.Outcome.NEEDS_READ_ONLY_REVIEW,
+                                            0, review.changeCount)
+                                    }
+                                    if (result.verifiedWrites > 0) snapshotRevision++
+                                    send(when (result.outcome) {
+                                        SnapshotRemotePriorityApply.Outcome.VERIFIED ->
+                                            "All ${result.verifiedWrites} rTorrent priority changes verified. " +
+                                                "No Start/Stop operation was submitted."
+                                        SnapshotRemotePriorityApply.Outcome.NO_CHANGES ->
+                                            "Saved priorities already match; no write submitted."
+                                        SnapshotRemotePriorityApply.Outcome.REFUSED ->
+                                            "Priority restore refused before writing. Review again."
+                                        SnapshotRemotePriorityApply.Outcome.STALE ->
+                                            "The session or file layout changed. No write submitted."
+                                        SnapshotRemotePriorityApply.Outcome.NEEDS_READ_ONLY_REVIEW ->
+                                            "Stopped after ${result.verifiedWrites} verified changes. " +
+                                                "A write or postcondition may be uncertain; check current priorities read-only. " +
+                                                "Nothing was retried."
+                                    })
                                 }
                             },
                             onPrepareAdd = { document ->

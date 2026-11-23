@@ -24,6 +24,17 @@ internal object SnapshotFilePriorities {
             if (file.padding) null else File(index, file.path, file.sizeBytes)
         }
 
+    /**
+     * Some rTorrent builds report f.path relative to the torrent root. Strip
+     * only the verified metainfo name, never an arbitrary first component:
+     * a coincidental suffix must not authorize a saved priority mapping.
+     */
+    fun relativeToTorrentRoot(file: File, originalName: String): String? {
+        val prefix = "$originalName/"
+        return file.path.takeIf { it.startsWith(prefix) && it.length > prefix.length }
+            ?.removePrefix(prefix)
+    }
+
     fun capture(
         preview: TorrentMetainfoPreview,
         observed: List<Observation>?,
@@ -37,7 +48,8 @@ internal object SnapshotFilePriorities {
         // native Local paths include it. Require a consistent layout convention.
         val full = rows.all { (file, row) -> row.file == file }
         val relative = source == SnapshotManifestV1.Source.RTORRENT && rows.all { (file, row) ->
-            row.file == file.copy(path = file.path.substringAfter('/'))
+            val relativePath = relativeToTorrentRoot(file, preview.name)
+            relativePath != null && row.file == file.copy(path = relativePath)
         }
         if (!full && !relative) return null
         return observed.map { row ->

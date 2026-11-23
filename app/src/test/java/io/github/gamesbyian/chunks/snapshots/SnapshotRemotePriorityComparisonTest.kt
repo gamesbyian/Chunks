@@ -38,6 +38,18 @@ class SnapshotRemotePriorityComparisonTest {
         val mixed = listOf(full.first(), RemoteFile("two.srt",20,0))
         assertNull(SnapshotRemotePriorityComparison.plan(saved, observed, mixed))
     }
+    @Test fun cannotMatchAnUnrelatedPathPrefixByDroppingItsFirstComponent() {
+        val good = listOf(RemoteFile("one.mkv", 30, 1),
+            RemoteFile("two.srt", 20, 0))
+        val wrongRoot = saved.copy(fileMappings = saved.fileMappings.map {
+            it.copy(file = it.file.copy(path = it.file.path.replace("Movie/", "Other/")))
+        })
+        assertNull(SnapshotRemotePriorityComparison.plan(wrongRoot, observed, good))
+        val nested = saved.copy(fileMappings = saved.fileMappings.map {
+            it.copy(file = it.file.copy(path = it.file.path.replace("Movie/", "Movie/sub/")))
+        })
+        assertNull(SnapshotRemotePriorityComparison.plan(nested, observed, good))
+    }
     @Test fun rejectsWrongAccountOrIdentityOrUnknownFilesOrIncompleteRead() {
         val good = listOf(RemoteFile("one.mkv",30,1), RemoteFile("two.srt",20,0))
         assertNull(SnapshotRemotePriorityComparison.plan(saved, observed.copy(hash="b".repeat(40)), good))

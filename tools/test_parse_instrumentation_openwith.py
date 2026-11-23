@@ -1,7 +1,7 @@
 """Privacy and evidence gate for Open With instrumentation diagnostics."""
 import unittest
 
-from tools.parse_instrumentation_stream import (safe_openwith_failure, safe_media_first_positive_failure)
+from tools.parse_instrumentation_stream import (safe_openwith_failure, safe_media_first_positive_failure, safe_media_review_failure)
 
 
 class OpenWithFailureFingerprintTest(unittest.TestCase):
@@ -89,7 +89,7 @@ class ControlledMediaFailureFingerprintTest(unittest.TestCase):
         self.assertIsNone(safe_media_first_positive_failure(self.status(code="0")))
 
     def test_private_suffix_uri_arbitrary_kind_or_newline_is_rejected(self):
-        for extra in (" uri=content://secret/item", "\\nhttps://secret.example", 
+        for extra in (" uri=content://secret/item", "\nhttps://secret.example", 
                       " hash=private", " kind=./secret"):
             self.assertIsNone(safe_media_first_positive_failure(self.status(
                 failure=self.DIAGNOSTIC + extra)))
@@ -98,6 +98,90 @@ class ControlledMediaFailureFingerprintTest(unittest.TestCase):
         self.assertIsNone(safe_media_first_positive_failure(self.status(
             failure="java.lang.AssertionError: token=passkey")))
 
+
+
+
+class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
+    CLASS = "io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest"
+    PHASE_A = "phaseA_submitTwoSourcesAndRefreshInventory"
+    PHASE_B = "phaseB_restoredExclusionAndFreshPositiveControl"
+    GOOD = (
+        "java.lang.AssertionError: Controlled HTTPS review was not retained: "
+        "fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+        "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST"
+    )
+
+    def status(self, klass=None, test=None, failure=None, code="-2"):
+        return "\n".join([
+            "INSTRUMENTATION_STATUS: class=" + (klass or self.CLASS),
+            "INSTRUMENTATION_STATUS: test=" + (test or self.PHASE_A),
+            "INSTRUMENTATION_STATUS: stack=" + (failure or self.GOOD),
+            "INSTRUMENTATION_STATUS_CODE: " + code,
+        ])
+
+    def test_exact_failure_whitelist_produces_only_bounded_nonsecret_values(self):
+        result = ("fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+                  "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
+        self.assertEqual(result, safe_media_review_failure(self.status()))
+        self.assertEqual(result, safe_media_review_failure(self.status(test=self.PHASE_B)))
+        self.assertEqual(
+            result.replace("Requests=0", "Requests=9999"),
+            safe_media_review_failure(self.status(
+                failure=self.GOOD.replace("Requests=0", "Requests=9999"))),
+        )
+
+    def test_only_conventional_java_stack_frames_may_follow_signature(self):
+        expected = ("fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+                    "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
+        self.assertEqual(expected, safe_media_review_failure(self.status(
+            failure=self.GOOD +
+            "\n    at io.github.gamesbyian.chunks.SampleTest.review(SampleTest.kt:119)")))
+        # One non-frame line after the assertion must never disappear when
+        # the instrumentation parser extracts just the first stack line.
+        self.assertIsNone(safe_media_review_failure(self.status(
+            failure=self.GOOD + "\n    at https://tracker.invalid/passkey")))
+        self.assertIsNone(safe_media_review_failure(self.status(
+            failure=self.GOOD + "\nCaused by: token=private")))
+
+    def test_known_compose_timeout_cause_and_conventional_elided_frames(self):
+        expected = ("fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+                    "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
+        stack = (self.GOOD +
+                 "\n    at io.github.gamesbyian.chunks.SampleTest.review(SampleTest.kt:119)"
+                 "\nCaused by: androidx.compose.ui.test.ComposeTimeoutException: "
+                 "Condition still not satisfied after 30000 ms"
+                 "\n    at androidx.compose.ui.test.ComposeTestRule.waitUntil(ComposeTestRule.kt:90)"
+                 "\n    ... 23 more")
+        self.assertEqual(expected, safe_media_review_failure(self.status(failure=stack)))
+
+    def test_cause_with_source_data_and_unbounded_elision_stay_silent(self):
+        for suffix in (
+            "\nCaused by: androidx.compose.ui.test.ComposeTimeoutException: token=secret",
+            "\nCaused by: java.lang.AssertionError: https://private.example",
+            "\n    ... 10000 more",
+            "\n    ... -1 more",
+        ):
+            self.assertIsNone(safe_media_review_failure(self.status(failure=self.GOOD + suffix)))
+
+    def test_other_class_method_and_success_or_error_are_silent(self):
+        self.assertIsNone(safe_media_review_failure(self.status(klass="secret.Class")))
+        self.assertIsNone(safe_media_review_failure(self.status(test="unrelated")))
+        self.assertIsNone(safe_media_review_failure(self.status(code="0")))
+        self.assertIsNone(safe_media_review_failure(self.status(code="-1")))
+
+    def test_secret_suffix_and_unbounded_or_negative_counts_are_rejected(self):
+        for invalid in (
+            self.GOOD + " token=private",
+            self.GOOD + " uri=content://private.test/secret",
+            self.GOOD + "\nhttp://tracker.invalid/private",
+            self.GOOD.replace("Requests=0", "Requests=10000"),
+            self.GOOD.replace("Requests=0", "Requests=-1"),
+            self.GOOD.replace("addFooterVisible=true", "addFooterVisible=secret"),
+            self.GOOD.replace("intakeProblem=NO_HOST", "intakeProblem=private-url"),
+            "java.lang.AssertionError: HTTPS error token=private",
+        ):
+            with self.subTest(invalid=invalid[:50]):
+                self.assertIsNone(safe_media_review_failure(self.status(failure=invalid)))
 
 
 if __name__ == "__main__":

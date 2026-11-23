@@ -60,3 +60,21 @@ if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation-phase2.
   exit 1
 fi
 echo "CHUNKS_COMBINED_TWO_SERVERS: passed" | tee -a "$GITHUB_STEP_SUMMARY"
+
+# Snapshot priority consent is deliberately independent of live server writes:
+# its installed Compose assertions must EXECUTE (compiling androidTest isn't a
+# receipt). Reuse the same emulator and installed APKs to avoid another job.
+set +e
+timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
+  -e class io.github.gamesbyian.chunks.snapshots.RemoteSnapshotPriorityConfirmationInstrumentedTest \
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
+  > "$out/snapshot-priority-consent.txt" 2>&1
+status=$?
+set -e
+if [ "$status" -ne 0 ] || ! grep -q '^OK (2 tests)' "$out/snapshot-priority-consent.txt"; then
+  tail -80 "$out/snapshot-priority-consent.txt"
+  echo "::error::Installed remote snapshot priority consent regressions failed or were skipped"
+  exit 1
+fi
+echo "CHUNKS_SNAPSHOT_REMOTE_PRIORITY_INSTALLED: both explicit-consent Compose tests executed and passed" | tee -a "$GITHUB_STEP_SUMMARY"
+

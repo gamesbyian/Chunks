@@ -30,20 +30,38 @@ an existing alias and reads back any new setting.
 
 For an exact **already-present rTorrent transfer**, an independently fresh,
 unfiltered complete-session read before and after the exact hash's file query
-can compare the current rTorrent file priorities with saved v2 priorities.
-Original name, complete file count, sizes, order and one consistent original
-versus server-relative path convention must match. Unknown rTorrent priority
-levels or changed account/inventory refuse the comparison. A Low choice
-captured from Local is reported as unsupported, never silently remapped.
-This action is **read-only**, with no remote priority Apply button.
+first **compares** the current rTorrent priorities with saved v2 priorities
+without writing anything. Original name, complete file count, sizes, order and
+one consistent original versus server-relative path convention must match.
+Server-relative files are recognized **only under the exact verified torrent
+root**; an unrelated leading directory cannot authorize a saved mapping
+(#1983). Unknown priorities, incomplete inventory, changed account/target
+or a saved Low choice refuse application. Low captured from Local is reported
+as unsupported and is never silently remapped.
+
+When the target is already present and every saved priority is supported, a
+**separate, paginated Apply confirmation** can show the exact account, hash,
+file index/path/size and current versus saved choice for each change. The user
+must approve those changes explicitly. The coordinator refreshes the complete
+session and full file vector, refuses any changed review, applies only changed
+file priorities with the existing exact-hash/index/path/size/expected-old
+verified RPC, and reads the whole final vector independently. One ambiguous
+acknowledgement, timeout, account switch or postcondition uncertainty **stops**
+the remainder; no automatic retry or rollback is attempted. Report verified
+partial changes and require a new read-only comparison before another attempt.
+No Add, Start/Stop, removal, destination migration, payload copy or
+automatic background priority application occurs. This is deliberately
+limited to already-present rTorrent transfers; support for priorities on
+newly restored definitions remains separate work.
 
 The separately confirmed saved display-alias action for rTorrent first
 re-reads the exact authenticated account's complete current session, and
 refuses a missing/differently named/hash-changed transfer. It writes only a
 Chunks-owned, device-local, account-isolated alias, preserves any existing
 manual alias and independently reads back a successful save. It cannot
-rename a server-side torrent or any payload filename, and neither action
-authorizes a remote priority writer or automatic restore.
+rename a server-side torrent or any payload filename, and neither that alias action nor a read-only comparison by itself
+authorizes remote priority writes. Only the new independent, explicit
+file-priority confirmation described above can do so.
 
 For an exact already-present stopped Local transfer, **Check Local files for
 priority restore** reads its current file priorities and folder. The
@@ -66,7 +84,9 @@ retains ownership of that transfer’s scheduling. See the
 Definition Add, stopped restore and journal reconciliation apply no
 settings. A change to settings alone preserves the definition-only journal
 identity, including journals created from a v1 snapshot. Remote priority
-application, collections, tracker edits and profile settings remain open.
+application on newly created jobs, collections, tracker edits and broader
+profile settings remain open. Already-present rTorrent priorities use the
+separately confirmed, bounded path above.
 
 ## Current implementation checkpoint (2026-11-17)
 
