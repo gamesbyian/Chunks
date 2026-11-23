@@ -105,6 +105,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
@@ -2954,8 +2955,7 @@ internal fun ChunksApp(
                                             prior.name != after.name ||
                                             prior.directory != after.directory ||
                                             prior.sizeBytes != after.sizeBytes) null
-                                        else io.github.gamesbyian.chunks.snapshots
-                                            .SnapshotRemotePriorityComparison.plan(entry, after, observed)
+                                        else SnapshotRemotePriorityComparison.plan(entry, after, observed)
                                     }
                                 }
                             },
