@@ -330,6 +330,8 @@ internal fun SnapshotRestorePreviewPanel(
                         comparedHashes = null
                         manualNotice = null
                         error = null
+                        remoteDefinitionReview = null
+                        remoteBatchReview = null
                         remotePreviousReport = null
                         open.launch(arrayOf("*/*"))
                     },
@@ -729,6 +731,7 @@ internal fun SnapshotRestorePreviewPanel(
                                     latestReady && latestHashes == hashes &&
                                     latestGeneration == generation) {
                                     remoteDefinitionReview = null
+                                    remoteBatchReview = null
                                     remotePreviousReport = null
                                     remoteDefinitionBusy = true
                                     remoteDefinitionNotice =
@@ -1001,6 +1004,7 @@ internal fun SnapshotRestorePreviewPanel(
                                             if (!remoteDefinitionBusy && source != null && hashes != null &&
                                                 latestReady && latestHashes == hashes &&
                                                 latestGeneration == comparedGeneration) {
+                                                remoteBatchReview = null
                                                 remoteDefinitionBusy = true
                                                 remoteDefinitionNotice = "Checking the rTorrent account and Place…"
                                                 scope.launch {
