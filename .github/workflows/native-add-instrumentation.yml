@@ -18,6 +18,7 @@ on:
       # change (or other instrumented test) that requires this native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
       # Helper-only edits run in the dedicated real-peer installed lifecycle

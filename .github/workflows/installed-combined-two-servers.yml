@@ -18,9 +18,11 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
       - "tools/preload_combined_two_servers.py"
       - "tools/installed_combined_two_servers.sh"
       - "tools/combined_fault_controller.py"
+      - "tools/interop/disposable_snapshot_folder_listing.py"
       - ".github/workflows/installed-combined-two-servers.yml"
   workflow_dispatch:
 
@@ -45,6 +47,11 @@ jobs:
           for s in a b; do
             mkdir -p "$root/$s/data" "$root/$s/session"
           done
+          # Only this tested child is selectable by the disposable server's
+          # authenticated read-only ruTorrent folder browser.
+          mkdir -p "$root/a/data/reviewed"
+          nohup python3 -I tools/interop/disposable_snapshot_folder_listing.py "$root/a/data" \
+            > "$root/folders.log" 2>&1 < /dev/null &
           start() {
             name=$1 scgi=$2 peer=$3
             cat > "$root/$name/rtorrent.rc" <<EOF
@@ -68,13 +75,61 @@ jobs:
           error_log $root/nginx.error notice;
           events { worker_connections 64; }
           http {
-            server { listen 127.0.0.1:18080; location /RPC2 { auth_basic "chunks-a"; auth_basic_user_file /tmp/chunks-combined-a.htpasswd; include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; } }
+            server {
+              listen 127.0.0.1:18080;
+              location /RPC2 {
+                auth_basic "chunks-a";
+                auth_basic_user_file /tmp/chunks-combined-a.htpasswd;
+                include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000;
+              }
+              # Same exact Basic-auth principal as /RPC2, not an anonymous
+              # filesystem oracle or a connection to the other rTorrent host.
+              location = /rutorrent/plugins/httprpc/action.php {
+                auth_basic "chunks-a";
+                auth_basic_user_file /tmp/chunks-combined-a.htpasswd;
+                include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000;
+              }
+              location = /rutorrent/plugins/_getdir/listdir.php {
+                auth_basic "chunks-a";
+                auth_basic_user_file /tmp/chunks-combined-a.htpasswd;
+                proxy_pass http://127.0.0.1:18084;
+              }
+            }
             server { listen 127.0.0.1:18082; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5001; } }
           }
           EOF
           # Disposable basic-auth login for server A only (C2 sign-in rejection).
           printf 'chunks:%s\n' "$(openssl passwd -apr1 chunks-one)" > /tmp/chunks-combined-a.htpasswd && chmod 644 /tmp/chunks-combined-a.htpasswd
           sudo nginx -c "$root/nginx.conf"
+          # Fail early if nginx's SAME Basic-authenticated tenant mount does
+          # not return the current root and only the precreated read-only child.
+          # Never print the response body (which contains runner filesystem paths).
+          folder_ok=0
+          for attempt in $(seq 1 15); do
+            if curl --silent --fail --max-time 3 -u chunks:chunks-one \
+                'http://127.0.0.1:18080/rutorrent/plugins/_getdir/listdir.php?dir=' \
+                -o "$root/folder-preflight.json" &&
+               python3 -I -c 'import json,sys; j=json.load(open(sys.argv[1])); assert j=={"path":sys.argv[2],"directories":["reviewed"]}' \
+                "$root/folder-preflight.json" "$root/a/data" 2>/dev/null; then
+              folder_ok=1
+              break
+            fi
+            sleep 0.4
+          done
+          test "$folder_ok" -eq 1 || { echo "::error::Exact-tenant read-only folder fixture preflight failed"; exit 1; }
+          # The Android picker ALWAYS re-reads the resolved root by its exact
+          # path, then opens the child. Guard both: an empty-request-only
+          # fixture previously hid every folder even though its first GET passed.
+          for suffix in "$root/a/data" "$root/a/data/reviewed"; do
+            encoded="$(python3 -I -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1],safe=""))' "$suffix")"
+            curl --silent --fail --max-time 5 -u chunks:chunks-one \
+              "http://127.0.0.1:18080/rutorrent/plugins/_getdir/listdir.php?dir=$encoded" \
+              -o "$root/folder-exact-preflight.json" ||
+                { echo "::error::Exact-tenant folder reread was refused"; exit 1; }
+            python3 -I -c 'import json,sys; j=json.load(open(sys.argv[1])); expected=["reviewed"] if sys.argv[2] == sys.argv[3] else []; assert j == {"path":sys.argv[2],"directories":expected}' \
+              "$root/folder-exact-preflight.json" "$suffix" "$root/a/data" 2>/dev/null ||
+                { echo "::error::Exact-tenant folder reread was inconsistent"; exit 1; }
+          done
           for port in 18080 18082; do
             for i in $(seq 1 40); do
               curl -fsS -u chunks:chunks-one -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \

@@ -15,6 +15,7 @@ WORKFLOWS = ROOT / ".github" / "workflows"
 APP_TEST_ROOT = "app/src/androidTest/java/io/github/gamesbyian/chunks/"
 DEDICATED = {
     "snapshots/RemoteSnapshotRestoreInstalledTest.kt": "installed-combined-two-servers.yml",
+    "snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt": "installed-combined-two-servers.yml",
     "SystemFontScaleComposeInstrumentedTest.kt": "compose-system-font-200pct.yml",
     "ExperimentalTypefaceNativeInstrumentedTest.kt": "experimental-font-android-render.yml",
     "AndroidNativeLowStorageRecoveryInstrumentedTest.kt": "android-native-low-storage-repro.yml",
@@ -30,6 +31,7 @@ DEDICATED = {
 }
 OWNER_EXECUTION = {
     "snapshots/RemoteSnapshotRestoreInstalledTest.kt": "tools/installed_combined_two_servers.sh",
+    "snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt": "tools/installed_combined_two_servers.sh",
     "SystemFontScaleComposeInstrumentedTest.kt": "tools/run_compose_system_font_200pct.sh",
     "ExperimentalTypefaceNativeInstrumentedTest.kt": "tools/run_native_font_acceptance.sh",
     "AndroidNativeLowStorageRecoveryInstrumentedTest.kt": "tools/android_native_low_storage_repro.sh",
