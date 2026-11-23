@@ -573,10 +573,10 @@ internal fun SnapshotRestorePreviewPanel(
                                     onClick = {
                                         if (latestReady && latestHashes == comparedHashes &&
                                             latestGeneration == comparedGeneration) {
-                                            aliasNotice = "Checking the Local display alias…"
+                                            aliasNotice = "Checking the ${target.title} display alias…"
                                             onApplyAlias(entry, comparedGeneration) { aliasNotice = it }
                                         } else {
-                                            error = "The local inventory changed. Compare the snapshot again."
+                                            error = "The ${target.noun} inventory changed. Compare the snapshot again."
                                         }
                                     },
                                     modifier = Modifier.heightIn(min = 48.dp)
