@@ -59,6 +59,7 @@ jobs:
           fi
       - name: Run one non-mutating authenticated version and main-view probe
         env:
+          CHUNKS_ENDPOINT_PROFILE: ${{ inputs.profile }}
           # Every option is a fixed, credential-free HTTPS endpoint. Do not
           # synthesize guessed RPC2/RPC3 mounts from the Transdrone screenshot.
           CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.profile == 'second-rutorrent-https' && 'https://ianseeds.wood.seedhost.eu/rutorrent2/' || inputs.profile == 'third-rutorrent-https' && 'https://ianseeds.wood.seedhost.eu/rutorrent3/' || inputs.profile == 'primary-scgi-https-candidate' && 'https://wood.seedhost.eu/ianseeds/RPC1' || 'https://ianseeds.wood.seedhost.eu/rutorrent/' }}
@@ -70,8 +71,12 @@ jobs:
           test -n "$CHUNKS_LIVE_RUTORRENT_URL"
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
           test -n "$CHUNKS_LIVE_RTORRENT_PASS" || { echo '::error::Selected profile password secret is absent'; exit 1; }
-          gradle --no-daemon --console=plain :app:testDebugUnitTest \
-            --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
+          test_class=io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
+          selected_tests=(--tests "$test_class.actualKotlinAdapterListsOwnerApprovedDevSeedbox")
+          if [[ "$CHUNKS_ENDPOINT_PROFILE" == primary-rutorrent-https ]]; then
+            selected_tests+=(--tests "$test_class.realPrimarySeedhostReportsExactScopedReadOnlySeedingEvidence")
+          fi
+          gradle --no-daemon --console=plain :app:testDebugUnitTest "${selected_tests[@]}"
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
           report = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml')

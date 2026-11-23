@@ -61,7 +61,7 @@ jobs:
         run: |
           test -n "$CHUNKS_LIVE_RTORRENT_PASS" || { echo "::error::Password secret for instance ${{ matrix.instance }} is not configured"; exit 1; }
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
-            --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.actualKotlinAdapterListsOwnerApprovedDevSeedbox
           # The test returns early without a URL; require its success marker.
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml
           grep -o 'CHUNKS_KOTLIN_SEEDHOST_READONLY: [^<]*' "$report" | head -1 | tee -a "$GITHUB_STEP_SUMMARY"
