@@ -1,6 +1,18 @@
 package io.github.gamesbyian.chunks.snapshots
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import io.github.gamesbyian.chunks.RemoteFolderPicker
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
@@ -15,11 +27,49 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import org.junit.Rule
 import org.junit.runner.RunWith
 
 /** Actual selected-Place stopped Add via a challenged same-tenant ruTorrent mount. */
 @RunWith(AndroidJUnit4::class)
 class RemoteSnapshotSelectedPlaceInstalledTest {
+
+    @get:Rule val compose = createComposeRule()
+
+    @Test fun authenticatedBrowserSelectsExactChildWithoutTorrentMutation() {
+        assumeTrue(InstrumentationRegistry.getArguments()
+            .getString("chunks_combined_disposable") == "authorized")
+        val account = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:18080/rutorrent/plugins/httprpc/action.php", "chunks", "chunks-one"))
+        val independent = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:18080/RPC2", "chunks", "chunks-one"))
+        val (before, selectedExpected) = runBlocking {
+            account.version()
+            independent.listCompleteSessionTransfers().map { it.hash }.toSet() to
+                (requireNotNull(independent.defaultDirectory()) + "/reviewed")
+        }
+        var chosen by mutableStateOf<String?>(null)
+        compose.setContent {
+            MaterialTheme {
+                RemoteFolderPicker(account, "Disposable server A", initialFolder = null,
+                    onChoose = { chosen = it }, onDismiss = {})
+            }
+        }
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(hasContentDescription("Open folder reviewed"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithContentDescription("Open folder reviewed").performClick()
+        compose.waitUntil(30_000) {
+            compose.onAllNodes(hasText("Use this folder") and isEnabled())
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Use this folder").performClick()
+        assertEquals(selectedExpected, chosen)
+        assertEquals(before, runBlocking {
+            independent.listCompleteSessionTransfers().map { it.hash }.toSet()
+        })
+    }
     @Test fun exactAuthenticatedSelectedFolderAddsOnceStoppedAndOtherAccountUntouched() {
         assumeTrue(InstrumentationRegistry.getArguments()
             .getString("chunks_combined_disposable") == "authorized")
