@@ -35,9 +35,7 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
   > "$out/snapshot-restore-installed.txt" 2>&1
 status=$?
 set -e
-if ! adb exec-out run-as "$pkg" cat files/disposable-snapshot-review.png > "$out/snapshot-review.png"; then
-  rm -f "$out/snapshot-review.png"
-fi
+adb pull "/sdcard/Android/data/$pkg/files/disposable-snapshot-review.png"   "$out/snapshot-review.png" >/dev/null 2>&1 || rm -f "$out/snapshot-review.png"
 if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/snapshot-restore-installed.txt" ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-restore-installed.txt"; then
   tail -80 "$out/snapshot-restore-installed.txt"

@@ -13,8 +13,10 @@ import java.io.IOException
  */
 internal class AndroidSnapshotRestoreJournalStore(context: Context) :
     SnapshotRestoreJournalV1.Store {
-    private val preferences = context.applicationContext.getSharedPreferences(
-        "chunks_restore_journal_v1", Context.MODE_PRIVATE)
+    private val appContext = context.applicationContext
+    private val preferences by lazy {
+        appContext.getSharedPreferences("chunks_restore_journal_v1", Context.MODE_PRIVATE)
+    }
 
     override fun read(key: String): String? = try {
         preferences.getString(key, null)

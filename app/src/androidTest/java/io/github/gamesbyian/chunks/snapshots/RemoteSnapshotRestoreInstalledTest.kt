@@ -12,10 +12,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.core.app.ActivityOptionsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -110,9 +113,10 @@ class RemoteSnapshotRestoreInstalledTest {
         // Capture just the functional confirmation for installed layout review.
         val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
         try {
-            File(context.filesDir, "disposable-snapshot-review.png").outputStream().use {
-                assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
-            }
+            File(requireNotNull(context.getExternalFilesDir(null)), "disposable-snapshot-review.png")
+                .outputStream().use {
+                    assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
+                }
         } finally {
             screenshot.recycle()
         }
@@ -121,10 +125,32 @@ class RemoteSnapshotRestoreInstalledTest {
         compose.onNodeWithText("Confirm stopped restore").assertDoesNotExist()
         assertNull(runBlocking { independent.lookupName(hash) })
         reviewOnce()
-        compose.onNodeWithText("Confirm stopped restore").performClick()
-        compose.waitUntil(45_000) {
-            compose.onAllNodesWithText("Stopped at the reviewed Place.", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
+        // Invoke the installed accessibility action exactly once. A transient
+        // window/overlay must not be mistaken for a dispatch or retried.
+        compose.onNodeWithText("Confirm stopped restore").performSemanticsAction(SemanticsActions.OnClick) {
+            assertTrue("The confirmation must own its enabled click action", it())
+        }
+        try {
+            compose.waitUntil(45_000) {
+                compose.onAllNodesWithText("Stopped at the reviewed Place.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (timeout: ComposeTimeoutException) {
+            // Read-only witnesses. Never dump window text or repeat the Add.
+            val state = listOf(
+                "pending" to "Restoring one stopped definition",
+                "origin-unknown" to "The origin of the registration",
+                "blocked" to "No Add was sent by this action",
+                "stale" to "The rTorrent account or comparison changed",
+                "uncertain" to "Restore not verified",
+                "dialog-open" to "Confirm stopped restore"
+            ).firstOrNull { (_, prefix) ->
+                compose.onAllNodesWithText(prefix, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }?.first ?: "no-result"
+            val registered = runCatching { runBlocking { independent.lookupName(hash) != null } }
+                .getOrNull()
+            throw AssertionError("Stopped snapshot restore did not verify; state=$state " +
+                "exactRegistration=${registered ?: "unavailable"}", timeout)
         }
         runBlocking {
             val inventory = independent.listCompleteSessionTransfers()
