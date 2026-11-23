@@ -59,7 +59,7 @@ class ServerSnapshotAliasInstrumentedTest {
             SnapshotManifestV1.Recovery.INVENTORY,
             settings = SnapshotManifestV1.Settings(displayAlias = "Snapshot label"))
         val raw = SnapshotManifestV1.encode(SnapshotManifestV1.Manifest(
-            "chunks-native-test", "2026-11-23T00:00:00Z", SnapshotManifestV1.Source.LOCAL,
+            "chunks-android", "2026-11-23T00:00:00Z", SnapshotManifestV1.Source.LOCAL,
             listOf(item)), emptyMap())
         val uri = OwnedDiagnosticExportProvider.publish(
             context, "snapshot-remote-alias-test.chunksnap", raw)
