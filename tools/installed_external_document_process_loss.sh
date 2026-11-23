@@ -211,7 +211,7 @@ PY
   local intake_log=""
   intake_log="$(timeout 10s adb logcat -d -s ChunksIntake:I 2>/dev/null || true)"
   local accepts=0
-  accepts="$(printf '%s\\n' "$intake_log" | grep -Fc 'outcome=document' || true)"
+  accepts="$(printf '%s\n' "$intake_log" | grep -Fc 'outcome=document' || true)"
   if [[ "$accepts" =~ ^[0-9]+$ ]]; then
     if (( accepts == 0 )); then sender_replayed=missing-intake
     elif (( accepts == 1 )); then sender_replayed=initial-only
@@ -223,7 +223,7 @@ PY
 import re, sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text(errors="replace")
-items = re.findall(r"mCurrentFocus=([^\\n]+)", text)
+items = re.findall(r"mCurrentFocus=([^\n]+)", text)
 item = items[-1] if items else ""
 if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
 elif "io.github.gamesbyian.chunks/" in item: print("chunks")
@@ -233,10 +233,10 @@ elif item: print("other-window")
 else: print("unknown")
 PY
 )"
-  printf 'CHUNKS_DOCUMENT_RESTORE_DIAG: process=%s task_same=%s pid_changed=%s ui=%s foreground=%s document_intake=%s\\n' \\
-    "$([[ -n "$current_pid" ]] && echo present || echo absent)" \\
-    "$([[ -n "$current_task" && "$current_task" == "$old_task" ]] && echo true || echo false)" \\
-    "$([[ -n "$current_pid" && "$current_pid" != "$old_pid" ]] && echo true || echo false)" \\
+  printf 'CHUNKS_DOCUMENT_RESTORE_DIAG: process=%s task_same=%s pid_changed=%s ui=%s foreground=%s document_intake=%s\n' \
+    "$([[ -n "$current_pid" ]] && echo present || echo absent)" \
+    "$([[ -n "$current_task" && "$current_task" == "$old_task" ]] && echo true || echo false)" \
+    "$([[ -n "$current_pid" && "$current_pid" != "$old_pid" ]] && echo true || echo false)" \
     "$xml" "$focused" "$sender_replayed" | tee "$out/document-restored-diagnostic.txt"
 }
 open_source "--ez fixture_keep_task true" ||
