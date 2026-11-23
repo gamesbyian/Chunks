@@ -368,6 +368,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
                     self.assertIn(retained, source)
                 self.assertNotIn("continue-on-error: true", source)
 
+    def test_disposable_installed_workflows_defer_draft_but_resume_on_ready(self):
+        # Preserve complete expensive real-daemon acceptance when a PR is ready;
+        # experimental draft edits and conversions must stay cost-free.
+        for filename, job, script in (
+            ("installed-remote-delete-data.yml", "remote-delete-data",
+             "tools/installed_remote_delete_data.sh"),
+            ("installed-combined-two-servers.yml", "two-server-combined",
+             "tools/installed_combined_two_servers.sh"),
+        ):
+            with self.subTest(workflow=filename):
+                source = (ROOT / ".github/workflows" / filename).read_text()
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source)
+                self.assertIn(f"  {job}:", source)
+                self.assertIn("workflow_dispatch:", source)
+                self.assertIn("cancel-in-progress: true", source)
+                self.assertIn(script, source)
+                self.assertNotIn("continue-on-error: true", source)
+
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
         source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
                   ).read_text(encoding="utf-8")
