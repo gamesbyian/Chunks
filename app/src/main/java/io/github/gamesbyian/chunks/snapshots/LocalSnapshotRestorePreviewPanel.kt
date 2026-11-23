@@ -142,6 +142,7 @@ internal fun SnapshotRestorePreviewPanel(
     onApplyRemotePriorities: ((SnapshotRestorePreviewV1.Entry,
         SnapshotRemotePriorityComparison, Long, (String) -> Unit) -> Unit)? = null,
     remoteDefinitionRestore: SnapshotRemoteDefinitionRestore? = null,
+    remoteBatchStoppedRestore: SnapshotRemoteBatchStoppedRestore? = null,
     remoteDefinitionActionScope: CoroutineScope? = null,
     remoteDefinitionAccountLabel: String? = null,
     /** Only the currently authenticated exact account supplies browse capability. */
@@ -177,6 +178,11 @@ internal fun SnapshotRestorePreviewPanel(
     }
     var remoteDefinitionBusy by remember { mutableStateOf(false) }
     var remoteDefinitionNotice by remember { mutableStateOf<String?>(null) }
+    var remoteBatchDraft by remember(remoteBatchStoppedRestore) {
+        mutableStateOf<SnapshotRemoteBatchStoppedRestore.Draft?>(null)
+    }
+    var remoteBatchBusy by remember(remoteBatchStoppedRestore) { mutableStateOf(false) }
+    var remoteBatchNotice by remember(remoteBatchStoppedRestore) { mutableStateOf<String?>(null) }
     var remotePreviousReport by remember(remoteDefinitionRestore) {
         mutableStateOf<SnapshotRemoteDefinitionRestore.PreviousReport?>(null)
     }
@@ -204,6 +210,9 @@ internal fun SnapshotRestorePreviewPanel(
         confirmRemotePriorities = false
         remoteDefinitionReview = null
         remotePreviousReport = null
+        // A changed comparison revokes an unconfirmed bulk review, but not a
+        // series already separately confirmed and executing on its own lease.
+        if (!remoteBatchBusy) remoteBatchDraft = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
@@ -344,6 +353,9 @@ internal fun SnapshotRestorePreviewPanel(
                 remoteDefinitionNotice?.let {
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 }
+                remoteBatchNotice?.let {
+                    Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
                 remotePreviousReport?.let { previous ->
                     Text("Previous rTorrent restore journals: ${previous.items.size} originals, " +
                         "${previous.verifiedCount} independently verified stopped at this Place, " +
@@ -397,6 +409,8 @@ internal fun SnapshotRestorePreviewPanel(
                         if (remoteSelectedPlace != null) OutlinedButton(onClick = {
                             remoteSelectedPlace = null
                             remoteDefinitionReview = null
+                            remoteBatchDraft = null
+                            remoteBatchNotice = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
                         }, enabled = !remoteDefinitionBusy && !reading,
@@ -411,11 +425,64 @@ internal fun SnapshotRestorePreviewPanel(
                         onChoose = { selected ->
                             remoteSelectedPlace = selected
                             remoteDefinitionReview = null
+                            remoteBatchDraft = null
+                            remoteBatchNotice = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
                             chooseRemotePlace = false
                         },
                         onDismiss = { chooseRemotePlace = false }
+                    )
+                }
+                val bulkReview = remoteBatchDraft
+                if (bulkReview != null && remoteBatchStoppedRestore != null &&
+                    remoteDefinitionAccountLabel != null) {
+                    RemoteSnapshotBatchStoppedConfirmation(
+                        draft = bulkReview,
+                        accountLabel = remoteDefinitionAccountLabel,
+                        onCancel = { remoteBatchDraft = null },
+                        onConfirm = {
+                            remoteBatchDraft = null
+                            if (!remoteBatchBusy && latestReady &&
+                                latestHashes == comparedHashes &&
+                                latestGeneration == comparedGeneration) {
+                                remoteBatchBusy = true
+                                remoteBatchNotice =
+                                    "Checking all restore journals before stopped server Adds…"
+                                scope.launch {
+                                    try {
+                                        val report = remoteBatchStoppedRestore.execute(
+                                            bulkReview, confirmed = true)
+                                        remoteBatchNotice = if (report.complete) {
+                                            "${report.verified}/${report.total} stopped server " +
+                                                "definitions independently verified. No Start or " +
+                                                "payload copy. Refresh the comparison to review " +
+                                                "saved priorities."
+                                        } else {
+                                            "${report.verified}/${report.total} definitions " +
+                                                "verified before the group stopped" +
+                                                (report.stoppedAtHash?.let {
+                                                    " at infohash " + it.take(12)
+                                                } ?: "") + ". Reason: " +
+                                                (report.stop?.name ?: "unknown") +
+                                                ". No automatic retry or rollback. Check previous " +
+                                                "server restores before considering another Add."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        remoteBatchNotice =
+                                            "The group outcome could not be verified. No automatic " +
+                                                "retry. Check previous server restores."
+                                    } finally {
+                                        remoteBatchBusy = false
+                                    }
+                                }
+                            } else {
+                                remoteBatchNotice = "The server comparison changed. " +
+                                    "No group submission was authorized."
+                            }
+                        }
                     )
                 }
                 val definitionReview = remoteDefinitionReview
