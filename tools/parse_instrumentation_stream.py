@@ -235,8 +235,10 @@ _MEDIA_REVIEW_FINGERPRINT = re.compile(
 )
 
 
-def safe_media_review_failure(text: str) -> str | None:
-    """One bounded failure-only fingerprint; no source URL, hash or stack."""
+def _safe_timeout_signature(
+    text: str, tests: set[tuple[str, str]], signature: re.Pattern[str], timeout_ms: int,
+) -> re.Match[str] | None:
+    """Match only a named test's exact assertion and allowlisted Java continuation."""
     fields: dict[str, str] = {}
     stack: str | None = None
     stack_continuation = False
@@ -254,7 +256,7 @@ def safe_media_review_failure(text: str) -> str | None:
     # cause message (which may contain user values or a source URL).
     timeout_cause = re.compile(
         r"^Caused by: androidx\.compose\.ui\.test\.ComposeTimeoutException"
-        r"(?:: Condition still not satisfied after 30000 ms)?$"
+        rf"(?:: Condition still not satisfied after {timeout_ms} ms)?$"
     )
     omitted_frames = re.compile(r"^[ \t]*\.\.\. [1-9][0-9]{0,3} more$")
     for line in text.splitlines():
@@ -270,13 +272,11 @@ def safe_media_review_failure(text: str) -> str | None:
                 stack_continuation = True
         elif line.startswith(STATUS_CODE):
             if (line[len(STATUS_CODE):].strip() == "-2" and
-                    (fields.get("class"), fields.get("test")) in _MEDIA_REVIEW_FAILURE_TESTS and
+                    (fields.get("class"), fields.get("test")) in tests and
                     stack is not None and not stack_untrusted_suffix):
-                match = _MEDIA_REVIEW_FINGERPRINT.fullmatch(stack)
+                match = signature.fullmatch(stack)
                 if match:
-                    names = ("fixtureSourceRequests", "ownerHasAnyReviewedTorrent",
-                             "addFooterVisible", "sourceFieldVisible", "intakeProblem")
-                    return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
+                    return match
             fields = {}
             stack = None
             stack_continuation = False
@@ -287,6 +287,37 @@ def safe_media_review_failure(text: str) -> str | None:
             stack_untrusted_suffix = True
     return None
 
+
+def safe_media_review_failure(text: str) -> str | None:
+    """One bounded failure-only fingerprint; no source URL, hash or stack."""
+    match = _safe_timeout_signature(text, _MEDIA_REVIEW_FAILURE_TESTS,
+                                    _MEDIA_REVIEW_FINGERPRINT, 30_000)
+    if match is None:
+        return None
+    names = ("fixtureSourceRequests", "ownerHasAnyReviewedTorrent",
+             "addFooterVisible", "sourceFieldVisible", "intakeProblem")
+    return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
+
+
+_IME_FOCUS_TESTS = {
+    ("io.github.gamesbyian.chunks.FooterImeInstalledInstrumentedTest",
+     "footerRemainsAvailableThroughSoftKeyboardAndAfterSearchKey"),
+}
+_IME_FOCUS_FINGERPRINT = re.compile(
+    r"java\.lang\.AssertionError: Installed keyboard journey did not acquire Chunks window focus; "
+    r"foregroundIsChunks=(true|false|unavailable); "
+    r"externalLauncherAnrVisible=(true|false|unavailable); "
+    r"externalLauncherWaitClicked=(true|false)\. No input or transfer write was attempted\."
+)
+
+
+def safe_ime_focus_failure(text: str) -> str | None:
+    """Expose foreground and exact external ANR witnesses without dumping Android windows."""
+    match = _safe_timeout_signature(text, _IME_FOCUS_TESTS, _IME_FOCUS_FINGERPRINT, 15_000)
+    if match is None:
+        return None
+    names = ("foregroundIsChunks", "externalLauncherAnrVisible", "externalLauncherWaitClicked")
+    return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
 
 @dataclass(frozen=True)
 class TestResult:
@@ -400,6 +431,9 @@ def main() -> None:
         safe_source = safe_media_review_failure(raw)
         if safe_source is not None:
             print("CHUNKS_PREBUILT_SAFE_MEDIA_REVIEW: " + safe_source)
+        safe_focus = safe_ime_focus_failure(raw)
+        if safe_focus is not None:
+            print("CHUNKS_PREBUILT_SAFE_IME_FOCUS: " + safe_focus)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 
