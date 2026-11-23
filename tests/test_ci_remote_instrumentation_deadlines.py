@@ -10,7 +10,7 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
     def test_every_selected_installed_journey_has_an_independent_deadline(self):
         expected = {
             "tools/installed_protocol_client.sh": (6, "--user 0 -w -r"),
-            "tools/installed_combined_two_servers.sh": (2, "-w -r"),
+            "tools/installed_combined_two_servers.sh": (3, "-w -r"),
             "tools/installed_rtorrent_magnets.sh": (2, "-w -r"),
             "tools/fgs_timeout_repro.sh": (2, "-w -r"),
             "tools/process_death_repro.sh": (2, "-w -r"),
@@ -31,6 +31,15 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
                 )
                 self.assertEqual(count, len(re.findall(pattern, src)))
                 self.assertIn("set -euo pipefail", src)
+
+    def test_installed_snapshot_priority_consent_is_actually_executed(self):
+        # Compiling an androidTest class must not count as its acceptance.
+        source = (ROOT / "tools/installed_combined_two_servers.sh").read_text()
+        self.assertIn("RemoteSnapshotPriorityConfirmationInstrumentedTest", source)
+        self.assertIn("snapshot-priority-consent.txt", source)
+        self.assertIn("grep -q '^OK (2 tests)'", source)
+        self.assertIn("CHUNKS_SNAPSHOT_REMOTE_PRIORITY_INSTALLED:", source)
+        self.assertIn("::error::Installed remote snapshot priority consent", source)
 
     def test_document_process_loss_is_host_driven_and_bounded(self):
         runner = (ROOT / "tools/installed_protocol_client.sh").read_text()
