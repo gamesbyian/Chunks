@@ -36,10 +36,11 @@ internal fun RemoteSnapshotBatchStoppedConfirmation(
                 Text("These original torrent definitions may contain private tracker " +
                     "addresses and passkeys. Confirmation sends them to this exact " +
                     "rTorrent account one at a time and leaves each new job STOPPED.")
-                for ((hash, name) in draft.items.take(8)) {
+                // All reviewed identities are individually available by
+                // scrolling, never only a hidden count of unreviewed writes.
+                for ((hash, name) in draft.items) {
                     Text(name + " · " + hash.take(12))
                 }
-                if (draft.count > 8) Text("And ${draft.count - 8} more verified originals.")
                 Text("Chunks checks EVERY previous restore journal before the first " +
                     "server Add, then independently checks each stopped job and " +
                     "folder before proceeding. The first uncertain result stops " +
