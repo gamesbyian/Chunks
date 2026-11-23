@@ -66,3 +66,11 @@ Transmission, qBittorrent and Deluge now have actual write-capable integrated An
 ## Update discipline
 
 On each broad autonomous dispatch, verify only the affected ledger rows against the current source, issue, exact SHA and test receipts. Record implemented/integrated/real-verified/blocked separately in the PR or issue; update the table when status materially changes. Keep missing functional work more prominent than pending cosmetic refinements. Include evidence links where available; provisional table text above is a triage summary, not a completed audit.
+
+
+## 2026-11-23 ruTorrent Source bounded-read acceptance (#1967)
+
+- Merged PR [#1967](https://github.com/gamesbyian/Chunks/pull/1967), head `18eeba87b202b4309a745f98b0c861fc1c612cab`, main merge `20b37e36f4e1cf67f44c0db3a08aea7cd613f26c`.
+- Required exact-head green runs: [R8 45103137933](https://github.com/gamesbyian/Chunks/actions/runs/45103137933), [Android/JVM 45103137936](https://github.com/gamesbyian/Chunks/actions/runs/45103137936), [native Add shards and verifier 45103137939](https://github.com/gamesbyian/Chunks/actions/runs/45103137939), [installed five-client 45103137980](https://github.com/gamesbyian/Chunks/actions/runs/45103137980), [real-client interop 45103137981](https://github.com/gamesbyian/Chunks/actions/runs/45103137981). Latest jobs all concluded success.
+- Read-only Source HTTP stream fails closed after 17 consecutive zero-byte reads, resets the counter on positive progress, and rejects more than 2 MiB. Installed foreign-document workflow path triggers and shell syntax preflight are included; draft #1969 closed unmerged.
+- Does **not** establish snapshot restore, remote priority mutation, physical Pixel provider/TalkBack, protected Seedhost or signed release. Prior red Android foreground #1786 and Connections navigation #1515 remain historical failures. Independent #1971 is not included.
