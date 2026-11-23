@@ -233,8 +233,16 @@ class RemoteDestinationResolutionTest {
     @Test fun anUnopenedHashFailureExplainsStorageRecoveryOnTheActualAddResult() {
         server.activationBlocked = true
         show(mutableStateOf(null), mutableStateOf("/srv/blocked"))
+        // Wait for the applied default-directory report, which adds the reset
+        // row and can relayout the lazy review while scrolling to Submit.
+        rule.waitUntil(15_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Reset to rTorrent default folder"))
+            }.isSuccess
+        }
         reveal(ChunksSemantics.ADD_SUBMIT)
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled().performClick()
         rule.waitUntil(15_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(
                 hasText("could not open or hash-check", substring = true)) }.isSuccess
