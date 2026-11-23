@@ -175,7 +175,72 @@ PY
     "$focused" "$resumed" "$after_focus" |
     tee "$out/document-preflight-diagnostic.txt"
 }
-open_source || { fail "foreign provider VIEW not delivered"; exit 1; }
+# The disposable Chunks user data was already cleared above. Starting a
+# realistic external Open With should NOT then issue FLAG_ACTIVITY_CLEAR_TASK:
+# that second task reset can race the initial Compose window's foregrounding.
+# The sender's fixture_keep_task flag merely omits that artificial clear; the
+# exact foreign-UID content URI, read grant, fresh launch and all later
+# task/process assertions remain unchanged. A passing run does not establish
+# Pixel behavior or repair a genuinely disappearing app window.
+# Failure-only post-process-loss witness. Never print UI XML, the provider
+# URI, original intent, content/name, logcat text or exception strings.
+# The bounded categories distinguish task focus, missing saved-state notice
+# and accidental replay of the original Open With after a process restart.
+diagnose_missing_interrupted_notice() {
+  local current_pid="" current_task="" xml=missing sender_replayed=unknown focused=unknown
+  current_pid="$(app_pid || true)"
+  current_task="$(task_id || true)"
+  if [[ -s "$scratch/window.xml" ]]; then
+    xml="$(python3 - "$scratch/window.xml" "$pkg" "$source_name" "$notice" <<'PY'
+import sys
+from xml.etree import ElementTree as ET
+try:
+    nodes = list(ET.parse(sys.argv[1]).getroot().iter())
+    app = [n for n in nodes if n.attrib.get("package") == sys.argv[2]]
+    has_source = any(sys.argv[3] in n.attrib.get(k, "")
+                     for n in app for k in ("text", "content-desc"))
+    has_notice = any(sys.argv[4] in n.attrib.get(k, "")
+                     for n in app for k in ("text", "content-desc"))
+    print("notice" if has_notice else "unexpected-source" if has_source
+          else "other-app-content" if app else "no-app-nodes")
+except (OSError, ET.ParseError):
+    print("invalid-ui")
+PY
+)"
+  fi
+  local intake_log=""
+  intake_log="$(timeout 10s adb logcat -d -s ChunksIntake:I 2>/dev/null || true)"
+  local accepts=0
+  accepts="$(printf '%s\n' "$intake_log" | grep -Fc 'outcome=document' || true)"
+  if [[ "$accepts" =~ ^[0-9]+$ ]]; then
+    if (( accepts == 0 )); then sender_replayed=missing-intake
+    elif (( accepts == 1 )); then sender_replayed=initial-only
+    else sender_replayed=repeated-admission
+    fi
+  fi
+  timeout 12s adb shell dumpsys window windows > "$scratch/restored-window.txt" 2>/dev/null || true
+  focused="$(python3 - "$scratch/restored-window.txt" <<'PY'
+import re, sys
+from pathlib import Path
+text = Path(sys.argv[1]).read_text(errors="replace")
+items = re.findall(r"mCurrentFocus=([^\n]+)", text)
+item = items[-1] if items else ""
+if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
+elif "io.github.gamesbyian.chunks/" in item: print("chunks")
+elif "inputmethod" in item.lower() or "latinime" in item.lower(): print("keyboard")
+elif "launcher" in item.lower(): print("launcher")
+elif item: print("other-window")
+else: print("unknown")
+PY
+)"
+  printf 'CHUNKS_DOCUMENT_RESTORE_DIAG: process=%s task_same=%s pid_changed=%s ui=%s foreground=%s document_intake=%s\n' \
+    "$([[ -n "$current_pid" ]] && echo present || echo absent)" \
+    "$([[ -n "$current_task" && "$current_task" == "$old_task" ]] && echo true || echo false)" \
+    "$([[ -n "$current_pid" && "$current_pid" != "$old_pid" ]] && echo true || echo false)" \
+    "$xml" "$focused" "$sender_replayed" | tee "$out/document-restored-diagnostic.txt"
+}
+open_source "--ez fixture_keep_task true" ||
+  { fail "foreign provider VIEW not delivered"; exit 1; }
 if ! await_source_review; then
   diagnose_missing_source_review
   fail "first document review not visible after bounded user scroll"; exit 1
@@ -204,7 +269,10 @@ echo "CHUNKS_DOCUMENT_TASK: stopped-task-survived-real-process-death"
 resume_saved_task "$old_task" || { fail "recorded saved task could not be foregrounded"; exit 1; }
 # Focusing an attached task schedules its Activity/process resume. Observe the
 # actual interruption notice before taking the new stable PID and task sample.
-await_text "$notice" || { fail "restored task lacks interrupted-document notice"; exit 1; }
+if ! await_text "$notice"; then
+  diagnose_missing_interrupted_notice
+  fail "restored task lacks interrupted-document notice"; exit 1
+fi
 new_task="$(task_id)" || { fail "restored task identity unavailable"; exit 1; }
 new_pid="$(app_pid)" || { fail "restored app process identity unavailable"; exit 1; }
 if [[ "$new_task" != "$old_task" ]]; then fail "task changed during restoration"; exit 1; fi
