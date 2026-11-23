@@ -56,13 +56,13 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
 selected_status=$?
 set -e
 if [ "$selected_status" -ne 0 ] ||
-   ! grep -q '^OK (2 tests)' "$out/snapshot-selected-place-installed.txt" ||
+   ! grep -q '^OK (3 tests)' "$out/snapshot-selected-place-installed.txt" ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-selected-place-installed.txt"; then
   tail -80 "$out/snapshot-selected-place-installed.txt"
   echo "::error::Authenticated selected-place stopped snapshot restore did not pass"
   exit 1
 fi
-echo "CHUNKS_SNAPSHOT_SELECTED_PLACE_INSTALLED: exact authenticated folder read, one stopped Add, no replay, cross-account negative" >> "$GITHUB_STEP_SUMMARY"
+echo "CHUNKS_SNAPSHOT_SELECTED_PLACE_INSTALLED: authenticated folder read, one stopped Add, two-item consented batch with before-all journal preflight, no replay, cross-account negative" >> "$GITHUB_STEP_SUMMARY"
 
 b64() { printf '%s' "$1" | base64 -w 0; }
 field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$receipt" "$1"; }
