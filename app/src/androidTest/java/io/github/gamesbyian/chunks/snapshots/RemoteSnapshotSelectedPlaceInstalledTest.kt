@@ -120,8 +120,9 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             val chosen = requireNotNull(independent.defaultDirectory()) + "/reviewed"
             assertNull(independent.lookupName(hash))
             var admitted = 0
+            val journalStore = AndroidSnapshotRestoreJournalStore(context)
             val coordinator = SnapshotRemoteDefinitionRestore(account,
-                AndroidSnapshotRestoreJournalStore(context),
+                journalStore,
                 stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
             assertNull(coordinator.review(archive, hash, previous, recoveryOnly = false,
                 selectedPlace = "/foreign/principal"))
