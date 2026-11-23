@@ -73,15 +73,16 @@ class FooterImeInstalledInstrumentedTest {
         try {
             rule.waitUntil(15_000) {
                 if (rule.activity.hasWindowFocus()) true else {
-                val now = SystemClock.elapsedRealtime()
-                if (!externalLauncherWaitClicked && now >= nextProbeAt) {
-                    nextProbeAt = now + 500L
-                    val launcher = device.findObject(By.text("Pixel Launcher isn't responding"))
-                    val wait = if (launcher != null) device.findObject(By.text("Wait")) else null
-                    if (wait != null) {
-                        externalLauncherWaitClicked = runCatching { wait.click(); true }.getOrDefault(false)
+                    val now = SystemClock.elapsedRealtime()
+                    if (!externalLauncherWaitClicked && now >= nextProbeAt) {
+                        nextProbeAt = now + 500L
+                        val launcher = device.findObject(By.text("Pixel Launcher isn't responding"))
+                        val wait = if (launcher != null) device.findObject(By.text("Wait")) else null
+                        if (wait != null) {
+                            externalLauncherWaitClicked =
+                                runCatching { wait.click(); true }.getOrDefault(false)
+                        }
                     }
-                }
                     false
                 }
             }
