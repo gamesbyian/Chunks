@@ -279,9 +279,14 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
                     assertEquals(UniversalAddRouteTarget.Local, owner.addDestination.value)
                     assertNull(owner.session.attemptedTicket)
                 }
-                val engine = requireNotNull(LocalEngineHolder.current())
-                assertNull(engine.status(expectedHash))
-                assertNull(engine.status(unrelatedHash))
+                // A cold ACTION_SEND opens the review-only Add route. The
+                // Local engine may intentionally remain uninitialized until
+                // transfers are visited or an authorized Add is submitted.
+                // A missing holder cannot have registered a torrent; if the
+                // engine exists, independently check both known hashes.
+                val engine = LocalEngineHolder.current()
+                assertNull(engine?.status(expectedHash))
+                assertNull(engine?.status(unrelatedHash))
             }
             fun assertNoRequests() {
                 assertEquals("Share review made an unsolicited HTTPS request", 0, JSONObject(fixture("counts")).length())
@@ -290,7 +295,6 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
 
             waitForTag(ChunksSemantics.ADD_SOURCE_FIELD)
             waitForSource(original)
-            rule.waitUntil(30_000) { LocalEngineHolder.current() != null }
             scenario.recreate()
             waitForTag(ChunksSemantics.ADD_SOURCE_FIELD)
             waitForSource(original)
