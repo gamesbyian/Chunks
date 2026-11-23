@@ -16,7 +16,8 @@ def pull_request_paths(source: str) -> set[str]:
     # Match only the path allowlist under on.pull_request, not unrelated
     # lists of checkout steps, artifacts, or workflow_dispatch entries.
     match = re.search(
-        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?    paths:\s*\n"
+        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
+        r"(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -35,7 +36,8 @@ def dispatches_for_changed_paths(source: str, changed: tuple[str, ...]) -> bool:
     Assertions also pin the exact GitHub-compatible patterns and their order.
     """
     match = re.search(
-        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?    paths:\s*\n"
+        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
+        r"(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -71,6 +73,13 @@ class AndroidCiTriggerContract(unittest.TestCase):
             sample, ("app/src/main/java/Example.kt",)))
         self.assertFalse(dispatches_for_changed_paths(
             sample, ("app/src/androidTest/java/Example.kt",)))
+        with_types = sample.replace(
+            "    paths:\n",
+            "    types: [opened, reopened, synchronize, ready_for_review]\n    paths:\n",
+        )
+        self.assertEqual(pull_request_paths(sample), pull_request_paths(with_types))
+        self.assertTrue(dispatches_for_changed_paths(
+            with_types, ("app/src/main/java/Example.kt",)))
 
     def test_preflight_tool_edits_trigger_only_cheap_docs_validation(self):
         android = pull_request_paths(WORKFLOW.read_text(encoding="utf-8"))
