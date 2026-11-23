@@ -175,7 +175,15 @@ PY
     "$focused" "$resumed" "$after_focus" |
     tee "$out/document-preflight-diagnostic.txt"
 }
-open_source || { fail "foreign provider VIEW not delivered"; exit 1; }
+# The disposable Chunks user data was already cleared above. Starting a
+# realistic external Open With should NOT then issue FLAG_ACTIVITY_CLEAR_TASK:
+# that second task reset can race the initial Compose window's foregrounding.
+# The sender's fixture_keep_task flag merely omits that artificial clear; the
+# exact foreign-UID content URI, read grant, fresh launch and all later
+# task/process assertions remain unchanged. A passing run does not establish
+# Pixel behavior or repair a genuinely disappearing app window.
+open_source "--ez fixture_keep_task true" ||
+  { fail "foreign provider VIEW not delivered"; exit 1; }
 if ! await_source_review; then
   diagnose_missing_source_review
   fail "first document review not visible after bounded user scroll"; exit 1
