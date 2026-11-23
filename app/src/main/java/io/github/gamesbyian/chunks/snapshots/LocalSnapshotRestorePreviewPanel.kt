@@ -31,6 +31,8 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
+import io.github.gamesbyian.chunks.RemoteFolderPicker
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -141,7 +143,9 @@ internal fun SnapshotRestorePreviewPanel(
         SnapshotRemotePriorityComparison, Long, (String) -> Unit) -> Unit)? = null,
     remoteDefinitionRestore: SnapshotRemoteDefinitionRestore? = null,
     remoteDefinitionActionScope: CoroutineScope? = null,
-    remoteDefinitionAccountLabel: String? = null
+    remoteDefinitionAccountLabel: String? = null,
+    /** Only the currently authenticated exact account supplies browse capability. */
+    remoteDefinitionFolderAccount: RTorrentRemote? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -173,6 +177,10 @@ internal fun SnapshotRestorePreviewPanel(
     }
     var remoteDefinitionBusy by remember { mutableStateOf(false) }
     var remoteDefinitionNotice by remember { mutableStateOf<String?>(null) }
+    // The destination is an ephemeral draft. No manually entered text becomes
+    // restore authority until the coordinator verifies the exact server folder.
+    var remoteSelectedPlace by remember(remoteDefinitionRestore) { mutableStateOf<String?>(null) }
+    var chooseRemotePlace by remember(remoteDefinitionRestore) { mutableStateOf(false) }
 
     // Local status counters and peers may update each second. Identity changes
     // are the relevant source boundary. A stale/unverified frame remains
@@ -329,6 +337,41 @@ internal fun SnapshotRestorePreviewPanel(
                 }
                 remoteDefinitionNotice?.let {
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                if (remoteDefinitionRestore != null && remoteDefinitionFolderAccount != null &&
+                    remoteDefinitionAccountLabel != null && target == SnapshotRestoreTarget.SERVER) {
+                    Text(if (remoteSelectedPlace == null)
+                        "Stopped restore uses this server's current default folder."
+                    else "Selected restore folder: $remoteSelectedPlace. Chunks will check this " +
+                        "exact server folder again before restoring.",
+                        style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { chooseRemotePlace = true },
+                            enabled = !remoteDefinitionBusy && !reading,
+                            modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("Choose restore folder")
+                        }
+                        if (remoteSelectedPlace != null) OutlinedButton(onClick = {
+                            remoteSelectedPlace = null
+                            remoteDefinitionReview = null
+                            remoteDefinitionNotice = null
+                        }, enabled = !remoteDefinitionBusy && !reading,
+                            modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("Use server default")
+                        }
+                    }
+                    if (chooseRemotePlace) RemoteFolderPicker(
+                        remote = remoteDefinitionFolderAccount,
+                        connectionName = remoteDefinitionAccountLabel,
+                        initialFolder = remoteSelectedPlace,
+                        onChoose = { selected ->
+                            remoteSelectedPlace = selected
+                            remoteDefinitionReview = null
+                            remoteDefinitionNotice = null
+                            chooseRemotePlace = false
+                        },
+                        onDismiss = { chooseRemotePlace = false }
+                    )
                 }
                 val definitionReview = remoteDefinitionReview
                 if (definitionReview != null && remoteDefinitionRestore != null &&
@@ -767,14 +810,15 @@ internal fun SnapshotRestorePreviewPanel(
                                                 scope.launch {
                                                     try {
                                                         val review = remoteDefinitionRestore.review(
-                                                            source, entry.infoHashV1, hashes, recoveryOnly)
+                                                            source, entry.infoHashV1, hashes, recoveryOnly,
+                                                            selectedPlace = remoteSelectedPlace)
                                                         if (latestReady && latestHashes == hashes &&
                                                             latestGeneration == comparedGeneration &&
                                                             verifiedSource === source) {
                                                             remoteDefinitionReview = review
                                                             remoteDefinitionNotice = if (review == null)
-                                                                "Could not verify the session, stopped Add " +
-                                                                    "capability or server default Place."
+                                                                "Could not verify this rTorrent account, stopped Add " +
+                                                                    "capability, or selected server folder. No Add was sent."
                                                             else null
                                                         }
                                                     } finally {
