@@ -17,7 +17,7 @@ def pull_request_paths(source: str) -> set[str]:
     # lists of checkout steps, artifacts, or workflow_dispatch entries.
     match = re.search(
         r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
-        r"(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
+        r"(?:    \#[^\n]*\n)*(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -37,7 +37,7 @@ def dispatches_for_changed_paths(source: str, changed: tuple[str, ...]) -> bool:
     """
     match = re.search(
         r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
-        r"(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
+        r"(?:    \#[^\n]*\n)*(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -78,6 +78,13 @@ class AndroidCiTriggerContract(unittest.TestCase):
             "    types: [opened, reopened, synchronize, ready_for_review]\n    paths:\n",
         )
         self.assertEqual(pull_request_paths(sample), pull_request_paths(with_types))
+        with_comment = with_types.replace(
+            "    types:",
+            "    # Draft iterations must not run expensive jobs.\n    types:",
+        )
+        self.assertEqual(pull_request_paths(sample), pull_request_paths(with_comment))
+        self.assertTrue(dispatches_for_changed_paths(
+            with_comment, ("app/src/main/java/Example.kt",)))
         self.assertTrue(dispatches_for_changed_paths(
             with_types, ("app/src/main/java/Example.kt",)))
 
