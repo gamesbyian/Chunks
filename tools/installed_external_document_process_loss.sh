@@ -119,8 +119,58 @@ PY
   fi
   if timeout 10s adb logcat -d -s ChunksIntake:I 2>/dev/null |
       grep -Fq 'outcome=document'; then intake_delivered=true; fi
-  printf 'CHUNKS_DOCUMENT_TASK_DIAG: app_process=%s task=%s ui=%s intake=%s\n' \
-    "$pid_present" "$task_present" "$xml_state" "$intake_delivered" |
+  # Keep Android's raw task/window dumps in the ephemeral scratch only.
+  # A digest of the actual foreground *category* distinguishes launcher/IME
+  # occlusion from Chunks being resumed but not rendering its review.
+  local focused=unknown resumed=unknown
+  timeout 12s adb shell dumpsys window windows > "$scratch/focused-window.txt" 2>/dev/null || true
+  timeout 12s adb shell dumpsys activity activities > "$scratch/resumed-activity.txt" 2>/dev/null || true
+  focused="$(python3 - "$scratch/focused-window.txt" <<'PY'
+import re, sys
+from pathlib import Path
+raw = Path(sys.argv[1]).read_text(errors="replace")
+matches = re.findall(r"mCurrentFocus=([^\\n]+)", raw)
+item = matches[-1] if matches else ""
+if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
+elif "io.github.gamesbyian.chunks/" in item: print("chunks")
+elif "inputmethod" in item.lower() or "latinime" in item.lower(): print("keyboard")
+elif "launcher" in item.lower(): print("launcher")
+elif item: print("other-window")
+else: print("unknown")
+PY
+)"
+  resumed="$(python3 - "$scratch/resumed-activity.txt" <<'PY'
+import re, sys
+from pathlib import Path
+raw = Path(sys.argv[1]).read_text(errors="replace")
+matches = re.findall(r"(?:topResumedActivity|mResumedActivity)=([^\\n]+)", raw)
+item = matches[-1] if matches else ""
+if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
+elif "io.github.gamesbyian.chunks/" in item: print("chunks")
+elif "launcher" in item.lower(): print("launcher")
+elif item: print("other-activity")
+else: print("unknown")
+PY
+)"
+  # Diagnostic only: focusing the *existing* Chunks task is not accepted as
+  # proof that the foreign sender foregrounded it. Do not submit/Start/reopen
+  # a source or let this salvage the failing first-launch assertion.
+  local after_focus=not-attempted
+  local exact_task
+  exact_task="$(task_id || true)"
+  if [[ "$exact_task" =~ ^[0-9]+$ ]]; then
+    after_focus=unavailable
+    if timeout 12s adb shell am task focus "$exact_task" > "$scratch/task-focus.txt" 2>&1; then
+      after_focus=no-source
+      for attempt in 1 2 3; do
+        if screen_contains "$source_name"; then after_focus=source-visible; break; fi
+        sleep 0.5
+      done
+    fi
+  fi
+  printf 'CHUNKS_DOCUMENT_TASK_DIAG: app_process=%s task=%s ui=%s intake=%s foreground=%s resumed=%s after_task_focus=%s\n' \
+    "$pid_present" "$task_present" "$xml_state" "$intake_delivered" \
+    "$focused" "$resumed" "$after_focus" |
     tee "$out/document-preflight-diagnostic.txt"
 }
 open_source || { fail "foreign provider VIEW not delivered"; exit 1; }
