@@ -18,6 +18,7 @@ import org.libtorrent4j.AnnounceEntry
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import org.libtorrent4j.AlertListener
 import org.libtorrent4j.Entry
+import org.libtorrent4j.Priority
 import org.libtorrent4j.Vectors
 import org.libtorrent4j.alerts.Alert
 import org.libtorrent4j.alerts.AlertType
@@ -1469,20 +1470,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalTrackerRepairOutcome.UNCERTAIN
         }
         if (saved != handles.size) return LocalTrackerRepairOutcome.UNCERTAIN
-        val onDisk = try {
-            val bytes = resumeEvents?.current(key)
-            bytes?.let {
-                val error = error_code()
-                val params = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error)
-                if (error.value() != 0 || params == null) null
-                else AddTorrentParams(params)
-            }
-        } catch (_: Exception) { null }
-        val persisted = onDisk?.getTrackers()?.toSet()
+        val persisted = readStoredResume(key)?.getTrackers()?.toSet()
         return if (persisted == urls.toSet())
             LocalTrackerRepairOutcome.VERIFIED
         else LocalTrackerRepairOutcome.UNCERTAIN
     }
+
+    private fun readStoredResume(key: String): AddTorrentParams? = try {
+        resumeEvents?.current(key)?.let { bytes ->
+            val error = error_code()
+            val raw = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(bytes), error)
+            if (error.value() != 0 || raw == null) null else AddTorrentParams(raw)
+        }
+    } catch (_: Exception) { null }
 
     /** Files with progress and selection, or null if unknown or metadata is not yet known. */
     @Synchronized
@@ -1502,11 +1502,22 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }.toList()
     }
 
+    private data class NativeFilePriorities(
+        val files: List<LocalTransferFile>,
+        val values: Array<Priority>
+    )
+
     /** Complete native file-priority observation for a portable snapshot. */
     @Synchronized
     internal fun readFilePriorities(infoHash: String, maxFiles: Int): List<LocalTransferFile>? {
         val key = normal(infoHash)
         val handle = handles[key]?.takeIf { it.isValid } ?: return null
+        return readNativeFilePriorities(key, handle, maxFiles)?.files
+    }
+
+    private fun readNativeFilePriorities(
+        key: String, handle: TorrentHandle, maxFiles: Int
+    ): NativeFilePriorities? {
         val info = handle.torrentFile()?.takeIf { it.isValid } ?: return null
         if (identity(info) != key) return null
         val storage = info.files()
@@ -1517,11 +1528,151 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (content.size !in 1..maxFiles) return null
         val priorities = handle.filePriorities()
         if (priorities.size != count || !handle.isValid) return null
-        return content.map { index ->
+        val files = content.map { index ->
             val priority = priorities[index].swig().toInt()
             LocalTransferFile(index, storage.filePath(index), storage.fileSize(index),
                 doneBytes = 0L, wanted = priority != 0, priority = priority)
         }
+        return NativeFilePriorities(files, priorities)
+    }
+
+    @Synchronized
+    internal fun readStoppedFilePriorities(infoHash: String): LocalStoppedFilePriorityReview? =
+        synchronized(handles) {
+            val key = normal(infoHash)
+            val handle = handles[key]?.takeIf { started && it.isValid } ?: return null
+            val priorities = readNativeFilePriorities(key, handle, LocalStoppedFilePriorityReview.MAX_FILES)
+                ?: return null
+            val review = stoppedPriorityReview(key, handle, priorities.files) ?: return null
+            review.takeIf {
+                supportsSnapshotPriorityStorage(key, handle) && hasDefaultSnapshotBacking(key, it.place)
+            }
+        }
+
+    /**
+     * Libtorrent's native priority changes can open or flush .<best infohash>.parts.
+     * Limit this action to pure v1 jobs with Chunks' normal partfile location
+     * and an independently observed absence of that path, including symlinks.
+     */
+    private fun supportsSnapshotPriorityStorage(key: String, handle: TorrentHandle): Boolean {
+        val hashes = handle.torrentFile()?.infoHashes() ?: return false
+        return hashes.hasV1() && !hashes.hasV2() &&
+            Files.notExists(File(handle.savePath(), ".$key.parts").toPath(), LinkOption.NOFOLLOW_LINKS)
+    }
+
+    private fun hasDefaultSnapshotBacking(key: String, place: String): Boolean = try {
+        val params = requireNotNull(readStoredResume(key))
+        val info = params.torrentInfo
+        info != null && info.isValid && identity(info) == key &&
+            File(params.savePath).canonicalPath == place &&
+            params.swig().getPart_file_dir().isEmpty() && params.swig().get_renamed_files().isEmpty()
+    } catch (_: Exception) { false }
+
+    private fun stoppedPriorityReview(
+        key: String, handle: TorrentHandle, files: List<LocalTransferFile>
+    ): LocalStoppedFilePriorityReview? {
+        val status = handle.status(TorrentHandle.QUERY_NAME)
+        val flags = status.flags()
+        if (!status.hasMetadata() || awaitingMetadata.contains(key) ||
+            startWhenMetadataArrives.contains(key) || stopAfterMagnetCheck[key] == handle ||
+            !flags.and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() ||
+            flags.and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED).non_zero() ||
+            flags.and_(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY).non_zero() ||
+            status.state() == TorrentStatus.State.CHECKING_FILES ||
+            status.state() == TorrentStatus.State.CHECKING_RESUME_DATA ||
+            status.errorCode()?.isError == true || storageFileErrors[key]?.first == handle)
+            return null
+        val root = File(handle.savePath())
+        if (!root.isAbsolute || !Files.isDirectory(root.toPath(), LinkOption.NOFOLLOW_LINKS)) return null
+        val token = nativeReviewTokens[key]?.takeIf { it.isNotEmpty() } ?: return null
+        return LocalStoppedFilePriorityReview(key, status.name(), root.canonicalPath, token, files)
+    }
+
+    /**
+     * Update the complete content file vector once on an independently reviewed
+     * stopped job. Keep native padding slots as observed. Refuse if the
+     * registration, Place, layout or any previously reviewed priority changed.
+     */
+    internal fun applyStoppedFilePriorities(
+        review: LocalStoppedFilePriorityReview,
+        desiredByIndex: Map<Int, Int>,
+        readbackTimeoutMs: Long = 5_000L
+    ): LocalFileBatchOutcome {
+        require(readbackTimeoutMs in 0L..60_000L)
+        val key = normal(review.infoHash)
+        if (review.files.size !in 1..LocalStoppedFilePriorityReview.MAX_FILES ||
+            desiredByIndex.size != review.files.size) return LocalFileBatchOutcome.STALE_REVIEW
+        val desired = desiredByIndex.toMap()
+        if (desired.keys != review.files.map { it.index }.toSet() ||
+            desired.values.any { it !in setOf(0, 1, 4, 7) } ||
+            review.files.any { it.priority == 0 && desired[it.index] != 0 })
+            return LocalFileBatchOutcome.STALE_REVIEW
+        val expected = review.copy(files = review.files.map { file ->
+            val value = desired.getValue(file.index)
+            file.copy(priority = value, wanted = value != 0)
+        })
+        val handle = synchronized(this) {
+            synchronized(handles) {
+                val candidate = handles[key]?.takeIf { started && it.isValid }
+                    ?: return LocalFileBatchOutcome.NOT_FOUND
+                val before = readNativeFilePriorities(key, candidate, LocalStoppedFilePriorityReview.MAX_FILES)
+                    ?: return LocalFileBatchOutcome.STALE_REVIEW
+                if (stoppedPriorityReview(key, candidate, before.files) != review)
+                    return LocalFileBatchOutcome.STALE_REVIEW
+                if (expected == review) return LocalFileBatchOutcome.UNCHANGED
+                // Existing skipped files must stay skipped. Even while paused,
+                // libtorrent can export their partfile pieces on re-selection.
+                if (!hasDefaultSnapshotBacking(key, review.place) ||
+                    !supportsSnapshotPriorityStorage(key, candidate) ||
+                    LocalPayloadCollisionSurvey.inspect(File(candidate.savePath()),
+                        before.files.map { it.path }) is LocalPayloadCollisionSurvey.Result.Unknown ||
+                    checkedPriorityMutationProblem(key, candidate) != null)
+                    return LocalFileBatchOutcome.STALE_REVIEW
+
+                for ((index, priority) in desired) {
+                    before.values[index] = when (priority) {
+                        0 -> Priority.IGNORE
+                        1 -> Priority.LOW
+                        4 -> Priority.DEFAULT
+                        else -> Priority.TOP_PRIORITY
+                    }
+                }
+                try { candidate.prioritizeFiles(before.values) }
+                catch (_: Exception) { return LocalFileBatchOutcome.UNCERTAIN }
+                candidate
+            }
+        }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        fun observed(): LocalStoppedFilePriorityReview? =
+            runCatching { readStoppedFilePriorities(key) }.getOrNull()
+        while (true) {
+            val current = observed()
+            if (current == expected) break
+            if (current?.registration != review.registration || current.place != review.place ||
+                System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
+            try { Thread.sleep(25) }
+            catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return LocalFileBatchOutcome.UNCERTAIN
+            }
+        }
+        // Match the exact durable native snapshot as well as the full live
+        // vector. Unknown persistence is a separate failure to verify.
+        if (!runCatching { saveResumeDataFor(key, 3_000L, handle) }.getOrDefault(false))
+            return LocalFileBatchOutcome.UNCERTAIN
+        val persisted = readStoredResume(key) ?: return LocalFileBatchOutcome.UNCERTAIN
+        val durable = runCatching {
+            val priorities = persisted.filePriorities()
+            val info = persisted.torrentInfo
+            val flags = persisted.getFlags()
+            info != null && info.isValid && identity(info) == key &&
+                flags.and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() &&
+                !flags.and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED).non_zero() &&
+                File(persisted.savePath).canonicalPath == review.place &&
+                expected.files.all { priorities.getOrNull(it.index)?.swig()?.toInt() == it.priority }
+        }.getOrDefault(false)
+        return if (durable && observed() == expected) LocalFileBatchOutcome.VERIFIED
+        else LocalFileBatchOutcome.UNCERTAIN
     }
 
     /**
@@ -2193,7 +2344,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * This must run off the Android UI thread. Failure or timeout is UNKNOWN
      * durability, never permission to retry Start/Stop or delete any payload.
      */
-    fun saveResumeDataFor(infoHash: String, timeoutMs: Long = 3_000): Boolean {
+    fun saveResumeDataFor(infoHash: String, timeoutMs: Long = 3_000): Boolean =
+        saveResumeDataFor(infoHash, timeoutMs, expectedHandle = null)
+
+    private fun saveResumeDataFor(
+        infoHash: String, timeoutMs: Long, expectedHandle: TorrentHandle?
+    ): Boolean {
         require(timeoutMs in 0L..30_000L)
         val key = normal(infoHash)
         val deadline = System.nanoTime() + timeoutMs * 1_000_000
@@ -2203,6 +2359,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             synchronized(handles) {
                 val exact = handles[key]?.takeIf { runCatching { it.isValid }.getOrDefault(false) }
                     ?: return false
+                if (expectedHandle != null && exact != expectedHandle) return false
                 exact to pendingSaves.pendingFor(key, exact)
             }
         }

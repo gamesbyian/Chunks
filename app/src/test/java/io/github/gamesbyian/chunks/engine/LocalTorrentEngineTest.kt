@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks.engine
 
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotPriorityRestore
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
@@ -1966,6 +1968,107 @@ class LocalTorrentEngineTest {
         assertEquals(destination.absolutePath, session.savePath)
         assertEquals(0L, session.payloadDownloadedBytes)
         assertTrue(destination.list().orEmpty().isEmpty())
+    }
+
+    @Test fun snapshotPrioritiesApplyOnlyAfterExactStoppedReviewAndSurviveRestart() {
+        val fixture = fixture(v1Only = true)
+        val preview = TorrentMetainfoReader.preview(fixture.torrent)
+        val hash = preview.infoHashV1
+        val source = engine()
+        val sourcePlace = temp.newFolder("snapshot-source-private-place")
+        added(source.addStopped(fixture.torrent, sourcePlace))
+        val original = requireNotNull(source.readFilePriorities(hash, SnapshotFilePriorities.MAX_FILES))
+        val episode = original.single { it.path.endsWith("episode.bin") }
+        val notes = original.single { it.path.endsWith("notes.txt") }
+        assertEquals(LocalFileBatchOutcome.VERIFIED, source.setFilePriority(hash, episode, 7))
+        assertEquals(LocalCommandOutcome.VERIFIED, source.setFileWanted(hash, notes.index, false))
+        val sourceFiles = requireNotNull(source.readFilePriorities(hash, SnapshotFilePriorities.MAX_FILES))
+        val manifest = SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
+            SnapshotManifestV1.Source.LOCAL, listOf(SnapshotManifestV1.Item(hash, preview.name,
+                SnapshotManifestV1.Recovery.METAINFO, sourceDirectoryHint = sourcePlace.absolutePath)))
+        val definitions = mapOf(hash to fixture.torrent)
+        val captured = kotlinx.coroutines.runBlocking {
+            SnapshotSettingsCapture({ null }, {
+                sourceFiles.map { file -> SnapshotFilePriorities.Observation(
+                    SnapshotFilePriorities.File(file.index, file.path, file.sizeBytes), file.priority)
+                }
+            }).collect(manifest, definitions)
+        }
+        val verified = SnapshotManifestV1.decode(SnapshotManifestV1.encode(captured, definitions))
+
+        val targetPlace = temp.newFolder("snapshot-target-reviewed-place")
+        val state = temp.newFolder("snapshot-target-state")
+        val target = persistentEngine(state)
+        added(target.addStoppedChecked(fixture.torrent, targetPlace))
+        val entry = SnapshotRestorePreviewV1.plan(verified, listOf(hash), true).entries.single()
+        waitFor(5_000) { target.readStoppedFilePriorities(hash) != null }
+        val initial = requireNotNull(target.readStoppedFilePriorities(hash))
+        val plan = requireNotNull(LocalSnapshotPriorityRestore.plan(entry, initial))
+        assertEquals(2, plan.changeCount)
+        assertEquals(targetPlace.canonicalPath, plan.target.place)
+        assertEquals(mapOf(episode.index to 7, notes.index to 0), plan.desiredByIndex)
+
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW, target.applyStoppedFilePriorities(
+            initial.copy(place = sourcePlace.canonicalPath), plan.desiredByIndex))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW, target.applyStoppedFilePriorities(
+            initial.copy(registration = "different-registration"), plan.desiredByIndex))
+        assertNull(LocalSnapshotPriorityRestore.plan(entry, initial.copy(files = initial.files.map {
+            if (it.index == episode.index) it.copy(sizeBytes = it.sizeBytes + 1) else it
+        })))
+        assertEquals(initial, target.readStoppedFilePriorities(hash))
+        val outside = temp.newFile("snapshot-unowned-sentinel").apply { writeText("untouched") }
+        val targetRoot = File(targetPlace, preview.name).apply { mkdir() }
+        val linked = File(targetPlace, episode.path)
+        Files.createSymbolicLink(linked.toPath(), outside.toPath())
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            target.applyStoppedFilePriorities(plan.target, plan.desiredByIndex))
+        assertEquals("untouched", outside.readText())
+        assertEquals(initial, target.readStoppedFilePriorities(hash))
+        assertTrue(linked.delete())
+        assertTrue(targetRoot.delete())
+        val partfile = File(targetPlace, ".$hash.parts")
+        Files.createSymbolicLink(partfile.toPath(), outside.toPath())
+        assertNull(target.readStoppedFilePriorities(hash))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            target.applyStoppedFilePriorities(plan.target, plan.desiredByIndex))
+        assertEquals("untouched", outside.readText())
+        assertTrue(partfile.delete())
+        val regularBytes = byteArrayOf(4, 2)
+        partfile.writeBytes(regularBytes)
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            target.applyStoppedFilePriorities(plan.target, plan.desiredByIndex))
+        assertArrayEquals(regularBytes, partfile.readBytes())
+        assertTrue(partfile.delete())
+
+        val liveEpisode = initial.files.single { it.index == episode.index }
+        assertEquals(LocalFileBatchOutcome.VERIFIED, target.setFilePriority(hash, liveEpisode, 1))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            target.applyStoppedFilePriorities(plan.target, plan.desiredByIndex))
+        val fresh = requireNotNull(target.readStoppedFilePriorities(hash))
+        assertEquals(1, fresh.files.single { it.index == episode.index }.priority)
+        val reviewed = requireNotNull(LocalSnapshotPriorityRestore.plan(entry, fresh))
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            target.applyStoppedFilePriorities(reviewed.target, reviewed.desiredByIndex))
+        assertTrue(requireNotNull(target.status(hash)).stopped)
+        assertEquals(listOf(hash), target.completeIdentityInventory())
+        val now = requireNotNull(target.readStoppedFilePriorities(hash))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            target.applyStoppedFilePriorities(now, reviewed.desiredByIndex + (notes.index to 4)))
+        assertEquals(now, target.readStoppedFilePriorities(hash))
+        assertEquals(sourceFiles, source.readFilePriorities(hash, SnapshotFilePriorities.MAX_FILES))
+        assertTrue(targetPlace.list().orEmpty().isEmpty())
+        target.close()
+
+        val reopened = persistentEngine(state)
+        waitFor(5_000) { reopened.readStoppedFilePriorities(hash) != null }
+        val after = requireNotNull(reopened.readStoppedFilePriorities(hash))
+        assertEquals(targetPlace.canonicalPath, after.place)
+        assertEquals(plan.desiredByIndex, after.files.associate { it.index to it.priority })
+        val status = requireNotNull(reopened.status(hash))
+        assertTrue(status.stopped)
+        assertEquals(0L, status.payloadDownloadedBytes)
+        assertEquals(0L, status.payloadUploadedBytes)
+        assertTrue(targetPlace.list().orEmpty().isEmpty())
     }
 
     @Test fun skippedFileIsNotDownloadedUntilSelected() {

@@ -108,6 +108,7 @@ import io.github.gamesbyian.chunks.model.LocalQueueOrder
 import io.github.gamesbyian.chunks.model.TransferSortOrdering
 import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotPriorityRestore
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreDraft
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreReview
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreDraft
@@ -3184,6 +3185,44 @@ internal fun LocalEngineScreen(
                     }
                     aliasRevision++
                     report(outcome)
+                }
+            },
+            readPriorityReview = { entry ->
+                withContext(Dispatchers.IO) {
+                    val hash = entry.infoHashV1
+                    val engine = LocalEngineHolder.current()
+                    if (engine == null || finishInOrderStore.get(hash) != null ||
+                        hash in finishInOrderStore.afterMetadataRequests()) null
+                    else LocalSnapshotPriorityRestore.plan(entry, engine.readStoppedFilePriorities(hash))
+                }
+            },
+            onApplyPriorities = { review, generation, report ->
+                if (inventoryStale || !hasConfirmedLocalInventory || busy || sourceReading ||
+                    !LocalScreenReader.revision.isCurrent(generation)) {
+                    report("The Local inventory changed. Compare the snapshot again.")
+                } else performLocalMutation {
+                    val outcome = withContext(Dispatchers.IO) {
+                        FinishInOrderController.exclusive {
+                            val hash = review.target.infoHash
+                            val target = LocalEngineHolder.current()
+                            if (target == null || finishInOrderStore.get(hash) != null ||
+                                hash in finishInOrderStore.afterMetadataRequests()) {
+                                LocalFileBatchOutcome.STALE_REVIEW
+                            } else runCatching {
+                                target.applyStoppedFilePriorities(review.target, review.desiredByIndex)
+                            }.getOrDefault(LocalFileBatchOutcome.UNCERTAIN)
+                        }
+                    }
+                    report(when (outcome) {
+                        LocalFileBatchOutcome.VERIFIED ->
+                            "File priorities verified and saved. The Local transfer is stopped."
+                        LocalFileBatchOutcome.UNCHANGED ->
+                            "The stopped Local transfer already has these file priorities."
+                        LocalFileBatchOutcome.STALE_REVIEW, LocalFileBatchOutcome.NOT_FOUND ->
+                            "The stopped transfer or its file choices changed. No priorities were submitted."
+                        LocalFileBatchOutcome.UNCERTAIN ->
+                            "Could not verify saved priorities. Check the Local transfer’s current files before another review."
+                    })
                 }
             },
             onPrepareAdd = { originalBytes ->
