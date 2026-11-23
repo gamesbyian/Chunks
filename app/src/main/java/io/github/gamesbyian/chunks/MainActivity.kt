@@ -108,6 +108,7 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
 import io.github.gamesbyian.chunks.snapshots.AndroidSnapshotRestoreJournalStore
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemoteDefinitionRestore
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemoteBatchStoppedRestore
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityApply
 import io.github.gamesbyian.chunks.snapshots.applyRemoteSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
@@ -2939,6 +2940,24 @@ internal fun ChunksApp(
                         )
                     }
                 }
+                // Batch writes use the SAME exact-account mutation gate, but
+                // not the pre-first-Add inventory generation: their own
+                // coordinator proves the full expected roster between every
+                // one-time stopped Add. A different account, screen or unsafe
+                // connection state still cancels the remaining items.
+                val batchDefinitionRestore = remember(snapshotAccount, snapshotAliasScope) {
+                    snapshotAccount?.let { account ->
+                        SnapshotRemoteBatchStoppedRestore(
+                            account, AndroidSnapshotRestoreJournalStore(context),
+                            stillCurrent = {
+                                server === account && aliasScope == snapshotAliasScope &&
+                                    section == Section.SNAPSHOT && !stale && !loading
+                            },
+                            admitWrite = { mutationGate.tryStart() },
+                            settleWrite = settledRemoteMutation
+                        )
+                    }
+                }
                 SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
@@ -2968,6 +2987,7 @@ internal fun ChunksApp(
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
                             remoteDefinitionRestore = definitionRestore,
+                            remoteBatchStoppedRestore = batchDefinitionRestore,
                             remoteDefinitionActionScope = scope,
                             remoteDefinitionAccountLabel = definitionAccountLabel,
                             remoteDefinitionFolderAccount = snapshotAccount,
