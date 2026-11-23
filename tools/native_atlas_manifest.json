@@ -33,6 +33,11 @@
       "requirement": "docs/PRODUCT.md"
     },
     {
+      "image": "snapshot-local-priority-confirmation-real-compose.png",
+      "capability": "snapshot-local-stopped-file-priority-confirmation",
+      "requirement": "docs/TRANSFER-SNAPSHOTS.md"
+    },
+    {
       "image": "alias-suggestions-real-compose.png",
       "capability": "display-alias-suggestions",
       "requirement": "docs/PRODUCT.md"

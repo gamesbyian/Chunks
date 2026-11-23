@@ -63,7 +63,10 @@ internal object RuTorrentSourceMetainfo {
     )
 
     private fun request(url: URI, hash: String, authorization: String?): Reply {
-        val form = ("hash=" + URLEncoder.encode(hash, Charsets.US_ASCII.name()))
+        // ruTorrent uses the posted hash verbatim as the session filename.
+        // rTorrent persists that filename in uppercase even though its RPC
+        // accepts either case. Use the wire spelling the Source plugin expects.
+        val form = ("hash=" + URLEncoder.encode(hash.uppercase(Locale.ROOT), Charsets.US_ASCII.name()))
             .toByteArray(Charsets.US_ASCII)
         val connection = url.toURL().openConnection() as HttpURLConnection
         connection.connectTimeout = 7_000

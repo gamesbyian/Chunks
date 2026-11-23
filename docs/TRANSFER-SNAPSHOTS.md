@@ -23,15 +23,33 @@ unsafe aliases, and priority lists that lack or disagree with verified
 metainfo are rejected before comparison. Older app versions can still read
 new exports when the optional settings are absent.
 
-Comparison shows the original file index, path, size and requested priority,
-and flags Low for an rTorrent destination. The original layout is a reference
-until an adapter verifies the target's actual files. A separate Local action
-can apply a saved display alias after an exact-hash/original-name check,
-only when no stored alias would be overwritten. The app reads back the saved
-alias. Definition Add, stopped restore and journal reconciliation apply no
-settings. A change to settings alone preserves the existing definition-only
-journal identity, including journals created from a v1 snapshot. Collections, tracker edits, profile settings and restore-time
-file priority application remain outside this schema and flow.
+Comparison shows the original file index, path, size and requested priority
+and flags Low for an rTorrent destination. A separate Local action can apply
+a saved display alias after an exact-hash/original-name check. It preserves
+an existing alias and reads back any new setting.
+
+For an exact already-present stopped Local transfer, **Check Local files for
+priority restore** reads its current file priorities and folder. The
+confirmation shows the current and requested priorities for each file.
+The full file layout must match by index, path and size. On confirmation the
+engine rechecks the same registration, stopped state, folder, paths and old
+priorities before submitting one libtorrent priority vector. It verifies
+the complete live result and separate saved resume data before reporting
+success. A lost or ambiguous outcome calls for a fresh read, with no
+automatic repeat. The action leaves the transfer stopped.
+
+Libtorrent can export bytes from a native partfile when a skipped file is
+reselected. The snapshot action preserves existing skipped files and
+requires an absent native partfile and the default backing layout. It
+refuses alternative partfile locations and renamed backing paths. A
+Finish in Order policy also blocks snapshot priority application so it
+retains ownership of that transfer’s scheduling. See the
+[pinned libtorrent storage implementation](https://github.com/aldenml/libtorrent/blob/24a3adf35d3e689bde700371337aad61b160bafa/src/posix_storage.cpp).
+
+Definition Add, stopped restore and journal reconciliation apply no
+settings. A change to settings alone preserves the definition-only journal
+identity, including journals created from a v1 snapshot. Remote priority
+application, collections, tracker edits and profile settings remain open.
 
 ## Current implementation checkpoint (2026-11-17)
 
@@ -118,6 +136,9 @@ The older checkpoint paragraphs below preserve dated evidence from the early lib
 
 A user can opt into collecting **original v1 .torrent definitions** when the exact
 authenticated ruTorrent account supports its standard read-only Source plugin.
+The Source request uses the uppercase infohash spelling of rTorrent's saved
+session filename. Returned definitions still need independent v1 identity
+verification before they enter the archive.
 The default export still records **inventory only**. This is an additional
 capability, never a replacement for the existing inventory and manual restore
 paths. A missing/disabled plugin or a record whose name, version or infohash

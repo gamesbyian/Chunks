@@ -66,7 +66,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
     /** Existing hash only: check an earlier journal, never submit. */
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null,
-    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null
+    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null,
+    readPriorityReview: (suspend (SnapshotRestorePreviewV1.Entry) -> LocalSnapshotPriorityRestore?)? = null,
+    onApplyPriorities: ((LocalSnapshotPriorityRestore, Long, (String) -> Unit) -> Unit)? = null
 ) = SnapshotRestorePreviewPanel(
     targetHashes = transfers.map { it.infoHash },
     target = SnapshotRestoreTarget.LOCAL,
@@ -79,7 +81,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
     onReviewBatchRestore = onReviewBatchRestore,
     onReviewBatchRecovery = onReviewBatchRecovery,
     onReviewPreviousRestore = onReviewPreviousRestore,
-    onApplyAlias = onApplyAlias
+    onApplyAlias = onApplyAlias,
+    readPriorityReview = readPriorityReview,
+    onApplyPriorities = onApplyPriorities
 )
 
 /** Wording for the engine a snapshot is compared against. */
@@ -126,7 +130,9 @@ internal fun SnapshotRestorePreviewPanel(
         List<String>, Long) -> Unit)? = null,
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null,
-    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null
+    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null,
+    readPriorityReview: (suspend (SnapshotRestorePreviewV1.Entry) -> LocalSnapshotPriorityRestore?)? = null,
+    onApplyPriorities: ((LocalSnapshotPriorityRestore, Long, (String) -> Unit) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -145,6 +151,9 @@ internal fun SnapshotRestorePreviewPanel(
         mutableStateOf<SnapshotRestorePreviewV1.Decision?>(null)
     }
     var aliasNotice by remember { mutableStateOf<String?>(null) }
+    var priorityNotice by remember { mutableStateOf<String?>(null) }
+    var priorityReview by remember { mutableStateOf<LocalSnapshotPriorityRestore?>(null) }
+    var checkingPriorities by remember { mutableStateOf(false) }
     var pageIndex by remember { mutableIntStateOf(0) }
 
     // Local status counters and peers may update each second. Identity changes
@@ -160,6 +169,7 @@ internal fun SnapshotRestorePreviewPanel(
         verifiedSource = null
         comparedHashes = null
         manualNotice = null
+        priorityReview = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
@@ -224,6 +234,8 @@ internal fun SnapshotRestorePreviewPanel(
                 onClick = {
                     expanded = !expanded
                     aliasNotice = null
+                    priorityNotice = null
+                    priorityReview = null
                     result = null
                     verifiedSource = null
                     comparedHashes = null
@@ -266,6 +278,8 @@ internal fun SnapshotRestorePreviewPanel(
                     onClick = {
                         reading = true
                         aliasNotice = null
+                        priorityNotice = null
+                        priorityReview = null
                         result = null
                         verifiedSource = null
                         comparedHashes = null
@@ -282,6 +296,23 @@ internal fun SnapshotRestorePreviewPanel(
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 aliasNotice?.let {
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                priorityNotice?.let {
+                    Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                priorityReview?.let { review ->
+                    if (onApplyPriorities != null) LocalSnapshotPriorityConfirmation(
+                        review = review,
+                        onConfirm = {
+                            priorityReview = null
+                            if (latestReady && latestHashes == comparedHashes &&
+                                latestGeneration == comparedGeneration) {
+                                priorityNotice = "Applying reviewed priorities…"
+                                onApplyPriorities(review, comparedGeneration) { priorityNotice = it }
+                            } else priorityNotice = "The Local inventory changed. Compare the snapshot again."
+                        },
+                        onDismiss = { priorityReview = null }
+                    )
                 }
                 result?.let { preview ->
                     // A sentence, not a heading: the readable sans (see ChunksTypography).
@@ -401,7 +432,8 @@ internal fun SnapshotRestorePreviewPanel(
                     }
                     if (preview.containsSettings) Text(
                         "Restore and Add actions below do not apply saved settings. " +
-                            "File priorities are shown for review.",
+                            if (onApplyPriorities == null) "File priorities are shown for review."
+                            else "To apply priorities, review a stopped Local transfer separately.",
                         style = MaterialTheme.typography.bodySmall
                     )
                     val shown = SnapshotRestoreCompareCatalogV1.select(
@@ -430,6 +462,48 @@ internal fun SnapshotRestorePreviewPanel(
                                     style = MaterialTheme.typography.bodySmall)
                             }
                             SnapshotSettingsPreview(entry, target)
+                            if (readPriorityReview != null && onApplyPriorities != null &&
+                                entry.fileMappings.isNotEmpty() &&
+                                entry.decision == SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val generation = comparedGeneration
+                                        checkingPriorities = true
+                                        priorityNotice = "Checking the stopped transfer’s files…"
+                                        scope.launch {
+                                            try {
+                                                val review = readPriorityReview(entry)
+                                                if (result !== preview) return@launch
+                                                priorityNotice = when {
+                                                    !latestReady || latestHashes != comparedHashes ||
+                                                        latestGeneration != generation ->
+                                                        "The Local inventory changed. Compare the snapshot again."
+                                                    review == null ->
+                                                        "Could not verify a stopped Local transfer with matching files and no partial-piece sidecar."
+                                                    review.wouldReselectSkippedFile ->
+                                                        "The snapshot would reselect skipped files. Use transfer Details to review those files."
+                                                    review.changeCount == 0 ->
+                                                        "The stopped Local transfer already has these file priorities."
+                                                    else -> {
+                                                        priorityReview = review
+                                                        null
+                                                    }
+                                                }
+                                            } catch (cancel: CancellationException) {
+                                                throw cancel
+                                            } catch (_: Exception) {
+                                                if (result === preview)
+                                                    priorityNotice = "Could not verify the stopped Local transfer’s files."
+                                            } finally {
+                                                checkingPriorities = false
+                                            }
+                                        }
+                                    },
+                                    enabled = !checkingPriorities,
+                                    modifier = Modifier.heightIn(min = 48.dp)
+                                ) { Text("Check Local files for priority restore") }
+                            }
+
                             if (onApplyAlias != null && entry.displayAlias != null &&
                                 entry.displayAlias != entry.originalName &&
                                 entry.decision == SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT) {
