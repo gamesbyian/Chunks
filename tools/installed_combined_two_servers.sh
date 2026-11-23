@@ -76,7 +76,7 @@ timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
 batch_status=$?
 set -e
 if [ "$batch_status" -ne 0 ] ||
-   ! grep -q '^OK (1 test)' "$out/snapshot-batch-installed.txt" ||
+   ! grep -q '^OK (2 tests)' "$out/snapshot-batch-installed.txt" ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-batch-installed.txt"; then
   tail -80 "$out/snapshot-batch-installed.txt"
   echo "::error::Stopped rTorrent batch restore failed or was skipped"
