@@ -152,6 +152,29 @@ details. Large snapshots are bounded to 512 metainfo records per check.
 This candidate requires dedicated real installed exact-account and native
 acceptance before being called complete.
 
+**Explicit stopped rTorrent batch restore (integration candidate):** Following a
+fresh complete-session comparison of a verified archive, the user may review
+up to 32 missing original metainfo definitions (24 MiB total) at one
+independently verified current server default or explicitly browsed same-tenant
+Place. This creates a process-only batch proposal; Cancel and preparation
+perform zero server Adds. A second dialog names the exact account, destination
+and initial original definitions. After confirmation, every item-scoped journal
+must first be opened and checked against the original archive/account/Place;
+a blocked **later** journal prevents **all** remote Adds. One guarded app-level
+mutation lease spans the group. Each stopped Add then revalidates the complete
+expected current session, exact account, Place and authenticated transport,
+durably enters IN_FLIGHT before its single non-idempotent request, and
+independently verifies the stopped hash/name/Place with the original rTorrent
+readback. Only a fully VERIFIED result permits the next item; changed session,
+lost acknowledgement, uncertainty or cancellation stops the remainder with
+partial counts and a read-only previous-batch review path. The lease settles
+once after success or stop so an ordinary post-write refresh cannot invalidate
+the batch between members. No Start, payload copy, data removal, automatic
+replay or priority mutation occurs. This candidate is not accepted until the
+source-exact Android/JVM, native UI/R8 and installed disposable two-server
+campaign pass, including the new two-item observed-registration proof; physical
+Pixel/provider/TalkBack and signed release remain separate gates.
+
 ## Current implementation checkpoint (2026-11-17)
 
 Chunks now supports more than the original inventory-only 2026 prototype, but this remains a **partial** snapshot feature. The current local engine can opt-in to export actual verified v1 torrent metainfo into bounded, checksummed `.chunksnap` archives. A user can select an archive in the read-only comparison flow, see already-present/missing identities, prepare a missing original torrent for manual Add, explicitly restore one stopped Local definition, or confirm a bounded group of verified missing originals as stopped at one newly reviewed Local destination (merged #1840). The restoration journal records an Add intent before submission; an unverified native reply is not permission to issue another Add. **No payload files are transferred.**
