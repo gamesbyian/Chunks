@@ -47,6 +47,8 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalService*.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceInstrumentedTest.kt"
       - ".github/workflows/android10-downloads-instrumentation.yml"
+    # Keep the real API29 acceptance suite for review-ready PRs and manual runs.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -58,6 +60,7 @@ concurrency:
 
 jobs:
   api29-downloads:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:

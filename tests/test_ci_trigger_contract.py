@@ -343,6 +343,31 @@ class AndroidCiTriggerContract(unittest.TestCase):
                     self.assertIn(retained, source)
                 self.assertNotIn("continue-on-error: true", source)
 
+    def test_foundation_and_api29_defer_drafts_but_recheck_on_ready(self):
+        # The selectors and real assertions stay intact; only costly draft
+        # scheduling is postponed, never a manual dispatch or ready PR.
+        for filename, job, must_keep in (
+            ("android-check.yml", "build",
+             (":app:testDebugUnitTest :app:assembleDebug", "app/**")),
+            ("android10-downloads-instrumentation.yml", "api29-downloads",
+             ("tools/android10_downloads_instrumentation.sh",
+              "app/src/main/AndroidManifest.xml")),
+        ):
+            with self.subTest(workflow=filename):
+                source = (ROOT / ".github/workflows" / filename).read_text()
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source)
+                self.assertIn("workflow_dispatch:", source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source)
+                self.assertIn(f"  {job}:", source)
+                self.assertIn("cancel-in-progress: true", source)
+                for retained in must_keep:
+                    self.assertIn(retained, source)
+                self.assertNotIn("continue-on-error: true", source)
+
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
         source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
                   ).read_text(encoding="utf-8")
