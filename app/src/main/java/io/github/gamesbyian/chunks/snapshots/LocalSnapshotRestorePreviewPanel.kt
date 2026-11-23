@@ -206,6 +206,7 @@ internal fun SnapshotRestorePreviewPanel(
         remotePriorityEntry = null
         confirmRemotePriorities = false
         remoteDefinitionReview = null
+        remoteBatchReview = null
         remotePreviousReport = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
@@ -279,6 +280,7 @@ internal fun SnapshotRestorePreviewPanel(
                     comparedHashes = null
                     manualNotice = null
                     remoteDefinitionReview = null
+                    remoteBatchReview = null
                     remoteDefinitionNotice = null
                     remotePreviousReport = null
                     error = null
@@ -400,6 +402,7 @@ internal fun SnapshotRestorePreviewPanel(
                         if (remoteSelectedPlace != null) OutlinedButton(onClick = {
                             remoteSelectedPlace = null
                             remoteDefinitionReview = null
+                            remoteBatchReview = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
                         }, enabled = !remoteDefinitionBusy && !reading,
@@ -414,6 +417,7 @@ internal fun SnapshotRestorePreviewPanel(
                         onChoose = { selected ->
                             remoteSelectedPlace = selected
                             remoteDefinitionReview = null
+                            remoteBatchReview = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
                             chooseRemotePlace = false
