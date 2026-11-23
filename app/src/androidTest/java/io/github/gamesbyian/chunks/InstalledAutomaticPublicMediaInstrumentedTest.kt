@@ -281,12 +281,23 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         fun assignment(hash: String): TransferMediaAssignment? =
             FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json"))
                 .get(MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentSnapshots.LOCAL, hash)))
-        fun waitForProvider(hash: String, expectedId: String) {
-            rule.waitUntil(45_000) {
-                assignment(hash)?.let {
-                    it.state == MediaAssignmentState.AUTOMATIC && it.match?.ref?.provider == "tvmaze" &&
-                        it.match?.ref?.externalId == expectedId
-                } == true
+        fun searches(): List<String> = synchronized(network.uris) {
+            network.uris.filter { it.host == "api.tvmaze.com" && it.path == "/search/shows" }
+                .map { java.net.URLDecoder.decode(it.rawQuery.orEmpty(), "UTF-8") }
+        }
+        fun waitForProvider(hash: String, title: String, expectedId: String) {
+            try {
+                rule.waitUntil(45_000) {
+                    assignment(hash)?.let {
+                        it.state == MediaAssignmentState.AUTOMATIC && it.match?.ref?.provider == "tvmaze" &&
+                            it.match?.ref?.externalId == expectedId
+                    } == true
+                }
+            } catch (timeout: ComposeTimeoutException) {
+                val attempted = searches().any { it.equals("q=$title", true) }
+                val assigned = assignment(hash)?.state?.name ?: "none"
+                throw AssertionError("Public positive control did not settle; " +
+                    "requestAttempted=$attempted assignmentState=$assigned online=${cm.activeNetwork != null}", timeout)
             }
         }
         fun submittedStopped(scenario: ActivityScenario<MainActivity>, hash: String, optOut: Boolean) {
@@ -324,7 +335,9 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
 
         ProxySelector.setDefault(network)
         try {
-            val (firstIntent, first) = fixture("Lost.S01E01.mkv")
+            // Public search for "Lost" returns several exactly named shows.
+            // Distinct series keep this a consent test rather than a ranking test.
+            val (firstIntent, first) = fixture("Stargate.Atlantis.S01E01.mkv")
             val (excludedIntent, excluded) = fixture("Fringe.S02E07.mkv")
             val (controlIntent, control) = fixture("Firefly.S01E01.mkv")
             assertTrue("The opted-out fixture must be eligible for television metadata",
@@ -333,7 +346,7 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 try {
                     submittedStopped(scenario, first, optOut = false)
                     openCanonicalTransfers()
-                    waitForProvider(first, "123")
+                    waitForProvider(first, "Stargate Atlantis", "206")
                     next(excludedIntent)
                     submittedStopped(scenario, excluded, optOut = true)
                     openCanonicalTransfers()
@@ -343,13 +356,12 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                     next(controlIntent)
                     submittedStopped(scenario, control, optOut = false)
                     openCanonicalTransfers()
-                    waitForProvider(control, "180")
+                    waitForProvider(control, "Firefly", "180")
                     assertNull("An excluded Add cannot have a media assignment", assignment(excluded))
                     val requests = synchronized(network.uris) { network.uris.toList() }
-                    val searches = requests.filter { it.host == "api.tvmaze.com" && it.path == "/search/shows" }
-                        .map { java.net.URLDecoder.decode(it.rawQuery.orEmpty(), "UTF-8") }
+                    val searches = searches()
                     assertTrue("Both public positive controls dispatched real lookups",
-                        searches.any { it.equals("q=Lost", true) } && searches.any { it.equals("q=Firefly", true) })
+                        searches.any { it.equals("q=Stargate Atlantis", true) } && searches.any { it.equals("q=Firefly", true) })
                     assertFalse("Excluded title must never reach TVmaze",
                         searches.any { it.equals("q=Fringe", true) })
                     assertFalse("Excluded identity must never enter episode enrichment",
