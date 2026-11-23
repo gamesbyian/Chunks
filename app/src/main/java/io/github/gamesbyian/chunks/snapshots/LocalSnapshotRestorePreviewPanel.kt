@@ -458,6 +458,12 @@ internal fun SnapshotRestorePreviewPanel(
                             else "To apply priorities, review a stopped Local transfer separately.",
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (onApplyAlias != null && target == SnapshotRestoreTarget.SERVER &&
+                        preview.containsSettings) Text(
+                        "Applying a saved display alias only changes this device's Chunks label. " +
+                            "It never renames the server torrent or any files.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     val shown = SnapshotRestoreCompareCatalogV1.select(
                         preview.entries, search, chosenDecision, pageIndex)
                     Text("Showing ${shown.first}–${shown.last} of ${shown.matches} " +
