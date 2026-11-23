@@ -343,6 +343,13 @@ class AndroidCiTriggerContract(unittest.TestCase):
                     self.assertIn(retained, source)
                 self.assertNotIn("continue-on-error: true", source)
 
+    def test_foundation_selects_changes_to_its_own_workflow(self):
+        # A change to JVM/build validation must not evade its own gate just
+        # because app source and Gradle scripts are unchanged.
+        source = (ROOT / ".github/workflows" / "android-check.yml").read_text()
+        self.assertIn(".github/workflows/android-check.yml",
+                      pull_request_paths(source))
+
     def test_foundation_and_api29_defer_drafts_but_recheck_on_ready(self):
         # The selectors and real assertions stay intact; only costly draft
         # scheduling is postponed, never a manual dispatch or ready PR.
