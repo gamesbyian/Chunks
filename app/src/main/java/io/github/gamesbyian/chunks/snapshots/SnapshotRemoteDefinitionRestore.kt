@@ -21,6 +21,26 @@ internal class SnapshotRemoteDefinitionRestore(
 ) {
     enum class Outcome { VERIFIED, OBSERVED_STOPPED, STALE, BLOCKED, UNCERTAIN }
 
+    /**
+     * Prior-journal report for a bounded verified archive. None of these states
+     * grants permission for a new load; even an unavailable journal may conceal
+     * an earlier submitted Add.
+     */
+    enum class PreviousState {
+        VERIFIED_STOPPED, NO_SUBMISSION_IN_THIS_JOURNAL,
+        JOURNAL_UNAVAILABLE, DIFFERENT_REVIEWED_PLACE, UNRESOLVED
+    }
+
+    data class PreviousItem(val hash: String, val name: String, val state: PreviousState)
+    data class PreviousReport(val items: List<PreviousItem>) {
+        val verifiedCount: Int get() = items.count { it.state == PreviousState.VERIFIED_STOPPED }
+        val unresolvedCount: Int get() = items.count {
+            it.state == PreviousState.UNRESOLVED ||
+                it.state == PreviousState.JOURNAL_UNAVAILABLE ||
+                it.state == PreviousState.DIFFERENT_REVIEWED_PLACE
+        }
+    }
+
     class Review internal constructor(
         internal val owner: SnapshotRemoteDefinitionRestore,
         internal val journalIdentity: String,
@@ -123,6 +143,97 @@ internal class SnapshotRemoteDefinitionRestore(
         } finally {
             if (admitted) settleWrite()
         }
+    }
+
+    /**
+     * Read-only multi-item recovery for *one current authenticated account* and
+     * one newly reviewed Place. This is a report, never a batch Add authority.
+     * A fresh whole-session inventory brackets the investigation, and every
+     * previously submitted item still needs its own independent stopped/Place
+     * readback. Only successful confirmations may advance a hash-only local
+     * journal to VERIFIED; no remote write, Start or retry is reachable.
+     *
+     * An absent/corrupt journal is deliberately unknown. A different Place
+     * fingerprint never lets a previous attempt masquerade as this review.
+     */
+    suspend fun inspectPreviousBatch(
+        archive: SnapshotManifestV1.Verified,
+        comparedHashes: List<String>,
+        selectedPlace: String? = null
+    ): PreviousReport? = readOrNull {
+        val originals = archive.manifest.items.filter {
+            it.recovery == SnapshotManifestV1.Recovery.METAINFO
+        }.sortedBy { it.infoHashV1 }
+        if (originals.size !in 1..512 || !stillCurrent() || !authenticated()) return@readOrNull null
+        val initialRows = remote.listCompleteSessionTransfers()
+        val initial = initialRows.identities()
+        val frozen = comparedHashes.map { it.lowercase(Locale.ROOT) }
+        if (initialRows.size != initial.size || frozen.size != initial.size ||
+            frozen.toSet() != initial || frozen.size != frozen.toSet().size)
+            return@readOrNull null
+
+        // A selected Place need not remain browser-accessible to CHECK an old
+        // attempt. Validation is local; unlike restore(), no folder operation
+        // authorizes any write here. Default mode retains its v1 journal key.
+        val place = selectedPlace ?: remote.defaultDirectory() ?: return@readOrNull null
+        val archiveKey = SnapshotManifestV1.definitionArchiveFingerprint(archive)
+        val found = ArrayList<PreviousItem>(originals.size)
+        val expectedPlaces = HashMap<String, String>(originals.size)
+        for (item in originals) {
+            if (!stillCurrent() || !authenticated()) return@readOrNull null
+            val hash = item.infoHashV1
+            val magnet = "magnet:?xt=urn:btih:$hash"
+            val plan = if (selectedPlace == null)
+                StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, place)
+            else StoppedRemoteAddPlan.fromMagnet(magnet, place)
+            val original = withContext(Dispatchers.Default) {
+                SnapshotVerifiedTorrentDocumentV1.prepare(archive, hash)
+            }
+            val fileLayout = withContext(Dispatchers.Default) {
+                TorrentMetainfoReader.preview(original.copyVerifiedBytes())
+            }
+            val expected = if (fileLayout.files.isNotEmpty())
+                place.trimEnd('/') + "/" + original.originalName else place
+            expectedPlaces[hash] = expected
+            val review = Review(this@SnapshotRemoteDefinitionRestore,
+                SnapshotRestoreOnceV1.itemArchiveFingerprint(archiveKey, hash),
+                original, initial, plan, expected, recoveryOnly = true)
+            val journal = readOrNull { open(review, existingOnly = true) }
+            val entry = journal?.entries()?.singleOrNull()
+            val state = when {
+                entry == null || entry.infoHashV1 != hash ->
+                    PreviousState.JOURNAL_UNAVAILABLE
+                entry.placeFingerprint != null && entry.placeFingerprint != placeKey(review) ->
+                    PreviousState.DIFFERENT_REVIEWED_PLACE
+                entry.phase in setOf(
+                    SnapshotRestoreJournalV1.Phase.REVIEW,
+                    SnapshotRestoreJournalV1.Phase.READY,
+                    SnapshotRestoreJournalV1.Phase.REFUSED
+                ) -> PreviousState.NO_SUBMISSION_IN_THIS_JOURNAL
+                entry.placeFingerprint != placeKey(review) ->
+                    PreviousState.DIFFERENT_REVIEWED_PLACE
+                else -> when (observe(review, requireNotNull(journal), acknowledgedNow = false)) {
+                    Outcome.VERIFIED, Outcome.OBSERVED_STOPPED -> PreviousState.VERIFIED_STOPPED
+                    else -> PreviousState.UNRESOLVED
+                }
+            }
+            found += PreviousItem(hash, original.originalName, state)
+        }
+        if (!stillCurrent() || !authenticated()) return@readOrNull null
+        val finalRows = remote.listCompleteSessionTransfers()
+        if (finalRows.size != initial.size || finalRows.identities() != initial)
+            return@readOrNull null
+        // A later change to a verified item revokes the whole summary. No
+        // identity-only end check can prove an earlier stopped/Place result.
+        if (found.any { item ->
+                if (item.state != PreviousState.VERIFIED_STOPPED) false
+                else {
+                    val row = finalRows.singleOrNull { it.hash.equals(item.hash, true) }
+                    row == null || row.started || row.metadataPending == true ||
+                        row.name != item.name || row.directory != expectedPlaces[item.hash]
+                }
+            }) return@readOrNull null
+        PreviousReport(found)
     }
 
     /** Opens an existing journal only. No Add, settings mutation, or retry is reachable. */

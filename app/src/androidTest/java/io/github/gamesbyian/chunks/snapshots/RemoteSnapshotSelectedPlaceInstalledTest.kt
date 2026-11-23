@@ -97,9 +97,22 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
         val original = TorrentMetainfoReader.preview(bytes)
         val hash = original.infoHashV1
         val item = SnapshotManifestV1.Item(hash, original.name, SnapshotManifestV1.Recovery.METAINFO)
+        // A second missing original shares the archive but has NO journal.
+        // It must never become a restore candidate during read-only recovery.
+        val otherName = "unattempted.bin"
+        val otherBytes = ("d8:announce${tracker.length}:$tracker" +
+            "4:infod6:lengthi5e4:name${otherName.length}:$otherName" +
+            "12:piece lengthi16384e6:pieces20:").toByteArray() +
+            MessageDigest.getInstance("SHA-1").digest("other".toByteArray()) +
+            "ee".toByteArray()
+        val otherOriginal = TorrentMetainfoReader.preview(otherBytes)
+        val otherItem = SnapshotManifestV1.Item(
+            otherOriginal.infoHashV1, otherOriginal.name, SnapshotManifestV1.Recovery.METAINFO)
         val archive = SnapshotManifestV1.decode(SnapshotManifestV1.encode(
             SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
-                SnapshotManifestV1.Source.LOCAL, listOf(item)), mapOf(hash to bytes)))
+                SnapshotManifestV1.Source.LOCAL,
+                listOf(item, otherItem).sortedBy { it.infoHashV1 }),
+            mapOf(hash to bytes, otherOriginal.infoHashV1 to otherBytes)))
         runBlocking {
             account.version()
             val previous = independent.listCompleteSessionTransfers().map { it.hash }
@@ -107,8 +120,9 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             val chosen = requireNotNull(independent.defaultDirectory()) + "/reviewed"
             assertNull(independent.lookupName(hash))
             var admitted = 0
+            val journalStore = AndroidSnapshotRestoreJournalStore(context)
             val coordinator = SnapshotRemoteDefinitionRestore(account,
-                AndroidSnapshotRestoreJournalStore(context),
+                journalStore,
                 stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
             assertNull(coordinator.review(archive, hash, previous, recoveryOnly = false,
                 selectedPlace = "/foreign/principal"))
@@ -136,6 +150,55 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             assertEquals(previous.map { it.uppercase() }.toSet(),
                 all.filterNot { it.hash.equals(hash, true) }.map { it.hash.uppercase() }.toSet())
             assertNull(other.lookupName(hash))
+            assertEquals(otherPrevious, other.listCompleteSessionTransfers().map { it.hash }.toSet())
+
+            // Fresh, complete current roster and two independently verified
+            // original definitions: exact journal checks must never submit a
+            // second Add or claim a missing journal proves a safe retry.
+            val now = all.map { it.hash }
+            assertNull("An outdated comparison must never claim a batch recovery",
+                coordinator.inspectPreviousBatch(archive, previous, selectedPlace = chosen))
+            assertEquals(1, admitted)
+            val report = requireNotNull(coordinator.inspectPreviousBatch(
+                archive, now, selectedPlace = chosen))
+            assertEquals(2, report.items.size)
+            assertEquals(1, report.verifiedCount)
+            assertEquals(1, report.unresolvedCount)
+            assertEquals(SnapshotRemoteDefinitionRestore.PreviousState.VERIFIED_STOPPED,
+                report.items.single { it.hash == hash }.state)
+            assertEquals(SnapshotRemoteDefinitionRestore.PreviousState.JOURNAL_UNAVAILABLE,
+                report.items.single { it.hash == otherOriginal.infoHashV1 }.state)
+            assertEquals(1, admitted)
+            assertNull(independent.lookupName(otherOriginal.infoHashV1))
+
+            // An explicit prior REVIEW journal is different from an absent or
+            // corrupt one. The batch check itself must create NEITHER.
+            val accountFingerprint = SnapshotArchiveV1.digest(
+                ("chunks-rtorrent-snapshot-account-v1:" + account.addAccountScope())
+                    .toByteArray(Charsets.UTF_8))
+            val itemFingerprint = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                SnapshotManifestV1.definitionArchiveFingerprint(archive),
+                otherOriginal.infoHashV1)
+            val untouchedJournal = SnapshotRestoreJournalV1.open(
+                journalStore, itemFingerprint, accountFingerprint,
+                listOf(otherOriginal.infoHashV1))
+            assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+                untouchedJournal.entries().single().phase)
+            val noSubmission = requireNotNull(coordinator.inspectPreviousBatch(
+                archive, now, selectedPlace = chosen))
+            assertEquals(SnapshotRemoteDefinitionRestore.PreviousState.NO_SUBMISSION_IN_THIS_JOURNAL,
+                noSubmission.items.single { it.hash == otherOriginal.infoHashV1 }.state)
+            assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+                untouchedJournal.entries().single().phase)
+            assertEquals(1, admitted)
+            // Reinterpreting the earlier Add under another selected folder
+            // must report a different approval, not resolve it or retry it.
+            val wrongPlace = requireNotNull(coordinator.inspectPreviousBatch(
+                archive, now, selectedPlace = "/foreign/principal"))
+            assertEquals(SnapshotRemoteDefinitionRestore.PreviousState.DIFFERENT_REVIEWED_PLACE,
+                wrongPlace.items.single { it.hash == hash }.state)
+            assertEquals(1, admitted)
+            assertEquals(now.toSet(), independent.listCompleteSessionTransfers().map { it.hash }.toSet())
             assertEquals(otherPrevious, other.listCompleteSessionTransfers().map { it.hash }.toSet())
             // Remove only this stopped synthetic session registration. No payload deletion.
             val removed = independent.eraseFromSession(hash, name, chosen)

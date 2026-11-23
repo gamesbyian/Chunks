@@ -177,6 +177,9 @@ internal fun SnapshotRestorePreviewPanel(
     }
     var remoteDefinitionBusy by remember { mutableStateOf(false) }
     var remoteDefinitionNotice by remember { mutableStateOf<String?>(null) }
+    var remotePreviousReport by remember(remoteDefinitionRestore) {
+        mutableStateOf<SnapshotRemoteDefinitionRestore.PreviousReport?>(null)
+    }
     // The destination is an ephemeral draft. No manually entered text becomes
     // restore authority until the coordinator verifies the exact server folder.
     var remoteSelectedPlace by remember(remoteDefinitionRestore) { mutableStateOf<String?>(null) }
@@ -200,6 +203,7 @@ internal fun SnapshotRestorePreviewPanel(
         remotePriorityEntry = null
         confirmRemotePriorities = false
         remoteDefinitionReview = null
+        remotePreviousReport = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
@@ -273,6 +277,7 @@ internal fun SnapshotRestorePreviewPanel(
                     manualNotice = null
                     remoteDefinitionReview = null
                     remoteDefinitionNotice = null
+                    remotePreviousReport = null
                     error = null
                     search = ""
                     chosenDecision = null
@@ -320,6 +325,7 @@ internal fun SnapshotRestorePreviewPanel(
                         comparedHashes = null
                         manualNotice = null
                         error = null
+                        remotePreviousReport = null
                         open.launch(arrayOf("*/*"))
                     },
                     enabled = targetReady && !reading && !remoteDefinitionBusy,
@@ -338,6 +344,43 @@ internal fun SnapshotRestorePreviewPanel(
                 remoteDefinitionNotice?.let {
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 }
+                remotePreviousReport?.let { previous ->
+                    Text("Previous rTorrent restore journals: ${previous.items.size} originals, " +
+                        "${previous.verifiedCount} independently verified stopped at this Place, " +
+                        "${previous.unresolvedCount} requiring individual investigation.",
+                        style = MaterialTheme.typography.bodyMedium)
+                    val grouped = previous.items.groupingBy { it.state }.eachCount()
+                    val neverSubmitted = grouped[
+                        SnapshotRemoteDefinitionRestore.PreviousState.NO_SUBMISSION_IN_THIS_JOURNAL] ?: 0
+                    if (neverSubmitted > 0) Text("$neverSubmitted with no submission recorded in " +
+                        "this exact journal. This does not authorize another Add.",
+                        style = MaterialTheme.typography.bodySmall)
+                    previous.items.filter {
+                        it.state != SnapshotRemoteDefinitionRestore.PreviousState.VERIFIED_STOPPED
+                    }.take(8).forEach { item ->
+                        val explanation = when (item.state) {
+                            SnapshotRemoteDefinitionRestore.PreviousState.VERIFIED_STOPPED -> "Verified stopped"
+                            SnapshotRemoteDefinitionRestore.PreviousState.NO_SUBMISSION_IN_THIS_JOURNAL ->
+                                "No Add recorded in this journal"
+                            SnapshotRemoteDefinitionRestore.PreviousState.JOURNAL_UNAVAILABLE ->
+                                "Journal unavailable; previous Add unknown"
+                            SnapshotRemoteDefinitionRestore.PreviousState.DIFFERENT_REVIEWED_PLACE ->
+                                "Previously reviewed Place differs"
+                            SnapshotRemoteDefinitionRestore.PreviousState.UNRESOLVED ->
+                                "No exact stopped/Place verification"
+                        }
+                        Text(item.name + " · " + item.hash.take(12) + ": " + explanation,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (previous.items.count {
+                            it.state != SnapshotRemoteDefinitionRestore.PreviousState.VERIFIED_STOPPED
+                        } > 8) Text("Additional unresolved journal entries are not shown. " +
+                        "Use individual read-only checks for their identities.",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("Read-only on the server. This check did not submit, start or retry " +
+                        "a torrent. Journal verification may update only Chunks-owned local receipts.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
                 if (remoteDefinitionRestore != null && remoteDefinitionFolderAccount != null &&
                     remoteDefinitionAccountLabel != null && target == SnapshotRestoreTarget.SERVER) {
                     Text(if (remoteSelectedPlace == null)
@@ -354,6 +397,7 @@ internal fun SnapshotRestorePreviewPanel(
                         if (remoteSelectedPlace != null) OutlinedButton(onClick = {
                             remoteSelectedPlace = null
                             remoteDefinitionReview = null
+                            remotePreviousReport = null
                             remoteDefinitionNotice = null
                         }, enabled = !remoteDefinitionBusy && !reading,
                             modifier = Modifier.heightIn(min = 48.dp)) {
@@ -367,6 +411,7 @@ internal fun SnapshotRestorePreviewPanel(
                         onChoose = { selected ->
                             remoteSelectedPlace = selected
                             remoteDefinitionReview = null
+                            remotePreviousReport = null
                             remoteDefinitionNotice = null
                             chooseRemotePlace = false
                         },
@@ -565,6 +610,51 @@ internal fun SnapshotRestorePreviewPanel(
                             enabled = targetReady && !reading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Check ${previousCandidates.size} previous restores (read-only)") }
+                    }
+                    if (remoteDefinitionRestore != null && remoteDefinitionAccountLabel != null &&
+                        previousCandidates.size >= 2) {
+                        OutlinedButton(
+                            onClick = {
+                                val source = verifiedSource
+                                val hashes = comparedHashes
+                                val selected = remoteSelectedPlace
+                                val generation = comparedGeneration
+                                if (!remoteDefinitionBusy && source != null && hashes != null &&
+                                    latestReady && latestHashes == hashes &&
+                                    latestGeneration == generation) {
+                                    remoteDefinitionReview = null
+                                    remotePreviousReport = null
+                                    remoteDefinitionBusy = true
+                                    remoteDefinitionNotice =
+                                        "Reading existing journals and current stopped server transfers…"
+                                    scope.launch {
+                                        try {
+                                            val report = remoteDefinitionRestore.inspectPreviousBatch(
+                                                source, hashes, selectedPlace = selected)
+                                            if (verifiedSource === source && result === preview &&
+                                                latestReady && latestHashes == hashes &&
+                                                latestGeneration == generation &&
+                                                remoteSelectedPlace == selected) {
+                                                remotePreviousReport = report
+                                                remoteDefinitionNotice = if (report == null)
+                                                    "Could not establish a complete, current authenticated " +
+                                                        "server and journal comparison. No Add was sent."
+                                                else null
+                                            }
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            remoteDefinitionNotice =
+                                                "Previous server batch could not be verified. No Add was sent."
+                                        } finally {
+                                            remoteDefinitionBusy = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = targetReady && !reading && !remoteDefinitionBusy,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        ) { Text("Check ${previousCandidates.size} previous server restores (read-only)") }
                     }
                     io.github.gamesbyian.chunks.ClearableTransferSearchField(
                         value = search,
