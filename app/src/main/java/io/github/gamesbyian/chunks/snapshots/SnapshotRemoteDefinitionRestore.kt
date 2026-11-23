@@ -168,8 +168,9 @@ internal class SnapshotRemoteDefinitionRestore(
         val initialRows = remote.listCompleteSessionTransfers()
         val initial = initialRows.identities()
         val frozen = comparedHashes.map { it.lowercase(Locale.ROOT) }
-        if (frozen.size != initial.size || frozen.toSet() != initial ||
-            frozen.size != frozen.toSet().size) return@readOrNull null
+        if (initialRows.size != initial.size || frozen.size != initial.size ||
+            frozen.toSet() != initial || frozen.size != frozen.toSet().size)
+            return@readOrNull null
 
         // A selected Place need not remain browser-accessible to CHECK an old
         // attempt. Validation is local; unlike restore(), no folder operation
@@ -220,7 +221,8 @@ internal class SnapshotRemoteDefinitionRestore(
         }
         if (!stillCurrent() || !authenticated()) return@readOrNull null
         val finalRows = remote.listCompleteSessionTransfers()
-        if (finalRows.identities() != initial) return@readOrNull null
+        if (finalRows.size != initial.size || finalRows.identities() != initial)
+            return@readOrNull null
         // A later change to a verified item revokes the whole summary. No
         // identity-only end check can prove an earlier stopped/Place result.
         if (found.any { item ->
