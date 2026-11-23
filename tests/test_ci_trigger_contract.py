@@ -357,7 +357,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         self.assertIn(".github/workflows/disposable-rtorrent-probe.yml",
                       pull_request_paths(source))
 
-    def test_expensive_r8_and_visual_atlas_wait_for_review_ready_pr(self):
+    def test_r8_waits_for_readiness_and_atlas_is_deferred_by_default(self):
         # Preserve both real installed-device classes and R8 exact-case checks;
         # only draft event scheduling should change.
         for filename, job, obligatory in (
@@ -373,10 +373,12 @@ class AndroidCiTriggerContract(unittest.TestCase):
                     source,
                 )
                 self.assertIn("workflow_dispatch:", source)
-                self.assertIn(
-                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
-                    source,
+                condition = (
+                    "if: github.event_name == 'workflow_dispatch'"
+                    if filename == "native-visual-atlas.yml" else
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft"
                 )
+                self.assertIn(condition, source)
                 self.assertIn(f"  {job}:", source)
                 self.assertIn("cancel-in-progress: true", source)
                 for retained in obligatory:

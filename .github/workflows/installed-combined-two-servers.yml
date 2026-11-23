@@ -1,8 +1,8 @@
 name: Installed Combined two real rTorrent servers
 
 # D1/C1 acceptance on two DISPOSABLE local rTorrent daemons only. No secrets,
-# no protected host and no mutation from the app; fixtures are preloaded
-# stopped on the runner's own servers.
+# no protected host. Fixtures and exact app mutations stay on the runner's
+# own stopped registrations.
 on:
   pull_request:
     branches: [main]
@@ -17,6 +17,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
       - "tools/preload_combined_two_servers.py"
       - "tools/installed_combined_two_servers.sh"
       - "tools/combined_fault_controller.py"

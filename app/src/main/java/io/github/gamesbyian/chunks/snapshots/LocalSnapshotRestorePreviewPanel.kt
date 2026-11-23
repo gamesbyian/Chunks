@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -137,7 +138,10 @@ internal fun SnapshotRestorePreviewPanel(
     readRemotePriorityReview: (suspend (SnapshotRestorePreviewV1.Entry) -> SnapshotRemotePriorityComparison?)? = null,
     /** Explicit consent and exact-session fencing for rTorrent-only priority writes. */
     onApplyRemotePriorities: ((SnapshotRestorePreviewV1.Entry,
-        SnapshotRemotePriorityComparison, Long, (String) -> Unit) -> Unit)? = null
+        SnapshotRemotePriorityComparison, Long, (String) -> Unit) -> Unit)? = null,
+    remoteDefinitionRestore: SnapshotRemoteDefinitionRestore? = null,
+    remoteDefinitionActionScope: CoroutineScope? = null,
+    remoteDefinitionAccountLabel: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -164,6 +168,11 @@ internal fun SnapshotRestorePreviewPanel(
     var remoteApplying by remember { mutableStateOf(false) }
     var checkingPriorities by remember { mutableStateOf(false) }
     var pageIndex by remember { mutableIntStateOf(0) }
+    var remoteDefinitionReview by remember(remoteDefinitionRestore) {
+        mutableStateOf<SnapshotRemoteDefinitionRestore.Review?>(null)
+    }
+    var remoteDefinitionBusy by remember { mutableStateOf(false) }
+    var remoteDefinitionNotice by remember { mutableStateOf<String?>(null) }
 
     // Local status counters and peers may update each second. Identity changes
     // are the relevant source boundary. A stale/unverified frame remains
@@ -182,6 +191,7 @@ internal fun SnapshotRestorePreviewPanel(
         remotePriorityReview = null
         remotePriorityEntry = null
         confirmRemotePriorities = false
+        remoteDefinitionReview = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
@@ -253,6 +263,8 @@ internal fun SnapshotRestorePreviewPanel(
                     verifiedSource = null
                     comparedHashes = null
                     manualNotice = null
+                    remoteDefinitionReview = null
+                    remoteDefinitionNotice = null
                     error = null
                     search = ""
                     chosenDecision = null
@@ -265,13 +277,14 @@ internal fun SnapshotRestorePreviewPanel(
                     else "Compare saved snapshot with ${target.noun}")
             }
             if (expanded) {
-                Text(if (onReviewOneRestore != null || onReviewPreviousRestore != null)
+                Text(if (onReviewOneRestore != null || onReviewPreviousRestore != null ||
+                    remoteDefinitionRestore != null)
                     "Compare snapshot and review stopped restore"
                     else "Snapshot restore comparison (read-only)",
                     style = MaterialTheme.typography.titleMedium)
                 Text("Compares a verified .chunksnap against every torrent in a " +
                     "fresh, complete ${target.observation} observation. It can identify " +
-                    "missing definitions. An explicitly confirmed local restore adds " +
+                    "missing definitions. An explicitly confirmed stopped restore adds " +
                     "only a stopped transfer definition: no downloaded payload " +
                     "files are migrated.")
                 Text("Comparison leaves existing ${target.noun} transfers untouched. A match means " +
@@ -301,7 +314,7 @@ internal fun SnapshotRestorePreviewPanel(
                         error = null
                         open.launch(arrayOf("*/*"))
                     },
-                    enabled = targetReady && !reading,
+                    enabled = targetReady && !reading && !remoteDefinitionBusy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) {
                     Text(if (reading) "Inspecting snapshot…"
@@ -313,6 +326,51 @@ internal fun SnapshotRestorePreviewPanel(
                 }
                 priorityNotice?.let {
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                remoteDefinitionNotice?.let {
+                    Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                val definitionReview = remoteDefinitionReview
+                if (definitionReview != null && remoteDefinitionRestore != null &&
+                    remoteDefinitionActionScope != null && remoteDefinitionAccountLabel != null) {
+                    RemoteSnapshotDefinitionConfirmation(
+                        review = definitionReview, accountLabel = remoteDefinitionAccountLabel,
+                        onDismiss = { remoteDefinitionReview = null },
+                        onConfirm = {
+                            remoteDefinitionReview = null
+                            if (!remoteDefinitionBusy && latestReady && latestHashes == comparedHashes &&
+                                latestGeneration == comparedGeneration) {
+                                remoteDefinitionBusy = true
+                                remoteDefinitionNotice = if (definitionReview.recoveryOnly)
+                                    "Checking the previous restore…" else "Restoring one stopped definition…"
+                                remoteDefinitionActionScope.launch {
+                                    try {
+                                        val outcome = if (definitionReview.recoveryOnly)
+                                            remoteDefinitionRestore.reconcile(definitionReview)
+                                        else remoteDefinitionRestore.restore(definitionReview, confirmed = true)
+                                        remoteDefinitionNotice = when (outcome) {
+                                            SnapshotRemoteDefinitionRestore.Outcome.VERIFIED ->
+                                                "Stopped at the reviewed Place. To restore saved priorities, " +
+                                                    "compare this snapshot again and check the transfer’s current priorities."
+                                            SnapshotRemoteDefinitionRestore.Outcome.OBSERVED_STOPPED ->
+                                                "The exact transfer is stopped at the reviewed Place. " +
+                                                    "The origin of the registration could not be confirmed."
+                                            SnapshotRemoteDefinitionRestore.Outcome.STALE ->
+                                                "The rTorrent account or comparison changed. Review again."
+                                            SnapshotRemoteDefinitionRestore.Outcome.BLOCKED ->
+                                                "No Add was sent by this action. Check a previous stopped " +
+                                                    "restore or refresh the comparison and review again."
+                                            SnapshotRemoteDefinitionRestore.Outcome.UNCERTAIN ->
+                                                "Restore not verified. Compare again and check the previous " +
+                                                    "stopped restore. Chunks did not retry the Add."
+                                        }
+                                    } finally {
+                                        remoteDefinitionBusy = false
+                                    }
+                                }
+                            }
+                        }
+                    )
                 }
                 priorityReview?.let { review ->
                     if (onApplyPriorities != null) LocalSnapshotPriorityConfirmation(
@@ -678,6 +736,56 @@ internal fun SnapshotRestorePreviewPanel(
                                 enabled = targetReady && !reading,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             ) { Text("Check previous stopped restore") }
+                        }
+                        if (remoteDefinitionRestore != null && remoteDefinitionAccountLabel != null &&
+                            entry.decision in setOf(
+                                SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT,
+                                SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
+                            ) && verifiedSource?.manifest?.items?.any {
+                                it.infoHashV1 == entry.infoHashV1 &&
+                                    it.recovery == SnapshotManifestV1.Recovery.METAINFO
+                            } == true) {
+                            val canRestore = entry.decision ==
+                                SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                val choices = if (canRestore) listOf(false, true) else listOf(true)
+                                for (recoveryOnly in choices) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val source = verifiedSource
+                                            val hashes = comparedHashes
+                                            if (!remoteDefinitionBusy && source != null && hashes != null &&
+                                                latestReady && latestHashes == hashes &&
+                                                latestGeneration == comparedGeneration) {
+                                                remoteDefinitionBusy = true
+                                                remoteDefinitionNotice = "Checking the rTorrent account and Place…"
+                                                scope.launch {
+                                                    try {
+                                                        val review = remoteDefinitionRestore.review(
+                                                            source, entry.infoHashV1, hashes, recoveryOnly)
+                                                        if (latestReady && latestHashes == hashes &&
+                                                            latestGeneration == comparedGeneration &&
+                                                            verifiedSource === source) {
+                                                            remoteDefinitionReview = review
+                                                            remoteDefinitionNotice = if (review == null)
+                                                                "Could not verify the session, stopped Add " +
+                                                                    "capability or server default Place."
+                                                            else null
+                                                        }
+                                                    } finally {
+                                                        remoteDefinitionBusy = false
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        enabled = targetReady && !reading && !remoteDefinitionBusy,
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                    ) {
+                                        Text(if (recoveryOnly) "Check previous server restore"
+                                            else "Review stopped server restore")
+                                    }
+                                }
+                            }
                         }
                         if (entry.decision == SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW &&
                             onPrepareAdd != null) {

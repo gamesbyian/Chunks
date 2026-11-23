@@ -28,6 +28,8 @@ Map each test to authoritative requirement, test intent, changed boundary and in
 
 GitHub may evaluate only the first 300 paths in some PR comparisons and treat huge changes differently; absence of an automatically selected check is never accepted as proof that a required gate is irrelevant.
 
+**Visual specimen deferral:** The native visual atlas job allocates a runner only on manual dispatch during the owner-deferred phase. Preserve its established candidate routing and capture/test plan for reactivation. Record the deferred atlas as an explicit scope waiver when running an integration acceptance report. Functional Android and accessibility checks still apply.
+
 ## Select the smallest sufficient truthful checks
 
 1. Determine actual changed source files, runtime surface and dependency graph. Run offline format/docs/JVM tests first, then targeted instrumented Android/real disposable server and applicable R8 checks. Do not launch every emulator for a documentation-only change or add new workflows when an existing shard can carry the case.

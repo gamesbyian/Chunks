@@ -106,6 +106,8 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
+import io.github.gamesbyian.chunks.snapshots.AndroidSnapshotRestoreJournalStore
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemoteDefinitionRestore
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityApply
 import io.github.gamesbyian.chunks.snapshots.applyRemoteSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
@@ -2908,6 +2910,21 @@ internal fun ChunksApp(
                     snapshotAccount?.originalMetainfoForSnapshot(hash)
                 }
                 val snapshotAliasScope = aliasScope
+                val definitionAccountLabel = RemoteVerifiedUiIdentity.removalScopeLabel(snapshotAliasScope)
+                val definitionRestore = remember(snapshotAccount, inventoryRevision, snapshotAliasScope) {
+                    snapshotAccount?.let { account ->
+                        SnapshotRemoteDefinitionRestore(
+                            account, AndroidSnapshotRestoreJournalStore(context),
+                            stillCurrent = {
+                                server === account && aliasScope == snapshotAliasScope &&
+                                    section == Section.SNAPSHOT && snapshotRevision == inventoryRevision &&
+                                    !stale && !loading
+                            },
+                            admitWrite = { mutationGate.tryStart() },
+                            settleWrite = settledRemoteMutation
+                        )
+                    }
+                }
                 SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
@@ -2936,6 +2953,9 @@ internal fun ChunksApp(
                             inventoryStale = stale,
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
+                            remoteDefinitionRestore = definitionRestore,
+                            remoteDefinitionActionScope = scope,
+                            remoteDefinitionAccountLabel = definitionAccountLabel,
                             onApplyAlias = { entry, generation, send ->
                                 val account = snapshotAccount
                                 val exactScope = snapshotAliasScope

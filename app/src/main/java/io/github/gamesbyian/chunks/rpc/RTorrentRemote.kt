@@ -709,6 +709,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     suspend fun loadStoppedTorrentBytes(
         torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false,
         beforeLoad: suspend () -> Unit = {}
+    ): RemoteAddOutcome =
+        loadStoppedTorrentBytes(torrentBytes, destination, useServerDefault, beforeLoad, beforeWrite = {})
+
+    internal suspend fun loadStoppedTorrentBytes(
+        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean,
+        beforeLoad: suspend () -> Unit, beforeWrite: () -> Unit
     ): RemoteAddOutcome {
         val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val inspected = TorrentMetainfoReader.preview(torrentBytes)
@@ -724,7 +730,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
                 else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
-            call("load.raw_verbose", params)
+            call("load.raw_verbose", params, beforeWrite)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {

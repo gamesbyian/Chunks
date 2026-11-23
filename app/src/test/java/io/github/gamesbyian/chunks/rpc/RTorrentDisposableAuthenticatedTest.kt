@@ -1,6 +1,14 @@
 package io.github.gamesbyian.chunks.rpc
 
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemoteDefinitionRestore
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityApply
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreJournalV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewV1
 import java.net.URI
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -239,4 +247,82 @@ class RTorrentDisposableAuthenticatedTest {
         assertEquals("Do not drop or modify any unrelated disposable job identity",
             before, remote.listTransfers("main").map { it.hash.uppercase() }.toSet())
     }
+    @Test fun snapshotRestoresStoppedDefinitionThenSeparatelyAppliesSavedPriority() = runBlocking {
+        val f = fixture()
+        val credentials = RemoteCredentials(f.url, f.user, f.pass)
+        val remote = RTorrentRemote(credentials)
+        val independent = RTorrentRemote(credentials)
+        val bytes = ("d4:infod6:lengthi5e4:name15:snapshot-ci.bin12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789ee").toByteArray()
+        val original = TorrentMetainfoReader.preview(bytes)
+        val hash = original.infoHashV1
+        val item = SnapshotManifestV1.Item(hash, original.name, SnapshotManifestV1.Recovery.METAINFO,
+            sourceDirectoryHint = "/historical/place",
+            settings = SnapshotManifestV1.Settings(filePriorities = listOf(SnapshotFilePriorities.Level.HIGH)))
+        val archive = SnapshotManifestV1.decode(SnapshotManifestV1.encode(
+            SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
+                SnapshotManifestV1.Source.LOCAL, listOf(item)), mapOf(hash to bytes)))
+        val journal = mutableMapOf<String, String>()
+        var allowCommit = false
+        val store = object : SnapshotRestoreJournalV1.Store {
+            override fun read(key: String) = journal[key]
+            override fun compareAndCommit(key: String, expected: String?, value: String): Boolean {
+                if (journal[key] != expected || (!allowCommit && "IN_FLIGHT" in value)) return false
+                journal[key] = value
+                return true
+            }
+        }
+        val existing = independent.listCompleteSessionTransfers()
+        val frozen = existing.map { it.hash }
+        val restore = SnapshotRemoteDefinitionRestore(remote, store,
+            stillCurrent = { true }, admitWrite = { true }, settleWrite = {})
+        assertNull("Unauthenticated transport cannot prepare a restore",
+            restore.review(archive, hash, frozen, recoveryOnly = false))
+        remote.version()
+        val reviewed = requireNotNull(restore.review(archive, hash, frozen, recoveryOnly = false))
+        assertEquals(f.place, reviewed.place)
+        assertEquals(SnapshotRemoteDefinitionRestore.Outcome.STALE, restore.restore(reviewed, confirmed = false))
+        val otherSession = SnapshotRemoteDefinitionRestore(independent, store,
+            stillCurrent = { true }, admitWrite = { true }, settleWrite = {})
+        assertEquals(SnapshotRemoteDefinitionRestore.Outcome.STALE,
+            otherSession.restore(reviewed, confirmed = true))
+        assertEquals(SnapshotRemoteDefinitionRestore.Outcome.BLOCKED, restore.restore(reviewed, confirmed = true))
+        assertNull("A failed durable intent must stop the actual daemon load", independent.lookupName(hash))
+        allowCommit = true
+        assertEquals(SnapshotRemoteDefinitionRestore.Outcome.VERIFIED, restore.restore(reviewed, confirmed = true))
+        assertEquals(SnapshotRemoteDefinitionRestore.Outcome.BLOCKED, restore.restore(reviewed, confirmed = true))
+        val after = independent.listCompleteSessionTransfers()
+        val stopped = after.single { it.hash.equals(hash, true) }
+        assertEquals(original.name, stopped.name)
+        assertEquals(f.place, stopped.directory)
+        assertFalse(stopped.started)
+        assertEquals(false, independent.readActivity(hash).active)
+        assertEquals(0L, stopped.completedBytes)
+        assertEquals(existing.map { it.hash.uppercase(Locale.ROOT) }.toSet() + hash.uppercase(Locale.ROOT),
+            after.map { it.hash.uppercase(Locale.ROOT) }.toSet())
+        val recovery = requireNotNull(otherSession.review(archive, hash, after.map { it.hash }, recoveryOnly = true))
+        assertEquals(SnapshotRemoteDefinitionRestore.Outcome.OBSERVED_STOPPED, otherSession.reconcile(recovery))
+
+        val present = SnapshotRestorePreviewV1.plan(archive, after.map { it.hash }, true).entries.single()
+        val observed = independent.readSnapshotFiles(hash)
+        assertEquals(1, observed.single().priority)
+        val review = requireNotNull(SnapshotRemotePriorityComparison.plan(present, stopped, observed))
+        val port = object : SnapshotRemotePriorityApply.Port {
+            override suspend fun completeSession() = remote.listCompleteSessionTransfers()
+            override suspend fun readFiles(hash: String) = remote.readSnapshotFiles(hash)
+            override suspend fun setFilePriority(
+                hash: String, index: Int, path: String, sizeBytes: Long, expected: Int, desired: Int
+            ) = remote.setFilePriority(hash, index, path, sizeBytes, expected, desired)
+        }
+        val denied = SnapshotRemotePriorityApply.apply(remote.addAccountScope(), present, review,
+            confirmed = false, stillCurrent = { true }, port = port)
+        assertEquals(SnapshotRemotePriorityApply.Outcome.REFUSED, denied.outcome)
+        assertEquals(1, independent.readSnapshotFiles(hash).single().priority)
+        val applied = SnapshotRemotePriorityApply.apply(remote.addAccountScope(), present, review,
+            confirmed = true, stillCurrent = { true }, port = port)
+        assertEquals(SnapshotRemotePriorityApply.Outcome.VERIFIED, applied.outcome)
+        assertEquals(2, independent.readSnapshotFiles(hash).single().priority)
+        assertFalse(independent.listCompleteSessionTransfers().single { it.hash.equals(hash, true) }.started)
+    }
+
 }

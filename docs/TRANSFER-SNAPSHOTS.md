@@ -50,9 +50,9 @@ acknowledgement, timeout, account switch or postcondition uncertainty **stops**
 the remainder; no automatic retry or rollback is attempted. Report verified
 partial changes and require a new read-only comparison before another attempt.
 No Add, Start/Stop, removal, destination migration, payload copy or
-automatic background priority application occurs. This is deliberately
-limited to already-present rTorrent transfers; support for priorities on
-newly restored definitions remains separate work.
+automatic background priority application occurs. The same confirmation
+can be opened after a newly restored rTorrent job appears in a fresh snapshot
+comparison.
 
 The separately confirmed saved display-alias action for rTorrent first
 re-reads the exact authenticated account's complete current session, and
@@ -83,10 +83,30 @@ retains ownership of that transfer’s scheduling. See the
 
 Definition Add, stopped restore and journal reconciliation apply no
 settings. A change to settings alone preserves the definition-only journal
-identity, including journals created from a v1 snapshot. Remote priority
-application on newly created jobs, collections, tracker edits and broader
-profile settings remain open. Already-present rTorrent priorities use the
-separately confirmed, bounded path above.
+identity, including journals created from a v1 snapshot. Collections, tracker
+edits and broader profile settings remain open.
+
+## Restore one stopped rTorrent definition
+
+In a connected rTorrent account, compare a verified snapshot against the
+complete session and choose **Review stopped server restore** on a missing
+original. This action requires a successful authenticated challenge, advertised
+stopped raw Add, and a current absolute server default Place. The confirmation
+shows the exact account, original name and infohash, and the current server
+default. Historical paths are advisory. The existing manual Add route remains
+available for separately reviewed destinations.
+
+The adapter rechecks complete inventory and Place before dispatch, commits a
+private hash-only journal intent at the RPC write boundary, and sends one
+ordinary stopped Add. Success requires a complete-session identity read and
+separate exact stopped, inactive and directory readback. **Check previous server
+restore** reopens the journal for that archive, item and account without
+repeating a write. If a reply was lost, the observed stopped registration may
+be verified without attributing who added it. The first slice uses the
+current server default for both restore and recovery. A changed Place leaves
+a previous restore unresolved. Nothing starts, moves or copies downloaded
+payload. For saved priorities, compare the archive again and use the existing
+per-file review and explicit Apply confirmation.
 
 ## Current implementation checkpoint (2026-11-17)
 
