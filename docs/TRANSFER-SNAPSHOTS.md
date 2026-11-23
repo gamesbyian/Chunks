@@ -28,6 +28,23 @@ and flags Low for an rTorrent destination. A separate Local action can apply
 a saved display alias after an exact-hash/original-name check. It preserves
 an existing alias and reads back any new setting.
 
+For an exact **already-present rTorrent transfer**, an independently fresh,
+unfiltered complete-session read before and after the exact hash's file query
+can compare the current rTorrent file priorities with saved v2 priorities.
+Original name, complete file count, sizes, order and one consistent original
+versus server-relative path convention must match. Unknown rTorrent priority
+levels or changed account/inventory refuse the comparison. A Low choice
+captured from Local is reported as unsupported, never silently remapped.
+This action is **read-only**, with no remote priority Apply button.
+
+The separately confirmed saved display-alias action for rTorrent first
+re-reads the exact authenticated account's complete current session, and
+refuses a missing/differently named/hash-changed transfer. It writes only a
+Chunks-owned, device-local, account-isolated alias, preserves any existing
+manual alias and independently reads back a successful save. It cannot
+rename a server-side torrent or any payload filename, and neither action
+authorizes a remote priority writer or automatic restore.
+
 For an exact already-present stopped Local transfer, **Check Local files for
 priority restore** reads its current file priorities and folder. The
 confirmation shows the current and requested priorities for each file.

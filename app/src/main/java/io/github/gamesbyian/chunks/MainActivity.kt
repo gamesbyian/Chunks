@@ -105,6 +105,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
+import io.github.gamesbyian.chunks.snapshots.applyRemoteSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
@@ -2933,6 +2935,63 @@ internal fun ChunksApp(
                             inventoryStale = stale,
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
+                            onApplyAlias = { entry, generation, send ->
+                                val account = snapshotAccount
+                                val exactScope = snapshotAliasScope
+                                if (account == null || server !== account ||
+                                    aliasScope != exactScope || stale || loading ||
+                                    snapshotRevision != generation) {
+                                    send("The exact rTorrent session changed. Compare the snapshot again.")
+                                } else scope.launch {
+                                    try {
+                                        // Read the complete authenticated session afresh.
+                                        // Never rename a server torrent or its backing files.
+                                        val current = account.listCompleteSessionTransfers()
+                                            .singleOrNull { it.hash.equals(entry.infoHashV1, true) }
+                                        if (server !== account || aliasScope != exactScope ||
+                                            stale || loading || snapshotRevision != generation) {
+                                            send("The rTorrent session changed. No alias was applied.")
+                                        } else {
+                                            val feedback = withContext(Dispatchers.IO) {
+                                                applyRemoteSnapshotAlias(aliasStore, exactScope,
+                                                    entry, current)
+                                            }
+                                            if (feedback == "Saved remote display alias verified on this device.")
+                                                aliasRevision++
+                                            send(feedback)
+                                        }
+                                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        send("Could not confirm this server's current transfer. No alias was applied.")
+                                    }
+                                }
+                            },
+                            readRemotePriorityReview = { entry ->
+                                val account = snapshotAccount
+                                val expectedScope = snapshotAliasScope
+                                if (account == null || server !== account ||
+                                    aliasScope != expectedScope || stale || loading) null
+                                else {
+                                    // The visible main view can omit jobs. Independently read the
+                                    // complete, unfiltered exact-account session before AND after
+                                    // asking for this one torrent's file priorities.
+                                    val prior = account.listCompleteSessionTransfers()
+                                        .singleOrNull { it.hash.equals(entry.infoHashV1, true) }
+                                    if (prior == null) null
+                                    else {
+                                        val observed = account.readSnapshotFiles(entry.infoHashV1)
+                                        val after = account.listCompleteSessionTransfers()
+                                            .singleOrNull { it.hash.equals(entry.infoHashV1, true) }
+                                        if (server !== account || aliasScope != expectedScope ||
+                                            stale || loading || after == null ||
+                                            prior.name != after.name ||
+                                            prior.directory != after.directory ||
+                                            prior.sizeBytes != after.sizeBytes) null
+                                        else SnapshotRemotePriorityComparison.plan(entry, after, observed)
+                                    }
+                                }
+                            },
                             onPrepareAdd = { document ->
                                 // This archive entry is a new source with no standalone
                                 // document to archive or remove, even if the bytes coincide

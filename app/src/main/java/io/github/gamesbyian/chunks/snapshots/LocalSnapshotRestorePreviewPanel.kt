@@ -132,7 +132,9 @@ internal fun SnapshotRestorePreviewPanel(
         List<String>, Long) -> Unit)? = null,
     onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null,
     readPriorityReview: (suspend (SnapshotRestorePreviewV1.Entry) -> LocalSnapshotPriorityRestore?)? = null,
-    onApplyPriorities: ((LocalSnapshotPriorityRestore, Long, (String) -> Unit) -> Unit)? = null
+    onApplyPriorities: ((LocalSnapshotPriorityRestore, Long, (String) -> Unit) -> Unit)? = null,
+    /** Independently read current files on this exact connected rTorrent account. No writes. */
+    readRemotePriorityReview: (suspend (SnapshotRestorePreviewV1.Entry) -> SnapshotRemotePriorityComparison?)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -153,6 +155,7 @@ internal fun SnapshotRestorePreviewPanel(
     var aliasNotice by remember { mutableStateOf<String?>(null) }
     var priorityNotice by remember { mutableStateOf<String?>(null) }
     var priorityReview by remember { mutableStateOf<LocalSnapshotPriorityRestore?>(null) }
+    var remotePriorityReview by remember { mutableStateOf<SnapshotRemotePriorityComparison?>(null) }
     var checkingPriorities by remember { mutableStateOf(false) }
     var pageIndex by remember { mutableIntStateOf(0) }
 
@@ -170,6 +173,7 @@ internal fun SnapshotRestorePreviewPanel(
         comparedHashes = null
         manualNotice = null
         priorityReview = null
+        remotePriorityReview = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
@@ -236,6 +240,7 @@ internal fun SnapshotRestorePreviewPanel(
                     aliasNotice = null
                     priorityNotice = null
                     priorityReview = null
+                    remotePriorityReview = null
                     result = null
                     verifiedSource = null
                     comparedHashes = null
@@ -280,6 +285,7 @@ internal fun SnapshotRestorePreviewPanel(
                         aliasNotice = null
                         priorityNotice = null
                         priorityReview = null
+                        remotePriorityReview = null
                         result = null
                         verifiedSource = null
                         comparedHashes = null
@@ -305,6 +311,7 @@ internal fun SnapshotRestorePreviewPanel(
                         review = review,
                         onConfirm = {
                             priorityReview = null
+                            remotePriorityReview = null
                             if (latestReady && latestHashes == comparedHashes &&
                                 latestGeneration == comparedGeneration) {
                                 priorityNotice = "Applying reviewed priorities…"
@@ -313,6 +320,21 @@ internal fun SnapshotRestorePreviewPanel(
                         },
                         onDismiss = { priorityReview = null }
                     )
+                }
+                remotePriorityReview?.let { review ->
+                    Text("Verified current rTorrent file priorities (read-only). " +
+                        "Changed: ${review.changeCount}; unsupported Low choices: ${review.unsupportedCount}. " +
+                        "No server priorities were changed.",
+                        style = MaterialTheme.typography.bodySmall)
+                    val changes = review.rows.filter { it.saved != it.current }
+                    changes.take(8).forEach { row ->
+                        Text("#${row.file.index} ${row.file.path} · " +
+                            "${row.current.label} → ${row.saved.label}",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (changes.size > 8) Text(
+                        "${changes.size - 8} more differing files. No changes were applied.",
+                        style = MaterialTheme.typography.bodySmall)
                 }
                 result?.let { preview ->
                     // A sentence, not a heading: the readable sans (see ChunksTypography).
@@ -436,6 +458,12 @@ internal fun SnapshotRestorePreviewPanel(
                             else "To apply priorities, review a stopped Local transfer separately.",
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (onApplyAlias != null && target == SnapshotRestoreTarget.SERVER &&
+                        preview.containsSettings) Text(
+                        "Applying a saved display alias only changes this device's Chunks label. " +
+                            "It never renames the server torrent or any files.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     val shown = SnapshotRestoreCompareCatalogV1.select(
                         preview.entries, search, chosenDecision, pageIndex)
                     Text("Showing ${shown.first}–${shown.last} of ${shown.matches} " +
@@ -462,6 +490,46 @@ internal fun SnapshotRestorePreviewPanel(
                                     style = MaterialTheme.typography.bodySmall)
                             }
                             SnapshotSettingsPreview(entry, target)
+                            if (readRemotePriorityReview != null &&
+                                entry.fileMappings.isNotEmpty() &&
+                                entry.decision == SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT) {
+                                OutlinedButton(
+                                    onClick = {
+                                        val generation = comparedGeneration
+                                        remotePriorityReview = null
+                                        checkingPriorities = true
+                                        priorityNotice = "Reading this server's current file priorities…"
+                                        scope.launch {
+                                            try {
+                                                val checked = readRemotePriorityReview(entry)
+                                                if (result !== preview) return@launch
+                                                priorityNotice = when {
+                                                    !latestReady || latestHashes != comparedHashes ||
+                                                        latestGeneration != generation ->
+                                                        "The server inventory changed. Compare the snapshot again."
+                                                    checked == null ->
+                                                        "The exact server transfer, original file layout or priorities could not be confirmed. No changes were made."
+                                                    else -> {
+                                                        remotePriorityReview = checked
+                                                        "Current rTorrent priorities checked. ${checked.changeCount} differ; " +
+                                                            "${checked.unsupportedCount} saved Low choices are unsupported. " +
+                                                            "This review cannot apply changes."
+                                                    }
+                                                }
+                                            } catch (cancel: CancellationException) {
+                                                throw cancel
+                                            } catch (_: Exception) {
+                                                if (result === preview)
+                                                    priorityNotice = "Could not check this server's current file priorities."
+                                            } finally {
+                                                checkingPriorities = false
+                                            }
+                                        }
+                                    },
+                                    enabled = !checkingPriorities,
+                                    modifier = Modifier.heightIn(min = 48.dp)
+                                ) { Text("Check current rTorrent file priorities") }
+                            }
                             if (readPriorityReview != null && onApplyPriorities != null &&
                                 entry.fileMappings.isNotEmpty() &&
                                 entry.decision == SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT) {
@@ -511,10 +579,10 @@ internal fun SnapshotRestorePreviewPanel(
                                     onClick = {
                                         if (latestReady && latestHashes == comparedHashes &&
                                             latestGeneration == comparedGeneration) {
-                                            aliasNotice = "Checking the Local display alias…"
+                                            aliasNotice = "Checking the ${target.title} display alias…"
                                             onApplyAlias(entry, comparedGeneration) { aliasNotice = it }
                                         } else {
-                                            error = "The local inventory changed. Compare the snapshot again."
+                                            error = "The ${target.noun} inventory changed. Compare the snapshot again."
                                         }
                                     },
                                     modifier = Modifier.heightIn(min = 48.dp)
