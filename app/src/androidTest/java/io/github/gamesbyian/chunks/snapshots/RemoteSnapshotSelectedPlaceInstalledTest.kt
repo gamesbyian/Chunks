@@ -16,6 +16,7 @@ import io.github.gamesbyian.chunks.RemoteFolderPicker
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteDirectoryLookup
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.security.MessageDigest
@@ -48,6 +49,13 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             independent.listCompleteSessionTransfers().map { it.hash }.toSet() to
                 (requireNotNull(independent.defaultDirectory()) + "/reviewed")
         }
+        val directoryRoot = runBlocking { account.browseDirectories("") }
+        assertTrue("Authenticated root lookup returned " +
+            (if (directoryRoot is RemoteDirectoryLookup.Unavailable) directoryRoot.reason.name
+             else "ready"), directoryRoot is RemoteDirectoryLookup.Ready)
+        val rootPage = (directoryRoot as RemoteDirectoryLookup.Ready).page
+        assertTrue("Expected only a disposable reviewed child",
+            rootPage.folders.contains("reviewed"))
         var chosen by mutableStateOf<String?>(null)
         compose.setContent {
             MaterialTheme {
@@ -90,7 +98,7 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
         val hash = original.infoHashV1
         val item = SnapshotManifestV1.Item(hash, original.name, SnapshotManifestV1.Recovery.METAINFO)
         val archive = SnapshotManifestV1.decode(SnapshotManifestV1.encode(
-            SnapshotManifestV1.Manifest("disposable", "2026-11-23T00:00:00Z",
+            SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
                 SnapshotManifestV1.Source.LOCAL, listOf(item)), mapOf(hash to bytes)))
         runBlocking {
             account.version()
