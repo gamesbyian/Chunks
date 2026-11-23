@@ -385,8 +385,9 @@ internal fun SnapshotRestorePreviewPanel(
                         "Missing definitions needing individual review: " +
                         "${preview.candidateCount}. " +
                         "Not recoverable from this file: ${preview.unavailableCount}.")
-                    Text("No destination was selected. No torrent was added, started, " +
-                        "stopped, deleted, downloaded or otherwise changed.",
+                    Text("This comparison made no changes. " +
+                        "Separately confirmed file-priority or saved-alias actions " +
+                        "can modify an already-present transfer.",
                         color = MaterialTheme.colorScheme.primary)
                     val batchReady = preview.entries.filter {
                         it.decision == SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW

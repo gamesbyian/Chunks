@@ -107,6 +107,21 @@ class SnapshotRemotePriorityApplyTest {
         assertEquals(1, fake.files[1].priority) // No second write.
     }
 
+
+    @Test fun revokingExactAccountAfterOneVerifiedWriteHaltsRemainingFiles() = runBlocking {
+        val fake = Fake(transfer, initial)
+        var current = true
+        // The already-sent first RPC can succeed, but an account switch must
+        // prevent every subsequent file write and never replay the first.
+        fake.beforeWrite = { current = false }
+        val result = apply(fake, current = { current })
+        assertEquals(SnapshotRemotePriorityApply.Outcome.NEEDS_READ_ONLY_REVIEW, result.outcome)
+        assertEquals(1, result.verifiedWrites)
+        assertEquals(2, result.requestedWrites)
+        assertEquals(listOf(0), fake.writes)
+        assertEquals(listOf(2, 1), fake.files.map { it.priority })
+    }
+
     @Test fun secondSubmissionOnSameAccountAndHashIsRejectedWhileFirstRuns() = runBlocking {
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()

@@ -3034,7 +3034,7 @@ internal fun ChunksApp(
                                     send(when (result.outcome) {
                                         SnapshotRemotePriorityApply.Outcome.VERIFIED ->
                                             "All ${result.verifiedWrites} rTorrent priority changes verified. " +
-                                                "The transfer remains in its prior Start/Stop state."
+                                                "No Start/Stop operation was submitted."
                                         SnapshotRemotePriorityApply.Outcome.NO_CHANGES ->
                                             "Saved priorities already match; no write submitted."
                                         SnapshotRemotePriorityApply.Outcome.REFUSED ->
