@@ -87,9 +87,10 @@ class RemoteSnapshotBatchInstalledTest {
                 }
                 // rTorrent returns uppercase hex even when the archived metainfo
                 // preview is lowercase. Compare identities, not string casing.
+                val restoredHashes = hashes.map { it.lowercase() }.toSet()
                 assertEquals(before.map { it.lowercase() }.toSet(),
                     current.map { it.hash.lowercase() }
-                        .filterNot { it in hashes.map(String::lowercase) }.toSet())
+                        .filterNot { it in restoredHashes }.toSet())
                 assertEquals(otherBefore, other.listCompleteSessionTransfers().map { it.hash }.toSet())
                 val report = requireNotNull(coordinator.inspectPreviousBatch(archive,
                     current.map { it.hash }, selectedPlace = place))
@@ -187,8 +188,10 @@ class RemoteSnapshotBatchInstalledTest {
                 .map { it.hash.lowercase() }.toSet())
             assertEquals(otherBefore, other.listCompleteSessionTransfers()
                 .map { it.hash.lowercase() }.toSet())
-            assertTrue(hashes.none { independent.lookupName(it) != null })
-            assertTrue(hashes.none { other.lookupName(it) != null })
+            for (hash in hashes) {
+                assertNull(independent.lookupName(hash))
+                assertNull(other.lookupName(hash))
+            }
         }
     }
 }
