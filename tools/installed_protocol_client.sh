@@ -122,10 +122,10 @@ run_pair() {
   return "$result"
 }
 failed=0
-# AndroidJUnitRunner cannot itself kill the process whose stopped task
-# must survive; force-stop after the crashed instrumentation discards it.
-# Run the independent host-led task death before expensive daemon cases.
-bash tools/installed_external_document_process_loss.sh || exit 1
+# Run the independently instrumented client/fault journeys first. A flaky
+# foreign-document task/foreground failure is a strict failing acceptance
+# result, but must not prevent real client proofs from executing on this AVD.
+# The host-driven process-loss test clears the app's disposable data itself.
 run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
 run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
 # Deluge authenticates with a password only; a blank shell extra is swallowed by
@@ -229,6 +229,12 @@ run_local_add_death() {
     tee -a "$GITHUB_STEP_SUMMARY"
 }
 run_local_add_death || failed=1
+
+# AndroidJUnitRunner cannot safely kill its own app and retain the task.
+# Run the independent foreign-UID host proof last, after every client has had
+# its chance to execute. This is NOT optional and a failure still makes the
+# entire five-client workflow red. Preserve its own separate failure receipt.
+bash tools/installed_external_document_process_loss.sh || failed=1
 
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed
