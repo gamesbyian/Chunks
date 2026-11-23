@@ -12,6 +12,19 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Modifier
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.core.app.ActivityOptionsCompat
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
 import io.github.gamesbyian.chunks.RemoteFolderPicker
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -327,6 +340,126 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
                 assertNull(independent.lookupName(hash))
             }
             assertEquals(before.toSet(),
+                independent.listCompleteSessionTransfers().map { it.hash }.toSet())
+            assertEquals(otherBefore, other.listCompleteSessionTransfers().map { it.hash }.toSet())
+        }
+    }
+
+    @Test fun installedSnapshotGroupUiRequiresSecondConfirmationBeforeTwoStoppedServerWrites() {
+        assumeTrue(InstrumentationRegistry.getArguments()
+            .getString("chunks_combined_disposable") == "authorized")
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val account = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:18080/rutorrent/plugins/httprpc/action.php", "chunks", "chunks-one"))
+        val independent = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:18080/RPC2", "chunks", "chunks-one"))
+        val other = RTorrentRemote(RemoteCredentials("http://127.0.0.1:18082/RPC2", "", ""))
+        val tracker = "http://127.0.0.1:1/announce"
+        fun definition(name: String): Pair<String, ByteArray> {
+            val bytes = ("d8:announce${tracker.length}:$tracker" +
+                "4:infod6:lengthi5e4:name${name.length}:$name" +
+                "12:piece lengthi16384e6:pieces20:").toByteArray() +
+                MessageDigest.getInstance("SHA-1").digest(name.toByteArray()) +
+                "ee".toByteArray()
+            return TorrentMetainfoReader.preview(bytes).infoHashV1 to bytes
+        }
+        val sources = listOf(
+            definition("ui-stopped-batch-one.bin"),
+            definition("ui-stopped-batch-two.bin"))
+        val manifest = SnapshotManifestV1.Manifest(
+            "chunks-android", "2026-11-23T00:00:00Z",
+            SnapshotManifestV1.Source.LOCAL,
+            sources.map { (hash, bytes) ->
+                SnapshotManifestV1.Item(hash, TorrentMetainfoReader.preview(bytes).name,
+                    SnapshotManifestV1.Recovery.METAINFO)
+            }.sortedBy { it.infoHashV1 })
+        val bytes = SnapshotManifestV1.encode(manifest, sources.toMap())
+        val uri = OwnedDiagnosticExportProvider.publish(
+            context, "disposable-ui-stopped-batch.chunksnap", bytes)
+        val picker = object : ActivityResultRegistryOwner {
+            override val activityResultRegistry = object : ActivityResultRegistry() {
+                override fun <I, O> onLaunch(
+                    requestCode: Int, contract: ActivityResultContract<I, O>,
+                    input: I, options: ActivityOptionsCompat?
+                ) { dispatchResult(requestCode, uri) }
+            }
+        }
+        val (initial, otherBefore, defaultPlace) = runBlocking {
+            account.version()
+            Triple(independent.listCompleteSessionTransfers().map { it.hash },
+                other.listCompleteSessionTransfers().map { it.hash }.toSet(),
+                requireNotNull(independent.defaultDirectory()))
+        }
+        val store = AndroidSnapshotRestoreJournalStore(context)
+        var admitted = 0
+        val batch = SnapshotRemoteBatchStoppedRestore(account, store,
+            stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
+        val single = SnapshotRemoteDefinitionRestore(account, store,
+            stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
+        compose.setContent {
+            CompositionLocalProvider(LocalActivityResultRegistryOwner provides picker) {
+                MaterialTheme {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        SnapshotRestorePreviewPanel(
+                            targetHashes = initial, target = SnapshotRestoreTarget.SERVER,
+                            inventoryConfirmed = true, inventoryStale = false, busyEngine = false,
+                            mutationGeneration = 1L, remoteDefinitionRestore = single,
+                            remoteBatchStoppedRestore = batch,
+                            remoteDefinitionActionScope = rememberCoroutineScope(),
+                            remoteDefinitionAccountLabel = "Disposable server A",
+                            remoteDefinitionFolderAccount = account
+                        )
+                    }
+                }
+            }
+        }
+        fun await(text: String, timeout: Long = 45_000) {
+            compose.waitUntil(timeout) {
+                compose.onAllNodesWithText(text, substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        compose.onNodeWithText("Compare saved snapshot with rTorrent server").performClick()
+        compose.onNodeWithText("Choose .chunksnap to compare").performScrollTo().performClick()
+        await("Review 2 stopped server restores")
+        compose.onNodeWithText("Review 2 stopped server restores").performScrollTo().performClick()
+        await("Confirm 2 stopped restores")
+        compose.onNodeWithText("rTorrent account: Disposable server A").assertExists()
+        compose.onNodeWithText("Current server default Place: " + defaultPlace).assertExists()
+        assertEquals(0, admitted)
+        for ((hash, _) in sources) assertNull(runBlocking { independent.lookupName(hash) })
+        compose.onNodeWithText("Confirm 2 stopped restores").performClick()
+        await("2/2 stopped server definitions independently verified.")
+        assertEquals(2, admitted)
+        runBlocking {
+            val roster = independent.listCompleteSessionTransfers()
+            assertEquals(initial.map { it.uppercase() }.toSet(),
+                roster.filterNot { row -> sources.any { it.first.equals(row.hash, true) } }
+                    .map { it.hash.uppercase() }.toSet())
+            for ((hash, _) in sources) {
+                val row = roster.single { it.hash.equals(hash, true) }
+                assertFalse(row.started)
+                assertEquals(defaultPlace, row.directory)
+                assertEquals(false, independent.readActivity(hash).active)
+                assertEquals(0L, row.completedBytes)
+            }
+            assertEquals(otherBefore, other.listCompleteSessionTransfers().map { it.hash }.toSet())
+            // Retire only this synthetic stopped session state and preserve
+            // both daemons' preloaded data for subsequent fault/Combined cases.
+            for ((hash, _) in sources) {
+                val row = independent.listCompleteSessionTransfers()
+                    .single { it.hash.equals(hash, true) }
+                val removed = independent.eraseFromSession(hash, row.name, row.directory)
+                assertTrue(removed is SessionEraseOutcome.VerifiedRemoved ||
+                    removed is SessionEraseOutcome.PendingRemoval)
+                for (attempt in 0 until 10) {
+                    if (independent.lookupName(hash) == null) break
+                    delay(300)
+                }
+                assertNull(independent.lookupName(hash))
+            }
+            assertEquals(initial.toSet(),
                 independent.listCompleteSessionTransfers().map { it.hash }.toSet())
             assertEquals(otherBefore, other.listCompleteSessionTransfers().map { it.hash }.toSet())
         }
