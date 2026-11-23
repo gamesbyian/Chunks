@@ -29,7 +29,8 @@ until an adapter verifies the target's actual files. A separate Local action
 can apply a saved display alias after an exact-hash/original-name check,
 only when no stored alias would be overwritten. The app reads back the saved
 alias. Definition Add, stopped restore and journal reconciliation apply no
-settings. Collections, tracker edits, profile settings and restore-time
+settings. A change to settings alone preserves the existing definition-only
+journal identity, including journals created from a v1 snapshot. Collections, tracker edits, profile settings and restore-time
 file priority application remain outside this schema and flow.
 
 ## Current implementation checkpoint (2026-11-17)
@@ -156,7 +157,7 @@ Snapshots are for manual and optionally repeatable inventory backup. Never autom
 ## Archive structure and versioning
 
 - Single ZIP-format container with extension `.chunksnap`, containing `manifest.json` (UTF-8), optional `torrents/<stable-id>.torrent` raw metainfo, and `checksums.json` with SHA-256 digest and size for each stored member. No payload files or rTorrent session files. Manifest v1 permits producer, UTC creation timestamp, source kind, and item identity/name/recovery/magnet/historical-directory fields. Manifest v2 adds the narrowly scoped settings above.
-- Top-level `schemaVersion: 1`, `producer`, creation timestamp (UTC), source kind (local/rTorrent), **redacted user-facing source label** (default omit server URL/username), counts by recovery capability, and items. An item's scoped identity is original v1/v2 infohash identity where verifiable; content path is never identity. Preserve original name and original infohash, plus the source's optional directory suggestion, current complete percentage and state **only as historical context**.
+- Top-level `schemaVersion` (1 or 2), `producer`, creation timestamp (UTC), source kind (local/rTorrent), **redacted user-facing source label** (default omit server URL/username), counts by recovery capability, and items. An item's scoped identity is original v1/v2 infohash identity where verifiable; content path is never identity. Preserve original name and original infohash, plus the source's optional directory suggestion, current complete percentage and state **only as historical context**.
 - Prefer exact complete `.torrent` metadata with verified hash and appropriate announce information. A valid magnet with complete infohash and required retrieval parameters is a separately labelled fallback. **Hash-only entries are inventory records, not automatically restorable torrents.** Never fabricate a magnet that is guaranteed to retrieve metadata, trackers, peers, or content from an infohash alone.
 - Preserve file selection/priorities, selected trackers, tags/collections, local-only display aliases and start-paused preference when retrievable and translatable; capability-report any unrepresentable setting. Do not copy credentials, passkeys in connection URLs, cookies, authorization headers, private device tokens, rTorrent scripts, XML-RPC commands or arbitrary session state.
 - Explicitly distinguish public tracker URLs from private tracker announce URLs. Private-tracker passkeys are often embedded in legitimate `.torrent` announce URLs, so **a full-fidelity archive can contain secrets**. Default export must show a clear sensitivity warning and require deliberate selection of full-fidelity tracker preservation; a sanitized export must mark torrents whose tracker removal may prevent their restoration/use. Never describe an exported snapshot as categorically free of secrets.

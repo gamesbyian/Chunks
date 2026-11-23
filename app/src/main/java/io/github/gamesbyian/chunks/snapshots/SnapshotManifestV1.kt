@@ -91,6 +91,16 @@ internal object SnapshotManifestV1 {
         return SnapshotArchiveV1.encode(bytes, metainfoByHash)
     }
 
+    /**
+     * The stopped-Add journal identifies the original definitions. Advisory
+     * settings cannot unlock a second Add, and existing v1 keys stay valid.
+     */
+    fun definitionArchiveFingerprint(source: Verified): String {
+        val manifest = source.manifest
+        val projection = manifest.copy(items = manifest.items.map { it.copy(settings = null) })
+        return SnapshotArchiveV1.digest(encode(projection, source.metainfoByHash))
+    }
+
     internal fun remainingManifestBytes(manifest: Manifest): Int =
         MAX_MANIFEST_BYTES - manifestJson(manifest).size
 

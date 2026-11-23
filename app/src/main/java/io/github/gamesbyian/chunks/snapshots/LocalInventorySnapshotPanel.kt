@@ -96,21 +96,29 @@ internal fun LocalInventorySnapshotPanel(
     val capture = captureResult.getOrNull()
     // Explicit share handoff replaces unsafe truncating writes to a SAF
     // CreateDocument URI. The receiving app decides whether to save it.
-    fun shareOwnedSnapshot(bytes: ByteArray, definitions: Int, filename: String) {
+    fun shareOwnedSnapshot(
+        bytes: ByteArray, filename: String, definitions: Int = 0, aliases: Int = 0,
+        stillCurrent: () -> Boolean = { !currentStale && !currentBusyEngine }
+    ) {
         saving = true
         resultVerified = false
         result = null
         scope.launch {
             try {
+                check(stillCurrent()) { "Source became stale. Preview again before saving" }
                 val uri = withContext(Dispatchers.IO) {
                     OwnedDiagnosticExportProvider.publish(context, filename, bytes)
                 }
+                check(stillCurrent()) { "Source became stale. Preview again before saving" }
                 OwnedDiagnosticShare.openChooser(context, uri,
                     "application/octet-stream", "local snapshot")
                 result = if (definitions > 0) {
                     "Prepared $definitions verified original v1 torrent definitions in a " +
                         "read-only share. This may include private-tracker passkeys. " +
                         "The receiving app has not saved it yet, and no payload bytes were included."
+                } else if (aliases > 0) {
+                    "Prepared a read-only share with $aliases display aliases. " +
+                        "It contains no restorable definitions or payload bytes."
                 } else {
                     "Prepared a verified inventory-only snapshot for sharing. " +
                         "No receiving app has saved it yet. No restorable definitions, " +
@@ -255,10 +263,10 @@ internal fun LocalInventorySnapshotPanel(
                                 recovery.verifiedRestorableCount + "; remaining inventory-only: " +
                                 recovery.inventoryOnlyCount + "; unsupported/omitted: " +
                                 recovery.omittedCount + ".")
+                            val aliasCount = recovery.manifest.items.count {
+                                it.settings?.displayAlias != null
+                            }
                             if (includeSettings) {
-                                val aliasCount = recovery.manifest.items.count {
-                                    it.settings?.displayAlias != null
-                                }
                                 val priorityCount = recovery.manifest.items.count {
                                     it.settings?.filePriorities != null
                                 }
@@ -280,16 +288,21 @@ internal fun LocalInventorySnapshotPanel(
                                             val encoded = withContext(Dispatchers.IO) {
                                                 selected.toArchive()
                                             }
-                                            if (currentStale || currentBusyEngine || !currentOptIn ||
-                                                !sourceStillCurrent(review.generation) ||
-                                                currentReviewIdentity != review.identity) {
+                                            val stillCurrent = {
+                                                !currentStale && !currentBusyEngine && currentOptIn &&
+                                                    sourceStillCurrent(review.generation) &&
+                                                    currentReviewIdentity == review.identity
+                                            }
+                                            if (!stillCurrent()) {
                                                 result = "Source became stale. Preview again before saving."
                                                 saving = false
                                             } else {
                                                 val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                                     .withZone(ZoneOffset.UTC).format(Instant.now())
-                                                shareOwnedSnapshot(encoded, selected.verifiedRestorableCount,
-                                                    "chunks-local-reviewed-$stamp.chunksnap")
+                                                shareOwnedSnapshot(encoded,
+                                                    "chunks-local-reviewed-$stamp.chunksnap",
+                                                    definitions = selected.verifiedRestorableCount,
+                                                    aliases = aliasCount, stillCurrent = stillCurrent)
                                             }
                                         } catch (cancel: CancellationException) {
                                             throw cancel
@@ -301,7 +314,7 @@ internal fun LocalInventorySnapshotPanel(
                                     }
                                 },
                                 enabled = !saving && !stale && !busyEngine &&
-                                    recovery.verifiedRestorableCount > 0,
+                                    (recovery.verifiedRestorableCount > 0 || aliasCount > 0),
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                             ) { Text("Share reviewed sensitive .chunksnap") }
                         }
@@ -325,7 +338,7 @@ internal fun LocalInventorySnapshotPanel(
                         } else {
                             val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                 .withZone(ZoneOffset.UTC).format(Instant.now())
-                            shareOwnedSnapshot(bytes, 0, "chunks-local-inventory-$stamp.chunksnap")
+                            shareOwnedSnapshot(bytes, "chunks-local-inventory-$stamp.chunksnap")
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)

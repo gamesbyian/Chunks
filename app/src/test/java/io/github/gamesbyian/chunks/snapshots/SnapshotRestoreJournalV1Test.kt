@@ -28,6 +28,35 @@ class SnapshotRestoreJournalV1Test {
     private fun open(store: MemoryStore, names: List<String> = listOf(one, two)) =
         SnapshotRestoreJournalV1.open(store, archive, target, names)
 
+    @Test fun addingOrChangingSettingsCannotUnblockAnUncertainDefinitionAdd() {
+        val torrent = ("d4:infod6:lengthi5e4:name8:test.txt12:piece lengthi16384e" +
+            "6:pieces20:01234567890123456789ee").toByteArray()
+        val hash = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(torrent).infoHashV1
+        val item = SnapshotManifestV1.Item(hash, "test.txt", SnapshotManifestV1.Recovery.METAINFO)
+        val manifest = SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
+            SnapshotManifestV1.Source.LOCAL, listOf(item))
+        val originals = mapOf(hash to torrent)
+        val v1 = SnapshotManifestV1.encode(manifest, originals)
+        val legacyKey = SnapshotArchiveV1.digest(v1)
+        val store = MemoryStore()
+        val started = SnapshotRestoreJournalV1.open(store, legacyKey, target, listOf(hash))
+        started.prepare(hash, place)
+        started.beforeAdd(hash, place)
+        for (alias in listOf("One", "Two")) {
+            val updated = manifest.copy(items = listOf(item.copy(
+                settings = SnapshotManifestV1.Settings(alias,
+                    listOf(SnapshotFilePriorities.Level.LOW)))))
+            val archive = SnapshotManifestV1.encode(updated, originals)
+            assertNotEquals(legacyKey, SnapshotArchiveV1.digest(archive))
+            val key = SnapshotManifestV1.definitionArchiveFingerprint(SnapshotManifestV1.decode(archive))
+            assertEquals(legacyKey, key)
+            val recovered = SnapshotRestoreJournalV1.openExisting(store, key, target, listOf(hash))
+            assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, recovered.entries().single().phase)
+            reject { recovered.beforeAdd(hash, place) }
+        }
+        assertEquals(1, store.content.size)
+    }
+
     @Test fun readOnlyRecoveryDoesNotCreateAnAbsentJournal() {
         val store = MemoryStore()
         reject {

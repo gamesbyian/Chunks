@@ -26,6 +26,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import java.util.Locale
@@ -63,7 +66,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
     /** Existing hash only: check an earlier journal, never submit. */
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null,
-    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long) -> Unit)? = null
+    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null
 ) = SnapshotRestorePreviewPanel(
     targetHashes = transfers.map { it.infoHash },
     target = SnapshotRestoreTarget.LOCAL,
@@ -123,7 +126,7 @@ internal fun SnapshotRestorePreviewPanel(
         List<String>, Long) -> Unit)? = null,
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null,
-    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long) -> Unit)? = null
+    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -141,6 +144,7 @@ internal fun SnapshotRestorePreviewPanel(
     var chosenDecision by remember {
         mutableStateOf<SnapshotRestorePreviewV1.Decision?>(null)
     }
+    var aliasNotice by remember { mutableStateOf<String?>(null) }
     var pageIndex by remember { mutableIntStateOf(0) }
 
     // Local status counters and peers may update each second. Identity changes
@@ -219,6 +223,7 @@ internal fun SnapshotRestorePreviewPanel(
             OutlinedButton(
                 onClick = {
                     expanded = !expanded
+                    aliasNotice = null
                     result = null
                     verifiedSource = null
                     comparedHashes = null
@@ -244,7 +249,7 @@ internal fun SnapshotRestorePreviewPanel(
                     "missing definitions. An explicitly confirmed local restore adds " +
                     "only a stopped transfer definition: no downloaded payload " +
                     "files are migrated.")
-                Text("The existing ${target.noun} transfers stay untouched. A match means " +
+                Text("Comparison leaves existing ${target.noun} transfers untouched. A match means " +
                     "the exact torrent identity already exists here; it does not " +
                     "prove its payload is complete or correctly seeded.",
                     style = MaterialTheme.typography.bodySmall)
@@ -260,6 +265,7 @@ internal fun SnapshotRestorePreviewPanel(
                 OutlinedButton(
                     onClick = {
                         reading = true
+                        aliasNotice = null
                         result = null
                         verifiedSource = null
                         comparedHashes = null
@@ -274,6 +280,9 @@ internal fun SnapshotRestorePreviewPanel(
                         else "Choose .chunksnap to compare")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                aliasNotice?.let {
+                    Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
                 result?.let { preview ->
                     // A sentence, not a heading: the readable sans (see ChunksTypography).
                     Text("Compared with ${preview.targetInventoryCount} current ${target.noun} transfers.",
@@ -416,6 +425,10 @@ internal fun SnapshotRestorePreviewPanel(
                         Text(entry.originalName + " · " + category,
                             style = MaterialTheme.typography.bodySmall)
                         if (preview.containsSettings) {
+                            if (entry.displayAlias != null || entry.fileMappings.isNotEmpty()) {
+                                Text("Infohash ${entry.infoHashV1}",
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
                             SnapshotSettingsPreview(entry, target)
                             if (onApplyAlias != null && entry.displayAlias != null &&
                                 entry.displayAlias != entry.originalName &&
@@ -424,7 +437,8 @@ internal fun SnapshotRestorePreviewPanel(
                                     onClick = {
                                         if (latestReady && latestHashes == comparedHashes &&
                                             latestGeneration == comparedGeneration) {
-                                            onApplyAlias(entry, comparedGeneration)
+                                            aliasNotice = "Checking the Local display alias…"
+                                            onApplyAlias(entry, comparedGeneration) { aliasNotice = it }
                                         } else {
                                             error = "The local inventory changed. Compare the snapshot again."
                                         }

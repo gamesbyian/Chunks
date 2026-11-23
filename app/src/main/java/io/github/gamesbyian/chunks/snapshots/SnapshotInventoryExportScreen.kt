@@ -83,7 +83,7 @@ internal fun SnapshotInventoryExportScreen(
     // A poll in flight need not revoke an otherwise fresh proven inventory.
     // A stale view, new row/Place or switched account does.
     val currentReady by rememberUpdatedState(!stale)
-    val currentAccount by rememberUpdatedState(accountStillCurrent)
+    val currentSourceSession by rememberUpdatedState(sourceSessionIdentity)
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var resultIsVerified by remember { mutableStateOf(false) }
@@ -231,9 +231,12 @@ internal fun SnapshotInventoryExportScreen(
                 val revision = snapshotRevision
                 val observedView = view
                 val frozenRows = observedRows.toList()
+                val frozenSession = sourceSessionIdentity
+                val frozenAccountCheck = accountStillCurrent
                 val stillCurrent = {
                     currentReady && currentRows == frozenRows &&
-                        currentView == observedView && currentAccount()
+                        currentView == observedView && currentSourceSession === frozenSession &&
+                        frozenAccountCheck()
                 }
                 busy = true
                 recoveredProgress = 0

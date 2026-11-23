@@ -92,6 +92,7 @@ import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
 import io.github.gamesbyian.chunks.snapshots.LocalInventorySnapshotPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.applyLocalSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
@@ -3170,37 +3171,19 @@ internal fun LocalEngineScreen(
             inventoryStale = inventoryStale,
             busyEngine = busy || sourceReading,
             mutationGeneration = LocalScreenReader.revision.snapshot(),
-            onApplyAlias = { entry, generation ->
-                val alias = requireNotNull(entry.displayAlias)
+            onApplyAlias = { entry, generation, report ->
                 if (inventoryStale || !hasConfirmedLocalInventory || busy || sourceReading ||
                     !LocalScreenReader.revision.isCurrent(generation)) {
-                    noteProblem("The local inventory changed. Compare the snapshot again.")
+                    report("The local inventory changed. Compare the snapshot again.")
                 } else performLocalMutation {
                     val outcome = withContext(Dispatchers.IO) {
-                        val target = LocalEngineHolder.current()
-                        val hash = entry.infoHashV1
-                        val scopeKey = TransferCollectionStore.LOCAL_ENGINE_SCOPE
-                        val observed = runCatching { target?.status(hash) }.getOrNull()
-                        if (observed?.infoHash != hash || observed.name != entry.originalName) {
-                            "The exact Local transfer could not be confirmed. No alias was applied."
-                        } else {
-                            val saved = runCatching {
-                                aliasStore.saveReviewedBatch(scopeKey, listOf(
-                                    io.github.gamesbyian.chunks.model.AliasReviewWrite(
-                                        hash, entry.originalName, alias)
-                                ))
-                            }.getOrDefault(false)
-                            val readback = runCatching { aliasStore.get(scopeKey, hash) }.getOrNull()
-                            when {
-                                saved && readback == alias -> "Saved alias verified on this device."
-                                readback != null && readback != alias ->
-                                    "An existing alias was kept. No alias was replaced."
-                                else -> "Alias application could not be verified. Check transfer Details."
-                            }
-                        }
+                        val observed = runCatching {
+                            LocalEngineHolder.current()?.status(entry.infoHashV1)
+                        }.getOrNull()
+                        applyLocalSnapshotAlias(aliasStore, entry, observed)
                     }
                     aliasRevision++
-                    message = outcome
+                    report(outcome)
                 }
             },
             onPrepareAdd = { originalBytes ->
@@ -3244,11 +3227,9 @@ internal fun LocalEngineScreen(
                                         it.recovery == SnapshotManifestV1.Recovery.METAINFO
                                 }
                             })
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotBatchRecoveryDraft(
                                 originalHashes,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3301,10 +3282,8 @@ internal fun LocalEngineScreen(
                                     verified, entry.infoHashV1)
                             }.sortedBy { it.infoHashV1 }
                             require(originals.map { it.infoHashV1 }.toSet().size == originals.size)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotBatchStoppedRestoreDraft(
-                                originals, LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                originals, SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3347,11 +3326,9 @@ internal fun LocalEngineScreen(
                         val draft = withContext(Dispatchers.IO) {
                             val original = SnapshotVerifiedTorrentDocumentV1.prepare(
                                 verified, entry.infoHashV1)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotStoppedRestoreDraft(
                                 original,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3396,11 +3373,9 @@ internal fun LocalEngineScreen(
                         val draft = withContext(Dispatchers.IO) {
                             val original = SnapshotVerifiedTorrentDocumentV1.prepare(
                                 verified, entry.infoHashV1)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotStoppedRestoreDraft(
                                 original,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation, recoveryOnly = true)
                         }
                         if (sourceReadJob !== read) return@launch
