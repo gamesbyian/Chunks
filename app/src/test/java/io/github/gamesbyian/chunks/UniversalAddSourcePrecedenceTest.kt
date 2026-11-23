@@ -176,6 +176,10 @@ class UniversalAddSourcePrecedenceTest {
 
         LazyComposeActions.activateOnce(rule, hasText("Review original .torrent in server Add"))
         waitForText(name)
+        val retained = androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
+            .reviewedTorrent.value
+        assertEquals("The handoff enters the shared draft before leaving rTorrent", hash, retained?.preview?.infoHashV1)
+        assertNull("Snapshot bytes do not inherit the previously selected SAF document", retained?.originalDocument)
         assertTrue(rule.onAllNodesWithText("earlier-local.mkv", substring = true).fetchSemanticsNodes().isEmpty())
         assertNoWriteRpc()
     }
@@ -302,6 +306,13 @@ class UniversalAddSourcePrecedenceTest {
         list().performScrollToNode(hasText(".torrent file"))
         rule.onNodeWithText(".torrent file").performClick()
         rule.waitForIdle()
+        // Protocol routes consume these same app-owned values directly. The
+        // next client must not need the rTorrent-to-Local adapter to reconcile them.
+        val owner = androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
+        assertEquals("", owner.sourceDraft.value)
+        assertEquals(TorrentMetainfoReader.preview(document).infoHashV1, owner.reviewedTorrent.value?.preview?.infoHashV1)
+        assertEquals(Uri.parse("content://chunks.test.documents/newest.mkv.torrent"),
+            owner.reviewedTorrent.value?.originalDocument)
         list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE))
         rule.onNode(routingSuggestion).assertExists()
 
