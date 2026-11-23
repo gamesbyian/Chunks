@@ -129,7 +129,7 @@ PY
 import re, sys
 from pathlib import Path
 raw = Path(sys.argv[1]).read_text(errors="replace")
-matches = re.findall(r"mCurrentFocus=([^\\n]+)", raw)
+matches = re.findall(r"mCurrentFocus=([^\n]+)", raw)
 item = matches[-1] if matches else ""
 if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
 elif "io.github.gamesbyian.chunks/" in item: print("chunks")
@@ -143,7 +143,7 @@ PY
 import re, sys
 from pathlib import Path
 raw = Path(sys.argv[1]).read_text(errors="replace")
-matches = re.findall(r"(?:topResumedActivity|mResumedActivity)=([^\\n]+)", raw)
+matches = re.findall(r"(?:topResumedActivity|mResumedActivity)=([^\n]+)", raw)
 item = matches[-1] if matches else ""
 if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
 elif "io.github.gamesbyian.chunks/" in item: print("chunks")
