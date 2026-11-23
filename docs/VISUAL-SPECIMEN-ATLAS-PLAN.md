@@ -1,6 +1,6 @@
 # Chunks visual specimen atlas: implementation plan
 
-**Status:** Owner-requested plan; implementation and screenshot capture have **not** begun.  
+**Status:** Owner-requested plan; source-exact **pilot selection completed 2026-11-23**, not final accepted atlas. See [pilot evidence receipt](design/visual-atlas/PILOT-2026-11-23.md): 17 representative genuine emulator PNGs identified across two existing test campaigns, with fixture limitations. Tall scrolling, route/component inventory, consistent app-shell geometry and approved atlas deliverable are still open.  
 **Purpose:** Produce a compact, source-derived visual reference of the *actual rendered Android app*, not an exhaustive interaction/state test suite or a substitute for functional acceptance.  
 **Authority:** [UX](UX.md), [feature experience contract](FEATURE-EXPERIENCE-CONTRACT.md), [test architecture](TEST-ARCHITECTURE.md), [CI policy](CI-POLICY.md), [documentation standard](DOCUMENTATION-STANDARD.md). If rendered code diverges from approved designs, record both the observed implementation and the governing design without silently editing the image to conform.
 
