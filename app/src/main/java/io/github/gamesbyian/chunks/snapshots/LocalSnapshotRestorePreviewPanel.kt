@@ -402,7 +402,7 @@ internal fun SnapshotRestorePreviewPanel(
                         style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { chooseRemotePlace = true },
-                            enabled = !remoteDefinitionBusy && !reading,
+                            enabled = !remoteDefinitionBusy && !remoteBatchBusy && !reading,
                             modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Choose restore folder")
                         }
@@ -413,7 +413,7 @@ internal fun SnapshotRestorePreviewPanel(
                             remoteBatchNotice = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
-                        }, enabled = !remoteDefinitionBusy && !reading,
+                        }, enabled = !remoteDefinitionBusy && !remoteBatchBusy && !reading,
                             modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Use server default")
                         }
@@ -784,7 +784,7 @@ internal fun SnapshotRestorePreviewPanel(
                                     }
                                 }
                             },
-                            enabled = targetReady && !reading && !remoteDefinitionBusy,
+                            enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Check ${previousCandidates.size} previous server restores (read-only)") }
                     }
@@ -1049,7 +1049,7 @@ internal fun SnapshotRestorePreviewPanel(
                                                 }
                                             }
                                         },
-                                        enabled = targetReady && !reading && !remoteDefinitionBusy,
+                                        enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                     ) {
                                         Text(if (recoveryOnly) "Check previous server restore"
