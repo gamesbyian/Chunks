@@ -2,7 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
