@@ -16,7 +16,8 @@ def pull_request_paths(source: str) -> set[str]:
     # Match only the path allowlist under on.pull_request, not unrelated
     # lists of checkout steps, artifacts, or workflow_dispatch entries.
     match = re.search(
-        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?    paths:\s*\n"
+        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
+        r"(?:    \#[^\n]*\n)*(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -35,7 +36,8 @@ def dispatches_for_changed_paths(source: str, changed: tuple[str, ...]) -> bool:
     Assertions also pin the exact GitHub-compatible patterns and their order.
     """
     match = re.search(
-        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?    paths:\s*\n"
+        r"(?m)^  pull_request:\s*\n(?:    branches:\s*\[main\]\s*\n)?"
+        r"(?:    \#[^\n]*\n)*(?:    types:\s*\[[^\]]+\]\s*\n)?    paths:\s*\n"
         r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
@@ -71,6 +73,20 @@ class AndroidCiTriggerContract(unittest.TestCase):
             sample, ("app/src/main/java/Example.kt",)))
         self.assertFalse(dispatches_for_changed_paths(
             sample, ("app/src/androidTest/java/Example.kt",)))
+        with_types = sample.replace(
+            "    paths:\n",
+            "    types: [opened, reopened, synchronize, ready_for_review]\n    paths:\n",
+        )
+        self.assertEqual(pull_request_paths(sample), pull_request_paths(with_types))
+        with_comment = with_types.replace(
+            "    types:",
+            "    # Draft iterations must not run expensive jobs.\n    types:",
+        )
+        self.assertEqual(pull_request_paths(sample), pull_request_paths(with_comment))
+        self.assertTrue(dispatches_for_changed_paths(
+            with_comment, ("app/src/main/java/Example.kt",)))
+        self.assertTrue(dispatches_for_changed_paths(
+            with_types, ("app/src/main/java/Example.kt",)))
 
     def test_preflight_tool_edits_trigger_only_cheap_docs_validation(self):
         android = pull_request_paths(WORKFLOW.read_text(encoding="utf-8"))
@@ -374,6 +390,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn("cancel-in-progress: true", source)
                 for retained in must_keep:
                     self.assertIn(retained, source)
+                self.assertNotIn("continue-on-error: true", source)
+
+    def test_disposable_installed_workflows_defer_draft_but_resume_on_ready(self):
+        # Preserve complete expensive real-daemon acceptance when a PR is ready;
+        # experimental draft edits and conversions must stay cost-free.
+        for filename, job, script in (
+            ("installed-remote-delete-data.yml", "remote-delete-data",
+             "tools/installed_remote_delete_data.sh"),
+            ("installed-combined-two-servers.yml", "two-server-combined",
+             "tools/installed_combined_two_servers.sh"),
+        ):
+            with self.subTest(workflow=filename):
+                source = (ROOT / ".github/workflows" / filename).read_text()
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source)
+                self.assertIn(f"  {job}:", source)
+                self.assertIn("workflow_dispatch:", source)
+                self.assertIn("cancel-in-progress: true", source)
+                self.assertIn(script, source)
                 self.assertNotIn("continue-on-error: true", source)
 
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
