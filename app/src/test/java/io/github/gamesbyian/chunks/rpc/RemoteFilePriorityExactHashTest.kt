@@ -103,6 +103,26 @@ class RemoteFilePriorityExactHashTest {
 
     private fun remote(g: Gateway) = RTorrentRemote(RemoteCredentials(g.endpoint, "", ""))
 
+    @Test fun snapshotFileReadRequiresExactIdentityBeforeAndAfterWithoutWrites() = runBlocking {
+        Gateway(Scenario.MATCH).use { gateway ->
+            assertEquals(listOf(RemoteFile("payload.bin", 42, 1)),
+                remote(gateway).readSnapshotFiles(hash))
+            assertEquals(listOf("d.hash", "f.multicall", "d.hash"), gateway.methods)
+            assertEquals(0, gateway.mutations)
+        }
+        for (scenario in listOf(Scenario.WRONG_BEFORE, Scenario.LATE_HASH)) {
+            Gateway(scenario).use { gateway ->
+                try {
+                    remote(gateway).readSnapshotFiles(hash)
+                    fail("A different hash cannot supply snapshot files")
+                } catch (_: IllegalStateException) {}
+                assertEquals(0, gateway.mutations)
+                assertEquals(if (scenario == Scenario.WRONG_BEFORE) 0 else 1,
+                    gateway.methods.count { it == "f.multicall" })
+            }
+        }
+    }
+
     @Test fun absentWrongOrMalformedSessionRefusesBeforePriorityWrite() = runBlocking {
         for (scenario in listOf(Scenario.MISSING_BEFORE, Scenario.WRONG_BEFORE,
                 Scenario.MALFORMED_BEFORE)) {

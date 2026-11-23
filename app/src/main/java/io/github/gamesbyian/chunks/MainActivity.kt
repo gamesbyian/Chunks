@@ -103,6 +103,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
@@ -2902,6 +2904,7 @@ internal fun ChunksApp(
                 val originalReader: suspend (String) -> ByteArray? = { hash ->
                     snapshotAccount?.originalMetainfoForSnapshot(hash)
                 }
+                val snapshotAliasScope = aliasScope
                 SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
@@ -2909,7 +2912,19 @@ internal fun ChunksApp(
                     onBack = { section = Section.TRANSFERS },
                     readOriginalMetainfo = if (snapshotAccount == null) null else originalReader,
                     sourceSessionIdentity = snapshotAccount,
-                    accountStillCurrent = { server === snapshotAccount },
+                    accountStillCurrent = { server === snapshotAccount && aliasScope == snapshotAliasScope },
+                    settingsCapture = snapshotAccount?.let { account ->
+                        SnapshotSettingsCapture(
+                            readAlias = { hash -> snapshotAliasScope.takeIf { it.isNotBlank() }
+                                ?.let { aliasStore.get(it, hash) } },
+                            readFiles = { hash ->
+                                account.readSnapshotFiles(hash).mapIndexed { index, row ->
+                                    SnapshotFilePriorities.Observation(
+                                        SnapshotFilePriorities.File(index, row.path, row.sizeBytes), row.priority)
+                                }
+                            }
+                        )
+                    },
                     restorePanel = {
                         SnapshotRestorePreviewPanel(
                             targetHashes = comparisonHashes.orEmpty(),

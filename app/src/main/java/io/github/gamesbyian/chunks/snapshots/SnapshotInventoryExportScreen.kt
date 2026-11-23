@@ -62,12 +62,14 @@ internal fun SnapshotInventoryExportScreen(
     /** Invalidates an in-flight export if its connected remote account changes. */
     accountStillCurrent: () -> Boolean = { true },
     /** Optional read-only comparison/restore-review panel for this server. */
-    restorePanel: (@Composable () -> Unit)? = null
+    restorePanel: (@Composable () -> Unit)? = null,
+    settingsCapture: SnapshotSettingsCapture? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var includeHistoricalDirectories by remember { mutableStateOf(false) }
     var includeOriginalDefinitions by remember(sourceSessionIdentity) { mutableStateOf(false) }
+    var includeSettings by remember(sourceSessionIdentity) { mutableStateOf(false) }
     var recoveredProgress by remember { mutableIntStateOf(0) }
     var recoveredTotal by remember { mutableIntStateOf(0) }
     // Snapshot revision advances on every ordinary remote poll, including
@@ -109,7 +111,7 @@ internal fun SnapshotInventoryExportScreen(
             "This snapshot records transfer names and exact infohashes from the " +
                 "currently loaded '$view' server view. You can explicitly request " +
                 "verified original .torrent definitions if the server supports them. " +
-                "Downloaded files, payload bytes and old server settings are never included.",
+                "Downloaded files and payload bytes are never included.",
             style = MaterialTheme.typography.bodyLarge
         )
         if (stale || loading || snapshotRevision <= 0) {
@@ -184,6 +186,22 @@ internal fun SnapshotInventoryExportScreen(
                     "Keep the shared snapshot private.",
                 style = MaterialTheme.typography.bodySmall
             )
+            if (includeOriginalDefinitions && settingsCapture != null) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                        value = includeSettings, enabled = !busy, role = Role.Checkbox,
+                        onValueChange = { includeSettings = it }),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = includeSettings, onCheckedChange = null)
+                    Text("Include display aliases and verified file priorities",
+                        modifier = Modifier.padding(start = 8.dp))
+                }
+                if (includeSettings) Text(
+                    "Aliases may contain private text. Priorities require an exact match " +
+                        "between the server's current files and the original .torrent layout.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             if (readOriginalMetainfo == null) {
                 Text("Original-source retrieval is unavailable for this server.",
                     style = MaterialTheme.typography.bodySmall)
@@ -209,6 +227,7 @@ internal fun SnapshotInventoryExportScreen(
                 val capture = captured ?: return@Button
                 val reader = readOriginalMetainfo
                 val originals = includeOriginalDefinitions
+                val captureSettings = settingsCapture.takeIf { includeSettings }
                 val revision = snapshotRevision
                 val observedView = view
                 val frozenRows = observedRows.toList()
@@ -228,7 +247,7 @@ internal fun SnapshotInventoryExportScreen(
                         check(stillCurrent()) { "The connected server inventory changed." }
                         val enriched = if (originals && reader != null)
                             SnapshotRemoteMetainfoCaptureV1.collect(
-                                capture, reader, stillCurrent,
+                                capture, reader, stillCurrent, settingsCapture = captureSettings,
                                 onProgress = { done, total ->
                                     recoveredProgress = done
                                     recoveredTotal = total
@@ -252,7 +271,11 @@ internal fun SnapshotInventoryExportScreen(
                                 (enriched.unavailable + enriched.sizeLimited) +
                                 " (unavailable: " + enriched.unavailable +
                                 "; size-limited: " + enriched.sizeLimited +
-                                "). The receiving app has not saved it yet. " +
+                                "). " + (if (captureSettings == null) "" else
+                                    "Aliases recorded: ${enriched.aliasesCaptured}. " +
+                                        "File priorities recorded: ${enriched.prioritiesCaptured}; " +
+                                        "unavailable for ${enriched.inspected - enriched.prioritiesCaptured} records. ") +
+                                "The receiving app has not saved it yet. " +
                                 "Original tracker data may be sensitive. No payload bytes are included."
                             else
                             "A byte-verified, read-only inventory snapshot is ready to share for " +

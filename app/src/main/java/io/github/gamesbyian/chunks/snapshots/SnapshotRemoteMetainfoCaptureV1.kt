@@ -25,13 +25,16 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
         val recovered: Int,
         val unavailable: Int,
         val sizeLimited: Int,
-        val inspected: Int
+        val inspected: Int,
+        val aliasesCaptured: Int,
+        val prioritiesCaptured: Int
     )
 
     suspend fun collect(
         capture: SnapshotInventoryCaptureV1.Capture,
         readOriginal: suspend (String) -> ByteArray?,
         stillCurrent: () -> Boolean = { true },
+        settingsCapture: SnapshotSettingsCapture? = null,
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): Result {
         require(capture.manifest.source == SnapshotManifestV1.Source.RTORRENT) {
@@ -88,13 +91,18 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
             onProgress(index + 1, total)
         }
         check(stillCurrent()) { "The server inventory or account changed during export" }
-        val complete = capture.manifest.copy(items = items)
+        val definitionsOnly = capture.manifest.copy(items = items)
+        val complete = if (settingsCapture == null) definitionsOnly else withContext(Dispatchers.IO) {
+            settingsCapture.collect(definitionsOnly, definitions, stillCurrent)
+        }
         // ZIP encoding and SHA-256/metadata verification can be sizable.
         // Never block Compose's main thread while assembling the archive.
         val archive = withContext(Dispatchers.Default) {
             SnapshotManifestV1.encode(complete, definitions)
         }
         check(stillCurrent()) { "The server inventory or account changed during export" }
-        return Result(archive, definitions.size, unavailable, tooLarge, total)
+        return Result(archive, definitions.size, unavailable, tooLarge, total,
+            complete.items.count { it.settings?.displayAlias != null },
+            complete.items.count { it.settings?.filePriorities != null })
     }
 }

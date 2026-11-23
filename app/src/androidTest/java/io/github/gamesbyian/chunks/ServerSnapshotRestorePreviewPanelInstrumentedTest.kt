@@ -10,6 +10,9 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsPreview
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
 import org.junit.Rule
@@ -20,6 +23,28 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ServerSnapshotRestorePreviewPanelInstrumentedTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test fun readOnlyPreviewExposesExactMappingAndUnsupportedLowPriority() {
+        val entry = SnapshotRestorePreviewV1.Entry("a".repeat(40), "Example",
+            SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW, true, null,
+            "Example label", listOf(
+                SnapshotFilePriorities.Mapping(
+                    SnapshotFilePriorities.File(2, "Example/document.txt", 42),
+                    SnapshotFilePriorities.Level.LOW)
+            ))
+        compose.setContent {
+            MaterialTheme {
+                androidx.compose.foundation.layout.Column {
+                    SnapshotSettingsPreview(entry, SnapshotRestoreTarget.SERVER)
+                }
+            }
+        }
+        compose.onNodeWithText("Saved Chunks display alias: Example label").assertExists()
+        compose.onNodeWithText("1 Low priorities are unsupported", substring = true).assertExists()
+        compose.onNodeWithText("Review 1 file priorities").performClick()
+        compose.onNodeWithText("#2 Example/document.txt (42 bytes) · Low (unsupported)").assertExists()
+        compose.onNodeWithText("Original file layout. Target file paths have not been checked.").assertExists()
+    }
 
     @Test fun serverComparisonNeedsAFreshCompleteViewAndNamesTheServer() {
         var complete by mutableStateOf(false)

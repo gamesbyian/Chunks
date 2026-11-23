@@ -1,5 +1,10 @@
 package io.github.gamesbyian.chunks.engine
 
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
+
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
@@ -31,7 +36,7 @@ class LocalTorrentEngineTest {
 
     private class Fixture(val root: File, val torrent: ByteArray, val files: Map<String, ByteArray>)
 
-    private fun fixture(): Fixture {
+    private fun fixture(v1Only: Boolean = false): Fixture {
         val parent = temp.newFolder("seed")
         val root = File(parent, "Chunks public fixture").apply { mkdirs() }
         val random = Random(42)
@@ -40,7 +45,9 @@ class LocalTorrentEngineTest {
             "extras/notes.txt" to "Locally generated test payload".toByteArray()
         )
         for ((name, bytes) in files) File(root, name).apply { parentFile.mkdirs() }.writeBytes(bytes)
-        val torrent = TorrentBuilder().path(root).pieceSize(64 * 1024).generate().entry().bencode()
+        val builder = TorrentBuilder().path(root).pieceSize(64 * 1024)
+        if (v1Only) builder.flags(TorrentBuilder.V1_ONLY)
+        val torrent = builder.generate().entry().bencode()
         return Fixture(root, torrent, files)
     }
 
@@ -1922,6 +1929,43 @@ class LocalTorrentEngineTest {
         assertTrue("An explicit scheduling preference must never auto-start", session.stopped)
         assertEquals(destination.absolutePath, session.savePath)
         assertEquals(0L, session.payloadDownloadedBytes)
+    }
+
+    @Test fun snapshotCapturesLivePrioritiesFromExactStoppedNativeV1Layout() {
+        val fixture = fixture(v1Only = true)
+        val destination = temp.newFolder("snapshot-priority-place")
+        val native = engine()
+        val transfer = added(native.addStopped(fixture.torrent, destination))
+        val episode = requireNotNull(native.files(transfer.infoHash)).single {
+            it.path.endsWith("episode.bin")
+        }
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, episode, 7))
+        val preview = TorrentMetainfoReader.preview(fixture.torrent)
+        val originalItem = SnapshotManifestV1.Item(preview.infoHashV1, preview.name,
+            SnapshotManifestV1.Recovery.METAINFO)
+        val manifest = SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
+            SnapshotManifestV1.Source.LOCAL, listOf(originalItem))
+        val definitions = mapOf(preview.infoHashV1 to fixture.torrent)
+        val captured = kotlinx.coroutines.runBlocking {
+            SnapshotSettingsCapture({ null }, { hash ->
+                native.readFilePriorities(hash, SnapshotFilePriorities.MAX_FILES)?.map { row ->
+                    SnapshotFilePriorities.Observation(
+                        SnapshotFilePriorities.File(row.index, row.path, row.sizeBytes), row.priority)
+                }
+            }).collect(manifest, definitions)
+        }
+        val decoded = SnapshotManifestV1.decode(SnapshotManifestV1.encode(captured, definitions))
+        val mappings = decoded.fileMappings.getValue(preview.infoHashV1)
+        assertEquals(SnapshotFilePriorities.layout(preview), mappings.map { it.file })
+        assertEquals(SnapshotFilePriorities.Level.HIGH,
+            mappings.single { it.file.path.endsWith("episode.bin") }.level)
+        assertNull(native.readFilePriorities("f".repeat(40), SnapshotFilePriorities.MAX_FILES))
+        val session = requireNotNull(native.status(transfer.infoHash))
+        assertTrue(session.stopped)
+        assertEquals(destination.absolutePath, session.savePath)
+        assertEquals(0L, session.payloadDownloadedBytes)
+        assertTrue(destination.list().orEmpty().isEmpty())
     }
 
     @Test fun skippedFileIsNotDownloadedUntilSelected() {

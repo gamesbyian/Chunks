@@ -1502,6 +1502,28 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }.toList()
     }
 
+    /** Complete native file-priority observation for a portable snapshot. */
+    @Synchronized
+    internal fun readFilePriorities(infoHash: String, maxFiles: Int): List<LocalTransferFile>? {
+        val key = normal(infoHash)
+        val handle = handles[key]?.takeIf { it.isValid } ?: return null
+        val info = handle.torrentFile()?.takeIf { it.isValid } ?: return null
+        if (identity(info) != key) return null
+        val storage = info.files()
+        val count = storage.numFiles()
+        // Bound the native vector before retrieving it, including padding.
+        if (count !in 1..(maxFiles * 2)) return null
+        val content = (0 until count).filterNot(storage::padFileAt)
+        if (content.size !in 1..maxFiles) return null
+        val priorities = handle.filePriorities()
+        if (priorities.size != count || !handle.isValid) return null
+        return content.map { index ->
+            val priority = priorities[index].swig().toInt()
+            LocalTransferFile(index, storage.filePath(index), storage.fileSize(index),
+                doneBytes = 0L, wanted = priority != 0, priority = priority)
+        }
+    }
+
     /**
      * Select or skip one file. libtorrent applies priorities asynchronously, so
      * the result is VERIFIED only once readback shows the requested selection.

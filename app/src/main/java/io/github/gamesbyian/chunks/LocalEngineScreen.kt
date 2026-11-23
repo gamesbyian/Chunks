@@ -91,6 +91,8 @@ import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
 import io.github.gamesbyian.chunks.snapshots.LocalInventorySnapshotPanel
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
 import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
@@ -3168,6 +3170,39 @@ internal fun LocalEngineScreen(
             inventoryStale = inventoryStale,
             busyEngine = busy || sourceReading,
             mutationGeneration = LocalScreenReader.revision.snapshot(),
+            onApplyAlias = { entry, generation ->
+                val alias = requireNotNull(entry.displayAlias)
+                if (inventoryStale || !hasConfirmedLocalInventory || busy || sourceReading ||
+                    !LocalScreenReader.revision.isCurrent(generation)) {
+                    noteProblem("The local inventory changed. Compare the snapshot again.")
+                } else performLocalMutation {
+                    val outcome = withContext(Dispatchers.IO) {
+                        val target = LocalEngineHolder.current()
+                        val hash = entry.infoHashV1
+                        val scopeKey = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+                        val observed = runCatching { target?.status(hash) }.getOrNull()
+                        if (observed?.infoHash != hash || observed.name != entry.originalName) {
+                            "The exact Local transfer could not be confirmed. No alias was applied."
+                        } else {
+                            val saved = runCatching {
+                                aliasStore.saveReviewedBatch(scopeKey, listOf(
+                                    io.github.gamesbyian.chunks.model.AliasReviewWrite(
+                                        hash, entry.originalName, alias)
+                                ))
+                            }.getOrDefault(false)
+                            val readback = runCatching { aliasStore.get(scopeKey, hash) }.getOrNull()
+                            when {
+                                saved && readback == alias -> "Saved alias verified on this device."
+                                readback != null && readback != alias ->
+                                    "An existing alias was kept. No alias was replaced."
+                                else -> "Alias application could not be verified. Check transfer Details."
+                            }
+                        }
+                    }
+                    aliasRevision++
+                    message = outcome
+                }
+            },
             onPrepareAdd = { originalBytes ->
                 check(!busy && sourceReadJob == null) { "Another source review is in progress" }
                 initialTorrentUri?.let(onTorrentConsumed)
@@ -3420,10 +3455,28 @@ internal fun LocalEngineScreen(
         ) { Text(if (showLocalTools) "Hide local tools" else "More local tools") }
         if (showLocalTools) {
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(exportsRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val snapshotEngine = LocalEngineHolder.current()
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,
-            busyEngine = busy
+            busyEngine = busy,
+            settingsCapture = snapshotEngine?.let { engine ->
+                SnapshotSettingsCapture(
+                    readAlias = { hash -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, hash) },
+                    readFiles = { hash ->
+                        engine.readFilePriorities(hash, SnapshotFilePriorities.MAX_FILES)?.map { row ->
+                            SnapshotFilePriorities.Observation(
+                                SnapshotFilePriorities.File(row.index, row.path, row.sizeBytes), row.priority)
+                        }
+                    }
+                )
+            },
+            sourceGeneration = LocalScreenReader.revision.snapshot(),
+            sourceStillCurrent = { generation ->
+                LocalEngineHolder.current() === snapshotEngine &&
+                    LocalScreenReader.revision.snapshot() == generation &&
+                    !LocalScreenReader.revision.blocksMutations()
+            }
         )
         LocalTransferHealthExportPanel(
             transfers = transfers,
