@@ -1,3 +1,5 @@
+> **Owner-requested visual audit plan:** [Visual specimen atlas](VISUAL-SPECIMEN-ATLAS-PLAN.md) specifies a reproducible, source-derived 10–20-image Compose screenshot set, including phone-width tall scrolling captures, component coverage, fixtures and provenance. This is a plan, not captured evidence or a second work queue.
+
 > **Current owner priority (2026-11-16):** [Backend-first functional completion mandate](BACKEND-FIRST-COMPLETION.md) and [living technical capability ledger](TECHNICAL-COMPLETENESS-LEDGER.md). For broad autonomous dispatches, technical implementation/integration/real-world verification precede elective UI reorganization and polish, while safety, usability necessary to test and owner-reproduced bugs remain immediate. Preserve all approved screen designs for final coordination.
 
 > **Universal Add client parity · 2026-11-16:** [One shared Add UX, architecture, status model and acceptance plan](design/UNIVERSAL-ADD-CLIENT-PARITY.md). Initial status-projection work does not yet establish the required app-owned navigation continuity, shared form or installed real-client parity.
