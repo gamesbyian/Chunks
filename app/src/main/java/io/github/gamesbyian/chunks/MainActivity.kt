@@ -2970,6 +2970,7 @@ internal fun ChunksApp(
                             remoteDefinitionRestore = definitionRestore,
                             remoteDefinitionActionScope = scope,
                             remoteDefinitionAccountLabel = definitionAccountLabel,
+                            remoteDefinitionFolderAccount = snapshotAccount,
                             onApplyAlias = { entry, generation, send ->
                                 val account = snapshotAccount
                                 val exactScope = snapshotAliasScope
