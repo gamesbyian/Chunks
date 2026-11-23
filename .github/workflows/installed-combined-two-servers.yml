@@ -101,6 +101,22 @@ jobs:
           # Disposable basic-auth login for server A only (C2 sign-in rejection).
           printf 'chunks:%s\n' "$(openssl passwd -apr1 chunks-one)" > /tmp/chunks-combined-a.htpasswd && chmod 644 /tmp/chunks-combined-a.htpasswd
           sudo nginx -c "$root/nginx.conf"
+          # Fail early if nginx's SAME Basic-authenticated tenant mount does
+          # not return the current root and only the precreated read-only child.
+          # Never print the response body (which contains runner filesystem paths).
+          folder_ok=0
+          for attempt in $(seq 1 15); do
+            if curl --silent --fail --max-time 3 -u chunks:chunks-one \
+                'http://127.0.0.1:18080/rutorrent/plugins/_getdir/listdir.php?dir=' \
+                -o "$root/folder-preflight.json" &&
+               python3 -I -c 'import json,sys; j=json.load(open(sys.argv[1])); assert j=={"path":sys.argv[2],"directories":["reviewed"]}' \
+                "$root/folder-preflight.json" "$root/a/data" 2>/dev/null; then
+              folder_ok=1
+              break
+            fi
+            sleep 0.4
+          done
+          test "$folder_ok" -eq 1 || { echo "::error::Exact-tenant read-only folder fixture preflight failed"; exit 1; }
           for port in 18080 18082; do
             for i in $(seq 1 40); do
               curl -fsS -u chunks:chunks-one -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
