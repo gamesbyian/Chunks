@@ -175,6 +175,9 @@ internal fun SnapshotRestorePreviewPanel(
     var remoteDefinitionReview by remember(remoteDefinitionRestore) {
         mutableStateOf<SnapshotRemoteDefinitionRestore.Review?>(null)
     }
+    var remoteBatchReview by remember(remoteDefinitionRestore) {
+        mutableStateOf<SnapshotRemoteDefinitionRestore.BatchReview?>(null)
+    }
     var remoteDefinitionBusy by remember { mutableStateOf(false) }
     var remoteDefinitionNotice by remember { mutableStateOf<String?>(null) }
     var remotePreviousReport by remember(remoteDefinitionRestore) {
