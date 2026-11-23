@@ -203,6 +203,32 @@ class CiDispatchRelevance(unittest.TestCase):
         self.assertTrue(dispatches_for_changed_paths(native,
             (path, APP_TEST_ROOT + "NewSharedInstrumentedTest.kt")))
 
+    def test_real_client_campaigns_wait_for_ready_and_ignore_snapshot_only_folder_fixture(self):
+        docs = workflow("documentation-validation.yml")
+        only_snapshot = ("tools/interop/disposable_snapshot_folder_listing.py",)
+        for name in ("installed-protocol-client.yml", "real-client-interop.yml"):
+            with self.subTest(workflow=name):
+                source = workflow(name)
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source)
+                self.assertIn("  workflow_dispatch:", block(source, "on"))
+                self.assertFalse(dispatches_for_changed_paths(source, only_snapshot))
+                self.assertTrue(dispatches_for_changed_paths(
+                    source, ("tools/interop/start_local_clients.sh",)))
+                # A routing-only YAML change must have cheap CI coverage, not
+                # an unconditional expensive self-trigger.
+                own_path = ".github/workflows/" + name
+                self.assertFalse(dispatches_for_changed_paths(source, (own_path,)))
+                self.assertTrue(dispatches_for_changed_paths(docs, (own_path,)))
+        self.assertTrue(dispatches_for_changed_paths(
+            workflow("installed-combined-two-servers.yml"),
+            ("app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/"
+             "RemoteSnapshotRestoreInstalledTest.kt",)))
+
     def test_merged_workflow_only_edits_do_not_repeat_pr_validation(self):
         # A changed font/render tool still selects both PR and main workflows.
         # Changing only its YAML runs the cheap documentation routing check;

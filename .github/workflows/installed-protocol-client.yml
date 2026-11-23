@@ -4,6 +4,7 @@ name: Installed Universal Add (Local and four real remote clients)
 on:
   pull_request:
     branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolConnect.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt"
@@ -23,7 +24,6 @@ on:
       - "tools/installed_external_document_process_loss.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalSourceSenderActivity.java"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalTorrentTestProvider.java"
-      - ".github/workflows/installed-protocol-client.yml"
       - "tools/verify_installed_apk_bytes.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledUniversalAddJourney.kt"
       # The installed Add/Connect journey calls this shared semantics helper.
@@ -31,6 +31,8 @@ on:
       # disposable five-client witness, not only Robolectric or native shards.
       - "app/src/sharedTest/java/io/github/gamesbyian/chunks/LazyComposeActions.kt"
       - "tools/interop/**"
+      # The narrow read-only snapshot folder fixture has its own two-server owner.
+      - "!tools/interop/disposable_snapshot_folder_listing.py"
   workflow_dispatch:
 
 permissions:
@@ -45,6 +47,7 @@ concurrency:
 
 jobs:
   installed-protocol-client:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
