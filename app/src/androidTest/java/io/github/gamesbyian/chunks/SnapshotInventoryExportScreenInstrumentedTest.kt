@@ -5,6 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollTo
+import kotlinx.coroutines.CompletableDeferred
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -67,6 +70,43 @@ class SnapshotInventoryExportScreenInstrumentedTest {
         ).performClick()
         compose.onNodeWithText("Share snapshot with verified originals").assertIsEnabled()
         compose.runOnIdle { session.value = "second-account" }
+        compose.onNodeWithText("Share inventory snapshot").assertIsEnabled()
+    }
+
+    @Test fun switchingAccountsWithIdenticalRowsAbortsAnInFlightExport() {
+        val session = mutableStateOf(Any())
+        val sourceRead = CompletableDeferred<Unit>()
+        val releaseRead = CompletableDeferred<Unit>()
+        compose.setContent {
+            val connected = session.value
+            MaterialTheme {
+                SnapshotInventoryExportScreen(
+                    transfers = inventory, view = "main",
+                    snapshotRevision = 3, stale = false, loading = false,
+                    readOriginalMetainfo = {
+                        sourceRead.complete(Unit)
+                        releaseRead.await()
+                        null
+                    },
+                    sourceSessionIdentity = connected,
+                    accountStillCurrent = { session.value === connected },
+                    onBack = {}
+                )
+            }
+        }
+        compose.onNodeWithText(
+            "Include verified original .torrent definitions when available"
+        ).performScrollTo().performClick()
+        compose.onNodeWithText("Share snapshot with verified originals").performScrollTo().performClick()
+        compose.waitUntil(timeoutMillis = 5_000) { sourceRead.isCompleted }
+        compose.runOnIdle { session.value = Any() }
+        compose.waitForIdle()
+        compose.runOnIdle { releaseRead.complete(Unit) }
+        val refusal = hasText("Could not verify and share this snapshot", substring = true)
+        compose.waitUntil(timeoutMillis = 10_000) {
+            compose.onAllNodes(refusal).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNode(refusal).assertExists()
         compose.onNodeWithText("Share inventory snapshot").assertIsEnabled()
     }
 

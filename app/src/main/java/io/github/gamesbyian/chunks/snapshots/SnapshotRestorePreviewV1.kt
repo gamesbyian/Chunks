@@ -27,12 +27,15 @@ internal object SnapshotRestorePreviewV1 {
         /** Missing, potentially recoverable records are selected for review. */
         val selectedForReview: Boolean,
         /** Untrusted historical display suggestion, never a target Place. */
-        val historicalDirectoryHint: String?
+        val historicalDirectoryHint: String?,
+        val displayAlias: String? = null,
+        val fileMappings: List<SnapshotFilePriorities.Mapping> = emptyList()
     )
 
     data class Preview(
         val entries: List<Entry>,
-        val targetInventoryCount: Int
+        val targetInventoryCount: Int,
+        val containsSettings: Boolean = false
     ) {
         val alreadyPresentCount: Int get() = entries.count {
             it.decision == Decision.ALREADY_PRESENT
@@ -81,9 +84,12 @@ internal object SnapshotRestorePreviewV1 {
                 decision = decision,
                 selectedForReview = decision == Decision.METADATA_NEEDS_REVIEW ||
                     decision == Decision.MAGNET_NEEDS_REVIEW,
-                historicalDirectoryHint = item.sourceDirectoryHint
+                historicalDirectoryHint = item.sourceDirectoryHint,
+                displayAlias = item.settings?.displayAlias,
+                fileMappings = archive.fileMappings[item.infoHashV1].orEmpty()
             )
         }
-        return Preview(rows, targetSet.size)
+        return Preview(rows, targetSet.size,
+            archive.manifest.items.any { it.settings != null })
     }
 }

@@ -26,6 +26,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import java.util.Locale
@@ -62,7 +65,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
         List<String>, Long) -> Unit)? = null,
     /** Existing hash only: check an earlier journal, never submit. */
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
-        List<String>, Long) -> Unit)? = null
+        List<String>, Long) -> Unit)? = null,
+    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null
 ) = SnapshotRestorePreviewPanel(
     targetHashes = transfers.map { it.infoHash },
     target = SnapshotRestoreTarget.LOCAL,
@@ -74,7 +78,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
     onReviewOneRestore = onReviewOneRestore,
     onReviewBatchRestore = onReviewBatchRestore,
     onReviewBatchRecovery = onReviewBatchRecovery,
-    onReviewPreviousRestore = onReviewPreviousRestore
+    onReviewPreviousRestore = onReviewPreviousRestore,
+    onApplyAlias = onApplyAlias
 )
 
 /** Wording for the engine a snapshot is compared against. */
@@ -84,15 +89,16 @@ internal data class SnapshotRestoreTarget(
     val observation: String,
     val busyOperation: String,
     val presentLabel: String,
-    val addLabel: String
+    val addLabel: String,
+    val supportsLowPriority: Boolean
 ) {
     companion object {
         val LOCAL = SnapshotRestoreTarget("local", "Local", "local-engine",
             "a native operation", "Already on this device (skip)",
-            "Review original .torrent in local Add")
+            "Review original .torrent in local Add", supportsLowPriority = true)
         val SERVER = SnapshotRestoreTarget("rTorrent server", "rTorrent server",
             "rTorrent server (all-transfers view)", "a server operation",
-            "Already on this server (skip)", "Review original .torrent in server Add")
+            "Already on this server (skip)", "Review original .torrent in server Add", supportsLowPriority = false)
     }
 }
 
@@ -119,7 +125,8 @@ internal fun SnapshotRestorePreviewPanel(
     onReviewBatchRecovery: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
         List<String>, Long) -> Unit)? = null,
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
-        List<String>, Long) -> Unit)? = null
+        List<String>, Long) -> Unit)? = null,
+    onApplyAlias: ((SnapshotRestorePreviewV1.Entry, Long, (String) -> Unit) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -137,6 +144,7 @@ internal fun SnapshotRestorePreviewPanel(
     var chosenDecision by remember {
         mutableStateOf<SnapshotRestorePreviewV1.Decision?>(null)
     }
+    var aliasNotice by remember { mutableStateOf<String?>(null) }
     var pageIndex by remember { mutableIntStateOf(0) }
 
     // Local status counters and peers may update each second. Identity changes
@@ -215,6 +223,7 @@ internal fun SnapshotRestorePreviewPanel(
             OutlinedButton(
                 onClick = {
                     expanded = !expanded
+                    aliasNotice = null
                     result = null
                     verifiedSource = null
                     comparedHashes = null
@@ -240,7 +249,7 @@ internal fun SnapshotRestorePreviewPanel(
                     "missing definitions. An explicitly confirmed local restore adds " +
                     "only a stopped transfer definition: no downloaded payload " +
                     "files are migrated.")
-                Text("The existing ${target.noun} transfers stay untouched. A match means " +
+                Text("Comparison leaves existing ${target.noun} transfers untouched. A match means " +
                     "the exact torrent identity already exists here; it does not " +
                     "prove its payload is complete or correctly seeded.",
                     style = MaterialTheme.typography.bodySmall)
@@ -256,6 +265,7 @@ internal fun SnapshotRestorePreviewPanel(
                 OutlinedButton(
                     onClick = {
                         reading = true
+                        aliasNotice = null
                         result = null
                         verifiedSource = null
                         comparedHashes = null
@@ -270,6 +280,9 @@ internal fun SnapshotRestorePreviewPanel(
                         else "Choose .chunksnap to compare")
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                aliasNotice?.let {
+                    Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
                 result?.let { preview ->
                     // A sentence, not a heading: the readable sans (see ChunksTypography).
                     Text("Compared with ${preview.targetInventoryCount} current ${target.noun} transfers.",
@@ -386,6 +399,11 @@ internal fun SnapshotRestorePreviewPanel(
                     manualNotice?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall)
                     }
+                    if (preview.containsSettings) Text(
+                        "Restore and Add actions below do not apply saved settings. " +
+                            "File priorities are shown for review.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     val shown = SnapshotRestoreCompareCatalogV1.select(
                         preview.entries, search, chosenDecision, pageIndex)
                     Text("Showing ${shown.first}–${shown.last} of ${shown.matches} " +
@@ -406,6 +424,32 @@ internal fun SnapshotRestorePreviewPanel(
                         }
                         Text(entry.originalName + " · " + category,
                             style = MaterialTheme.typography.bodySmall)
+                        if (preview.containsSettings) {
+                            if (entry.displayAlias != null || entry.fileMappings.isNotEmpty()) {
+                                Text("Infohash ${entry.infoHashV1}",
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                            SnapshotSettingsPreview(entry, target)
+                            if (onApplyAlias != null && entry.displayAlias != null &&
+                                entry.displayAlias != entry.originalName &&
+                                entry.decision == SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT) {
+                                OutlinedButton(
+                                    onClick = {
+                                        if (latestReady && latestHashes == comparedHashes &&
+                                            latestGeneration == comparedGeneration) {
+                                            aliasNotice = "Checking the Local display alias…"
+                                            onApplyAlias(entry, comparedGeneration) { aliasNotice = it }
+                                        } else {
+                                            error = "The local inventory changed. Compare the snapshot again."
+                                        }
+                                    },
+                                    modifier = Modifier.heightIn(min = 48.dp)
+                                ) { Text("Apply saved alias if this transfer has none") }
+                            } else if (entry.displayAlias != null) {
+                                Text("Alias application is unavailable for this target transfer.",
+                                    style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                         // Both present and missing snapshot identities may have
                         // an interrupted journal. Checking its status never
                         // authorizes another Add, even if inventory is absent.

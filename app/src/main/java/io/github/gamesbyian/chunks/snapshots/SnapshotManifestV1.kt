@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.snapshots
 
+import io.github.gamesbyian.chunks.model.TransferDisplayNames
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -8,7 +9,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 /**
- * Strict, side-effect-free v1 inventory contract on top of SnapshotArchiveV1.
+ * Strict v1 inventory and v2 settings manifests on the unchanged v1 archive transport.
  *
  * The archive checksum proves transport integrity only. This parser separately
  * rejects duplicate JSON keys, unknown fields, unsupported formats and lying
@@ -37,13 +38,20 @@ internal object SnapshotManifestV1 {
         FAILED("failed")
     }
 
+    data class Settings(
+        val displayAlias: String? = null,
+        /** Full selection in original metainfo order, excluding padding. */
+        val filePriorities: List<SnapshotFilePriorities.Level>? = null
+    )
+
     data class Item(
         val infoHashV1: String,
         val originalName: String,
         val recovery: Recovery,
         val magnet: String? = null,
         /** Historical, untrusted display hint. Never submit as a destination. */
-        val sourceDirectoryHint: String? = null
+        val sourceDirectoryHint: String? = null,
+        val settings: Settings? = null
     )
 
     data class Manifest(
@@ -56,9 +64,10 @@ internal object SnapshotManifestV1 {
     data class Verified(
         val manifest: Manifest,
         val metainfoByHash: Map<String, ByteArray>,
-        /** Contains full tracker metadata or tracker-bearing magnet context. */
+        /** May include tracker context or a private user-entered label. */
         val requiresSensitiveExportWarning: Boolean,
-        private val originalMetainfoDigests: Map<String, String>
+        private val originalMetainfoDigests: Map<String, String>,
+        val fileMappings: Map<String, List<SnapshotFilePriorities.Mapping>>
     ) {
         fun verifiedMetainfo(hash: String): ByteArray? = metainfoByHash[hash]?.copyOf()?.also { bytes ->
             require(SnapshotArchiveV1.digest(bytes) == originalMetainfoDigests[hash]) {
@@ -77,6 +86,35 @@ internal object SnapshotManifestV1 {
     /** Export-side entry point. No filesystem or network writes. */
     fun encode(manifest: Manifest, metainfoByHash: Map<String, ByteArray>): ByteArray {
         verify(manifest, metainfoByHash)
+        val bytes = manifestJson(manifest)
+        require(bytes.size <= MAX_MANIFEST_BYTES) { "Snapshot manifest too large" }
+        return SnapshotArchiveV1.encode(bytes, metainfoByHash)
+    }
+
+    /**
+     * The stopped-Add journal identifies the original definitions. Advisory
+     * settings cannot unlock a second Add, and existing v1 keys stay valid.
+     */
+    fun definitionArchiveFingerprint(source: Verified): String {
+        val manifest = source.manifest
+        val projection = manifest.copy(items = manifest.items.map { it.copy(settings = null) })
+        return SnapshotArchiveV1.digest(encode(projection, source.metainfoByHash))
+    }
+
+    internal fun remainingManifestBytes(manifest: Manifest): Int =
+        MAX_MANIFEST_BYTES - manifestJson(manifest).size
+
+    internal fun encodeSettings(settings: Settings): String {
+        val fields = listOfNotNull(
+            settings.displayAlias?.let { "\"displayAlias\":" + quote(it) },
+            settings.filePriorities?.let { levels ->
+                "\"filePriorities\":" + quote(levels.joinToString("") { it.wire.toString() })
+            }
+        )
+        return ",\"settings\":{" + fields.joinToString(",") + "}"
+    }
+
+    private fun manifestJson(manifest: Manifest): ByteArray {
         val itemsJson = manifest.items.sortedBy { it.infoHashV1 }.joinToString(",") { item ->
             buildString {
                 append("{\"infoHashV1\":").append(quote(item.infoHashV1))
@@ -86,26 +124,30 @@ internal object SnapshotManifestV1 {
                 item.sourceDirectoryHint?.let {
                     append(",\"sourceDirectoryHint\":").append(quote(it))
                 }
+                item.settings?.let { append(encodeSettings(it)) }
                 append('}')
             }
         }
-        val json = "{\"schemaVersion\":1,\"producer\":" + quote(manifest.producer) +
+        val version = if (manifest.items.any { it.settings != null }) 2 else 1
+        val json = "{\"schemaVersion\":$version,\"producer\":" + quote(manifest.producer) +
             ",\"createdAtUtc\":" + quote(manifest.createdAtUtc) +
             ",\"source\":" + quote(manifest.source.wire) +
             ",\"items\":[" + itemsJson + "]}"
         val bytes = json.toByteArray(StandardCharsets.UTF_8)
-        require(bytes.size <= MAX_MANIFEST_BYTES) { "Snapshot manifest too large" }
-        return SnapshotArchiveV1.encode(bytes, metainfoByHash)
+        return bytes
     }
 
     /** Import-side trust boundary. Call this, not raw transport decode, before preview. */
     fun decode(archive: ByteArray): Verified {
         val contents = SnapshotArchiveV1.decode(archive)
         val json = strictUtf8(contents.manifestJson)
-        val root = Json(json).parse() as? Map<*, *>
+        val reader = Json(json)
+        val root = reader.parse() as? Map<*, *>
             ?: throw IllegalArgumentException("Snapshot manifest must be an object")
         fields(root, setOf("schemaVersion", "producer", "createdAtUtc", "source", "items"))
-        require(root["schemaVersion"] == 1L) { "Unsupported snapshot schema version" }
+        val version = root["schemaVersion"]
+        require(version == 1L || version == 2L) { "Unsupported snapshot schema version" }
+        require(version != 1L || reader.nodes <= 4096) { "Snapshot JSON size limit" }
         val source = Source.entries.singleOrNull { it.wire == root["source"] }
             ?: throw IllegalArgumentException("Unsupported snapshot source kind")
         val entries = root["items"] as? List<*>
@@ -114,8 +156,9 @@ internal object SnapshotManifestV1 {
         val items = entries.map { entry ->
             val obj = entry as? Map<*, *>
                 ?: throw IllegalArgumentException("Invalid snapshot item")
-            fields(obj, setOf("infoHashV1", "originalName", "recovery",
-                "magnet", "sourceDirectoryHint"))
+            val itemFields = setOf("infoHashV1", "originalName", "recovery",
+                "magnet", "sourceDirectoryHint")
+            fields(obj, if (version == 2L) itemFields + "settings" else itemFields)
             val recovery = Recovery.entries.singleOrNull { it.wire == obj["recovery"] }
                 ?: throw IllegalArgumentException("Unknown snapshot recovery category")
             Item(
@@ -123,7 +166,8 @@ internal object SnapshotManifestV1 {
                 string(obj, "originalName"),
                 recovery,
                 optionalString(obj, "magnet"),
-                optionalString(obj, "sourceDirectoryHint")
+                optionalString(obj, "sourceDirectoryHint"),
+                if ("settings" in obj) readSettings(obj["settings"]) else null
             )
         }
         val manifest = Manifest(
@@ -132,14 +176,43 @@ internal object SnapshotManifestV1 {
             source,
             items
         )
+        require(version == 1L || items.any { it.settings != null }) { "Missing v2 snapshot settings" }
         val originals = contents.metainfoByHash
-        verify(manifest, originals)
+        val mappings = verify(manifest, originals)
         return Verified(manifest, originals,
-            originals.isNotEmpty() || manifest.items.any { it.recovery == Recovery.MAGNET },
-            originals.mapValues { (_, bytes) -> SnapshotArchiveV1.digest(bytes) })
+            originals.isNotEmpty() || manifest.items.any {
+                it.recovery == Recovery.MAGNET || it.settings?.displayAlias != null
+            },
+            originals.mapValues { (_, bytes) -> SnapshotArchiveV1.digest(bytes) }, mappings)
     }
 
-    private fun verify(manifest: Manifest, metainfo: Map<String, ByteArray>) {
+    private fun readSettings(value: Any?): Settings {
+        val fields = value as? Map<*, *>
+            ?: throw IllegalArgumentException("Invalid snapshot settings")
+        require(fields.keys.all { it == "displayAlias" || it == "filePriorities" }) {
+            "Unknown snapshot setting"
+        }
+        val priorities = optionalString(fields, "filePriorities")?.let { codes ->
+            require(codes.length in 1..SnapshotFilePriorities.MAX_FILES) {
+                "Invalid snapshot file priority count"
+            }
+            codes.map { code ->
+                SnapshotFilePriorities.Level.entries.singleOrNull { it.wire == code }
+                    ?: throw IllegalArgumentException("Unknown snapshot file priority")
+            }
+        }
+        return Settings(optionalString(fields, "displayAlias"), priorities)
+    }
+
+    internal fun validateAlias(alias: String): String {
+        safeText(alias, TransferDisplayNames.MAX_ALIAS_LENGTH, "display alias")
+        require(TransferDisplayNames.validateAlias(alias) == alias) { "Noncanonical display alias" }
+        return alias
+    }
+
+    private fun verify(
+        manifest: Manifest, metainfo: Map<String, ByteArray>
+    ): Map<String, List<SnapshotFilePriorities.Mapping>> {
         require(manifest.producer == "chunks-android") { "Unknown snapshot producer" }
         require(manifest.createdAtUtc.length in 20..40 &&
             manifest.createdAtUtc.endsWith('Z') &&
@@ -149,6 +222,8 @@ internal object SnapshotManifestV1 {
         require(manifest.items.size <= MAX_ITEMS) { "Too many snapshot entries" }
         val seen = HashSet<String>()
         val required = HashSet<String>()
+        val itemsByHash = manifest.items.associateBy { it.infoHashV1 }
+        var priorityCount = 0
         for (item in manifest.items) {
             require(v1Hash.matches(item.infoHashV1) && seen.add(item.infoHashV1)) {
                 "Missing, noncanonical or duplicate snapshot infohash"
@@ -159,6 +234,26 @@ internal object SnapshotManifestV1 {
             }
             item.sourceDirectoryHint?.let {
                 safeText(it, MAX_DIRECTORY_HINT, "historical destination hint")
+            }
+            item.settings?.let { settings ->
+                require(settings.displayAlias != null || settings.filePriorities != null) {
+                    "Empty snapshot settings"
+                }
+                settings.displayAlias?.let(::validateAlias)
+                settings.filePriorities?.let { priorities ->
+                    require(item.recovery == Recovery.METAINFO &&
+                        priorities.size in 1..SnapshotFilePriorities.MAX_FILES) {
+                        "File priorities require a bounded verified metainfo layout"
+                    }
+                    require(manifest.source != Source.RTORRENT ||
+                        SnapshotFilePriorities.Level.LOW !in priorities) {
+                        "rTorrent cannot supply Low file priority"
+                    }
+                    priorityCount += priorities.size
+                    require(priorityCount <= SnapshotFilePriorities.MAX_TOTAL_FILES) {
+                        "Too many snapshot file priorities"
+                    }
+                }
             }
             when (item.recovery) {
                 Recovery.METAINFO -> {
@@ -190,6 +285,7 @@ internal object SnapshotManifestV1 {
         require(metainfo.keys == required) {
             "Snapshot metainfo membership differs from declared complete entries"
         }
+        val mappings = LinkedHashMap<String, List<SnapshotFilePriorities.Mapping>>()
         for (hash in required) {
             val bytes = metainfo.getValue(hash)
             val preview = try {
@@ -201,11 +297,19 @@ internal object SnapshotManifestV1 {
             require(preview.infoHashV1 == hash) {
                 "Snapshot torrent metainfo identity mismatch for " + hash
             }
-            val item = manifest.items.first { it.infoHashV1 == hash }
+            val item = itemsByHash.getValue(hash)
             require(preview.name == item.originalName) {
                 "Snapshot original name differs from verified torrent metainfo"
             }
+            item.settings?.filePriorities?.let { levels ->
+                val files = SnapshotFilePriorities.layout(preview)
+                require(files.size == levels.size) { "File priorities do not match metainfo layout" }
+                mappings[hash] = files.zip(levels) { file, level ->
+                    SnapshotFilePriorities.Mapping(file, level)
+                }
+            }
         }
+        return mappings
     }
 
     private fun fields(obj: Map<*, *>, allowed: Set<String>) {
@@ -272,7 +376,8 @@ internal object SnapshotManifestV1 {
     /** Bounded strict JSON reader, independent of Android's mockable org.json. */
     private class Json(private val source: String) {
         private var at = 0
-        private var nodes = 0
+        var nodes = 0
+            private set
         fun parse(): Any {
             val value = read(0)
             whitespace()
@@ -284,7 +389,7 @@ internal object SnapshotManifestV1 {
         }
         private fun read(depth: Int): Any {
             whitespace()
-            require(depth <= 8 && ++nodes <= 4096 && at < source.length) {
+            require(depth <= 8 && ++nodes <= 4096 + 3 * MAX_ITEMS && at < source.length) {
                 "Snapshot JSON nesting or size limit"
             }
             return when (source[at]) {
@@ -333,7 +438,7 @@ internal object SnapshotManifestV1 {
                     if (source[at] == '0') at++ else {
                         while (at < source.length && source[at] in '0'..'9') at++
                     }
-                    // Only integer schema versions are presently part of this contract.
+                    // Only integer schema versions use JSON numbers in this contract.
                     source.substring(start, at).toLongOrNull()
                         ?: throw IllegalArgumentException("Invalid JSON integer")
                 }

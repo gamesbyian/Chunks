@@ -1,5 +1,38 @@
 # Portable transfer snapshots (owner requirement, 2026-10-27)
 
+## Portable settings
+
+The optional settings export reads Chunks display aliases from the exact
+source scope and file priorities from the live Local engine or connected
+rTorrent account. An alias may contain private user-entered text. File
+priorities require an original verified v1 definition and a complete current
+file observation that matches its index, path and size. Padding is excluded.
+Unsupported native levels, renamed paths, missing metadata, partial reads,
+and settings beyond the archive budget leave the priorities absent. rTorrent
+supplies Skip, Normal and High. Local also supplies Low. The export reports
+how many records have verified priorities.
+
+The ZIP layout and checksum members are unchanged. A settings-free export
+still writes the original strict manifest version 1. Manifest version 2 adds
+an optional per-item `settings` object with `displayAlias` and/or
+`filePriorities`. The latter is one code per non-padding file in verified
+metainfo order, using `s` (Skip), `l` (Low), `n` (Normal), and `h` (High).
+It is limited to 1,024 file choices per transfer and 16,384 per archive.
+rTorrent source records cannot claim Low. Unknown properties, empty settings,
+unsafe aliases, and priority lists that lack or disagree with verified
+metainfo are rejected before comparison. Older app versions can still read
+new exports when the optional settings are absent.
+
+Comparison shows the original file index, path, size and requested priority,
+and flags Low for an rTorrent destination. The original layout is a reference
+until an adapter verifies the target's actual files. A separate Local action
+can apply a saved display alias after an exact-hash/original-name check,
+only when no stored alias would be overwritten. The app reads back the saved
+alias. Definition Add, stopped restore and journal reconciliation apply no
+settings. A change to settings alone preserves the existing definition-only
+journal identity, including journals created from a v1 snapshot. Collections, tracker edits, profile settings and restore-time
+file priority application remain outside this schema and flow.
+
 ## Current implementation checkpoint (2026-11-17)
 
 Chunks now supports more than the original inventory-only 2026 prototype, but this remains a **partial** snapshot feature. The current local engine can opt-in to export actual verified v1 torrent metainfo into bounded, checksummed `.chunksnap` archives. A user can select an archive in the read-only comparison flow, see already-present/missing identities, prepare a missing original torrent for manual Add, explicitly restore one stopped Local definition, or confirm a bounded group of verified missing originals as stopped at one newly reviewed Local destination (merged #1840). The restoration journal records an Add intent before submission; an unverified native reply is not permission to issue another Add. **No payload files are transferred.**
@@ -123,8 +156,8 @@ Snapshots are for manual and optionally repeatable inventory backup. Never autom
 
 ## Archive structure and versioning
 
-- Single ZIP-format container with extension `.chunksnap`, containing `manifest.json` (UTF-8), optional `torrents/<stable-id>.torrent` raw metainfo, and `checksums.json` with SHA-256 digest and size for each stored member. No payload files or rTorrent session files. The **currently implemented strict v1 schema** permits producer, UTC creation timestamp, source kind, and item identity/name/recovery/magnet/historical-directory fields only; aliases, collections, trackers, priorities, historical percent and flags are future explicitly versioned schema extensions, **not accepted by the present validator**.
-- Top-level `schemaVersion: 1`, `producer`, creation timestamp (UTC), source kind (local/rTorrent), **redacted user-facing source label** (default omit server URL/username), counts by recovery capability, and items. An item's scoped identity is original v1/v2 infohash identity where verifiable; content path is never identity. Preserve original name and original infohash, plus the source's optional directory suggestion, current complete percentage and state **only as historical context**.
+- Single ZIP-format container with extension `.chunksnap`, containing `manifest.json` (UTF-8), optional `torrents/<stable-id>.torrent` raw metainfo, and `checksums.json` with SHA-256 digest and size for each stored member. No payload files or rTorrent session files. Manifest v1 permits producer, UTC creation timestamp, source kind, and item identity/name/recovery/magnet/historical-directory fields. Manifest v2 adds the narrowly scoped settings above.
+- Top-level `schemaVersion` (1 or 2), `producer`, creation timestamp (UTC), source kind (local/rTorrent), **redacted user-facing source label** (default omit server URL/username), counts by recovery capability, and items. An item's scoped identity is original v1/v2 infohash identity where verifiable; content path is never identity. Preserve original name and original infohash, plus the source's optional directory suggestion, current complete percentage and state **only as historical context**.
 - Prefer exact complete `.torrent` metadata with verified hash and appropriate announce information. A valid magnet with complete infohash and required retrieval parameters is a separately labelled fallback. **Hash-only entries are inventory records, not automatically restorable torrents.** Never fabricate a magnet that is guaranteed to retrieve metadata, trackers, peers, or content from an infohash alone.
 - Preserve file selection/priorities, selected trackers, tags/collections, local-only display aliases and start-paused preference when retrievable and translatable; capability-report any unrepresentable setting. Do not copy credentials, passkeys in connection URLs, cookies, authorization headers, private device tokens, rTorrent scripts, XML-RPC commands or arbitrary session state.
 - Explicitly distinguish public tracker URLs from private tracker announce URLs. Private-tracker passkeys are often embedded in legitimate `.torrent` announce URLs, so **a full-fidelity archive can contain secrets**. Default export must show a clear sensitivity warning and require deliberate selection of full-fidelity tracker preservation; a sanitized export must mark torrents whose tracker removal may prevent their restoration/use. Never describe an exported snapshot as categorically free of secrets.

@@ -1,5 +1,11 @@
 package io.github.gamesbyian.chunks.rpc
 
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryCaptureV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemoteMetainfoCaptureV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
+
 import com.sun.net.httpserver.HttpServer
 import java.net.HttpURLConnection
 import java.net.InetAddress
@@ -214,6 +220,27 @@ class RTorrentDisposableMutationTest {
         // reviewed, different parent must give a stable wrong-Place witness.
         assertNull("Matching genuine rTorrent root cannot contradict an Add",
             rtorrent.readExactAddContradiction(plan))
+        // Set one known value through the existing disposable write adapter.
+        // Snapshot capture itself performs only exact-hash guarded reads.
+        val firstFile = rtorrent.listFiles(hash).first()
+        assertTrue(rtorrent.setFilePriority(hash, 0, firstFile.path, firstFile.sizeBytes,
+            firstFile.priority, 2) is FilePriorityOutcome.Verified)
+        val snapshot = SnapshotRemoteMetainfoCaptureV1.collect(
+            SnapshotInventoryCaptureV1.remote(listOf(added), java.time.Instant.now()),
+            readOriginal = { multiBytes },
+            settingsCapture = SnapshotSettingsCapture({ null }, { exactHash ->
+                rtorrent.readSnapshotFiles(exactHash).mapIndexed { index, row ->
+                    SnapshotFilePriorities.Observation(
+                        SnapshotFilePriorities.File(index, row.path, row.sizeBytes), row.priority)
+                }
+            })
+        )
+        val decoded = SnapshotManifestV1.decode(snapshot.archive)
+        val mappings = decoded.fileMappings.getValue(hash)
+        assertEquals(SnapshotFilePriorities.layout(preview), mappings.map { it.file })
+        assertEquals(SnapshotFilePriorities.Level.HIGH, mappings.first().level)
+        assertFalse("Snapshot reads cannot start the fixture",
+            rtorrent.listTransfers("main").single { it.hash.equals(hash, true) }.started)
         val otherParent = target + "/not-the-reviewed-place"
         val differentPlan = StoppedRemoteAddPlan.fromMagnet(
             "magnet:?xt=urn:btih:$hash", otherParent)

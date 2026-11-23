@@ -39,12 +39,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Read-only local-engine inventory snapshot. The observed queue has no raw
- * torrent metainfo, so all records are INVENTORY ONLY: never promise restore.
- * No libtorrent call is made during capture or read-only share publication.
+ * Read-only Local inventory export, with optional originals from verified
+ * persisted native records and optional live, exact-layout file priorities.
  */
 private data class VerifiedResumeReview(
     val identity: List<Triple<String, String, String>>,
+    val generation: Long,
     val recovery: LocalResumeMetainfoSourceV1.Recovery
 )
 
@@ -52,7 +52,10 @@ private data class VerifiedResumeReview(
 internal fun LocalInventorySnapshotPanel(
     transfers: List<LocalTransferStatus>,
     stale: Boolean,
-    busyEngine: Boolean
+    busyEngine: Boolean,
+    settingsCapture: SnapshotSettingsCapture? = null,
+    sourceGeneration: Long = 0,
+    sourceStillCurrent: (Long) -> Boolean = { true }
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -61,6 +64,7 @@ internal fun LocalInventorySnapshotPanel(
     var saving by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var resultVerified by remember { mutableStateOf(false) }
+    var includeSettings by remember { mutableStateOf(false) }
     var includeDefinitions by remember { mutableStateOf(false) }
     var inspectingResumes by remember { mutableStateOf(false) }
     var verifiedResumes by remember {
@@ -79,7 +83,7 @@ internal fun LocalInventorySnapshotPanel(
     val currentStale by rememberUpdatedState(stale)
     val currentBusyEngine by rememberUpdatedState(busyEngine)
     val currentOptIn by rememberUpdatedState(includeDefinitions)
-    LaunchedEffect(reviewIdentity, historicalPaths, stale, busyEngine) {
+    LaunchedEffect(reviewIdentity, historicalPaths, stale, busyEngine, includeSettings, sourceGeneration) {
         verifiedResumes = null
         resumeProblem = null
     }
@@ -92,21 +96,29 @@ internal fun LocalInventorySnapshotPanel(
     val capture = captureResult.getOrNull()
     // Explicit share handoff replaces unsafe truncating writes to a SAF
     // CreateDocument URI. The receiving app decides whether to save it.
-    fun shareOwnedSnapshot(bytes: ByteArray, definitions: Int, filename: String) {
+    fun shareOwnedSnapshot(
+        bytes: ByteArray, filename: String, definitions: Int = 0, aliases: Int = 0,
+        stillCurrent: () -> Boolean = { !currentStale && !currentBusyEngine }
+    ) {
         saving = true
         resultVerified = false
         result = null
         scope.launch {
             try {
+                check(stillCurrent()) { "Source became stale. Preview again before saving" }
                 val uri = withContext(Dispatchers.IO) {
                     OwnedDiagnosticExportProvider.publish(context, filename, bytes)
                 }
+                check(stillCurrent()) { "Source became stale. Preview again before saving" }
                 OwnedDiagnosticShare.openChooser(context, uri,
                     "application/octet-stream", "local snapshot")
                 result = if (definitions > 0) {
                     "Prepared $definitions verified original v1 torrent definitions in a " +
                         "read-only share. This may include private-tracker passkeys. " +
                         "The receiving app has not saved it yet, and no payload bytes were included."
+                } else if (aliases > 0) {
+                    "Prepared a read-only share with $aliases display aliases. " +
+                        "It contains no restorable definitions or payload bytes."
                 } else {
                     "Prepared a verified inventory-only snapshot for sharing. " +
                         "No receiving app has saved it yet. No restorable definitions, " +
@@ -173,6 +185,22 @@ internal fun LocalInventorySnapshotPanel(
                         Text("Recover verified .torrent definitions (sensitive)")
                     }
                     if (includeDefinitions) {
+                        if (settingsCapture != null) {
+                            Row(
+                                Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                                    value = includeSettings, enabled = !saving && !inspectingResumes,
+                                    role = Role.Checkbox,
+                                    onValueChange = { includeSettings = it; verifiedResumes = null }),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = includeSettings, onCheckedChange = null)
+                                Text("Include display aliases and verified file priorities")
+                            }
+                            if (includeSettings) Text(
+                                "Aliases may contain private text. Priorities are included only " +
+                                    "when current file choices match the original .torrent layout.",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
                         Text("Private tracker credentials, announce addresses or passkeys " +
                             "may be present in recovered torrent metadata. This is optional " +
                             "and OFF by default. Keep any exported file private. " +
@@ -185,16 +213,23 @@ internal fun LocalInventorySnapshotPanel(
                                 resumeProblem = null
                                 val frozen = transfers.toList()
                                 val usePaths = historicalPaths
+                                val generation = sourceGeneration
+                                val captureSettings = settingsCapture.takeIf { includeSettings }
                                 scope.launch {
                                     try {
                                         val candidate = withContext(Dispatchers.IO) {
-                                            LocalResumeMetainfoSourceV1.capture(
+                                            val recovery = LocalResumeMetainfoSourceV1.capture(
                                                 File(context.filesDir, "local-engine"),
                                                 frozen, Instant.now(), usePaths)
+                                            val settingsManifest = captureSettings?.collect(
+                                                recovery.manifest, recovery.metainfoByHash,
+                                                stillCurrent = { sourceStillCurrent(generation) })
+                                            if (settingsManifest == null) recovery
+                                            else recovery.copy(manifest = settingsManifest)
                                         }
                                         // Never advertise a preview from a now-stale source.
                                         if (!currentStale && !currentBusyEngine && currentOptIn &&
-                                            currentReviewIdentity == frozen.map {
+                                            sourceStillCurrent(generation) && currentReviewIdentity == frozen.map {
                                                 Triple(it.infoHash, it.name,
                                                     if (usePaths) it.savePath else "")
                                             }) {
@@ -202,7 +237,7 @@ internal fun LocalInventorySnapshotPanel(
                                                 frozen.map {
                                                     Triple(it.infoHash, it.name,
                                                         if (usePaths) it.savePath else "")
-                                                }, candidate)
+                                                }, generation, candidate)
                                         } else {
                                             resumeProblem = "Transfer inventory changed. " +
                                                 "Refresh and inspect again."
@@ -228,6 +263,17 @@ internal fun LocalInventorySnapshotPanel(
                                 recovery.verifiedRestorableCount + "; remaining inventory-only: " +
                                 recovery.inventoryOnlyCount + "; unsupported/omitted: " +
                                 recovery.omittedCount + ".")
+                            val aliasCount = recovery.manifest.items.count {
+                                it.settings?.displayAlias != null
+                            }
+                            if (includeSettings) {
+                                val priorityCount = recovery.manifest.items.count {
+                                    it.settings?.filePriorities != null
+                                }
+                                Text("Aliases recorded: $aliasCount. File priorities recorded: " +
+                                    "$priorityCount; unavailable for " +
+                                    "${recovery.manifest.items.size - priorityCount} records.")
+                            }
                             Text("Only source-verified original torrent names and hashes " +
                                 "are accepted. This file is NOT a copy of its payload.",
                                 style = MaterialTheme.typography.bodySmall)
@@ -242,15 +288,21 @@ internal fun LocalInventorySnapshotPanel(
                                             val encoded = withContext(Dispatchers.IO) {
                                                 selected.toArchive()
                                             }
-                                            if (currentStale || currentBusyEngine || !currentOptIn ||
-                                                currentReviewIdentity != review.identity) {
+                                            val stillCurrent = {
+                                                !currentStale && !currentBusyEngine && currentOptIn &&
+                                                    sourceStillCurrent(review.generation) &&
+                                                    currentReviewIdentity == review.identity
+                                            }
+                                            if (!stillCurrent()) {
                                                 result = "Source became stale. Preview again before saving."
                                                 saving = false
                                             } else {
                                                 val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                                     .withZone(ZoneOffset.UTC).format(Instant.now())
-                                                shareOwnedSnapshot(encoded, selected.verifiedRestorableCount,
-                                                    "chunks-local-reviewed-$stamp.chunksnap")
+                                                shareOwnedSnapshot(encoded,
+                                                    "chunks-local-reviewed-$stamp.chunksnap",
+                                                    definitions = selected.verifiedRestorableCount,
+                                                    aliases = aliasCount, stillCurrent = stillCurrent)
                                             }
                                         } catch (cancel: CancellationException) {
                                             throw cancel
@@ -262,7 +314,7 @@ internal fun LocalInventorySnapshotPanel(
                                     }
                                 },
                                 enabled = !saving && !stale && !busyEngine &&
-                                    recovery.verifiedRestorableCount > 0,
+                                    (recovery.verifiedRestorableCount > 0 || aliasCount > 0),
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                             ) { Text("Share reviewed sensitive .chunksnap") }
                         }
@@ -286,7 +338,7 @@ internal fun LocalInventorySnapshotPanel(
                         } else {
                             val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                 .withZone(ZoneOffset.UTC).format(Instant.now())
-                            shareOwnedSnapshot(bytes, 0, "chunks-local-inventory-$stamp.chunksnap")
+                            shareOwnedSnapshot(bytes, "chunks-local-inventory-$stamp.chunksnap")
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)

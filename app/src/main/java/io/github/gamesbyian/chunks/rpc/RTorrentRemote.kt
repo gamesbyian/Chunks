@@ -1677,6 +1677,20 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
+    /** Snapshot capture may attribute priorities only to an independently observed exact hash. */
+    internal suspend fun readSnapshotFiles(hash: String): List<RemoteFile> {
+        require(Regex("[0-9a-f]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun checkIdentity() {
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent transfer identity not confirmed"
+            }
+        }
+        checkIdentity()
+        val files = listFiles(hash)
+        checkIdentity()
+        return files
+    }
+
     /** One file with rTorrent's own hash-verified chunk counts. */
     data class FileCompletion(
         val path: String, val sizeBytes: Long, val priority: Int,

@@ -91,6 +91,9 @@ import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
 import io.github.gamesbyian.chunks.snapshots.LocalInventorySnapshotPanel
+import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
+import io.github.gamesbyian.chunks.snapshots.applyLocalSnapshotAlias
+import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
 import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
@@ -3168,6 +3171,21 @@ internal fun LocalEngineScreen(
             inventoryStale = inventoryStale,
             busyEngine = busy || sourceReading,
             mutationGeneration = LocalScreenReader.revision.snapshot(),
+            onApplyAlias = { entry, generation, report ->
+                if (inventoryStale || !hasConfirmedLocalInventory || busy || sourceReading ||
+                    !LocalScreenReader.revision.isCurrent(generation)) {
+                    report("The local inventory changed. Compare the snapshot again.")
+                } else performLocalMutation {
+                    val outcome = withContext(Dispatchers.IO) {
+                        val observed = runCatching {
+                            LocalEngineHolder.current()?.status(entry.infoHashV1)
+                        }.getOrNull()
+                        applyLocalSnapshotAlias(aliasStore, entry, observed)
+                    }
+                    aliasRevision++
+                    report(outcome)
+                }
+            },
             onPrepareAdd = { originalBytes ->
                 check(!busy && sourceReadJob == null) { "Another source review is in progress" }
                 initialTorrentUri?.let(onTorrentConsumed)
@@ -3209,11 +3227,9 @@ internal fun LocalEngineScreen(
                                         it.recovery == SnapshotManifestV1.Recovery.METAINFO
                                 }
                             })
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotBatchRecoveryDraft(
                                 originalHashes,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3266,10 +3282,8 @@ internal fun LocalEngineScreen(
                                     verified, entry.infoHashV1)
                             }.sortedBy { it.infoHashV1 }
                             require(originals.map { it.infoHashV1 }.toSet().size == originals.size)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotBatchStoppedRestoreDraft(
-                                originals, LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                originals, SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3312,11 +3326,9 @@ internal fun LocalEngineScreen(
                         val draft = withContext(Dispatchers.IO) {
                             val original = SnapshotVerifiedTorrentDocumentV1.prepare(
                                 verified, entry.infoHashV1)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotStoppedRestoreDraft(
                                 original,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3361,11 +3373,9 @@ internal fun LocalEngineScreen(
                         val draft = withContext(Dispatchers.IO) {
                             val original = SnapshotVerifiedTorrentDocumentV1.prepare(
                                 verified, entry.infoHashV1)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
                             LocalSnapshotStoppedRestoreDraft(
                                 original,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                SnapshotManifestV1.definitionArchiveFingerprint(verified),
                                 frozen.toList(), generation, recoveryOnly = true)
                         }
                         if (sourceReadJob !== read) return@launch
@@ -3420,10 +3430,28 @@ internal fun LocalEngineScreen(
         ) { Text(if (showLocalTools) "Hide local tools" else "More local tools") }
         if (showLocalTools) {
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(exportsRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        val snapshotEngine = LocalEngineHolder.current()
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,
-            busyEngine = busy
+            busyEngine = busy,
+            settingsCapture = snapshotEngine?.let { engine ->
+                SnapshotSettingsCapture(
+                    readAlias = { hash -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, hash) },
+                    readFiles = { hash ->
+                        engine.readFilePriorities(hash, SnapshotFilePriorities.MAX_FILES)?.map { row ->
+                            SnapshotFilePriorities.Observation(
+                                SnapshotFilePriorities.File(row.index, row.path, row.sizeBytes), row.priority)
+                        }
+                    }
+                )
+            },
+            sourceGeneration = LocalScreenReader.revision.snapshot(),
+            sourceStillCurrent = { generation ->
+                LocalEngineHolder.current() === snapshotEngine &&
+                    LocalScreenReader.revision.snapshot() == generation &&
+                    !LocalScreenReader.revision.blocksMutations()
+            }
         )
         LocalTransferHealthExportPanel(
             transfers = transfers,
