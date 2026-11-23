@@ -169,22 +169,36 @@ _MEDIA_FIRST_FINGERPRINT = re.compile(
 
 
 def safe_media_first_positive_failure(text: str) -> str | None:
-    """Allow only a fixed diagnostic signature for the installed positive case."""
+    """Only expose a bounded diagnostic if the entire stack is syntax-safe.
+
+    Android instrumentation prints the throwable's first line under stack=,
+    then prints its frames as raw continuation lines. Reject unexpected lines
+    rather than silently treating the first line as the entire assertion.
+    """
     fields: dict[str, str] = {}
     stack: str | None = None
+    stack_continuation = False
+    unsafe_suffix = False
+    java_frame = re.compile(
+        r"^[ \\t]+at [A-Za-z_$][A-Za-z0-9_.$]{0,239}"
+        r"\\([A-Za-z0-9_.$<>-]{1,140}(?::[0-9]{1,7})?\\)$"
+    )
+    omitted_frames = re.compile(r"^[ \\t]*\\.\\.\\. [1-9][0-9]{0,3} more$")
     for line in text.splitlines():
         if line.startswith(STATUS):
             value = line[len(STATUS):]
+            stack_continuation = False
             if value.startswith("class="):
                 fields["class"] = value[len("class="):]
             elif value.startswith("test="):
                 fields["test"] = value[len("test="):]
             elif value.startswith("stack="):
                 stack = value[len("stack="):]
+                stack_continuation = True
         elif line.startswith(STATUS_CODE):
             if (line[len(STATUS_CODE):].strip() == "-2" and
                     (fields.get("class"), fields.get("test")) == _SAFE_MEDIA_FIRST_TEST and
-                    stack is not None):
+                    stack is not None and not unsafe_suffix):
                 match = _MEDIA_FIRST_FINGERPRINT.fullmatch(stack)
                 if match:
                     keys = ("sourceFetched", "online", "metered", "powerSaver",
@@ -193,8 +207,12 @@ def safe_media_first_positive_failure(text: str) -> str | None:
                     return " ".join(f"{key}={value}" for key, value in zip(keys, match.groups()))
             fields = {}
             stack = None
+            stack_continuation = False
+            unsafe_suffix = False
+        elif stack_continuation and not (
+                java_frame.fullmatch(line) or omitted_frames.fullmatch(line)):
+            unsafe_suffix = True
     return None
-
 
 
 # The controlled HTTPS second-Add fixture may fail *before* metadata is
