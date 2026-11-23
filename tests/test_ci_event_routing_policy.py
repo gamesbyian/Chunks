@@ -31,6 +31,7 @@ DEDICATED = {
 }
 OWNER_EXECUTION = {
     "snapshots/RemoteSnapshotRestoreInstalledTest.kt": "tools/installed_combined_two_servers.sh",
+    "snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt": "tools/installed_combined_two_servers.sh",
     "SystemFontScaleComposeInstrumentedTest.kt": "tools/run_compose_system_font_200pct.sh",
     "ExperimentalTypefaceNativeInstrumentedTest.kt": "tools/run_native_font_acceptance.sh",
     "AndroidNativeLowStorageRecoveryInstrumentedTest.kt": "tools/android_native_low_storage_repro.sh",
