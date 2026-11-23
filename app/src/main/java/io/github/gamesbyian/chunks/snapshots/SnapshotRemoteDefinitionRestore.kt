@@ -33,6 +33,7 @@ internal class SnapshotRemoteDefinitionRestore(
         val hash: String get() = original.infoHashV1
         val name: String get() = original.originalName
         val place: String get() = plan.destination
+        val serverDefault: Boolean get() = plan.useServerDefault
     }
 
     /** Read-only. A missing complete-session row is required before offering an Add review. */
@@ -40,7 +41,8 @@ internal class SnapshotRemoteDefinitionRestore(
         archive: SnapshotManifestV1.Verified,
         hash: String,
         comparedHashes: List<String>,
-        recoveryOnly: Boolean
+        recoveryOnly: Boolean,
+        selectedPlace: String? = null
     ): Review? = readOrNull {
         if (!stillCurrent() || !authenticated()) return@readOrNull null
         val observed = remote.listCompleteSessionTransfers().identities()
@@ -49,11 +51,21 @@ internal class SnapshotRemoteDefinitionRestore(
             (!recoveryOnly && hash in observed)) return@readOrNull null
         if (!recoveryOnly && remote.probe().advertisedMethods?.contains("load.raw_verbose") != true)
             return@readOrNull null
-        val place = remote.defaultDirectory() ?: return@readOrNull null
+        // A user-picked destination is never trusted from text or old browse state.
+        // Establish a fresh root and exact folder on this authenticated mount.
+        // Recovery remains read-only even if the folder plugin later disappears:
+        // its independently observed stopped job and journal prove the Place.
+        val place = selectedPlace ?: remote.defaultDirectory() ?: return@readOrNull null
+        if (selectedPlace != null && !recoveryOnly &&
+            !SnapshotRemotePlaceProbe.confirm(place, remote::browseDirectories))
+            return@readOrNull null
         withContext(Dispatchers.Default) {
             val original = SnapshotVerifiedTorrentDocumentV1.prepare(archive, hash)
             val preview = TorrentMetainfoReader.preview(original.copyVerifiedBytes())
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault("magnet:?xt=urn:btih:$hash", place)
+            val magnet = "magnet:?xt=urn:btih:$hash"
+            val plan = if (selectedPlace == null)
+                StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, place)
+            else StoppedRemoteAddPlan.fromMagnet(magnet, place)
             val directory = if (preview.files.isNotEmpty()) place.trimEnd('/') + "/" + original.originalName else place
             val archiveKey = SnapshotManifestV1.definitionArchiveFingerprint(archive)
             Review(this@SnapshotRemoteDefinitionRestore,
@@ -76,11 +88,15 @@ internal class SnapshotRemoteDefinitionRestore(
         try {
             val loaded = readOrNull {
                 remote.loadStoppedTorrentBytes(
-                    review.original.copyVerifiedBytes(), review.place, useServerDefault = true,
+                    review.original.copyVerifiedBytes(), review.place,
+                    useServerDefault = review.serverDefault,
                     beforeLoad = {
                         // Hidden jobs must never become restore candidates.
+                        val destinationVerified = if (review.serverDefault)
+                            remote.defaultDirectory() == review.place
+                        else SnapshotRemotePlaceProbe.confirm(review.place, remote::browseDirectories)
                         check(remote.listCompleteSessionTransfers().identities() == review.frozenHashes &&
-                            remote.defaultDirectory() == review.place && stillCurrent() && authenticated())
+                            destinationVerified && stillCurrent() && authenticated())
                         check(admitWrite())
                         admitted = true
                     },
@@ -162,7 +178,9 @@ internal class SnapshotRemoteDefinitionRestore(
     private fun authenticated(): Boolean =
         remote.readAuthenticationEvidence() == RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED
 
-    private fun placeKey(review: Review): String = fingerprint("chunks-rtorrent-snapshot-default-v1:" + review.place)
+    private fun placeKey(review: Review): String = fingerprint(
+        (if (review.serverDefault) "chunks-rtorrent-snapshot-default-v1:"
+         else "chunks-rtorrent-snapshot-selected-v1:") + review.place)
 
     private fun fingerprint(value: String): String = SnapshotArchiveV1.digest(value.toByteArray(Charsets.UTF_8))
 
