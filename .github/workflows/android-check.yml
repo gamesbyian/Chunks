@@ -17,6 +17,8 @@ on:
       - "gradle.properties"
       - "tools/ci_jvm_two_forks.init.gradle"
       - "tools/prefetch_robolectric_sdk.py"
+    # Drafts can accumulate several edits before source-exact acceptance.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -33,6 +35,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
