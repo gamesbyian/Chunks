@@ -116,13 +116,67 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
     ) {
         LazyComposeActions.replaceText(rule, hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD), "https://example.com/$source.torrent")
         LazyComposeActions.activateOnce(rule, hasText("Get torrent from link") and hasClickAction())
-        rule.waitUntil(30_000) {
-            var reviewed = false
-            scenario.onActivity {
-                reviewed = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
-                    .reviewedTorrent.value?.preview?.infoHashV1 == expectedHash
+        try {
+            rule.waitUntil(30_000) {
+                var reviewed = false
+                scenario.onActivity {
+                    reviewed = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value?.preview?.infoHashV1 == expectedHash
+                }
+                reviewed
             }
-            reviewed
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // #1838: a 30-second timeout alone cannot distinguish a fixture
+            // request never sent from a validated source never adopted by the
+            // retained Add owner. Emit only bounded booleans/counts, not URL,
+            // query/token, full hash or raw provider response contents.
+            val sourceRequests = runCatching { count("source_$source") }.getOrNull()
+            val ownerHasReview = runCatching {
+                var hasReview = false
+                scenario.onActivity {
+                    hasReview = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value != null
+                }
+                hasReview
+            }.getOrNull()
+            val addFooterVisible = runCatching {
+                rule.onAllNodesWithTag(ChunksSemantics.FOOTER_ADD)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrNull()
+            val sourceFieldVisible = runCatching {
+                rule.onAllNodesWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrNull()
+            val refusalCategory = runCatching {
+                // Examine only whether one of Chunks' fixed public error messages
+                // is present. Never copy UI source text, URI, query or credentials.
+                listOf(
+                    "NO_HOST" to TorrentLinkResult.NO_HOST,
+                    "LOCAL_NETWORK" to TorrentLinkResult.LOCAL_NETWORK,
+                    "OFFLINE" to TorrentLinkResult.OFFLINE,
+                    "TIMEOUT" to TorrentLinkResult.TIMEOUT,
+                    "REFUSED" to TorrentLinkResult.REFUSED,
+                    "NOT_FOUND" to TorrentLinkResult.NOT_FOUND,
+                    "NOT_TORRENT" to TorrentLinkResult.NOT_TORRENT,
+                    "UNEXPECTED" to TorrentLinkResult.UNEXPECTED,
+                    "BUSY" to TorrentLinkResult.BUSY,
+                    "DOWNGRADE" to TorrentLinkResult.DOWNGRADE,
+                    "WEB_PAGE" to TorrentLinkResult.WEB_PAGE,
+                    "TOO_LARGE" to TorrentLinkResult.TOO_LARGE
+                ).firstOrNull { (_, message) ->
+                    rule.onAllNodes(hasText(message, substring = true))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }?.first ?: "NONE"
+            }.getOrDefault("UNAVAILABLE")
+            throw AssertionError(
+                "Controlled HTTPS review was not retained: " +
+                    "fixtureSourceRequests=${sourceRequests ?: "unavailable"} " +
+                    "ownerHasAnyReviewedTorrent=${ownerHasReview ?: "unavailable"} " +
+                    "addFooterVisible=${addFooterVisible ?: "unavailable"} " +
+                    "sourceFieldVisible=${sourceFieldVisible ?: "unavailable"} " +
+                    "intakeProblem=$refusalCategory",
+                timeout
+            )
         }
         assertNull("HTTPS review must make no native Add write", LocalEngineHolder.current()?.status(expectedHash))
         add.chooseStopped()
