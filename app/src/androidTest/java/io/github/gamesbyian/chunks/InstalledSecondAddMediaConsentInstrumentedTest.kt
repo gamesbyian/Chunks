@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import android.content.ClipData
 import android.content.Intent
 import android.os.ParcelFileDescriptor
 import android.os.Process
@@ -247,6 +248,89 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
                     "localTransferPresent=$localPresent kind=$kind",
                 timeout
             )
+        }
+    }
+
+    @Test fun sharedSignedLinkWaitsForReplacementAndExplicitFetch() = withControlledHttps {
+        val original = "https://example.com/first.torrent"
+        val shared = "https://example.com/signed.torrent?access=fixture%2Braw%2Ftoken"
+        fun share(url: String) = Intent(Intent.ACTION_SEND, null, context, MainActivity::class.java).apply {
+            type = "text/plain"
+            clipData = ClipData.newPlainText("", url)
+        }
+        val replace = hasText("Use new source") and hasClickAction()
+        val keep = hasText("Keep current draft") and hasClickAction()
+        val fetch = hasText("Get torrent from link") and hasClickAction()
+        val expectedHash = hash("control")
+        val unrelatedHash = hash("first")
+
+        ActivityScenario.launch<MainActivity>(share(original)).use { scenario ->
+            fun waitForSource(accepted: String, pending: String? = null) = rule.waitUntil(30_000) {
+                var matches = false
+                scenario.onActivity {
+                    val owner = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                    matches = owner.sourceDraft.value == accepted && owner.pendingSharedMagnet.value == pending
+                }
+                matches
+            }
+            fun assertNoAdd() {
+                scenario.onActivity {
+                    val owner = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                    assertEquals(UniversalAddRouteTarget.Local, owner.addDestination.value)
+                    assertNull(owner.session.attemptedTicket)
+                }
+                // A cold ACTION_SEND opens the review-only Add route. The
+                // Local engine may intentionally remain uninitialized until
+                // transfers are visited or an authorized Add is submitted.
+                // A missing holder cannot have registered a torrent; if the
+                // engine exists, independently check both known hashes.
+                val engine = LocalEngineHolder.current()
+                assertNull(engine?.status(expectedHash))
+                assertNull(engine?.status(unrelatedHash))
+            }
+            fun assertNoRequests() {
+                assertEquals("Share review made an unsolicited HTTPS request", 0, JSONObject(fixture("counts")).length())
+                assertNoAdd()
+            }
+
+            waitForTag(ChunksSemantics.ADD_SOURCE_FIELD)
+            waitForSource(original)
+            scenario.recreate()
+            waitForTag(ChunksSemantics.ADD_SOURCE_FIELD)
+            waitForSource(original)
+            assertNoRequests()
+
+            scenario.onActivity { it.startActivity(share(shared)) }
+            waitForSource(original, shared)
+            LazyComposeActions.activateOnce(rule, keep)
+            waitForSource(original)
+            assertNoRequests()
+
+            scenario.onActivity { it.startActivity(share(shared)) }
+            waitForSource(original, shared)
+            LazyComposeActions.activateOnce(rule, replace)
+            waitForSource(shared)
+            add.requireSubmitBlocked()
+            rule.onNodeWithText("Torrent link: example.com · signed.torrent").assertExists()
+            assertNoRequests()
+
+            LazyComposeActions.activateOnce(rule, fetch)
+            rule.waitUntil(30_000) {
+                var reviewed = false
+                scenario.onActivity {
+                    val owner = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                    reviewed = owner.reviewedTorrent.value?.preview?.infoHashV1 == expectedHash
+                }
+                reviewed
+            }
+            assertEquals("The exact signed link was fetched once", 1, count("source_signed_share"))
+            assertEquals("The superseded link was never fetched", 0, count("source_first"))
+            assertEquals("The receiver saw no other HTTPS requests", 1, JSONObject(fixture("counts")).length())
+            scenario.onActivity {
+                val owner = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                assertNull("A fetched URL does not grant document custody", owner.reviewedTorrent.value?.originalDocument)
+            }
+            assertNoAdd()
         }
     }
 
