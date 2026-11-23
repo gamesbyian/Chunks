@@ -33,6 +33,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.InetAddress
@@ -230,8 +231,11 @@ class ChunksMainActivityAtlasTest {
         rule.waitForIdle()
     }
 
-    private fun save(name: String) {
+    private fun save(name: String, minimumHeightPx: Int = 0) {
         val image = rule.onNode(isRoot()).captureToImage().asAndroidBitmap()
+        if (minimumHeightPx > 0) assertTrue(
+            "An honest tall screenshot must be from a genuinely taller Android viewport: " + image.height,
+            image.height >= minimumHeightPx)
         val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
@@ -537,6 +541,29 @@ class ChunksMainActivityAtlasTest {
         }
         rule.onNodeWithText("85 server-reported files").performScrollTo()
         save("app-files-populated-real-compose")
+
+        // Actual height-adjusted emulator render, NOT a stretched/stitch-fabricated PNG.
+        // Keep the 1080px phone width and test the same real installed Details
+        // controls on a 4200px vertical viewport. Always restore the AVD size
+        // even if the tall capture fails, so later tests retain their geometry.
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        try {
+            device.executeShellCommand("wm size 1080x4200")
+            rule.waitUntil(15_000) {
+                var windowHeight = 0
+                rule.runOnUiThread { windowHeight = rule.activity.window.decorView.height }
+                windowHeight >= 3900
+            }
+            rule.onNodeWithText("85 server-reported files").performScrollTo()
+            rule.onNodeWithText("Search this transfer's files").performScrollTo()
+            rule.waitForIdle()
+            save("app-files-tall-1080x4200-real-compose", minimumHeightPx = 3800)
+            rule.onNodeWithText("85 server-reported files").assertExists()
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).assertExists()
+        } finally {
+            device.executeShellCommand("wm size reset")
+            rule.waitForIdle()
+        }
         val invoked = receivedMethods.toList()
         assertTrue("Installed client must request server version", invoked.contains("system.client_version"))
         assertTrue("Installed client must enumerate the actual transfer list", invoked.contains("d.multicall2"))
