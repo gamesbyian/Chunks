@@ -22,7 +22,11 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         requested = args["dir"][0]
-        if requested == "":
+        # _getdir first resolves an empty request to the current tenant
+        # root. The picker then performs a second read of that EXACT root.
+        # Both are valid and must be equivalent; the original fixture
+        # rejected the second request, leaving the folder list invisible.
+        if requested == "" or requested == root:
             body = {"path": root, "directories": ["reviewed"]}
         elif requested == target:
             body = {"path": target, "directories": []}
