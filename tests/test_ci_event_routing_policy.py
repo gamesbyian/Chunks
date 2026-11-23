@@ -176,6 +176,8 @@ class CiDispatchRelevance(unittest.TestCase):
         self.assertIn("InstalledAutomaticPublicMediaInstrumentedTest", runner)
         self.assertIn("run_phase phaseA_liveAutomaticArtworkWithoutIdentify", runner)
         self.assertIn("run_phase phaseB_offlineColdProcessRestoresRealArtwork", runner)
+        self.assertIn("run_phase phaseC_liveSecondAddOptOutStaysSilent", runner)
+        self.assertIn("excluded_provider_requests=0 exact_disk_exclusion=true", runner)
         self.assertFalse(dispatches_for_changed_paths(native, (path,)))
         self.assertTrue(dispatches_for_changed_paths(native,
             (path, "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt")))

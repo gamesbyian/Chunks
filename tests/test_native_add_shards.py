@@ -183,35 +183,37 @@ class ShardedNativeAddTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 
-    def test_only_both_exact_public_media_phases_can_extend_existing_skip_ceiling(self):
+    def test_only_exact_public_media_phases_can_extend_existing_skip_ceiling(self):
         # Real TVmaze/CDN verification is a separate *explicitly opted-in*,
-        # two-phase process-death emulator campaign. Ordinary native Add must
+        # three-phase emulator campaign. Ordinary native Add must
         # never report these gated phases as executed.
         expected = {
             hashlib.sha256(("io.github.gamesbyian.chunks."
                 "InstalledAutomaticPublicMediaInstrumentedTest" + "\\0" + name).encode()).hexdigest()
             for name in ("phaseA_liveAutomaticArtworkWithoutIdentify",
-                         "phaseB_offlineColdProcessRestoresRealArtwork")
+                         "phaseB_offlineColdProcessRestoresRealArtwork",
+                         "phaseC_liveSecondAddOptOutStaysSilent")
         }
         self.assertEqual(expected, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS)
-        self.assertEqual(2, len(INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS))
+        self.assertEqual(3, len(INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS))
         media_ids = sorted(INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS)
 
         def reviewed_skips(d):
-            for case in d["test_cases"][:37]:
+            for case in d["test_cases"][:38]:
                 case["outcome"] = "skipped"
             # The 34 existing authorized skips plus one exact public HTTPS
-            # local fixture and two exact installed-media phases are permitted.
+            # local fixture and three exact installed-media phases are permitted.
             d["test_cases"][34]["id_sha256"] = HTTPS_LOCAL_ID
             d["test_cases"][35]["id_sha256"] = media_ids[0]
             d["test_cases"][36]["id_sha256"] = media_ids[1]
-            d["junit"]["executed"] = 144
-            d["junit"]["skipped"] = 37
+            d["test_cases"][37]["id_sha256"] = media_ids[2]
+            d["junit"]["executed"] = 143
+            d["junit"]["skipped"] = 38
 
         self.change(0, reviewed_skips)
-        self.assertEqual(37, self.check()["junit"]["skipped"])
+        self.assertEqual(38, self.check()["junit"]["skipped"])
 
-        # A different test cannot borrow even one of the two exemptions.
+        # A different test cannot borrow even one of the three exemptions.
         self.change(0, lambda d: d["test_cases"][36].update(id_sha256="f" * 64))
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
