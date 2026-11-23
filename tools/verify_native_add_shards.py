@@ -44,6 +44,7 @@ INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS = frozenset(
     for name in (
         "phaseA_liveAutomaticArtworkWithoutIdentify",
         "phaseB_offlineColdProcessRestoresRealArtwork",
+        "phaseC_liveSecondAddOptOutStaysSilent",
     )
 )
 
