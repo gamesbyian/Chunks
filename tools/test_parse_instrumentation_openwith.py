@@ -130,6 +130,19 @@ class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
                 failure=self.GOOD.replace("Requests=0", "Requests=9999"))),
         )
 
+    def test_only_conventional_java_stack_frames_may_follow_signature(self):
+        expected = ("fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+                    "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
+        self.assertEqual(expected, safe_media_review_failure(self.status(
+            failure=self.GOOD +
+            "\n    at io.github.gamesbyian.chunks.SampleTest.review(SampleTest.kt:119)")))
+        # One non-frame line after the assertion must never disappear when
+        # the instrumentation parser extracts just the first stack line.
+        self.assertIsNone(safe_media_review_failure(self.status(
+            failure=self.GOOD + "\n    at https://tracker.invalid/passkey")))
+        self.assertIsNone(safe_media_review_failure(self.status(
+            failure=self.GOOD + "\nCaused by: token=private")))
+
     def test_other_class_method_and_success_or_error_are_silent(self):
         self.assertIsNone(safe_media_review_failure(self.status(klass="secret.Class")))
         self.assertIsNone(safe_media_review_failure(self.status(test="unrelated")))

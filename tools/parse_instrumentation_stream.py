@@ -221,19 +221,31 @@ def safe_media_review_failure(text: str) -> str | None:
     """One bounded failure-only fingerprint; no source URL, hash or stack."""
     fields: dict[str, str] = {}
     stack: str | None = None
+    stack_continuation = False
+    stack_untrusted_suffix = False
+    # Android puts Java stack frames on separate raw lines after its initial
+    # INSTRUMENTATION_STATUS: stack= assertion. Do not silently ignore an
+    # arbitrary second line (including a URL, tracker token or injected text).
+    # Recognize syntax only; never print the stack frame or captured contents.
+    java_frame = re.compile(
+        r"^[ \t]+at [A-Za-z_$][A-Za-z0-9_.$]{0,239}"
+        r"\([A-Za-z0-9_.$<>-]{1,140}(?::[0-9]{1,7})?\)$"
+    )
     for line in text.splitlines():
         if line.startswith(STATUS):
             value = line[len(STATUS):]
+            stack_continuation = False
             if value.startswith("class="):
                 fields["class"] = value[len("class="):]
             elif value.startswith("test="):
                 fields["test"] = value[len("test="):]
             elif value.startswith("stack="):
                 stack = value[len("stack="):]
+                stack_continuation = True
         elif line.startswith(STATUS_CODE):
             if (line[len(STATUS_CODE):].strip() == "-2" and
                     (fields.get("class"), fields.get("test")) in _MEDIA_REVIEW_FAILURE_TESTS and
-                    stack is not None):
+                    stack is not None and not stack_untrusted_suffix):
                 match = _MEDIA_REVIEW_FINGERPRINT.fullmatch(stack)
                 if match:
                     names = ("fixtureSourceRequests", "ownerHasAnyReviewedTorrent",
@@ -241,6 +253,10 @@ def safe_media_review_failure(text: str) -> str | None:
                     return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
             fields = {}
             stack = None
+            stack_continuation = False
+            stack_untrusted_suffix = False
+        elif stack_continuation and not java_frame.fullmatch(line):
+            stack_untrusted_suffix = True
     return None
 
 
