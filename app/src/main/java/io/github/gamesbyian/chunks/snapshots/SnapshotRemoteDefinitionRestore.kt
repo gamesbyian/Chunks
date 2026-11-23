@@ -211,7 +211,7 @@ internal class SnapshotRemoteDefinitionRestore(
                 ) -> PreviousState.NO_SUBMISSION_IN_THIS_JOURNAL
                 entry.placeFingerprint != placeKey(review) ->
                     PreviousState.DIFFERENT_REVIEWED_PLACE
-                else -> when (observe(review, journal, acknowledgedNow = false)) {
+                else -> when (observe(review, requireNotNull(journal), acknowledgedNow = false)) {
                     Outcome.VERIFIED, Outcome.OBSERVED_STOPPED -> PreviousState.VERIFIED_STOPPED
                     else -> PreviousState.UNRESOLVED
                 }
