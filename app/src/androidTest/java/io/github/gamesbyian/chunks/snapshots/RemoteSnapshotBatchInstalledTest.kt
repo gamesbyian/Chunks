@@ -85,8 +85,11 @@ class RemoteSnapshotBatchInstalledTest {
                     assertEquals(0L, row.completedBytes)
                     assertNull(other.lookupName(original.infoHashV1))
                 }
-                assertEquals(before.toSet(), current.map { it.hash }
-                    .filterNot { it in hashes }.toSet())
+                // rTorrent returns uppercase hex even when the archived metainfo
+                // preview is lowercase. Compare identities, not string casing.
+                assertEquals(before.map { it.lowercase() }.toSet(),
+                    current.map { it.hash.lowercase() }
+                        .filterNot { it in hashes.map(String::lowercase) }.toSet())
                 assertEquals(otherBefore, other.listCompleteSessionTransfers().map { it.hash }.toSet())
                 val report = requireNotNull(coordinator.inspectPreviousBatch(archive,
                     current.map { it.hash }, selectedPlace = place))
@@ -112,6 +115,80 @@ class RemoteSnapshotBatchInstalledTest {
                     assertNull(independent.lookupName(original.infoHashV1))
                 }
             }
+        }
+    }
+
+    @Test fun pendingJournalForLastItemBlocksEveryEarlierAddBeforeMutationLease() {
+        assumeTrue(InstrumentationRegistry.getArguments()
+            .getString("chunks_combined_disposable") == "authorized")
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val account = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:18080/rutorrent/plugins/httprpc/action.php", "chunks", "chunks-one"))
+        val independent = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:18080/RPC2", "chunks", "chunks-one"))
+        val other = RTorrentRemote(RemoteCredentials("http://127.0.0.1:18082/RPC2", "", ""))
+        val tracker = "http://127.0.0.1:1/announce"
+        fun definition(name: String): ByteArray =
+            ("d8:announce${tracker.length}:$tracker" +
+                "4:infod6:lengthi5e4:name${name.length}:$name" +
+                "12:piece lengthi16384e6:pieces20:").toByteArray() +
+                MessageDigest.getInstance("SHA-1").digest(name.toByteArray()) +
+                "ee".toByteArray()
+        val contents = listOf(
+            definition("preflight-first.bin"),
+            definition("preflight-second.bin"))
+        val originals = contents.map { TorrentMetainfoReader.preview(it) }
+        val hashes = originals.map { it.infoHashV1 }
+        val archive = SnapshotManifestV1.decode(SnapshotManifestV1.encode(
+            SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
+                SnapshotManifestV1.Source.LOCAL, originals.map {
+                    SnapshotManifestV1.Item(it.infoHashV1, it.name,
+                        SnapshotManifestV1.Recovery.METAINFO)
+                }.sortedBy { it.infoHashV1 }),
+            originals.zip(contents).associate { (item, bytes) -> item.infoHashV1 to bytes }))
+        runBlocking {
+            account.version()
+            val before = independent.listCompleteSessionTransfers().map { it.hash.lowercase() }.toSet()
+            val otherBefore = other.listCompleteSessionTransfers().map { it.hash.lowercase() }.toSet()
+            assertTrue(hashes.none { it in before })
+            val place = requireNotNull(independent.defaultDirectory()) + "/reviewed"
+            val store = AndroidSnapshotRestoreJournalStore(context)
+            var admitted = 0
+            var settled = 0
+            val coordinator = SnapshotRemoteDefinitionRestore(account, store,
+                stillCurrent = { true }, admitWrite = { admitted++; true },
+                settleWrite = { settled++ })
+            val review = requireNotNull(coordinator.reviewBatch(
+                archive, hashes, before.toList(), selectedPlace = place))
+            val finalHash = review.originals.last().hash
+            val itemArchiveKey = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                SnapshotManifestV1.definitionArchiveFingerprint(archive), finalHash)
+            val accountKey = SnapshotArchiveV1.digest(
+                ("chunks-rtorrent-snapshot-account-v1:" + account.addAccountScope())
+                    .toByteArray(Charsets.UTF_8))
+            val selectedPlaceKey = SnapshotArchiveV1.digest(
+                ("chunks-rtorrent-snapshot-selected-v1:" + place).toByteArray(Charsets.UTF_8))
+            // Simulate a prior unknown non-idempotent Add on the LAST item.
+            // This durable state grants no right to replay it, even when the
+            // complete live server inventory does not yet contain its hash.
+            val pending = SnapshotRestoreJournalV1.open(
+                store, itemArchiveKey, accountKey, listOf(finalHash))
+            pending.prepare(finalHash, selectedPlaceKey)
+            pending.beforeAdd(finalHash, selectedPlaceKey)
+            assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+                pending.entries().single().phase)
+            val result = coordinator.restoreBatch(review, confirmed = true)
+            assertEquals(SnapshotRemoteDefinitionRestore.Outcome.BLOCKED, result.stop)
+            assertEquals(0, result.verified)
+            assertEquals(finalHash, result.stoppedAtInfoHash)
+            assertEquals(0, admitted)
+            assertEquals(0, settled)
+            assertEquals(before, independent.listCompleteSessionTransfers()
+                .map { it.hash.lowercase() }.toSet())
+            assertEquals(otherBefore, other.listCompleteSessionTransfers()
+                .map { it.hash.lowercase() }.toSet())
+            assertTrue(hashes.none { independent.lookupName(it) != null })
+            assertTrue(hashes.none { other.lookupName(it) != null })
         }
     }
 }
