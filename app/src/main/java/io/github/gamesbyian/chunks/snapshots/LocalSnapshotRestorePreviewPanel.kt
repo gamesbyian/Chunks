@@ -467,6 +467,54 @@ internal fun SnapshotRestorePreviewPanel(
                         }
                     )
                 }
+                val batchConfirmation = remoteBatchReview
+                if (batchConfirmation != null && remoteDefinitionRestore != null &&
+                    remoteDefinitionActionScope != null && remoteDefinitionAccountLabel != null) {
+                    RemoteSnapshotBatchConfirmation(
+                        review = batchConfirmation,
+                        accountLabel = remoteDefinitionAccountLabel,
+                        onDismiss = { remoteBatchReview = null },
+                        onConfirm = {
+                            remoteBatchReview = null
+                            if (!remoteDefinitionBusy && latestReady &&
+                                latestHashes == comparedHashes &&
+                                latestGeneration == comparedGeneration) {
+                                remoteDefinitionBusy = true
+                                remoteDefinitionNotice = "Restoring a confirmed stopped server batch…"
+                                remoteDefinitionActionScope.launch {
+                                    try {
+                                        val outcome = remoteDefinitionRestore.restoreBatch(
+                                            batchConfirmation, confirmed = true)
+                                        remoteDefinitionNotice = when {
+                                            outcome.complete ->
+                                                "Verified all ${outcome.verified} stopped server definitions " +
+                                                    "at this Place. Recompare before applying saved priorities."
+                                            outcome.stop == SnapshotRemoteDefinitionRestore.Outcome.UNCERTAIN ||
+                                                outcome.stop == SnapshotRemoteDefinitionRestore.Outcome.OBSERVED_STOPPED ->
+                                                "${outcome.verified} of ${outcome.total} independently verified; " +
+                                                    "the next outcome is uncertain. No further Adds or retries. " +
+                                                    "Check previous restores read-only before another review."
+                                            else ->
+                                                "${outcome.verified} of ${outcome.total} verified; " +
+                                                    "stopped at ${outcome.stoppedAtInfoHash ?: "the preflight"} " +
+                                                    "(${outcome.stop}). No more Adds were submitted."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        remoteDefinitionNotice =
+                                            "Server batch stopped without a completed receipt. " +
+                                                "Check previous restores read-only. Do not retry an uncertain Add."
+                                    } finally {
+                                        remoteDefinitionBusy = false
+                                    }
+                                }
+                            } else {
+                                remoteDefinitionNotice = "The rTorrent comparison changed. Reopen the snapshot."
+                            }
+                        }
+                    )
+                }
                 priorityReview?.let { review ->
                     if (onApplyPriorities != null) LocalSnapshotPriorityConfirmation(
                         review = review,
