@@ -2953,8 +2953,8 @@ internal fun ChunksApp(
                                 server === account && aliasScope == snapshotAliasScope &&
                                     section == Section.SNAPSHOT && !stale && !loading
                             },
-                            admitWrite = { mutationGate.tryStart() },
-                            settleWrite = settledRemoteMutation
+                            admitBatch = { mutationGate.tryStart() },
+                            settleBatch = settledRemoteMutation
                         )
                     }
                 }
