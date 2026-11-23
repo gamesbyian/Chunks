@@ -32,8 +32,7 @@ test ! -e "$out/installed-pull-tmp.apk"
 # fixture are enforced again inside the test. No real tracker or owner account.
 adb logcat -c
 restore_network() {
-  adb shell settings put global airplane_mode_on 0 >/dev/null
-  adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false >/dev/null
+  adb shell cmd connectivity airplane-mode disable >/dev/null
   adb shell svc wifi enable >/dev/null
   adb shell svc data enable >/dev/null
 }
