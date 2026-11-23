@@ -1,7 +1,10 @@
 """Privacy and evidence gate for Open With instrumentation diagnostics."""
 import unittest
 
-from tools.parse_instrumentation_stream import (safe_openwith_failure, safe_media_first_positive_failure, safe_media_review_failure)
+from tools.parse_instrumentation_stream import (
+    safe_ime_focus_failure, safe_media_first_positive_failure,
+    safe_media_review_failure, safe_openwith_failure,
+)
 
 
 class OpenWithFailureFingerprintTest(unittest.TestCase):
@@ -182,6 +185,48 @@ class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
         ):
             with self.subTest(invalid=invalid[:50]):
                 self.assertIsNone(safe_media_review_failure(self.status(failure=invalid)))
+
+
+class ImeFocusFailureFingerprintTest(unittest.TestCase):
+    CLASS = "io.github.gamesbyian.chunks.FooterImeInstalledInstrumentedTest"
+    TEST = "footerRemainsAvailableThroughSoftKeyboardAndAfterSearchKey"
+    MESSAGE = (
+        "java.lang.AssertionError: Installed keyboard journey did not acquire Chunks window focus; "
+        "foregroundIsChunks=unavailable; externalLauncherAnrVisible=true; "
+        "externalLauncherWaitClicked=false. No input or transfer write was attempted."
+    )
+    CAUSE = (
+        "\nCaused by: androidx.compose.ui.test.ComposeTimeoutException: "
+        "Condition still not satisfied after 15000 ms"
+        "\n    at androidx.compose.ui.test.ComposeTestRule.waitUntil(ComposeTestRule.kt:90)"
+        "\n    ... 23 more"
+    )
+
+    def status(self, message, klass=CLASS, test=TEST, code="-2"):
+        return "\n".join([
+            "INSTRUMENTATION_STATUS: class=" + klass,
+            "INSTRUMENTATION_STATUS: test=" + test,
+            "INSTRUMENTATION_STATUS: stack=" + message,
+            "INSTRUMENTATION_STATUS_CODE: " + code,
+        ])
+
+    def test_exact_focus_timeout_emits_three_bounded_values(self):
+        self.assertEqual(
+            "foregroundIsChunks=unavailable externalLauncherAnrVisible=true externalLauncherWaitClicked=false",
+            safe_ime_focus_failure(self.status(self.MESSAGE + self.CAUSE)),
+        )
+
+    def test_other_tests_and_untrusted_stack_continuations_stay_redacted(self):
+        stack = self.MESSAGE + self.CAUSE
+        for raw in (
+            self.status(stack, klass="foreign.Class"),
+            self.status(stack, test="catalogSearchSurvivesActivityRecreation"),
+            self.status(stack, code="0"),
+            self.status(stack.replace("15000 ms", "30000 ms")),
+            self.status(self.MESSAGE + " password=value"),
+            self.status(stack + "\nhttps://private.example/passkey"),
+        ):
+            self.assertIsNone(safe_ime_focus_failure(raw))
 
 
 if __name__ == "__main__":

@@ -92,14 +92,14 @@ class FooterImeInstalledInstrumentedTest {
             // Never dismiss an unknown system/app dialog or downgrade this failure.
             val foregroundIsChunks = runCatching {
                 device.currentPackageName == rule.activity.packageName
-            }.getOrDefault(false)
+            }.getOrNull()
             val externalLauncherAnrVisible = runCatching {
                 device.findObject(By.text("Pixel Launcher isn't responding")) != null
-            }.getOrDefault(false)
+            }.getOrNull()
             throw AssertionError(
                 "Installed keyboard journey did not acquire Chunks window focus; " +
-                    "foregroundIsChunks=$foregroundIsChunks; " +
-                    "externalLauncherAnrVisible=$externalLauncherAnrVisible; " +
+                    "foregroundIsChunks=${foregroundIsChunks ?: "unavailable"}; " +
+                    "externalLauncherAnrVisible=${externalLauncherAnrVisible ?: "unavailable"}; " +
                     "externalLauncherWaitClicked=$externalLauncherWaitClicked. " +
                     "No input or transfer write was attempted.", timeout)
         }
