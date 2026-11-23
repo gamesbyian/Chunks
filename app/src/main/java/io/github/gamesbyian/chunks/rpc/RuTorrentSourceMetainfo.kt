@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.rpc
 
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URLEncoder
@@ -62,8 +63,36 @@ internal object RuTorrentSourceMetainfo {
         val status: Int, val body: ByteArray?, val challenges: List<String>
     )
 
+    /**
+     * Some broken or adversarial response streams return zero immediately
+     * instead of blocking until data, EOF or the socket's read timeout.
+     * Bound consecutive zero-length reads so they cannot spin forever.
+     * A later positive read resets the allowance; the usual 2 MiB cap remains.
+     */
+    internal fun readBoundedSource(input: InputStream): ByteArray {
+        val output = ByteArrayOutputStream()
+        val chunk = ByteArray(8192)
+        var noProgress = 0
+        while (true) {
+            val count = input.read(chunk)
+            if (count < 0) break
+            if (count == 0) {
+                if (++noProgress > 16) throw IOException("Source plugin response made no progress")
+                continue
+            }
+            noProgress = 0
+            if (output.size().toLong() + count > TorrentMetainfoReader.MAX_BYTES)
+                throw IOException("Oversized Source plugin response")
+            output.write(chunk, 0, count)
+        }
+        return output.toByteArray()
+    }
+
     private fun request(url: URI, hash: String, authorization: String?): Reply {
-        val form = ("hash=" + URLEncoder.encode(hash, Charsets.US_ASCII.name()))
+        // ruTorrent uses the posted hash verbatim as the session filename.
+        // rTorrent persists that filename in uppercase even though its RPC
+        // accepts either case. Use the wire spelling the Source plugin expects.
+        val form = ("hash=" + URLEncoder.encode(hash.uppercase(Locale.ROOT), Charsets.US_ASCII.name()))
             .toByteArray(Charsets.US_ASCII)
         val connection = url.toURL().openConnection() as HttpURLConnection
         connection.connectTimeout = 7_000
@@ -87,19 +116,7 @@ internal object RuTorrentSourceMetainfo {
             // untrusted plugin. The .torrent parser has the same 2 MiB cap.
             if (connection.contentLengthLong > TorrentMetainfoReader.MAX_BYTES)
                 return Reply(code, null, emptyList())
-            val data = connection.inputStream.use { input ->
-                val output = ByteArrayOutputStream()
-                val chunk = ByteArray(8192)
-                while (true) {
-                    val count = input.read(chunk)
-                    if (count < 0) break
-                    if (count == 0) continue
-                    if (output.size() + count > TorrentMetainfoReader.MAX_BYTES)
-                        throw IOException("Oversized Source plugin response")
-                    output.write(chunk, 0, count)
-                }
-                output.toByteArray()
-            }
+            val data = connection.inputStream.use(::readBoundedSource)
             return Reply(code, data, emptyList())
         } finally {
             connection.disconnect()
