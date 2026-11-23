@@ -70,8 +70,9 @@ class FooterImeInstalledInstrumentedTest {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         var externalLauncherWaitClicked = false
         var nextProbeAt = 0L
-        rule.waitUntil(15_000) {
-            if (rule.activity.hasWindowFocus()) true else {
+        try {
+            rule.waitUntil(15_000) {
+                if (rule.activity.hasWindowFocus()) true else {
                 val now = SystemClock.elapsedRealtime()
                 if (!externalLauncherWaitClicked && now >= nextProbeAt) {
                     nextProbeAt = now + 500L
@@ -81,8 +82,25 @@ class FooterImeInstalledInstrumentedTest {
                         externalLauncherWaitClicked = runCatching { wait.click(); true }.getOrDefault(false)
                     }
                 }
-                false
+                    false
+                }
             }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Redacted actionable diagnosis only: boolean foreground ownership,
+            // no window hierarchy, screenshots, credentials, URI or entered text.
+            // Never dismiss an unknown system/app dialog or downgrade this failure.
+            val foregroundIsChunks = runCatching {
+                device.currentPackageName == rule.activity.packageName
+            }.getOrDefault(false)
+            val externalLauncherAnrVisible = runCatching {
+                device.findObject(By.text("Pixel Launcher isn't responding")) != null
+            }.getOrDefault(false)
+            throw AssertionError(
+                "Installed keyboard journey did not acquire Chunks window focus; " +
+                    "foregroundIsChunks=$foregroundIsChunks; " +
+                    "externalLauncherAnrVisible=$externalLauncherAnrVisible; " +
+                    "externalLauncherWaitClicked=$externalLauncherWaitClicked. " +
+                    "No input or transfer write was attempted.", timeout)
         }
         input.performScrollTo().performTouchInput { click() }
         val keyboardAppeared = runCatching { rule.waitUntil(15_000) { imeShown() } }.isSuccess
