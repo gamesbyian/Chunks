@@ -262,6 +262,7 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             val chosen = requireNotNull(independent.defaultDirectory()) + "/reviewed"
             val store = AndroidSnapshotRestoreJournalStore(context)
             var admitted = 0
+            var settled = 0
             val batch = SnapshotRemoteBatchStoppedRestore(account, store,
                 stillCurrent = { true }, admitBatch = { admitted++; true },
                 settleBatch = { settled++ })
@@ -311,7 +312,8 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             assertTrue(completed.complete)
             assertEquals(2, completed.total)
             assertEquals(2, completed.verified)
-            assertEquals(2, admitted)
+            assertEquals(1, admitted)
+            assertEquals(1, settled)
             val after = independent.listCompleteSessionTransfers()
             assertEquals(before.map { it.uppercase() }.toSet(),
                 after.filterNot { it.hash in selected }.map { it.hash.uppercase() }.toSet())
@@ -325,7 +327,7 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             assertEquals(otherBefore, other.listCompleteSessionTransfers().map { it.hash }.toSet())
             assertEquals(SnapshotRemoteBatchStoppedRestore.Stop.SESSION_CHANGED,
                 batch.execute(draft, confirmed = true).stop)
-            assertEquals(2, admitted)
+            assertEquals(1, admitted)
             for (hash in blockedHashes) assertNull(independent.lookupName(hash))
             // Remove only two synthetic stopped *session* registrations.
             // Never delete payloads, alter the other account or retry a write.
@@ -395,11 +397,13 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
         }
         val store = AndroidSnapshotRestoreJournalStore(context)
         var admitted = 0
+        var settled = 0
+        var singleAdmitted = 0
         val batch = SnapshotRemoteBatchStoppedRestore(account, store,
             stillCurrent = { true }, admitBatch = { admitted++; true },
             settleBatch = { settled++ })
         val single = SnapshotRemoteDefinitionRestore(account, store,
-            stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
+            stillCurrent = { true }, admitWrite = { singleAdmitted++; true }, settleWrite = {})
         compose.setContent {
             CompositionLocalProvider(LocalActivityResultRegistryOwner provides picker) {
                 MaterialTheme {
@@ -434,7 +438,9 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
         for ((hash, _) in sources) assertNull(runBlocking { independent.lookupName(hash) })
         compose.onNodeWithText("Confirm 2 stopped restores").performClick()
         await("2/2 stopped server definitions independently verified.")
-        assertEquals(2, admitted)
+        assertEquals(1, admitted)
+        assertEquals(1, settled)
+        assertEquals(0, singleAdmitted)
         runBlocking {
             val roster = independent.listCompleteSessionTransfers()
             assertEquals(initial.map { it.uppercase() }.toSet(),
