@@ -286,6 +286,8 @@ internal fun SnapshotRestorePreviewPanel(
                     manualNotice = null
                     remoteDefinitionReview = null
                     remoteDefinitionNotice = null
+                    remoteBatchDraft = null
+                    remoteBatchNotice = null
                     remotePreviousReport = null
                     error = null
                     search = ""
@@ -333,6 +335,9 @@ internal fun SnapshotRestorePreviewPanel(
                         verifiedSource = null
                         comparedHashes = null
                         manualNotice = null
+                        remoteDefinitionReview = null
+                        remoteBatchDraft = null
+                        remoteBatchNotice = null
                         error = null
                         remotePreviousReport = null
                         open.launch(arrayOf("*/*"))
