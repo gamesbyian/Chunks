@@ -4,6 +4,8 @@ on:
   pull_request:
     branches: [main]
     paths:
+      # Validate changes to this workflow with its own exact-source build.
+      - ".github/workflows/android-check.yml"
       - "app/**"
       # API35 native Add workflow runs all instrumented classes and assembles
       # the test APK; test-only edits do not need a duplicate JVM/APK build.

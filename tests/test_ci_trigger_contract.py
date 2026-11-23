@@ -218,7 +218,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         source = WORKFLOW.read_text(encoding="utf-8")
         allowed = pull_request_paths(source)
         self.assertIn("app/**", allowed)
-        self.assertNotIn(".github/workflows/android-check.yml", allowed)
+        self.assertIn(".github/workflows/android-check.yml", allowed)
         docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
         self.assertTrue(dispatches_for_changed_paths(
             docs, (".github/workflows/android-check.yml",)))
@@ -238,6 +238,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             (("app/src/test/java/io/github/gamesbyian/chunks/ExampleTest.kt",),
              (True, False, False)),
             (("tools/physical_android_preflight.sh",), (False, True, False)),
+            ((".github/workflows/android-check.yml",), (True, True, False)),
             (("tests/test_ci_trigger_contract.py",), (False, True, False)),
             (("app/src/androidTest/java/Test.kt", "app/src/main/java/Real.kt"),
              (True, False, True)),
@@ -342,6 +343,13 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 for retained in obligatory:
                     self.assertIn(retained, source)
                 self.assertNotIn("continue-on-error: true", source)
+
+    def test_foundation_selects_changes_to_its_own_workflow(self):
+        # A change to JVM/build validation must not evade its own gate just
+        # because app source and Gradle scripts are unchanged.
+        source = (ROOT / ".github/workflows" / "android-check.yml").read_text()
+        self.assertIn(".github/workflows/android-check.yml",
+                      pull_request_paths(source))
 
     def test_foundation_and_api29_defer_drafts_but_recheck_on_ready(self):
         # The selectors and real assertions stay intact; only costly draft
