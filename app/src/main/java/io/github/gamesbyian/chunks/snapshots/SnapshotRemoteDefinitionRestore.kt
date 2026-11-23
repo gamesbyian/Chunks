@@ -146,6 +146,113 @@ internal class SnapshotRemoteDefinitionRestore(
     }
 
     /**
+     * One approval covers a BOUNDED list of missing definitions on the same
+     * authenticated rTorrent account and one current Place. Merely preparing a
+     * batch creates no journal and sends no remote mutation.
+     */
+    class BatchReview internal constructor(
+        internal val owner: SnapshotRemoteDefinitionRestore,
+        val originals: List<Review>
+    ) {
+        val count: Int get() = originals.size
+        val place: String get() = originals.first().place
+        val serverDefault: Boolean get() = originals.first().serverDefault
+    }
+
+    data class BatchResult(
+        val total: Int,
+        val verified: Int,
+        val stoppedAtInfoHash: String?,
+        val stop: Outcome?
+    ) {
+        val complete: Boolean get() = total > 0 && verified == total && stop == null
+        val remaining: Int get() = total - verified
+    }
+
+    /**
+     * Prepare every definition, exact account and folder while inventory is
+     * still complete. No Add or journal transition occurs until confirmation.
+     * Limit both item count and total original metainfo to protect devices.
+     */
+    suspend fun reviewBatch(
+        archive: SnapshotManifestV1.Verified,
+        hashes: List<String>,
+        comparedHashes: List<String>,
+        selectedPlace: String? = null
+    ): BatchReview? {
+        val normalized = hashes.map { it.lowercase(Locale.ROOT) }
+        if (normalized.size !in 2..32 || normalized.toSet().size != normalized.size ||
+            normalized.any { !Regex("[0-9a-f]{40}").matches(it) }) return null
+        val reviews = ArrayList<Review>(normalized.size)
+        var bytes = 0L
+        for (hash in normalized.sorted()) {
+            val item = review(archive, hash, comparedHashes, recoveryOnly = false,
+                selectedPlace = selectedPlace) ?: return null
+            bytes += item.original.bytes.size.toLong()
+            if (bytes > 24L * 1024 * 1024 ||
+                reviews.firstOrNull()?.let {
+                    it.frozenHashes != item.frozenHashes || it.place != item.place ||
+                        it.serverDefault != item.serverDefault
+                } == true) return null
+            reviews += item
+        }
+        if (!stillCurrent() || !authenticated()) return null
+        return BatchReview(this, reviews)
+    }
+
+    /**
+     * Check ALL item journals before the first remote command. A pending or
+     * mismatched later journal therefore cannot cause earlier Adds. Recheck
+     * complete session identity before each successive single-item restore;
+     * only independently VERIFIED results permit moving to the next item.
+     * A timeout, ambiguous acknowledgement or cancellation never retries.
+     */
+    suspend fun restoreBatch(batch: BatchReview, confirmed: Boolean): BatchResult {
+        val total = batch.originals.size
+        fun fail(outcome: Outcome, hash: String? = null, done: Int = 0) =
+            BatchResult(total, done, hash, outcome)
+        if (!confirmed || batch.owner !== this || total !in 2..32 ||
+            !stillCurrent() || !authenticated()) return fail(Outcome.STALE)
+        val frozen = batch.originals.first().frozenHashes
+        if (batch.originals.map { it.hash }.toSet().size != total ||
+            batch.originals.any {
+                it.owner !== this || it.recoveryOnly ||
+                    it.frozenHashes != frozen || it.hash in frozen ||
+                    it.place != batch.place || it.serverDefault != batch.serverDefault
+            }) return fail(Outcome.STALE)
+        val rows = readOrNull { remote.listCompleteSessionTransfers() }
+            ?: return fail(Outcome.STALE)
+        if (rows.size != frozen.size || rows.identities() != frozen)
+            return fail(Outcome.STALE)
+        // Any journal write here is local REVIEW state only. Never start an
+        // rTorrent Add until every old journal is readable and safe.
+        for (item in batch.originals) {
+            if (!stillCurrent() || !authenticated()) return fail(Outcome.STALE, item.hash)
+            val journal = readOrNull { open(item, existingOnly = false) }
+                ?: return fail(Outcome.BLOCKED, item.hash)
+            val entry = journal.entries().singleOrNull()
+            if (entry?.phase != SnapshotRestoreJournalV1.Phase.REVIEW &&
+                !(entry?.phase == SnapshotRestoreJournalV1.Phase.READY &&
+                    entry.placeFingerprint == placeKey(item)))
+                return fail(Outcome.BLOCKED, item.hash)
+        }
+        val expected = frozen.toMutableSet()
+        var verified = 0
+        for (item in batch.originals) {
+            if (!stillCurrent() || !authenticated())
+                return fail(Outcome.STALE, item.hash, verified)
+            val step = Review(this, item.journalIdentity, item.original,
+                expected.toSet(), item.plan, item.expectedDirectory, recoveryOnly = false)
+            val outcome = restore(step, confirmed = true)
+            if (outcome != Outcome.VERIFIED)
+                return fail(outcome, item.hash, verified)
+            verified++
+            expected += item.hash
+        }
+        return BatchResult(total, verified, null, null)
+    }
+
+    /**
      * Read-only multi-item recovery for *one current authenticated account* and
      * one newly reviewed Place. This is a report, never a batch Add authority.
      * A fresh whole-session inventory brackets the investigation, and every
