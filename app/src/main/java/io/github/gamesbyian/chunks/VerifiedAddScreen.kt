@@ -321,7 +321,8 @@ internal fun VerifiedAddScreen(
         onInitialTorrentConsumed()
         try {
             val bytes = document.copyOf()
-            selectedTorrent = TorrentMetainfoReader.preview(bytes)
+            val preview = TorrentMetainfoReader.preview(bytes)
+            selectedTorrent = preview
             selectedBytes = bytes
             draft.bindOriginalDocument(initialTorrentDocument, bytes)
             draft.textAtFileSelection = magnet
@@ -329,6 +330,7 @@ internal fun VerifiedAddScreen(
             fromLocal = true
             fileError = null
             awaitingConfirmation = false
+            onTorrentAdopted(preview, bytes, initialTorrentDocument)
         } catch (_: Exception) {
             fileError = "The local transfer's torrent definition is not supported v1 metainfo."
         }
@@ -611,7 +613,17 @@ internal fun VerifiedAddScreen(
                     FilterChip(
                         selected = useFile,
                         enabled = !submitting && !choosing && !alreadyAttempted,
-                        onClick = { useFile = true; draft.textAtFileSelection = magnet; awaitingConfirmation = false },
+                        onClick = chooseFile@{
+                            val preview = selectedTorrent ?: return@chooseFile
+                            val bytes = selectedBytes ?: return@chooseFile
+                            // Commit the explicit file choice to the shared draft before
+                            // another client route can consume the formerly active text.
+                            useFile = true
+                            draft.textAtFileSelection = ""
+                            awaitingConfirmation = false
+                            onMagnet("")
+                            onTorrentAdopted(preview, bytes, draft.originalDocumentFor(bytes))
+                        },
                         label = { Text(".torrent file") }
                     )
                 }

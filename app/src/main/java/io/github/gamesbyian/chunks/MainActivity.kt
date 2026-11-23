@@ -1594,6 +1594,10 @@ internal fun ChunksApp(
                 if (aliasScope.isBlank() || stale) emptyList()
                 else RemoteObservedAddPlaces.from(transfers)
             }
+            val initialRemoteBytes = serverHandoffTorrent
+            val initialRemoteDocument = serverHandoffDocument
+            fun currentRemoteDraft() = server === connectedRemote && aliasScope == exactScope &&
+                addDestination == UniversalAddRouteTarget.RTorrent(exactScope) && section == Section.ADD_CHOOSE
             VerifiedAddScreen(
                 remote = connectedRemote, magnet = magnet, destination = addSession.destination,
                 session = addSession,
@@ -1604,11 +1608,14 @@ internal fun ChunksApp(
                 attemptScope = retainedAddOwner?.remoteAttemptScope ?: scope,
                 sharedAttemptController = retainedAddOwner?.attempts,
                 observedPlaces = observedPlaces,
-                initialTorrent = serverHandoffTorrent,
-                initialTorrentDocument = serverHandoffDocument,
+                initialTorrent = initialRemoteBytes,
+                initialTorrentDocument = initialRemoteDocument,
                 onInitialTorrentConsumed = {
-                    serverHandoffTorrent = null
-                    serverHandoffDocument = null
+                    if (currentRemoteDraft() && serverHandoffTorrent === initialRemoteBytes &&
+                        serverHandoffDocument == initialRemoteDocument) {
+                        serverHandoffTorrent = null
+                        serverHandoffDocument = null
+                    }
                 },
                 onNextDraftStarted = { oldDocument ->
                     // The remote session has just released a completed
@@ -1626,12 +1633,19 @@ internal fun ChunksApp(
                 // The newest explicit server-form .torrent replaces any older local
                 // review, so a target switch can never resurrect the superseded file.
                 onTorrentAdopted = { preview, bytes, document ->
-                    localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
-                    serverHandoffTorrent = null
+                    if (currentRemoteDraft() &&
+                        (serverHandoffTorrent == null || serverHandoffTorrent === initialRemoteBytes)) {
+                        val retained = localReviewedTorrent.value
+                        if (retained?.originalDocument != document ||
+                            retained?.stillMatchesReviewedSource(bytes) != true) {
+                            localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
+                        }
+                    }
                 },
                 finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                 environmentLabel = activeAddDisplayName,
-                onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
+                onMagnet = { if (currentRemoteDraft()) magnet = it },
+                onDestination = { addSession.destination = it },
                 addStartState = localAddStart,
                 addArtworkState = addArtworkChoices.onServer(aliasScope),
                 addDestinationPicker = addDestinationPicker,
