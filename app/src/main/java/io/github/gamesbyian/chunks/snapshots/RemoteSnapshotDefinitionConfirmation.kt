@@ -30,7 +30,8 @@ internal fun RemoteSnapshotDefinitionConfirmation(
                 Text(accountLabel)
                 Text(review.name)
                 Text("Infohash: " + review.hash)
-                Text("Server default Place: " + review.place)
+                Text((if (review.serverDefault) "Server default Place: "
+                    else "Explicitly reviewed server folder: ") + review.place)
                 if (review.recoveryOnly) {
                     Text("Checks the journal and the transfer at the reviewed Place. Read-only.")
                 } else {
