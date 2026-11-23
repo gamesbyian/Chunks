@@ -30,12 +30,14 @@ open_source() {
     > "$scratch/source-launch.txt" 2>&1 || return 1
   grep -Fq 'Status: ok' "$scratch/source-launch.txt"
 }
-# MAIN/LAUNCHER contains no .torrent VIEW URI, source bytes or provider grant.
-launch_without_source() {
-  timeout 20s adb shell am start -W \
-    -a android.intent.action.MAIN -c android.intent.category.LAUNCHER \
-    -n "$pkg/.MainActivity" > "$scratch/launcher.txt" 2>&1 || return 1
-  grep -Fq 'Status: ok' "$scratch/launcher.txt"
+# Foreground the already attached task, as choosing it from Recents does.
+# Starting a new MAIN/LAUNCHER Intent after process death can choose a new
+# task, especially when the saved root was opened through a foreign VIEW.
+# No new Activity Intent, source bytes or provider grant enter this command.
+resume_saved_task() {
+  local exact_task="$1"
+  [[ "$exact_task" =~ ^[0-9]+$ ]] || return 1
+  timeout 20s adb shell am task focus "$exact_task" > "$scratch/task-focus.txt" 2>&1
 }
 task_id() {
   timeout 15s adb shell dumpsys activity activities > "$scratch/tasks.txt" || return 1
@@ -199,12 +201,14 @@ done
 [[ "$(task_id)" == "$old_task" ]] || { fail "saved task was removed after process loss"; exit 1; }
 echo "CHUNKS_DOCUMENT_TASK: stopped-task-survived-real-process-death"
 
-launch_without_source || { fail "source-free saved task launch failed"; exit 1; }
+resume_saved_task "$old_task" || { fail "recorded saved task could not be foregrounded"; exit 1; }
+# Focusing an attached task schedules its Activity/process resume. Observe the
+# actual interruption notice before taking the new stable PID and task sample.
+await_text "$notice" || { fail "restored task lacks interrupted-document notice"; exit 1; }
 new_task="$(task_id)" || { fail "restored task identity unavailable"; exit 1; }
 new_pid="$(app_pid)" || { fail "restored app process identity unavailable"; exit 1; }
 if [[ "$new_task" != "$old_task" ]]; then fail "task changed during restoration"; exit 1; fi
 if [[ "$new_pid" == "$old_pid" ]]; then fail "app process did not change"; exit 1; fi
-await_text "$notice" || { fail "restored task lacks interrupted-document notice"; exit 1; }
 if screen_contains "$source_name"; then
   fail "old reviewed source replayed without fresh grant"; exit 1
 fi
