@@ -76,8 +76,58 @@ await_text() {
   done
   return 1
 }
+# The single source-first Add screen is scrollable. UIAutomator exposes only
+# currently composed/visible nodes, so an Android font/IME/layout variation
+# can hide the validated review below the first fold. Require the actual
+# source text to become visible after a bounded, non-mutating user scroll.
+# Do not accept a task, intake log or preview in memory as a substitute.
+await_source_review() {
+  if await_text "$source_name"; then return 0; fi
+  for swipe in 1 2 3; do
+    timeout 12s adb shell input swipe 540 1750 540 650 380 >/dev/null || return 1
+    for attempt in 1 2 3 4; do
+      if screen_contains "$source_name"; then
+        echo "CHUNKS_DOCUMENT_TASK: source-review-visible-after-user-scroll"
+        return 0
+      fi
+      sleep 0.5
+    done
+  done
+  return 1
+}
+# Expose only allowlisted diagnostics. Never upload raw UI XML, foreign URIs,
+# tracker-bearing source content, screenshots or arbitrary logcat excerpts.
+diagnose_missing_source_review() {
+  local pid_present=false task_present=false xml_state=missing intake_delivered=false
+  if app_pid >/dev/null 2>&1; then pid_present=true; fi
+  if task_id >/dev/null 2>&1; then task_present=true; fi
+  if [[ -s "$scratch/window.xml" ]]; then
+    xml_state="$(python3 - "$scratch/window.xml" "$pkg" "$source_name" <<'PY'
+import sys
+from xml.etree import ElementTree as ET
+try:
+    root = ET.parse(sys.argv[1]).getroot()
+    app = [n for n in root.iter() if n.attrib.get("package") == sys.argv[2]]
+    visible = any(sys.argv[3] in n.attrib.get(k, "")
+                  for n in app for k in ("text", "content-desc"))
+    print("app-nodes-source-visible" if visible else
+          "app-nodes-no-source" if app else "no-app-nodes")
+except (OSError, ET.ParseError):
+    print("invalid-ui-xml")
+PY
+)"
+  fi
+  if timeout 10s adb logcat -d -s ChunksIntake:I 2>/dev/null |
+      grep -Fq 'outcome=document'; then intake_delivered=true; fi
+  printf 'CHUNKS_DOCUMENT_TASK_DIAG: app_process=%s task=%s ui=%s intake=%s\n' \
+    "$pid_present" "$task_present" "$xml_state" "$intake_delivered" |
+    tee "$out/document-preflight-diagnostic.txt"
+}
 open_source || { fail "foreign provider VIEW not delivered"; exit 1; }
-await_text "$source_name" || { fail "first document review not visible"; exit 1; }
+if ! await_source_review; then
+  diagnose_missing_source_review
+  fail "first document review not visible after bounded user scroll"; exit 1
+fi
 old_task="$(task_id)" || { fail "original task identity unavailable"; exit 1; }
 old_pid="$(app_pid)" || { fail "original app process identity unavailable"; exit 1; }
 echo "CHUNKS_DOCUMENT_TASK: foreign-provider-original-review"
@@ -113,7 +163,7 @@ echo "CHUNKS_DOCUMENT_TASK: same-task-new-process-no-source-replay"
 # The explicit second VIEW is the only route to reacquire a foreign URI grant.
 open_source "--ez fixture_keep_task true" ||
   { fail "explicit foreign document reopen failed"; exit 1; }
-await_text "$source_name" || { fail "regranted source review not visible"; exit 1; }
+await_source_review || { fail "regranted source review not visible after bounded user scroll"; exit 1; }
 [[ "$(task_id)" == "$old_task" ]] || { fail "fresh VIEW changed task identity"; exit 1; }
 echo "CHUNKS_DOCUMENT_TASK: explicit-provider-reopen-same-task"
 echo "CHUNKS_INSTALLED_PROTOCOL: foreign document task recovered after independent process death" |
