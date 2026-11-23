@@ -54,24 +54,36 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
                 null
             }
             check(stillCurrent()) { "The server inventory or account changed during export" }
-            val preview = if (candidate == null) null else withContext(Dispatchers.Default) {
-                runCatching { TorrentMetainfoReader.preview(candidate) }.getOrNull()
-            }
-            val verified = candidate != null && preview != null &&
-                preview.infoHashV1 == item.infoHashV1 &&
-                preview.name == item.originalName
-            if (!verified) {
-                unavailable++
-                items += item
-            } else if (used + candidate!!.size > MAX_EMBEDDED_BYTES) {
-                // A real original can be large. Preserve its inventory record
-                // rather than exhausting a phone's heap while building a ZIP.
+            // Parser and archive both cap an original at 2 MiB. Previously
+            // the parser rejected larger responses as simply "unavailable",
+            // concealing the actionable size limit. Classify size first and
+            // keep the other independently recoverable definitions intact.
+            // Never truncate or alter a private tracker-bearing .torrent.
+            if (candidate != null &&
+                candidate.size > SnapshotArchiveV1.MAX_TORRENT_BYTES) {
                 tooLarge++
                 items += item
             } else {
-                definitions[item.infoHashV1] = candidate!!.copyOf()
-                used += candidate.size
-                items += item.copy(recovery = SnapshotManifestV1.Recovery.METAINFO)
+                val preview = if (candidate == null) null else withContext(Dispatchers.Default) {
+                    runCatching { TorrentMetainfoReader.preview(candidate) }.getOrNull()
+                }
+                val verified = candidate != null && preview != null &&
+                    preview.infoHashV1 == item.infoHashV1 &&
+                    preview.name == item.originalName
+                if (!verified) {
+                    unavailable++
+                    items += item
+                } else if (used + candidate!!.size > MAX_EMBEDDED_BYTES) {
+                    // A set of valid originals can exceed the archive's
+                    // bounded in-memory definition budget. Keep the other
+                    // definitions instead of failing the entire batch.
+                    tooLarge++
+                    items += item
+                } else {
+                    definitions[item.infoHashV1] = candidate!!.copyOf()
+                    used += candidate.size
+                    items += item.copy(recovery = SnapshotManifestV1.Recovery.METAINFO)
+                }
             }
             onProgress(index + 1, total)
         }
