@@ -41,6 +41,17 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
         self.assertIn("CHUNKS_SNAPSHOT_REMOTE_PRIORITY_INSTALLED:", source)
         self.assertIn("::error::Installed remote snapshot priority consent", source)
 
+    def test_snapshot_folder_fixture_proves_root_reread_before_installed_journeys(self):
+        workflow = (ROOT / ".github/workflows/installed-combined-two-servers.yml").read_text()
+        fixture = (ROOT / "tools/interop/disposable_snapshot_folder_listing.py").read_text()
+        self.assertIn('if requested == "" or requested == root:', fixture)
+        self.assertIn('elif requested == target:', fixture)
+        self.assertIn("Exact-tenant folder reread was refused", workflow)
+        self.assertIn("Exact-tenant folder reread was inconsistent", workflow)
+        self.assertIn('for suffix in "$root/a/data" "$root/a/data/reviewed"; do', workflow)
+        self.assertLess(workflow.index('Exact-tenant folder reread was refused'),
+                        workflow.index('Preload same-hash and distinct stopped fixtures'))
+
     def test_document_process_loss_is_host_driven_and_bounded(self):
         runner = (ROOT / "tools/installed_protocol_client.sh").read_text()
         host = (ROOT / "tools/installed_external_document_process_loss.sh").read_text()
