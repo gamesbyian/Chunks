@@ -639,6 +639,57 @@ internal fun SnapshotRestorePreviewPanel(
                                 original.recovery == SnapshotManifestV1.Recovery.METAINFO
                         } == true
                     }
+                    if (remoteDefinitionRestore != null && remoteDefinitionAccountLabel != null &&
+                        remoteDefinitionActionScope != null && batchReady.size >= 2) {
+                        val picked = batchReady.take(32)
+                        OutlinedButton(
+                            onClick = {
+                                val source = verifiedSource
+                                val hashes = comparedHashes
+                                val generation = comparedGeneration
+                                val selected = remoteSelectedPlace
+                                if (!remoteDefinitionBusy && source != null && hashes != null &&
+                                    latestReady && latestHashes == hashes &&
+                                    latestGeneration == generation) {
+                                    remoteDefinitionReview = null
+                                    remoteBatchReview = null
+                                    remoteDefinitionBusy = true
+                                    remoteDefinitionNotice =
+                                        "Verifying selected definitions and this server Place…"
+                                    scope.launch {
+                                        try {
+                                            val review = remoteDefinitionRestore.reviewBatch(
+                                                source, picked.map { it.infoHashV1 }, hashes,
+                                                selectedPlace = selected)
+                                            if (verifiedSource === source && result === preview &&
+                                                latestReady && latestHashes == hashes &&
+                                                latestGeneration == generation &&
+                                                remoteSelectedPlace == selected) {
+                                                remoteBatchReview = review
+                                                remoteDefinitionNotice = if (review == null)
+                                                    "Could not verify every definition, exact account and " +
+                                                        "selected folder. No server Add was sent."
+                                                else null
+                                            }
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            remoteDefinitionNotice =
+                                                "Server batch review failed. Nothing was restored."
+                                        } finally {
+                                            remoteDefinitionBusy = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = targetReady && !reading && !remoteDefinitionBusy,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        ) {
+                            Text("Review ${picked.size} missing stopped server restores" +
+                                if (batchReady.size > picked.size)
+                                    " (of ${batchReady.size})" else "")
+                        }
+                    }
                     if (onReviewBatchRecovery != null && previousCandidates.size >= 2) {
                         OutlinedButton(
                             onClick = {
