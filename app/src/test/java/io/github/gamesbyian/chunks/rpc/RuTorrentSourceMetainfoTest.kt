@@ -140,6 +140,19 @@ class RuTorrentSourceMetainfoTest {
         }.exceptionOrNull() is IOException)
     }
 
+    @Test fun originalAtExactlyTheTwoMibLimitIsPreserved() {
+        val original = ByteArray(TorrentMetainfoReader.MAX_BYTES) { index ->
+            (index and 0xff).toByte()
+        }
+        assertArrayEquals(original, RuTorrentSourceMetainfo.readBoundedSource(
+            ByteArrayInputStream(original)))
+        // The same reader must refuse a single additional byte when the
+        // transport omits Content-Length; no prefix is accepted as complete.
+        assertTrue(runCatching {
+            RuTorrentSourceMetainfo.readBoundedSource(ByteArrayInputStream(original + byteArrayOf(1)))
+        }.exceptionOrNull() is IOException)
+    }
+
     @Test fun oversizedSourceBodyCannotEscapeTheTwoMibMetadataLimit() = serve({ exchange ->
         exchange.sendResponseHeaders(200, (TorrentMetainfoReader.MAX_BYTES + 1).toLong())
         exchange.responseBody.use { it.write(ByteArray(TorrentMetainfoReader.MAX_BYTES + 1)) }
