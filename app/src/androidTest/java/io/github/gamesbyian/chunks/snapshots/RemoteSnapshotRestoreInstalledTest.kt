@@ -23,8 +23,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.File
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -135,6 +137,19 @@ class RemoteSnapshotRestoreInstalledTest {
             assertEquals(hashes.toSet(), inventory.filterNot { it.hash.equals(hash, true) }.map { it.hash }.toSet())
             assertNull(other.lookupName(hash))
             assertEquals(otherHashes, other.listCompleteSessionTransfers().map { it.hash }.toSet())
+
+            // Leave the preloaded daemons unchanged for the Combined fault journey.
+            // The fixture is an independently verified exact stopped session, with
+            // no downloaded data. Issue one session-only removal, never a retry.
+            val removal = independent.eraseFromSession(hash, row.name, row.directory)
+            assertTrue(removal is SessionEraseOutcome.VerifiedRemoved ||
+                removal is SessionEraseOutcome.PendingRemoval)
+            for (attempt in 0 until 10) {
+                if (independent.lookupName(hash) == null) break
+                delay(300)
+            }
+            assertNull("Only the tested fixture job must be gone", independent.lookupName(hash))
+            assertEquals(hashes.toSet(), independent.listCompleteSessionTransfers().map { it.hash }.toSet())
         }
     }
 }
