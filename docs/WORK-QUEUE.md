@@ -4,6 +4,8 @@
 
 **Owner's dispatch order:** Protect correctness and confirmed regressions first; converge shared Add; finish unimplemented advanced Android functionality and repeatable real-engine proof; integrate the approved final UI designs; perform one assembled release candidate and distribution check. **Do not wait for a calendar date or for elective UI polish to begin unblocked backend work.** The R0–R6 names below remain aligned with [COMPLETION-ROADMAP](COMPLETION-ROADMAP.md), but R5 technical work runs *before* the final R4 release gate.
 
+**Current scope boundary (2026-11-23 owner update):** The visual specimen atlas is a saved future work plan, not a current R2/R4 task or an acceptance blocker. Do not trigger tall-screen screenshot campaigns, atlas coverage audits or discretionary visual specimen CI during technical completion. Keep functional/accessibility bug fixes independent. No owner PC/Desktop Commander; use the repo and GitHub-hosted checks.
+
 ## R0. Current ownership, safety and arbitration
 
 1. Re-fetch live main, open PR heads/diffs/checks and acceptance status at every dispatch. **2026-11-21 audit snapshot only:** `dd9f3985` was main and #1931 the sole open PR, with visible successful checks; these are not a standing ownership lock, merge authorization or current truth. #1934–#1939 improved workflow cancellation, deadlines, PR targeting and disposable rTorrent dependencies. Confirm the live state and unique unmerged work before choosing a scoped task.
