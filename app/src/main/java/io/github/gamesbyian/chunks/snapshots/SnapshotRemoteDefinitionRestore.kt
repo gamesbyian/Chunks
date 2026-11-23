@@ -94,7 +94,13 @@ internal class SnapshotRemoteDefinitionRestore(
         }.takeIf { stillCurrent() }
     }
 
-    suspend fun restore(review: Review, confirmed: Boolean): Outcome {
+    suspend fun restore(review: Review, confirmed: Boolean): Outcome =
+        restoreItem(review, confirmed, leaseHeld = false)
+
+    /** Batch-held mutation lease cannot be invoked outside this coordinator. */
+    private suspend fun restoreItem(
+        review: Review, confirmed: Boolean, leaseHeld: Boolean
+    ): Outcome {
         if (!confirmed || review.owner !== this || review.recoveryOnly || !stillCurrent() || !authenticated())
             return Outcome.STALE
         val journal = readOrNull { open(review, existingOnly = false) } ?: return Outcome.BLOCKED
@@ -117,8 +123,10 @@ internal class SnapshotRemoteDefinitionRestore(
                         else SnapshotRemotePlaceProbe.confirm(review.place, remote::browseDirectories)
                         check(remote.listCompleteSessionTransfers().identities() == review.frozenHashes &&
                             destinationVerified && stillCurrent() && authenticated())
-                        check(admitWrite())
-                        admitted = true
+                        if (!leaseHeld) {
+                            check(admitWrite())
+                            admitted = true
+                        }
                     },
                     beforeWrite = {
                         // Runs on the transport's IO dispatcher after its authentication
@@ -236,20 +244,29 @@ internal class SnapshotRemoteDefinitionRestore(
                     entry.placeFingerprint == placeKey(item)))
                 return fail(Outcome.BLOCKED, item.hash)
         }
-        val expected = frozen.toMutableSet()
-        var verified = 0
-        for (item in batch.originals) {
-            if (!stillCurrent() || !authenticated())
-                return fail(Outcome.STALE, item.hash, verified)
-            val step = Review(this, item.journalIdentity, item.original,
-                expected.toSet(), item.plan, item.expectedDirectory, recoveryOnly = false)
-            val outcome = restore(step, confirmed = true)
-            if (outcome != Outcome.VERIFIED)
-                return fail(outcome, item.hash, verified)
-            verified++
-            expected += item.hash
+        // One app-level write lease for the entire group. Releasing it after
+        // each item would mark the snapshot stale and permit unrelated writes
+        // or UI refresh between batch members. Every item still uses the
+        // original exact-account and complete-session readbacks.
+        if (!admitWrite()) return fail(Outcome.BLOCKED)
+        try {
+            val expected = frozen.toMutableSet()
+            var verified = 0
+            for (item in batch.originals) {
+                if (!stillCurrent() || !authenticated())
+                    return fail(Outcome.STALE, item.hash, verified)
+                val step = Review(this, item.journalIdentity, item.original,
+                    expected.toSet(), item.plan, item.expectedDirectory, recoveryOnly = false)
+                val outcome = restoreItem(step, confirmed = true, leaseHeld = true)
+                if (outcome != Outcome.VERIFIED)
+                    return fail(outcome, item.hash, verified)
+                verified++
+                expected += item.hash
+            }
+            return BatchResult(total, verified, null, null)
+        } finally {
+            settleWrite()
         }
-        return BatchResult(total, verified, null, null)
     }
 
     /**
