@@ -120,7 +120,7 @@ class CiDispatchRelevance(unittest.TestCase):
             ("docs/CI-POLICY.md", (False, False, True, False, False)),
             ("tools/check_compose_capture_contract.py", (False, False, True, False, True)),
             ("tests/test_compose_capture_contract.py", (False, False, True, False, True)),
-            (".github/workflows/android-check.yml", (False, False, True, False, False)),
+            (".github/workflows/android-check.yml", (True, False, True, False, False)),
             (".github/workflows/native-add-instrumentation.yml", (False, False, True, False, False)),
             ("skills/references/change-aware-test-contracts.md", (False, False, False, True, False)),
             (APP_TEST_ROOT + "SystemFontScaleComposeInstrumentedTest.kt", (False, False, False, False, True)),
