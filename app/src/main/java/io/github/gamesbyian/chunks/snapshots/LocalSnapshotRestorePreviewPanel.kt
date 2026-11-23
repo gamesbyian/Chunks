@@ -554,8 +554,13 @@ internal fun SnapshotRestorePreviewPanel(
                     }
                     if (preview.containsSettings) Text(
                         "Restore and Add actions below do not apply saved settings. " +
-                            if (onApplyPriorities == null) "File priorities are shown for review."
-                            else "To apply priorities, review a stopped Local transfer separately.",
+                            when {
+                                onApplyPriorities != null ->
+                                    "To apply priorities, review a stopped Local transfer separately."
+                                onApplyRemotePriorities != null ->
+                                    "To apply priorities, review the current files and confirm separately."
+                                else -> "File priorities are shown for review."
+                            },
                         style = MaterialTheme.typography.bodySmall
                     )
                     if (onApplyAlias != null && target == SnapshotRestoreTarget.SERVER &&

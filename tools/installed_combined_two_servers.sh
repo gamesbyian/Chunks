@@ -7,8 +7,20 @@ out="$RUNNER_TEMP/chunks-combined/evidence"
 mkdir -p "$out"
 adb shell wm size 1080x2400
 adb shell wm density 420
-adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
+pkg=io.github.gamesbyian.chunks
+candidate=app/build/outputs/apk/debug/app-debug.apk
+adb install -r "$candidate" >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
+test "$(git rev-parse HEAD)" = "${GITHUB_SHA:?}"
+aapt="${ANDROID_HOME:?}/build-tools/36.0.0/aapt"
+version="$("$aapt" dump badging "$candidate" | awk -F "versionName='" '/^package:/{split($2,fields,"\047"); print fields[1]}')"
+test -n "$version"
+device_path="$(adb shell pm path "$pkg" | tr -d '\r' | sed -n 's/^package://p')"
+{
+  printf 'CHUNKS_COMBINED_SOURCE commit=%s tree=%s\n' "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})"
+  printf 'CHUNKS_COMBINED_PACKAGE app_id=%s version=%s\n' "$pkg" "$version"
+  bash tools/verify_installed_apk_bytes.sh "$candidate" "$device_path" "$RUNNER_TEMP/chunks-combined/installed.apk"
+} | tee "$out/installed-apk.txt"
 adb reverse tcp:18080 tcp:18080 >/dev/null
 adb reverse tcp:18082 tcp:18082 >/dev/null
 adb reverse tcp:18083 tcp:18083 >/dev/null
@@ -88,6 +100,9 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
   > "$out/snapshot-restore-installed.txt" 2>&1
 status=$?
 set -e
+if ! adb exec-out run-as "$pkg" cat files/disposable-snapshot-review.png > "$out/snapshot-review.png"; then
+  rm -f "$out/snapshot-review.png"
+fi
 if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/snapshot-restore-installed.txt" ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-restore-installed.txt"; then
   tail -80 "$out/snapshot-restore-installed.txt"

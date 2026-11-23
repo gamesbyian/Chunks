@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.snapshots
 
+import android.graphics.Bitmap
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
@@ -23,6 +24,7 @@ import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -102,6 +104,16 @@ class RemoteSnapshotRestoreInstalledTest {
         compose.onNodeWithText("Compare saved snapshot with rTorrent server").performClick()
         compose.onNodeWithText("Choose .chunksnap to compare").performScrollTo().performClick()
         reviewOnce()
+        // This screen contains only the disposable account and synthetic source.
+        // Capture just the functional confirmation for installed layout review.
+        val screenshot = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        try {
+            File(context.filesDir, "disposable-snapshot-review.png").outputStream().use {
+                assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally {
+            screenshot.recycle()
+        }
         assertNull(runBlocking { independent.lookupName(hash) })
         compose.onNodeWithText("Cancel").performClick()
         compose.onNodeWithText("Confirm stopped restore").assertDoesNotExist()

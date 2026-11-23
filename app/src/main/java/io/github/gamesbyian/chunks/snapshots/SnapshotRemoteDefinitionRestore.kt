@@ -44,7 +44,8 @@ internal class SnapshotRemoteDefinitionRestore(
     ): Review? = readOrNull {
         if (!stillCurrent() || !authenticated()) return@readOrNull null
         val observed = remote.listCompleteSessionTransfers().identities()
-        if (observed != comparedHashes.map { it.lowercase(Locale.ROOT) }.toSet() ||
+        if (observed.size != comparedHashes.size ||
+            observed != comparedHashes.map { it.lowercase(Locale.ROOT) }.toSet() ||
             (!recoveryOnly && hash in observed)) return@readOrNull null
         if (!recoveryOnly && remote.probe().advertisedMethods?.contains("load.raw_verbose") != true)
             return@readOrNull null
