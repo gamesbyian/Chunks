@@ -64,6 +64,26 @@ if [ "$selected_status" -ne 0 ] ||
 fi
 echo "CHUNKS_SNAPSHOT_SELECTED_PLACE_INSTALLED: exact authenticated folder read, one stopped Add, no replay, cross-account negative" >> "$GITHUB_STEP_SUMMARY"
 
+# Confirmed BOUNDED multi-item Add. One app-level write lease, two separately
+# verified stopped registrations, exact journal recovery and untouched other account.
+# The test retires only its disposable registrations before fault injection.
+set +e
+timeout --signal=TERM --kill-after=15s 5m adb shell am instrument -w -r \
+  -e class io.github.gamesbyian.chunks.snapshots.RemoteSnapshotBatchInstalledTest \
+  -e chunks_combined_disposable authorized \
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
+  > "$out/snapshot-batch-installed.txt" 2>&1
+batch_status=$?
+set -e
+if [ "$batch_status" -ne 0 ] ||
+   ! grep -q '^OK (1 test)' "$out/snapshot-batch-installed.txt" ||
+   grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-batch-installed.txt"; then
+  tail -80 "$out/snapshot-batch-installed.txt"
+  echo "::error::Stopped rTorrent batch restore failed or was skipped"
+  exit 1
+fi
+echo "CHUNKS_SNAPSHOT_BATCH_INSTALLED: two stopped Adds, one lease, two readback journals, other account unchanged" >> "$GITHUB_STEP_SUMMARY"
+
 b64() { printf '%s' "$1" | base64 -w 0; }
 field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$receipt" "$1"; }
 set +e
