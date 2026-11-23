@@ -27,6 +27,13 @@ class ForeignFirstViewHarnessContract(unittest.TestCase):
         ):
             self.assertIn(required, source)
         self.assertIn('if ! await_source_review; then', source)
+        self.assertIn('if ! await_text "$notice"; then', source)
+        self.assertIn('diagnose_missing_interrupted_notice', source)
+        self.assertIn('CHUNKS_DOCUMENT_RESTORE_DIAG:', source)
+        # The actual content URI, UI XML, full logcat and signed source
+        # must remain private even when a restored task fails.
+        self.assertIn('sender_replayed=repeated-admission', source)
+        self.assertIn('"$out/document-restored-diagnostic.txt"', source)
 
     def test_sender_retains_real_foreign_grant_and_bounded_task_flag(self):
         sender = (ROOT / "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalSourceSenderActivity.java").read_text()
