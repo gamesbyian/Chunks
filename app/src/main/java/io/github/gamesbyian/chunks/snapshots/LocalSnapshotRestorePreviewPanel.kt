@@ -458,6 +458,12 @@ internal fun SnapshotRestorePreviewPanel(
                             else "To apply priorities, review a stopped Local transfer separately.",
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (onApplyAlias != null && target == SnapshotRestoreTarget.SERVER &&
+                        preview.containsSettings) Text(
+                        "Applying a saved display alias only changes this device's Chunks label. " +
+                            "It never renames the server torrent or any files.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     val shown = SnapshotRestoreCompareCatalogV1.select(
                         preview.entries, search, chosenDecision, pageIndex)
                     Text("Showing ${shown.first}–${shown.last} of ${shown.matches} " +
@@ -573,10 +579,10 @@ internal fun SnapshotRestorePreviewPanel(
                                     onClick = {
                                         if (latestReady && latestHashes == comparedHashes &&
                                             latestGeneration == comparedGeneration) {
-                                            aliasNotice = "Checking the Local display alias…"
+                                            aliasNotice = "Checking the ${target.title} display alias…"
                                             onApplyAlias(entry, comparedGeneration) { aliasNotice = it }
                                         } else {
-                                            error = "The local inventory changed. Compare the snapshot again."
+                                            error = "The ${target.noun} inventory changed. Compare the snapshot again."
                                         }
                                     },
                                     modifier = Modifier.heightIn(min = 48.dp)

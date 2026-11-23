@@ -106,6 +106,7 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
+import io.github.gamesbyian.chunks.snapshots.applyRemoteSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
@@ -2934,6 +2935,38 @@ internal fun ChunksApp(
                             inventoryStale = stale,
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
+                            onApplyAlias = { entry, generation, send ->
+                                val account = snapshotAccount
+                                val exactScope = snapshotAliasScope
+                                if (account == null || server !== account ||
+                                    aliasScope != exactScope || stale || loading ||
+                                    snapshotRevision != generation) {
+                                    send("The exact rTorrent session changed. Compare the snapshot again.")
+                                } else scope.launch {
+                                    try {
+                                        // Read the complete authenticated session afresh.
+                                        // Never rename a server torrent or its backing files.
+                                        val current = account.listCompleteSessionTransfers()
+                                            .singleOrNull { it.hash.equals(entry.infoHashV1, true) }
+                                        if (server !== account || aliasScope != exactScope ||
+                                            stale || loading || snapshotRevision != generation) {
+                                            send("The rTorrent session changed. No alias was applied.")
+                                        } else {
+                                            val feedback = withContext(Dispatchers.IO) {
+                                                applyRemoteSnapshotAlias(aliasStore, exactScope,
+                                                    entry, current)
+                                            }
+                                            if (feedback == "Saved remote display alias verified on this device.")
+                                                aliasRevision++
+                                            send(feedback)
+                                        }
+                                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        send("Could not confirm this server's current transfer. No alias was applied.")
+                                    }
+                                }
+                            },
                             readRemotePriorityReview = { entry ->
                                 val account = snapshotAccount
                                 val expectedScope = snapshotAliasScope
