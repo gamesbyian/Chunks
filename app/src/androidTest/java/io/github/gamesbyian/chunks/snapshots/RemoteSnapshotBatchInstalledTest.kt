@@ -36,7 +36,7 @@ class RemoteSnapshotBatchInstalledTest {
         val contents = listOf(
             definition("batch-first.bin", "batch-first-receipt"),
             definition("batch-second.bin", "batch-second-receipt"))
-        val originals = contents.map(TorrentMetainfoReader::preview)
+        val originals = contents.map { TorrentMetainfoReader.preview(it) }
         val hashes = originals.map { it.infoHashV1 }
         val archive = SnapshotManifestV1.decode(SnapshotManifestV1.encode(
             SnapshotManifestV1.Manifest("chunks-android", "2026-11-23T00:00:00Z",
