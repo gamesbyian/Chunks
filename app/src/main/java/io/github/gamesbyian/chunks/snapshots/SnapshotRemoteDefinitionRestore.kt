@@ -177,6 +177,7 @@ internal class SnapshotRemoteDefinitionRestore(
         val place = selectedPlace ?: remote.defaultDirectory() ?: return@readOrNull null
         val archiveKey = SnapshotManifestV1.definitionArchiveFingerprint(archive)
         val found = ArrayList<PreviousItem>(originals.size)
+        val expectedPlaces = HashMap<String, String>(originals.size)
         for (item in originals) {
             if (!stillCurrent() || !authenticated()) return@readOrNull null
             val hash = item.infoHashV1
@@ -192,6 +193,7 @@ internal class SnapshotRemoteDefinitionRestore(
             }
             val expected = if (fileLayout.files.isNotEmpty())
                 place.trimEnd('/') + "/" + original.originalName else place
+            expectedPlaces[hash] = expected
             val review = Review(this@SnapshotRemoteDefinitionRestore,
                 SnapshotRestoreOnceV1.itemArchiveFingerprint(archiveKey, hash),
                 original, initial, plan, expected, recoveryOnly = true)
@@ -224,19 +226,9 @@ internal class SnapshotRemoteDefinitionRestore(
         if (found.any { item ->
                 if (item.state != PreviousState.VERIFIED_STOPPED) false
                 else {
-                    val original = originals.single { it.infoHashV1 == item.hash }
-                    val plan = if (selectedPlace == null)
-                        StoppedRemoteAddPlan.fromMagnetAtServerDefault(
-                            "magnet:?xt=urn:btih:${item.hash}", place)
-                    else StoppedRemoteAddPlan.fromMagnet(
-                        "magnet:?xt=urn:btih:${item.hash}", place)
-                    val prepared = SnapshotVerifiedTorrentDocumentV1.prepare(archive, item.hash)
-                    val inspected = TorrentMetainfoReader.preview(prepared.copyVerifiedBytes())
-                    val expected = if (inspected.files.isNotEmpty())
-                        place.trimEnd('/') + "/" + original.originalName else place
                     val row = finalRows.singleOrNull { it.hash.equals(item.hash, true) }
                     row == null || row.started || row.metadataPending == true ||
-                        row.name != item.name || row.directory != expected
+                        row.name != item.name || row.directory != expectedPlaces[item.hash]
                 }
             }) return@readOrNull null
         PreviousReport(found)
