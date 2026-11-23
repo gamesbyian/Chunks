@@ -48,7 +48,7 @@ echo "CHUNKS_SNAPSHOT_REMOTE_RESTORE_INSTALLED: consent, exact Place and stopped
 # exact _getdir readback; the write still goes to the real disposable rTorrent.
 # Run before the older Combined fault case shuts down server A.
 set +e
-timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
+timeout --signal=TERM --kill-after=15s 6m adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.snapshots.RemoteSnapshotSelectedPlaceInstalledTest \
   -e chunks_combined_disposable authorized \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
@@ -56,7 +56,7 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
 selected_status=$?
 set -e
 if [ "$selected_status" -ne 0 ] ||
-   ! grep -q '^OK (3 tests)' "$out/snapshot-selected-place-installed.txt" ||
+   ! grep -q '^OK (4 tests)' "$out/snapshot-selected-place-installed.txt" ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-selected-place-installed.txt"; then
   tail -80 "$out/snapshot-selected-place-installed.txt"
   echo "::error::Authenticated selected-place stopped snapshot restore did not pass"
