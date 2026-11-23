@@ -218,7 +218,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         source = WORKFLOW.read_text(encoding="utf-8")
         allowed = pull_request_paths(source)
         self.assertIn("app/**", allowed)
-        self.assertNotIn(".github/workflows/android-check.yml", allowed)
+        self.assertIn(".github/workflows/android-check.yml", allowed)
         docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
         self.assertTrue(dispatches_for_changed_paths(
             docs, (".github/workflows/android-check.yml",)))
@@ -238,6 +238,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             (("app/src/test/java/io/github/gamesbyian/chunks/ExampleTest.kt",),
              (True, False, False)),
             (("tools/physical_android_preflight.sh",), (False, True, False)),
+            ((".github/workflows/android-check.yml",), (True, True, False)),
             (("tests/test_ci_trigger_contract.py",), (False, True, False)),
             (("app/src/androidTest/java/Test.kt", "app/src/main/java/Real.kt"),
              (True, False, True)),
