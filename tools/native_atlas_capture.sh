@@ -40,3 +40,6 @@ for scenario in small standard larger_text wide; do
   fi
 done
 python3 tools/native_visual_atlas.py "$RUNNER_TEMP/chunks-native-atlas"
+# Check actual status-clock glyph contrast in every captured first-launch variant.
+# The old first small-density screenshot had dark glyphs on a dark background.
+python3 tools/native_statusbar_contrast.py "$RUNNER_TEMP/chunks-native-atlas"/small.png "$RUNNER_TEMP/chunks-native-atlas"/standard.png "$RUNNER_TEMP/chunks-native-atlas"/larger_text.png "$RUNNER_TEMP/chunks-native-atlas"/wide.png
