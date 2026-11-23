@@ -315,8 +315,13 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             assertEquals(1, admitted)
             assertEquals(1, settled)
             val after = independent.listCompleteSessionTransfers()
-            assertEquals(before.map { it.uppercase() }.toSet(),
-                after.filterNot { it.hash in selected }.map { it.hash.uppercase() }.toSet())
+            // rTorrent reports uppercase session hashes; the archive records
+            // lowercase hexadecimal. Exclude only the two intended registrations
+            // by normalized identity, then compare the ENTIRE untouched roster.
+            val selectedIdentity = selected.map { it.lowercase() }.toSet()
+            assertEquals(before.map { it.lowercase() }.toSet(),
+                after.map { it.hash.lowercase() }
+                    .filterNot { it in selectedIdentity }.toSet())
             for (hash in selected) {
                 val row = after.single { it.hash.equals(hash, true) }
                 assertEquals(chosen, row.directory)
