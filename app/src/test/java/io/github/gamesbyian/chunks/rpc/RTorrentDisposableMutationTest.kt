@@ -5,6 +5,9 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryCaptureV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotRemoteMetainfoCaptureV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityApply
+import io.github.gamesbyian.chunks.snapshots.SnapshotRemotePriorityComparison
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewV1
 
 import com.sun.net.httpserver.HttpServer
 import java.net.HttpURLConnection
@@ -239,6 +242,66 @@ class RTorrentDisposableMutationTest {
         val mappings = decoded.fileMappings.getValue(hash)
         assertEquals(SnapshotFilePriorities.layout(preview), mappings.map { it.file })
         assertEquals(SnapshotFilePriorities.Level.HIGH, mappings.first().level)
+        // Real disposable rTorrent proof for the *new* v2-priority-restore
+        // coordinator, not just the older direct f.priority RPC or a mock.
+        val beforeChange = rtorrent.readSnapshotFiles(hash)
+        assertEquals(listOf(2, 1), beforeChange.map { it.priority })
+        val secondFile = beforeChange[1]
+        val change = rtorrent.setFilePriority(
+            hash, 1, secondFile.path, secondFile.sizeBytes, secondFile.priority, 0)
+        assertTrue("Disposable priority change rejected: $change",
+            change is FilePriorityOutcome.Verified ||
+                change is FilePriorityOutcome.PendingVerification)
+        var altered = rtorrent.readSnapshotFiles(hash)
+        for (attempt in 1..15) {
+            if (altered.map { it.priority } == listOf(2, 0)) break
+            kotlinx.coroutines.delay(200)
+            altered = rtorrent.readSnapshotFiles(hash)
+        }
+        assertEquals(listOf(2, 0), altered.map { it.priority })
+        val savedEntry = SnapshotRestorePreviewV1.Entry(
+            hash, preview.name, SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT,
+            selectedForReview = false, historicalDirectoryHint = null,
+            fileMappings = mappings)
+        val foreign = savedEntry.copy(fileMappings = mappings.map { mapping ->
+            mapping.copy(file = mapping.file.copy(
+                path = mapping.file.path.replace("Public Bundle/", "Unrelated Bundle/")))
+        })
+        assertNull("Unrelated torrent root cannot authorize saved priorities",
+            SnapshotRemotePriorityComparison.plan(foreign, added, altered))
+        val reviewed = requireNotNull(
+            SnapshotRemotePriorityComparison.plan(savedEntry, added, altered))
+        assertEquals(1, reviewed.changeCount)
+        val port = object : SnapshotRemotePriorityApply.Port {
+            override suspend fun completeSession(): List<RemoteTransfer> =
+                rtorrent.listCompleteSessionTransfers()
+            override suspend fun readFiles(hash: String): List<RemoteFile> =
+                rtorrent.readSnapshotFiles(hash)
+            override suspend fun setFilePriority(
+                hash: String, index: Int, path: String,
+                sizeBytes: Long, expected: Int, desired: Int
+            ): FilePriorityOutcome =
+                rtorrent.setFilePriority(hash, index, path, sizeBytes, expected, desired)
+        }
+        val accountScope = "http://127.0.0.1:18080/RPC2\u0000disposable"
+        val denied = SnapshotRemotePriorityApply.apply(
+            accountScope, savedEntry, reviewed,
+            confirmed = false, stillCurrent = { true }, port = port)
+        assertEquals(SnapshotRemotePriorityApply.Outcome.REFUSED, denied.outcome)
+        assertEquals(listOf(2, 0), rtorrent.readSnapshotFiles(hash).map { it.priority })
+        val restored = SnapshotRemotePriorityApply.apply(
+            accountScope, savedEntry, reviewed,
+            confirmed = true, stillCurrent = { true }, port = port)
+        assertEquals("Unexpected real restored priority result: $restored",
+            SnapshotRemotePriorityApply.Outcome.VERIFIED, restored.outcome)
+        assertEquals(1, restored.requestedWrites)
+        assertEquals(1, restored.verifiedWrites)
+        assertEquals(listOf(2, 1), rtorrent.readSnapshotFiles(hash).map { it.priority })
+        assertFalse("Snapshot restore must leave the real torrent stopped",
+            rtorrent.listTransfers("main").single { it.hash.equals(hash, true) }.started)
+        println("CHUNKS_SNAPSHOT_REMOTE_PRIORITY_REAL: consent gate, exact root, " +
+            "disposable exact-account session proof, one verified f.priority, " +
+            "full vector readback, no automatic retry")
         assertFalse("Snapshot reads cannot start the fixture",
             rtorrent.listTransfers("main").single { it.hash.equals(hash, true) }.started)
         val otherParent = target + "/not-the-reviewed-place"
