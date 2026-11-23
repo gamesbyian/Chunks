@@ -21,6 +21,7 @@ on:
       - "tools/preload_combined_two_servers.py"
       - "tools/installed_combined_two_servers.sh"
       - "tools/combined_fault_controller.py"
+      - "tools/interop/disposable_snapshot_folder_listing.py"
       - ".github/workflows/installed-combined-two-servers.yml"
   workflow_dispatch:
 
@@ -45,6 +46,11 @@ jobs:
           for s in a b; do
             mkdir -p "$root/$s/data" "$root/$s/session"
           done
+          # Only this tested child is selectable by the disposable server's
+          # authenticated read-only ruTorrent folder browser.
+          mkdir -p "$root/a/data/reviewed"
+          nohup python3 -I tools/interop/disposable_snapshot_folder_listing.py "$root/a/data" \
+            > "$root/folders.log" 2>&1 < /dev/null &
           start() {
             name=$1 scgi=$2 peer=$3
             cat > "$root/$name/rtorrent.rc" <<EOF
@@ -68,7 +74,26 @@ jobs:
           error_log $root/nginx.error notice;
           events { worker_connections 64; }
           http {
-            server { listen 127.0.0.1:18080; location /RPC2 { auth_basic "chunks-a"; auth_basic_user_file /tmp/chunks-combined-a.htpasswd; include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; } }
+            server {
+              listen 127.0.0.1:18080;
+              location /RPC2 {
+                auth_basic "chunks-a";
+                auth_basic_user_file /tmp/chunks-combined-a.htpasswd;
+                include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000;
+              }
+              # Same exact Basic-auth principal as /RPC2, not an anonymous
+              # filesystem oracle or a connection to the other rTorrent host.
+              location = /rutorrent/plugins/httprpc/action.php {
+                auth_basic "chunks-a";
+                auth_basic_user_file /tmp/chunks-combined-a.htpasswd;
+                include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000;
+              }
+              location = /rutorrent/plugins/_getdir/listdir.php {
+                auth_basic "chunks-a";
+                auth_basic_user_file /tmp/chunks-combined-a.htpasswd;
+                proxy_pass http://127.0.0.1:18084;
+              }
+            }
             server { listen 127.0.0.1:18082; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5001; } }
           }
           EOF
