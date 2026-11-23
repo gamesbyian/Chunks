@@ -167,6 +167,27 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
                 report.items.single { it.hash == otherOriginal.infoHashV1 }.state)
             assertEquals(1, admitted)
             assertNull(independent.lookupName(otherOriginal.infoHashV1))
+
+            // An explicit prior REVIEW journal is different from an absent or
+            // corrupt one. The batch check itself must create NEITHER.
+            val accountFingerprint = SnapshotArchiveV1.digest(
+                ("chunks-rtorrent-snapshot-account-v1:" + account.addAccountScope())
+                    .toByteArray(Charsets.UTF_8))
+            val itemFingerprint = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                SnapshotManifestV1.definitionArchiveFingerprint(archive),
+                otherOriginal.infoHashV1)
+            val untouchedJournal = SnapshotRestoreJournalV1.open(
+                journalStore, itemFingerprint, accountFingerprint,
+                listOf(otherOriginal.infoHashV1))
+            assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+                untouchedJournal.entries().single().phase)
+            val noSubmission = requireNotNull(coordinator.inspectPreviousBatch(
+                archive, now, selectedPlace = chosen))
+            assertEquals(SnapshotRemoteDefinitionRestore.PreviousState.NO_SUBMISSION_IN_THIS_JOURNAL,
+                noSubmission.items.single { it.hash == otherOriginal.infoHashV1 }.state)
+            assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+                untouchedJournal.entries().single().phase)
+            assertEquals(1, admitted)
             // Reinterpreting the earlier Add under another selected folder
             // must report a different approval, not resolve it or retry it.
             val wrongPlace = requireNotNull(coordinator.inspectPreviousBatch(
