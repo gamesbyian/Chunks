@@ -231,6 +231,14 @@ def safe_media_review_failure(text: str) -> str | None:
         r"^[ \t]+at [A-Za-z_$][A-Za-z0-9_.$]{0,239}"
         r"\([A-Za-z0-9_.$<>-]{1,140}(?::[0-9]{1,7})?\)$"
     )
+    # Java prints an explicit, stable cause for a Compose wait timeout.
+    # Accept only that class and fixed duration sentence, never an arbitrary
+    # cause message (which may contain user values or a source URL).
+    timeout_cause = re.compile(
+        r"^Caused by: androidx\.compose\.ui\.test\.ComposeTimeoutException"
+        r"(?:: Condition still not satisfied after 30000 ms)?$"
+    )
+    omitted_frames = re.compile(r"^[ \t]*\.\.\. [1-9][0-9]{0,3} more$")
     for line in text.splitlines():
         if line.startswith(STATUS):
             value = line[len(STATUS):]
@@ -255,7 +263,9 @@ def safe_media_review_failure(text: str) -> str | None:
             stack = None
             stack_continuation = False
             stack_untrusted_suffix = False
-        elif stack_continuation and not java_frame.fullmatch(line):
+        elif stack_continuation and not (
+                java_frame.fullmatch(line) or timeout_cause.fullmatch(line) or
+                omitted_frames.fullmatch(line)):
             stack_untrusted_suffix = True
     return None
 

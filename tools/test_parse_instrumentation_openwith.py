@@ -89,7 +89,7 @@ class ControlledMediaFailureFingerprintTest(unittest.TestCase):
         self.assertIsNone(safe_media_first_positive_failure(self.status(code="0")))
 
     def test_private_suffix_uri_arbitrary_kind_or_newline_is_rejected(self):
-        for extra in (" uri=content://secret/item", "\\nhttps://secret.example", 
+        for extra in (" uri=content://secret/item", "\nhttps://secret.example", 
                       " hash=private", " kind=./secret"):
             self.assertIsNone(safe_media_first_positive_failure(self.status(
                 failure=self.DIAGNOSTIC + extra)))
@@ -142,6 +142,26 @@ class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
             failure=self.GOOD + "\n    at https://tracker.invalid/passkey")))
         self.assertIsNone(safe_media_review_failure(self.status(
             failure=self.GOOD + "\nCaused by: token=private")))
+
+    def test_known_compose_timeout_cause_and_conventional_elided_frames(self):
+        expected = ("fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
+                    "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
+        stack = (self.GOOD +
+                 "\n    at io.github.gamesbyian.chunks.SampleTest.review(SampleTest.kt:119)"
+                 "\nCaused by: androidx.compose.ui.test.ComposeTimeoutException: "
+                 "Condition still not satisfied after 30000 ms"
+                 "\n    at androidx.compose.ui.test.ComposeTestRule.waitUntil(ComposeTestRule.kt:90)"
+                 "\n    ... 23 more")
+        self.assertEqual(expected, safe_media_review_failure(self.status(failure=stack)))
+
+    def test_cause_with_source_data_and_unbounded_elision_stay_silent(self):
+        for suffix in (
+            "\nCaused by: androidx.compose.ui.test.ComposeTimeoutException: token=secret",
+            "\nCaused by: java.lang.AssertionError: https://private.example",
+            "\n    ... 10000 more",
+            "\n    ... -1 more",
+        ):
+            self.assertIsNone(safe_media_review_failure(self.status(failure=self.GOOD + suffix)))
 
     def test_other_class_method_and_success_or_error_are_silent(self):
         self.assertIsNone(safe_media_review_failure(self.status(klass="secret.Class")))
