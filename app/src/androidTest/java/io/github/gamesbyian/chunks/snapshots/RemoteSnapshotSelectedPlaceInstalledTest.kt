@@ -156,6 +156,9 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
             // original definitions: exact journal checks must never submit a
             // second Add or claim a missing journal proves a safe retry.
             val now = all.map { it.hash }
+            assertNull("An outdated comparison must never claim a batch recovery",
+                coordinator.inspectPreviousBatch(archive, previous, selectedPlace = chosen))
+            assertEquals(1, admitted)
             val report = requireNotNull(coordinator.inspectPreviousBatch(
                 archive, now, selectedPlace = chosen))
             assertEquals(2, report.items.size)
