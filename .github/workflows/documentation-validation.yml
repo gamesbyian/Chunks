@@ -45,6 +45,7 @@ on:
       - 'tools/test_local_intake_journey.sh'
       - 'tests/test_ci_remote_instrumentation_deadlines.py'
       - 'tests/test_ci_local_intake.py'
+      - 'tests/test_external_document_first_view_contract.py'
       - '.github/workflows/native-owned-android-link.yml'
       - '.github/workflows/native-owned-writer-experiment.yml'
       - '.github/workflows/native-owned-debug-overlay-smoke.yml'
@@ -181,6 +182,7 @@ on:
       - 'tools/test_local_intake_journey.sh'
       - 'tests/test_ci_remote_instrumentation_deadlines.py'
       - 'tests/test_ci_local_intake.py'
+      - 'tests/test_external_document_first_view_contract.py'
       - '.github/workflows/native-owned-android-link.yml'
       - '.github/workflows/native-owned-writer-experiment.yml'
       - '.github/workflows/native-owned-debug-overlay-smoke.yml'
@@ -336,6 +338,10 @@ jobs:
         run: |
           bash tools/test_local_intake_journey.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_local_intake.py
+      - name: Guard foreign document task lifecycle and privacy-safe failure categories
+        run: |
+          bash -n tools/installed_external_document_process_loss.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_external_document_first_view_contract.py
       - name: Check bounded installed remote and storage instrumentation commands
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_remote_instrumentation_deadlines.py
       - name: Validate installed real-source magnet reporting without secrets or emulator
