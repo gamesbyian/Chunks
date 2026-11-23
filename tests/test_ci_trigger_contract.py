@@ -334,6 +334,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn(path, r8_paths)
                 self.assertTrue(dispatches_for_changed_paths(r8, (path,)))
 
+    def test_disposable_rtorrent_legacy_and_modern_defer_drafts(self):
+        # An entire two-engine integration probe on every speculative draft
+        # edit is excessive, but ready-for-review and manual dispatch still
+        # require both engines and the exact mutation/readback fixtures.
+        source = (ROOT / ".github/workflows/disposable-rtorrent-probe.yml").read_text()
+        self.assertIn(
+            "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+            source,
+        )
+        self.assertIn("workflow_dispatch:", source)
+        self.assertEqual(2, source.count(
+            "if: github.event_name != 'pull_request' || !github.event.pull_request.draft"
+        ))
+        self.assertIn("  legacy-real-engine:", source)
+        self.assertIn("  modern-real-engine:", source)
+        self.assertIn("RTorrentDisposableMutationTest", source)
+        self.assertIn("RTorrentDisposableFullJourneyTest", source)
+        self.assertIn("RTorrentLibtorrentInteropTest", source)
+        self.assertIn("cancel-in-progress: true", source)
+        self.assertNotIn("continue-on-error: true", source)
+        self.assertIn(".github/workflows/disposable-rtorrent-probe.yml",
+                      pull_request_paths(source))
+
     def test_expensive_r8_and_visual_atlas_wait_for_review_ready_pr(self):
         # Preserve both real installed-device classes and R8 exact-case checks;
         # only draft event scheduling should change.
