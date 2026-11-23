@@ -71,6 +71,10 @@ class Handler(BaseHTTPRequestHandler):
 
         url = urlsplit(self.path)
         if host == SOURCE_HOST:
+            if url.path == "/signed.torrent" and url.query == "access=fixture%2Braw%2Ftoken":
+                self.count("source_signed_share")
+                self.answer(torrent("control")[0], "application/x-bittorrent")
+                return
             for fixture in SHOWS:
                 if url.path == f"/{fixture}.torrent" and not url.query:
                     self.count("source_" + fixture)

@@ -60,8 +60,10 @@ run_phase() {
     --require-executed --glob "$out/$method.xml" --output "$out/$method-digest.json"
 }
 
+run_phase sharedSignedLinkWaitsForReplacementAndExplicitFetch
+adb shell am force-stop "$pkg"
 run_phase phaseA_submitTwoSourcesAndRefreshInventory
 adb shell am force-stop "$pkg"
 run_phase phaseB_restoredExclusionAndFreshPositiveControl
 adb shell am force-stop "$pkg"
-echo 'CHUNKS_SECOND_ADD_MEDIA_ACCEPTANCE controlled_https=true exact_local_exclusion=true fresh_process=true positive_controls=2'
+echo 'CHUNKS_SECOND_ADD_MEDIA_ACCEPTANCE controlled_https=true exact_local_exclusion=true fresh_process=true positive_controls=2 signed_share_review=true'
