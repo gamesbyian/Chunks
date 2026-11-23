@@ -123,6 +123,7 @@ class AddRoutingSessionsTest {
 
     @Test fun delayedOldSessionCannotRepublishAfterReauthentication() {
         val delayedOld = CompletableDeferred<String>()
+        val delayedNew = CompletableDeferred<String>()
         val oldReads = AtomicInteger()
         val newReads = AtomicInteger()
         val chosen = mutableStateOf(client(id, 1L) {
@@ -137,13 +138,20 @@ class AddRoutingSessionsTest {
         rule.runOnIdle {
             chosen.value = client(id, 2L) {
                 newReads.incrementAndGet()
-                "/new/identity"
+                delayedNew.await()
             }
         }
-        // Authentication may trigger more than one harmless session probe.
-        // The contract is that the new exact identity becomes usable while
-        // the old response is still held, and stale data never gets published.
-        // Do not couple this negative to an incidental RPC read count.
+        // Keep BOTH wire replies independently controlled. An immediate
+        // response from an IO worker while Robolectric is still applying the
+        // new Compose frame can drive its test frame clock on the wrong
+        // thread. This test must still observe the actual replacement read,
+        // not a fabricated session or a silently skipped check.
+        rule.onNodeWithText("Waiting").assertExists()
+        rule.waitUntil(5_000) { newReads.get() > 0 }
+        org.junit.Assert.assertTrue("Replacement IO session request must execute", newReads.get() > 0)
+        // Release through the rule's owning Android UI thread, without
+        // changing the IO-backed session producer or canceling the old read.
+        rule.runOnIdle { delayedNew.complete("/new/identity") }
         try {
             rule.waitUntil(10_000) {
                 rule.onAllNodesWithText("/new/identity").fetchSemanticsNodes().isNotEmpty()
@@ -152,8 +160,9 @@ class AddRoutingSessionsTest {
             throw AssertionError("New routing evidence absent: old reads=${oldReads.get()}, " +
                 "new reads=${newReads.get()}", failure)
         }
-        org.junit.Assert.assertTrue("The reauthenticated client was actually read", newReads.get() > 0)
-        delayedOld.complete("/stale/identity")
+        // The old reply is deliberately released AFTER the new identity is
+        // visible, and may never re-publish into the new account's UI.
+        rule.runOnIdle { delayedOld.complete("/stale/identity") }
         rule.waitForIdle()
         rule.onNodeWithText("/stale/identity").assertDoesNotExist()
         rule.onNodeWithText("/new/identity").assertExists()
