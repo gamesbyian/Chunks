@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks.rpc
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.net.URI
+import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
@@ -48,10 +49,11 @@ class RuTorrentSourceMetainfoTest {
 
     private fun creds(uri: URI) = RemoteCredentials(uri.toString(), "owner", "secret")
 
-    @Test fun challengedReadReturnsOnlyExactHashValidatedOriginal() = serve({ exchange ->
+    @Test fun challengedReadUsesUppercaseSessionFilenameAndValidatesExactOriginal() = serve({ exchange ->
         assertEquals("POST", exchange.requestMethod)
         assertTrue(exchange.requestURI.path.endsWith("/rutorrent2/plugins/source/action.php"))
-        assertEquals("hash=$hash", exchange.requestBody.readBytes().toString(Charsets.UTF_8))
+        assertEquals("hash=${hash.uppercase(Locale.ROOT)}",
+            exchange.requestBody.readBytes().toString(Charsets.UTF_8))
         val authorized = exchange.requestHeaders.getFirst("Authorization") ==
             "Basic " + java.util.Base64.getEncoder()
                 .encodeToString("owner:secret".toByteArray(Charsets.UTF_8))

@@ -136,6 +136,9 @@ The older checkpoint paragraphs below preserve dated evidence from the early lib
 
 A user can opt into collecting **original v1 .torrent definitions** when the exact
 authenticated ruTorrent account supports its standard read-only Source plugin.
+The Source request uses the uppercase infohash spelling of rTorrent's saved
+session filename. Returned definitions still need independent v1 identity
+verification before they enter the archive.
 The default export still records **inventory only**. This is an additional
 capability, never a replacement for the existing inventory and manual restore
 paths. A missing/disabled plugin or a record whose name, version or infohash
