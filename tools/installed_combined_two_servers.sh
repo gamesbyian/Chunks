@@ -56,7 +56,7 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
 selected_status=$?
 set -e
 if [ "$selected_status" -ne 0 ] ||
-   ! grep -q '^OK (1 test)' "$out/snapshot-selected-place-installed.txt" ||
+   ! grep -q '^OK (2 tests)' "$out/snapshot-selected-place-installed.txt" ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-selected-place-installed.txt"; then
   tail -80 "$out/snapshot-selected-place-installed.txt"
   echo "::error::Authenticated selected-place stopped snapshot restore did not pass"
