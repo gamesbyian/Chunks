@@ -59,6 +59,16 @@ class SnapshotSettingsTest {
             SnapshotFilePriorities.capture(preview, relativeRows, remote))
         assertNull(SnapshotFilePriorities.capture(preview,
             listOf(relativeRows.first(), row(2, "root/b", 0)), remote))
+        // Refuse unrelated root components even when every filename and size
+        // under that component happens to match the connected server.
+        val foreignRoot = preview.copy(files = preview.files.map {
+            it.copy(path = it.path.replace("root/", "foreign/"))
+        })
+        assertNull(SnapshotFilePriorities.capture(foreignRoot, relativeRows, remote))
+        assertEquals("a", SnapshotFilePriorities.relativeToTorrentRoot(
+            SnapshotFilePriorities.File(0, "root/a", 2), "root"))
+        assertNull(SnapshotFilePriorities.relativeToTorrentRoot(
+            SnapshotFilePriorities.File(0, "foreign/a", 2), "root"))
     }
 
     @Test fun rejectsUnknownUnsafeOrUnboundSettingsEvenWithValidArchiveChecksums() {

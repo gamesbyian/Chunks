@@ -41,7 +41,9 @@ internal class SnapshotRemotePriorityComparison private constructor(
                 saved.file.path == current.path && saved.file.sizeBytes == current.sizeBytes
             }
             val relative = mappings.zip(files).all { (saved, current) ->
-                saved.file.path.substringAfter('/') == current.path &&
+                val relativePath = SnapshotFilePriorities.relativeToTorrentRoot(
+                    saved.file, entry.originalName)
+                relativePath != null && relativePath == current.path &&
                     saved.file.sizeBytes == current.sizeBytes
             }
             if (!exact && !relative) return null
