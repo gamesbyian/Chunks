@@ -396,7 +396,8 @@ class RemoteSnapshotSelectedPlaceInstalledTest {
         val store = AndroidSnapshotRestoreJournalStore(context)
         var admitted = 0
         val batch = SnapshotRemoteBatchStoppedRestore(account, store,
-            stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
+            stillCurrent = { true }, admitBatch = { admitted++; true },
+            settleBatch = { settled++ })
         val single = SnapshotRemoteDefinitionRestore(account, store,
             stillCurrent = { true }, admitWrite = { admitted++; true }, settleWrite = {})
         compose.setContent {
