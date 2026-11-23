@@ -116,13 +116,45 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
     ) {
         LazyComposeActions.replaceText(rule, hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD), "https://example.com/$source.torrent")
         LazyComposeActions.activateOnce(rule, hasText("Get torrent from link") and hasClickAction())
-        rule.waitUntil(30_000) {
-            var reviewed = false
-            scenario.onActivity {
-                reviewed = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
-                    .reviewedTorrent.value?.preview?.infoHashV1 == expectedHash
+        try {
+            rule.waitUntil(30_000) {
+                var reviewed = false
+                scenario.onActivity {
+                    reviewed = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value?.preview?.infoHashV1 == expectedHash
+                }
+                reviewed
             }
-            reviewed
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // #1838: a 30-second timeout alone cannot distinguish a fixture
+            // request never sent from a validated source never adopted by the
+            // retained Add owner. Emit only bounded booleans/counts, not URL,
+            // query/token, full hash or raw provider response contents.
+            val sourceRequests = runCatching { count("source_$source") }.getOrNull()
+            val ownerHasReview = runCatching {
+                var hasReview = false
+                scenario.onActivity {
+                    hasReview = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value != null
+                }
+                hasReview
+            }.getOrNull()
+            val addFooterVisible = runCatching {
+                rule.onAllNodesWithTag(ChunksSemantics.FOOTER_ADD)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrNull()
+            val sourceFieldVisible = runCatching {
+                rule.onAllNodesWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrNull()
+            throw AssertionError(
+                "Controlled HTTPS review was not retained: " +
+                    "fixtureSourceRequests=${sourceRequests ?: "unavailable"} " +
+                    "ownerHasAnyReviewedTorrent=${ownerHasReview ?: "unavailable"} " +
+                    "addFooterVisible=${addFooterVisible ?: "unavailable"} " +
+                    "sourceFieldVisible=${sourceFieldVisible ?: "unavailable"}",
+                timeout
+            )
         }
         assertNull("HTTPS review must make no native Add write", LocalEngineHolder.current()?.status(expectedHash))
         add.chooseStopped()
