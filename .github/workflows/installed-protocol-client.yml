@@ -17,6 +17,13 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt"
       - "tools/installed_protocol_client.sh"
+      # The installed script runs this foreign-UID task test before clients.
+      # Standalone changes to either the host script or provider fixture MUST
+      # select the same Android gate, without requiring an unrelated app diff.
+      - "tools/installed_external_document_process_loss.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalSourceSenderActivity.java"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalTorrentTestProvider.java"
+      - ".github/workflows/installed-protocol-client.yml"
       - "tools/verify_installed_apk_bytes.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledUniversalAddJourney.kt"
       # The installed Add/Connect journey calls this shared semantics helper.
@@ -45,6 +52,7 @@ jobs:
       - name: Validate installed harness syntax before heavy setup
         run: |
           bash -n tools/installed_protocol_client.sh
+          bash -n tools/installed_external_document_process_loss.sh
           bash -n tools/interop/start_local_clients.sh
       - name: Start disposable Transmission, qBittorrent, Deluge and rTorrent
         run: |

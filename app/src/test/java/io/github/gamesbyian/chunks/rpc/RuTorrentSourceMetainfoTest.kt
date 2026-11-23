@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks.rpc
 
 import com.sun.net.httpserver.HttpServer
+import java.io.ByteArrayInputStream
+import java.io.IOException
+import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.URI
 import java.util.Locale
@@ -90,6 +93,64 @@ class RuTorrentSourceMetainfoTest {
             assertNull(RuTorrentSourceMetainfo.read(uri, creds(uri), "f".repeat(40)))
             assertNull(RuTorrentSourceMetainfo.read(uri, creds(uri), "bad-hash"))
         })
+    }
+
+    @Test fun sourceResponseCannotSpinOnInfiniteZeroLengthReads() {
+        val stalled = object : InputStream() {
+            var calls = 0
+            override fun read(): Int = error("Unexpected single-byte read")
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                calls++
+                return 0
+            }
+        }
+        val failure = runCatching {
+            RuTorrentSourceMetainfo.readBoundedSource(stalled)
+        }.exceptionOrNull()
+        assertTrue(failure is IOException)
+        assertEquals(17, stalled.calls)
+    }
+
+    @Test fun boundedSourceAllowsIntermittentProgressAndRejectsUnreportedOversize() {
+        val stream = object : InputStream() {
+            var phase = 0
+            override fun read(): Int = error("Unexpected single-byte read")
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int = when {
+                phase < 16 -> { phase++; 0 }
+                phase == 16 -> {
+                    phase++
+                    val first = torrent.size / 2
+                    torrent.copyInto(buffer, offset, 0, first)
+                    first
+                }
+                phase < 33 -> { phase++; 0 }
+                phase == 33 -> {
+                    phase++
+                    val first = torrent.size / 2
+                    torrent.copyInto(buffer, offset, first, torrent.size)
+                    torrent.size - first
+                }
+                else -> -1
+            }
+        }
+        assertArrayEquals(torrent, RuTorrentSourceMetainfo.readBoundedSource(stream))
+        val oversized = ByteArray(TorrentMetainfoReader.MAX_BYTES + 1)
+        assertTrue(runCatching {
+            RuTorrentSourceMetainfo.readBoundedSource(ByteArrayInputStream(oversized))
+        }.exceptionOrNull() is IOException)
+    }
+
+    @Test fun originalAtExactlyTheTwoMibLimitIsPreserved() {
+        val original = ByteArray(TorrentMetainfoReader.MAX_BYTES) { index ->
+            (index and 0xff).toByte()
+        }
+        assertArrayEquals(original, RuTorrentSourceMetainfo.readBoundedSource(
+            ByteArrayInputStream(original)))
+        // The same reader must refuse a single additional byte when the
+        // transport omits Content-Length; no prefix is accepted as complete.
+        assertTrue(runCatching {
+            RuTorrentSourceMetainfo.readBoundedSource(ByteArrayInputStream(original + byteArrayOf(1)))
+        }.exceptionOrNull() is IOException)
     }
 
     @Test fun oversizedSourceBodyCannotEscapeTheTwoMibMetadataLimit() = serve({ exchange ->
