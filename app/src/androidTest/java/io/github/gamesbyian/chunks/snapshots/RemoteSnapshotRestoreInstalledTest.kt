@@ -54,8 +54,14 @@ class RemoteSnapshotRestoreInstalledTest {
         val independent = RTorrentRemote(credentials)
         val other = RTorrentRemote(RemoteCredentials("http://127.0.0.1:18082/RPC2", "", ""))
         val context = instrumentation.targetContext
-        val bytes = ("d4:infod6:lengthi5e4:name20:snapshot-android.bin12:piece lengthi16384e6:pieces20:" +
-            "01234567890123456789ee").toByteArray()
+        // Both Combined daemons disable DHT. libtorrent 0.13.8 rejects a
+        // trackerless definition in that mode before it enters the session.
+        // Use the same inert loopback announce as the preloaded stopped jobs.
+        val tracker = "http://127.0.0.1:1/announce"
+        val bytes = ("d8:announce${tracker.length}:$tracker" +
+            "4:infod6:lengthi5e4:name20:snapshot-android.bin12:piece lengthi16384e6:pieces20:").toByteArray() +
+            java.security.MessageDigest.getInstance("SHA-1").digest("hello".toByteArray()) +
+            "ee".toByteArray()
         val original = TorrentMetainfoReader.preview(bytes)
         val hash = original.infoHashV1
         val item = SnapshotManifestV1.Item(hash, original.name, SnapshotManifestV1.Recovery.METAINFO)
