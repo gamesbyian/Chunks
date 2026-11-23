@@ -168,7 +168,7 @@ jobs:
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeDefaultTest' \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest'
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml
-          grep -q 'tests="2" skipped="0" failures="0" errors="0"' "$report"
+          grep -q 'tests="3" skipped="0" failures="0" errors="0"' "$report"
           echo "CHUNKS_AUTH_REAL: disposable nginx Basic challenge accepted on real rTorrent, exact-job mutation/reconciliation and rejected wrong credentials" >> "$GITHUB_STEP_SUMMARY"
       - name: SHA-256 Digest real engine authenticated Add and session-only Remove
         env:
@@ -497,7 +497,7 @@ jobs:
               --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeDefaultTest' \
               --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
           preserve_results
-          grep -q 'tests="2" skipped="0" failures="0" errors="0"' \
+          grep -q 'tests="3" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml || status=1
           gradle --no-daemon :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest' || status=1

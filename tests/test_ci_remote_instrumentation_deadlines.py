@@ -10,7 +10,7 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
     def test_every_selected_installed_journey_has_an_independent_deadline(self):
         expected = {
             "tools/installed_protocol_client.sh": (6, "--user 0 -w -r"),
-            "tools/installed_combined_two_servers.sh": (3, "-w -r"),
+            "tools/installed_combined_two_servers.sh": (4, "-w -r"),
             "tools/installed_rtorrent_magnets.sh": (2, "-w -r"),
             "tools/fgs_timeout_repro.sh": (2, "-w -r"),
             "tools/process_death_repro.sh": (2, "-w -r"),

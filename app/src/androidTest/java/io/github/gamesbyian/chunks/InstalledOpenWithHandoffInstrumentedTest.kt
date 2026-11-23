@@ -4,10 +4,14 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
@@ -183,6 +187,14 @@ class InstalledOpenWithHandoffInstrumentedTest {
                 val sourceField = hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)
                 val destination = hasTestTag(ChunksSemantics.ADD_TARGET_DEVICE)
                 val suggestion = hasTestTag("chunks.add.routing.suggestion")
+                fun editSource(text: String) {
+                    // Local uses an eagerly composed scrolling Column. Editing
+                    // its field's semantics does not require a viewport reveal.
+                    compose.onNode(sourceField).assertIsEnabled()
+                        .performSemanticsAction(SemanticsActions.SetText) { setText ->
+                            assertTrue(setText(AnnotatedString(text)))
+                        }
+                }
                 fun showDestination() {
                     compose.onNode(destination).performScrollTo().assertExists()
                 }
@@ -191,7 +203,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
                 compose.waitUntil(20_000) {
                     compose.onAllNodes(suggestion).fetchSemanticsNodes().size == 1
                 }
-                LazyComposeActions.replaceText(compose, sourceField, "https://fixture.invalid/next.torrent")
+                editSource("https://fixture.invalid/next.torrent")
                 showDestination()
                 // SetText edits the draft synchronously, but the derived
                 // routing suggestion is disposed on a subsequent Compose
@@ -210,7 +222,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
                     assertNull(owner.session.attemptedTicket)
                 }
 
-                LazyComposeActions.replaceText(compose, sourceField, "")
+                editSource("")
                 showDestination()
                 // Clearing the newer draft reselects the retained, reviewed
                 // .torrent. Check that exact positive rule becomes visible.
