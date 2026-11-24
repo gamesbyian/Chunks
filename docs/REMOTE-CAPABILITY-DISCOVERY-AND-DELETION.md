@@ -6,6 +6,8 @@
 
 While a dispatched typed command is still settling, a replacement Details screen must keep the same job's command authority fenced. Read-only reconciliation becomes available only after the request settles into a reconcilable state. Leaving Details may revoke an unsubmitted preflight immediately.
 
+For typed remote Details, the payload-delete review names the last exact client's reported folder. Require a fresh same-job observation of that folder before dispatch. If the folder is unknown, job-only removal remains available. A changed folder refuses the reviewed deletion and requires a new review.
+
 **Owner decision, 2026-11-13; implementation reconciled 2026-11-14. Environment acceptance is recorded separately in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [#1679 evidence](evidence/remote-1679/README.md).** Applies first to rTorrent, and later to backend-neutral remote adapters. Work is staged within existing R1 owner-host acceptance and R3 remote-integrity cohorts, **not** a competing P0 subsystem. See [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md), [ARCHITECTURE](ARCHITECTURE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and [WORK-QUEUE](WORK-QUEUE.md).
 
 ## Observable behavior
