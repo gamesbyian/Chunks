@@ -28,9 +28,10 @@ class ConnectionDraftRestorationTest {
     @get:Rule val rule = createComposeRule()
 
     @Test fun nameAndAddressRestoreTogetherButPasswordDoesNot() {
+        val owner = LocalAddAttemptOwner()
         val restoration = StateRestorationTester(rule)
         restoration.setContent {
-            ChunksTheme { ChunksApp(null, null, {}, {}) }
+            ChunksTheme { ChunksApp(owner) }
         }
         rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
         rule.openConnectionFormIfNeeded(allowConnected = false)

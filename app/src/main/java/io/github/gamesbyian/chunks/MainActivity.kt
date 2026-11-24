@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
-import androidx.lifecycle.viewModelScope
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
@@ -140,57 +139,6 @@ private val Lime = ChunksColors.Green
 private val Coral = ChunksColors.Orange
 private val Blue = ChunksColors.Cyan
 
-internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
-    val session = LocalAddAttemptSession()
-    // Retain private Add drafts through configuration changes in RAM only.
-    // Never serialize magnet passkeys, document bytes or account scope.
-    val sourceDraft = mutableStateOf("")
-    // The optional Chunks-only label belongs to the single in-RAM Add draft.
-    val aliasDraft = mutableStateOf("")
-    val transferSearch = UniversalAddNavigationSearch()
-    val reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null)
-    val pendingSharedMagnet = mutableStateOf<String?>(null)
-    val pendingSharedDocument = mutableStateOf<Uri?>(null)
-    val readingSharedDocument = mutableStateOf<Uri?>(null)
-    val artworkChoices = AddArtworkDraftChoices()
-    val addDestination = mutableStateOf<UniversalAddRouteTarget>(UniversalAddRouteTarget.Local)
-    val routingAutoAppliedFor = mutableStateOf<String?>(null)
-    val routingPersonChoiceFor = mutableStateOf<String?>(null)
-    val artworkExpanded = mutableStateOf(false)
-    val sharedTorrentError = mutableStateOf<String?>(null)
-    val serverHandoffTorrent = mutableStateOf<ByteArray?>(null)
-    val serverHandoffDocument = mutableStateOf<Uri?>(null)
-    val remoteSessions = RemoteAddSessions()
-    // One Transmission/qBittorrent/Deluge Add attempt; RAM only, never persisted.
-    val protocolAttempt = ProtocolAddAttempt()
-    // External Share/Open With arrives before Compose necessarily consumes it.
-    // Keep these unconsumed, one-shot handoffs in the Activity-retained owner,
-    // not the ephemeral Activity. Recreation must resume review without
-    // replaying the launch Intent or persisting URIs, magnets or tracker tokens.
-    val incomingMagnet = mutableStateOf<String?>(null)
-    val incomingTorrent = mutableStateOf<Uri?>(null)
-    val incomingCreate = mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
-    // Create's read-only shared document scan is cancellable on rotation.
-    // Retain both the unacknowledged request and an adopted source in RAM,
-    // so recreation neither loses a half-read share nor replays a finished one.
-    val createReviewRequest = mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
-    val createSource = mutableStateOf<io.github.gamesbyian.chunks.create.CreateTorrentSource?>(null)
-    // The one-shot remote Add and exact readback outlive both the Add route and
-    // Activity recreation, but are cancelled when this app-owned ViewModel is
-    // finally cleared. No source, account or private tracker enters SavedState.
-    // One app-owned Add lifetime spans Local native writes and rTorrent RPC.
-    // This never persists an attempted command across process death.
-    val addAttemptScope get() = viewModelScope
-    val remoteAttemptScope get() = addAttemptScope
-    // The one app-owned execution/observation owner for every client's Add
-    // write and read-only recheck: Local, rTorrent and the protocol clients.
-    val attempts = UniversalAddAttemptController { viewModelScope }
-
-    fun hasDocumentReview(): Boolean =
-        incomingTorrent.value != null || pendingSharedDocument.value != null ||
-            readingSharedDocument.value != null || reviewedTorrent.value?.originalDocument != null
-}
-
 internal const val SAVED_DOCUMENT_REVIEW = "chunks.add.document-review-present"
 internal const val INTERRUPTED_DOCUMENT_REVIEW =
     "Android restarted Chunks. Check Transfers, then reopen the .torrent to review it again."
@@ -198,50 +146,15 @@ internal const val INTERRUPTED_DOCUMENT_REVIEW =
 class MainActivity : ComponentActivity() {
     // Retained across Activity recreation, never persisted on process death.
     private val localAddAttemptOwner: LocalAddAttemptOwner by viewModels()
-    // Access after super.onCreate/onNewIntent, when the lifecycle ViewModelStore
-    // is available. A property delegate initialized during Activity construction
-    // would resolve the ViewModel too early.
-    private var incomingMagnet: String?
-        get() = localAddAttemptOwner.incomingMagnet.value
-        set(value) { localAddAttemptOwner.incomingMagnet.value = value }
-    private var incomingTorrent: Uri?
-        get() = localAddAttemptOwner.incomingTorrent.value
-        set(value) { localAddAttemptOwner.incomingTorrent.value = value }
-    private var incomingCreate: io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?
-        get() = localAddAttemptOwner.incomingCreate.value
-        set(value) { localAddAttemptOwner.incomingCreate.value = value }
-
     private fun accept(intent: Intent?) {
-        // A separately addressed Create-torrent Share stays out of Add.
         val create = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
         if (create != null) {
-            // A different explicit Create target supersedes an unconsumed Add
-            // handoff. Never hold two competing external source authorities.
-            incomingCreate = create
-            incomingTorrent = null
-            incomingMagnet = null
+            localAddAttemptOwner.offerCreate(create)
             return
         }
-        // Invalid, malformed and unrelated Intents confer no source authority.
-        // In particular, they cannot erase a valid source still awaiting the
-        // exact local/server chooser or a privacy gate.
         val candidate = ExternalAddSource.fromIntent(intent)
         logIntake(intent, candidate)
-        if (candidate == null) return
-        incomingCreate = null
-        // A second Android Open With may arrive while the Add UI is unmounted
-        // or a first provider read has not yet produced a visible review.
-        // Retain the new document in this Activity-scoped owner *before*
-        // Compose can be disposed. Selection still requires Use/Keep review.
-        if (candidate is ExternalAddSource.TorrentDocument &&
-            (localAddAttemptOwner.reviewedTorrent.value != null ||
-                localAddAttemptOwner.readingSharedDocument.value != null)) {
-            localAddAttemptOwner.pendingSharedDocument.value = candidate.uri
-        }
-        val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
-            .withIncoming(candidate)
-        incomingTorrent = pending.torrentDocument
-        incomingMagnet = pending.text
+        localAddAttemptOwner.offerAdd(candidate)
     }
 
     /**
@@ -305,16 +218,7 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ChunksApp(
-                        sharedMagnet = incomingMagnet,
-                        incomingTorrent = incomingTorrent,
-                        onIncomingMagnetConsumed = { incomingMagnet = null },
-                        onIncomingTorrentConsumed = { incomingTorrent = null },
-                        incomingCreate = incomingCreate,
-                        onIncomingCreateConsumed = { incomingCreate = null },
-                        localAddAttemptSession = localAddAttemptOwner.session,
-                        retainedAddOwner = localAddAttemptOwner
-                    )
+                    ChunksApp(localAddAttemptOwner)
                 }
                 }
                 }
@@ -411,16 +315,16 @@ private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Se
 )
 
 @Composable
-internal fun ChunksApp(
-    sharedMagnet: String?,
-    incomingTorrent: Uri?,
-    onIncomingMagnetConsumed: () -> Unit,
-    onIncomingTorrentConsumed: () -> Unit,
-    incomingCreate: io.github.gamesbyian.chunks.create.SharedCreateDocument.Request? = null,
-    onIncomingCreateConsumed: () -> Unit = {},
-    localAddAttemptSession: LocalAddAttemptSession? = null,
-    retainedAddOwner: LocalAddAttemptOwner? = null
-) {
+internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
+    val incomingDelivery = retainedAddOwner.incomingDelivery
+    val incomingAdd = (incomingDelivery as? ExternalIntakeDelivery.Add)?.source
+    val sharedMagnet = when (incomingAdd) {
+        is ExternalAddSource.Magnet -> incomingAdd.value
+        is ExternalAddSource.TorrentLink -> incomingAdd.value
+        else -> null
+    }
+    val incomingTorrent = (incomingAdd as? ExternalAddSource.TorrentDocument)?.uri
+    val incomingCreate = (incomingDelivery as? ExternalIntakeDelivery.Create)?.request
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
     val profileRoster = remember(context) { RememberedRemoteProfileRoster(context) }
@@ -521,18 +425,17 @@ internal fun ChunksApp(
 
     // Keep the exact selection through configuration changes, without saving credentials
     // or letting a different authenticated session inherit the previous account's draft.
-    var addDestination by (retainedAddOwner?.addDestination
-        ?: remember { mutableStateOf<UniversalAddRouteTarget>(UniversalAddRouteTarget.Local) })
+    var addDestination by retainedAddOwner.addDestination
     val addProtocolTargetId = (addDestination as? UniversalAddRouteTarget.Protocol)?.profileId
     var localSnapshotAddReview by remember { mutableStateOf(false) }
     LaunchedEffect(section) {
         if (section != Section.ADD_CHOOSE) localSnapshotAddReview = false
     }
-    val artworkExpanded = retainedAddOwner?.artworkExpanded ?: remember { mutableStateOf(false) }
+    val artworkExpanded = retainedAddOwner.artworkExpanded
     // The Transmission/qBittorrent/Deluge attempt lives in the same app-owned owner as
     // Local and rTorrent: its write already runs in that owner's scope, so the receipt,
     // busy state and one-Add claim must survive Activity recreation with it.
-    val protocolAddAttempt = retainedAddOwner?.protocolAttempt ?: remember { ProtocolAddAttempt() }
+    val protocolAddAttempt = retainedAddOwner.protocolAttempt
     var combinedFromLocal by rememberSaveable { mutableStateOf(false) }
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
@@ -585,28 +488,25 @@ internal fun ChunksApp(
     // displayed local/server Add form. Both adapters edit the same source;
     // neither browsing filters nor opening a screen silently authorizes Add.
     // Process memory only, never SavedState/preferences: links can hold passkeys.
-    val addSourceDraft = retainedAddOwner?.sourceDraft ?: remember { mutableStateOf("") }
-    val addAliasDraft = retainedAddOwner?.aliasDraft ?: remember { mutableStateOf("") }
+    val addSourceDraft = retainedAddOwner.sourceDraft
+    val addAliasDraft = retainedAddOwner.aliasDraft
     val verifiedAliasStore = remember(context) { TransferAliasStore(context) }
     val localAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val localAddFolder = rememberSaveable { mutableStateOf("") }
     val localAddStart = rememberSaveable { mutableStateOf(true) }
     // A reviewed .torrent can include private tracker tokens. Keep its bytes above
     // the disposable local route for navigation only; never use SavedState/Bundle.
-    val localReviewedTorrent = retainedAddOwner?.reviewedTorrent
-        ?: remember { mutableStateOf<PendingLocalAdd?>(null) }
-    // Production passes a configuration-retained attempt owner; test-only
-    // standalone Compose callers have a process-only local fallback.
-    val activeLocalAddAttempt = localAddAttemptSession ?: remember { LocalAddAttemptSession() }
+    val localReviewedTorrent = retainedAddOwner.reviewedTorrent
+    val activeLocalAddAttempt = retainedAddOwner.session
     // A local opt-out must not silently become an opt-out on another server
     // (or the same server endpoint's different principal/numbered route).
     // No raw source, account identity or private tracker enters SavedState.
-    val addArtworkChoices = retainedAddOwner?.artworkChoices ?: remember { AddArtworkDraftChoices() }
+    val addArtworkChoices = retainedAddOwner.artworkChoices
     val combinedListState = rememberLazyListState()
     var combinedDetailsVisible by remember { mutableStateOf(false) }
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
-    val addTransferSearch = retainedAddOwner?.transferSearch ?: remember { UniversalAddNavigationSearch() }
+    val addTransferSearch = retainedAddOwner.transferSearch
     LaunchedEffect(section) {
         if (section == Section.ADD_CHOOSE) addTransferSearch.clear()
     }
@@ -634,33 +534,27 @@ internal fun ChunksApp(
     var magnet by addSourceDraft
     // Process-memory-only Android Share source awaiting an explicit exact destination.
     // A magnet can contain tracker passkeys: never save/log/render its raw value.
-    var pendingSharedMagnet by (retainedAddOwner?.pendingSharedMagnet
-        ?: remember { mutableStateOf<String?>(null) })
+    var pendingSharedMagnet by retainedAddOwner.pendingSharedMagnet
     // Explicitly replace or retain an occupied source before reading a newly
     // shared document. Neither URI nor metainfo is serialized to SavedState.
-    var pendingSharedDocument by (retainedAddOwner?.pendingSharedDocument
-        ?: remember { mutableStateOf<Uri?>(null) })
-    var incomingDocumentRead by (retainedAddOwner?.readingSharedDocument
-        ?: remember { mutableStateOf<Uri?>(null) })
+    var pendingSharedDocument by retainedAddOwner.pendingSharedDocument
+    var incomingDocumentRead by retainedAddOwner.readingSharedDocument
     // Shared content:// documents are never persisted or sent to a remote server
     // as a URI. A selected remote receives only locally validated metainfo bytes.
     val sharedTorrentReading = incomingDocumentRead != null
-    var sharedTorrentError by (retainedAddOwner?.sharedTorrentError
-        ?: remember { mutableStateOf<String?>(null) })
+    var sharedTorrentError by retainedAddOwner.sharedTorrentError
     var localHandoffMagnet by remember { mutableStateOf<String?>(null) }
     // A transfer opened from All environments: searched once on the local device list.
     var localSearchPrefill by remember { mutableStateOf<String?>(null) }
     // A local transfer's exported .torrent waiting for the server Add review.
     // Process memory only; consumed by that review, never auto-submitted.
-    var serverHandoffTorrent by (retainedAddOwner?.serverHandoffTorrent
-        ?: remember { mutableStateOf<ByteArray?>(null) })
+    var serverHandoffTorrent by retainedAddOwner.serverHandoffTorrent
     // The person's own Android document behind those bytes, if any. The remote
     // review binds it to the exact byte digest, so a stale value cannot attach.
-    var serverHandoffDocument by (retainedAddOwner?.serverHandoffDocument
-        ?: remember { mutableStateOf<Uri?>(null) })
+    var serverHandoffDocument by retainedAddOwner.serverHandoffDocument
     // Account-scoped recovery outlives Add's composition, including privacy gates
     // and reconnects. Process memory only; Activity/process restoration is separate.
-    val remoteAddSessions = retainedAddOwner?.remoteSessions ?: remember { RemoteAddSessions() }
+    val remoteAddSessions = retainedAddOwner.remoteSessions
     val scope = rememberCoroutineScope()
     val credentialChanges = remember { RemoteCredentialActionQueue() }
     val aliasStore = remember(context) { TransferAliasStore(context) }
@@ -916,8 +810,8 @@ internal fun ChunksApp(
     // verified attempt settles only if there is no competing draft to replace.
     val heldRemoteAdd = selectedRemoteAddSession()
     val heldProtocolAdd = addProtocolTargetId?.takeIf { protocolAddAttempt.profileId == it }
-    val heldLocalObservation = retainedAddOwner?.attempts
-        ?.observationRevision(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
+    val heldLocalObservation = retainedAddOwner.attempts
+        .observationRevision(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
     LaunchedEffect(
         incomingTorrent, sharedMagnet, pendingSharedDocument, pendingSharedMagnet,
         sharedTorrentReading, addDestination, aliasScope, localReviewedTorrent.value,
@@ -949,21 +843,39 @@ internal fun ChunksApp(
         }
     }
 
-    // Share/Open With only admits source data, never a local or remote Add.
-    // An occupied draft is held until the user explicitly chooses replacement.
-    LaunchedEffect(incomingTorrent) {
-        val document = incomingTorrent ?: return@LaunchedEffect
-        releaseVerifiedAttemptsForNewSource()
-        sharedTorrentError = null
-        pendingSharedMagnet = null
-        pendingSharedDocument = null
-        if (addSourceOccupied()) {
-            pendingSharedDocument = document
-        } else {
-            readSharedDocument(document)
+    var createRequest by retainedAddOwner.createReviewRequest
+    // External intake adopts one exact delivery. Existing drafts still use
+    // the occupied-source review before replacing a selected source.
+    LaunchedEffect(incomingDelivery) {
+        val delivery = incomingDelivery ?: return@LaunchedEffect
+        if (!retainedAddOwner.claimIncoming(delivery)) return@LaunchedEffect
+        when (delivery) {
+            is ExternalIntakeDelivery.Create -> {
+                createRequest = delivery
+                toolOrigin = null
+                section = Section.CREATE
+            }
+            is ExternalIntakeDelivery.Add -> {
+                releaseVerifiedAttemptsForNewSource()
+                sharedTorrentError = null
+                pendingSharedDocument = null
+                if (incomingTorrent != null) {
+                    pendingSharedMagnet = null
+                    if (addSourceOccupied()) pendingSharedDocument = incomingTorrent
+                    else readSharedDocument(incomingTorrent)
+                } else if (sharedMagnet != null) {
+                    if (addSourceOccupied(incomingText = sharedMagnet)) {
+                        pendingSharedMagnet = sharedMagnet
+                    } else {
+                        pendingSharedMagnet = null
+                        magnet = sharedMagnet
+                        localHandoffMagnet = null
+                        remoteAddSessions.selectMagnet(aliasScope)
+                    }
+                }
+                section = Section.ADD_CHOOSE
+            }
         }
-        onIncomingTorrentConsumed()
-        section = Section.ADD_CHOOSE
     }
     // Android's granted document URI is read only in this process, validated
     // by the existing 2 MiB/bencode intake. A failed replacement keeps the
@@ -1029,8 +941,6 @@ internal fun ChunksApp(
             }
         }.distinctBy { it.id }
     }
-    var createRequest by (retainedAddOwner?.createReviewRequest
-        ?: remember { mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null) })
     // On Android Activity recreation SectionRestoreSaver intentionally restores
     // transient CREATE to the safe Transfers shell. An Activity-retained owner
     // can still hold the reviewed source/request: restore only that existing
@@ -1042,34 +952,8 @@ internal fun ChunksApp(
                 restoredSection = section.name,
                 incomingCreateAlreadyDispatched = incomingCreate != null,
                 retainedRequest = createRequest != null,
-                retainedSource = retainedAddOwner?.createSource?.value != null
+                retainedSource = retainedAddOwner.createSource.value != null
             )) section = Section.CREATE
-    }
-    LaunchedEffect(incomingCreate) {
-        if (incomingCreate != null) {
-            createRequest = incomingCreate
-            toolOrigin = null
-            section = Section.CREATE
-            onIncomingCreateConsumed()
-        }
-    }
-
-    // New Share text retains an existing draft until an explicit replacement.
-    LaunchedEffect(sharedMagnet) {
-        val proposed = sharedMagnet ?: return@LaunchedEffect
-        releaseVerifiedAttemptsForNewSource()
-        sharedTorrentError = null
-        pendingSharedDocument = null
-        if (addSourceOccupied(incomingText = proposed)) {
-            pendingSharedMagnet = proposed
-        } else {
-            pendingSharedMagnet = null
-            magnet = proposed
-            localHandoffMagnet = null
-            remoteAddSessions.selectMagnet(aliasScope)
-        }
-        onIncomingMagnetConsumed()
-        section = Section.ADD_CHOOSE
     }
 
     val refresh: () -> Unit = {
@@ -1246,10 +1130,8 @@ internal fun ChunksApp(
     }
     // A configuration change must not let routing override the person's
     // exact client selection for the same retained source.
-    var routingAutoAppliedFor by (retainedAddOwner?.routingAutoAppliedFor
-        ?: remember { mutableStateOf<String?>(null) })
-    var routingPersonChoiceFor by (retainedAddOwner?.routingPersonChoiceFor
-        ?: remember { mutableStateOf<String?>(null) })
+    var routingAutoAppliedFor by retainedAddOwner.routingAutoAppliedFor
+    var routingPersonChoiceFor by retainedAddOwner.routingPersonChoiceFor
     val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
     // A retained file is evidence only while it is the active source.
@@ -1466,8 +1348,8 @@ internal fun ChunksApp(
                 startState = localAddStart,
                 artworkState = addArtworkChoices.onProtocol(profile.id),
                 attempt = protocolAddAttempt,
-                attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
-                attemptController = retainedAddOwner?.attempts,
+                attemptScope = retainedAddOwner.addAttemptScope,
+                attemptController = retainedAddOwner.attempts,
                 aliasState = addAliasDraft,
                 artworkExpandedState = artworkExpanded,
                 onBack = ::returnFromAdd,
@@ -1510,8 +1392,8 @@ internal fun ChunksApp(
                 externalSourceReading = sharedTorrentReading,
                 pendingAddState = localReviewedTorrent,
                 localAddAttemptSession = activeLocalAddAttempt,
-                addAttemptScope = retainedAddOwner?.addAttemptScope,
-                addAttemptController = retainedAddOwner?.attempts,
+                addAttemptScope = retainedAddOwner.addAttemptScope,
+                addAttemptController = retainedAddOwner.attempts,
                 onBack = { leaveLocal() },
                 onSeedingRules = { openTool(Section.SEEDING,
                     if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -1627,8 +1509,8 @@ internal fun ChunksApp(
                 // Composable/Activity scope: rotating the device or
                 // returning to Transfers cannot cancel a sent Add.
                 // Process death remains uncertain and never auto-retries.
-                attemptScope = retainedAddOwner?.remoteAttemptScope ?: scope,
-                sharedAttemptController = retainedAddOwner?.attempts,
+                attemptScope = retainedAddOwner.addAttemptScope,
+                sharedAttemptController = retainedAddOwner.attempts,
                 observedPlaces = observedPlaces,
                 initialTorrent = initialRemoteBytes,
                 initialTorrentDocument = initialRemoteDocument,
@@ -1882,17 +1764,17 @@ internal fun ChunksApp(
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
         } else if (section == Section.COMBINED) {
-            val addController = retainedAddOwner?.attempts
+            val addController = retainedAddOwner.attempts
             val localId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
             val remoteId = connectedRTorrentId?.let { io.github.gamesbyian.chunks.model.EnvironmentId(it) }
             val addReceipts = buildList {
-                val localSubmitting = addController?.isSubmitting(localId) == true
-                addController?.observationRevision(localId)
+                val localSubmitting = addController.isSubmitting(localId)
+                addController.observationRevision(localId)
                 activeLocalAddAttempt.coordinator.transferReceipt(localId, "Local", localSubmitting,
                     activeLocalAddAttempt.registrationFromThisSubmission)?.let(::add)
                 if (remoteId != null) remoteAddSessions.existingForAccount(aliasScope)?.let { attempt ->
-                    addController?.observationRevision(remoteId)
-                    val submitting = attempt.submitting || addController?.isSubmitting(remoteId) == true
+                    addController.observationRevision(remoteId)
+                    val submitting = attempt.submitting || addController.isSubmitting(remoteId)
                     attempt.coordinator.transferReceipt(remoteId,
                         attempt.submittedDisplayName ?: activeAddDisplayName ?: "rTorrent", submitting)?.let(::add)
                 }
@@ -1902,8 +1784,8 @@ internal fun ChunksApp(
                 if (profileId != null) {
                     val profile = combinedProtocolProfiles.singleOrNull { it.id == profileId }
                     if (profile != null) {
-                        addController?.observationRevision(profile.environment)
-                        val submitting = protocolBusy || addController?.isSubmitting(profile.environment) == true
+                        addController.observationRevision(profile.environment)
+                        val submitting = protocolBusy || addController.isSubmitting(profile.environment)
                         protocolAddAttempt.coordinator(profileId)
                             .transferReceipt(profile.environment, profile.label, submitting)?.let(::add)
                     }
@@ -2005,11 +1887,11 @@ internal fun ChunksApp(
                 onOpenLocal = { localFromCombined = true; section = Section.LOCAL },
                 // Opening the local device inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
-                onAddToLocal = {
+                onAddToLocal = addLocal@{
                     val selectedDocument = incomingTorrent
                     if (selectedDocument != null && !sharedTorrentReading) {
+                        if (!retainedAddOwner.claimIncoming(incomingDelivery)) return@addLocal
                         readSharedDocument(selectedDocument)
-                        onIncomingTorrentConsumed()
                     } else if (selectedDocument == null) {
                         pendingSharedMagnet?.let { source ->
                             localHandoffMagnet = source
@@ -2030,15 +1912,15 @@ internal fun ChunksApp(
                 sharedTorrentError = sharedTorrentError,
                 onConnections = { section = Section.SERVER },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
-                onAddToServer = if (server != null) ({
+                onAddToServer = if (server != null) (addRemote@{
                     val sharedDocument = incomingTorrent
                     if (sharedDocument != null && !sharedTorrentReading) {
                         if (RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null) {
                             // The same retained reader validates the document and only
                             // adopts it if this exact draft hasn't since changed.
+                            if (!retainedAddOwner.claimIncoming(incomingDelivery)) return@addRemote
                             addDestination = UniversalAddRouteTarget.RTorrent(aliasScope)
                             readSharedDocument(sharedDocument)
-                            onIncomingTorrentConsumed()
                             section = Section.ADD_CHOOSE
                         } else {
                             sharedTorrentError =
@@ -2104,21 +1986,21 @@ internal fun ChunksApp(
             MediaSettingsScreen(onBack = { leaveTool() })
         } else if (section == Section.ROUTING) {
             SmartRoutingSettingsScreen(smartRoutingTargets, onBack = { leaveTool() })
-        } else if (section == Section.CREATE && server == null) {
+        } else if (section == Section.CREATE) {
             val shownCreateRequest = createRequest
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(
                 onBack = {
                     createRequest = null
-                    retainedAddOwner?.createSource?.value = null
+                    retainedAddOwner.createSource.value = null
                     leaveTool()
                 },
                 shared = shownCreateRequest,
                 // An older source scan may settle after a newer Share. Its
                 // acknowledgement must never consume that newer request.
                 onSharedConsumed = {
-                    if (createRequest == shownCreateRequest) createRequest = null
+                    if (createRequest === shownCreateRequest) createRequest = null
                 },
-                retainedSourceState = retainedAddOwner?.createSource
+                retainedSourceState = retainedAddOwner.createSource
             )
         } else if (section in setOf(Section.ADD_CHOOSE, Section.LOCAL, Section.OPTIONS)) {
             UniversalAddRoute(
@@ -3198,9 +3080,7 @@ internal fun ChunksApp(
                 Section.SEEDING -> Unit // Composed by the top-level route above.
                 Section.MEDIA -> Unit // Composed by the top-level route above.
                 Section.COMBINED -> Unit // Composed by the top-level route above.
-                Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
-                    onBack = { leaveTool() },
-                    shared = createRequest, onSharedConsumed = { createRequest = null })
+                Section.CREATE -> Unit // Composed by the shared Create route above.
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     remoteAddSessions.forAccount(aliasScope)
                         .takeUnless { it.alreadyAttempted }?.destination = path

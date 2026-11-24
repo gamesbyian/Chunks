@@ -84,10 +84,11 @@ class RemoteAddViewModelLifetimeTest {
                 android.net.Uri.parse("content://chunks.test.documents/create-source"))
             // The Create screen owns a read-only scan. Its external request
             // must remain until the scan completes, even if Activity recreates.
-            first.createReviewRequest.value = shared
+            val delivery = ExternalIntakeDelivery.Create(shared)
+            first.createReviewRequest.value = delivery
             val restored = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
                 LocalAddAttemptOwner::class.java]
-            assertSame(shared, restored.createReviewRequest.value)
+            assertSame(delivery, restored.createReviewRequest.value)
             val reviewed = io.github.gamesbyian.chunks.create.CreateTorrentSource("Shared file", emptyList())
             restored.createSource.value = reviewed
             restored.createReviewRequest.value = null
