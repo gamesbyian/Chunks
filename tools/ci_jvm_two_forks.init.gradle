@@ -10,6 +10,11 @@ gradle.beforeProject { project ->
         project.tasks.withType(Test).configureEach { task ->
             if (task.name == "testDebugUnitTest") {
                 task.maxParallelForks = 2
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.seeding.RemoteSeedingTickTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.rpc.ExactProtocolReadTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.rpc.QBittorrentAddAcknowledgmentTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.ProtocolFinishInOrderPanelTest")
+                task.testLogging.exceptionFormat = "full"
             }
         }
     }
