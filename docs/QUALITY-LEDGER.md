@@ -29,6 +29,10 @@ The tested merge of `ad1b8b65` was `5d6c009e75ac0f0f71d21d49273070e20b1007aa`, w
 
 #2067 merged as `fec150863692574daed55b34b374db51a7c5c6e0`; its tree `d2e277cf062b33d6e4f19ec7e56a7bb1e69053d3` matches the tested source. The integration-real-peer report passed required applicable gates. Docs were outside the PR paths and the atlas was owner-deferred. Physical provider, protected and release acceptance remain open.
 
+### Remote observation follow-up preflight
+
+[Manual foundation 45511501314](https://github.com/gamesbyian/Chunks/actions/runs/45511501314) on intermediate #2070 head `7c70de9b` ran 3,019 cases with 108 skips and one failure. The strengthened `ProtocolClientOperationsPanelTest.cancelledDispatchedCommandSurvivesNavigationAndSameProfileReconnect` timed out waiting for the fixture to enter cancellation cleanup at line 419. [Failure digest 14977385076](https://github.com/gamesbyian/Chunks/actions/runs/45511501314/artifacts/14977385076). The next harness holds the wire before leaving Details, verifies the route has unmounted and the receipt remains non-reconcilable, then releases the wire and waits for cancellation settlement. The intermediate result is red.
+
 ### Hosted build-phase comparison (FE-14)
 
 Durations below come from GitHub Actions attempt 1 step timestamps for the explicit Gradle APK build in each workflow. They exclude SDK setup, queueing, uploads, emulator time and retries.
