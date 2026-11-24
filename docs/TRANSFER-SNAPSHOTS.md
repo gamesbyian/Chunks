@@ -152,7 +152,7 @@ details. Large snapshots are bounded to 512 metainfo records per check.
 This candidate requires dedicated real installed exact-account and native
 acceptance before being called complete.
 
-## Proposed explicit stopped rTorrent group restore (#2009, unaccepted)
+## Accepted explicitly confirmed stopped rTorrent group restore (#2009)
 
 This is distinct from the accepted **read-only** previous-restore group
 inspection. A user can explicitly review 2–32 missing, original v1 torrent
@@ -181,15 +181,22 @@ without automatic replay or rollback. A partial report must distinguish
 verified jobs from unsubmitted items. No Start, payload data transfer,
 historical path remapping or cross-account mutation is reachable.
 
-The backend and explicit confirmation UI are a **draft candidate**, not a
-completed feature. Real disposable two-server installed testing must prove
-consent, exact folder, two stopped jobs with independent readbacks, no remote
-write from cancellation, a later unresolved journal blocking all earlier
-writes, unchanged other account, and complete partial/unknown reporting.
-Android foundation/JVM, full native Add and R8 must also pass on the exact
-reviewed source. The owner Pixel external-provider and protected Seedhost
-limits remain separate. Do not classify #2009 as accepted without those
-receipts.
+The approved backend and confirmation UI are **merged** as
+[#2009](https://github.com/gamesbyian/Chunks/pull/2009) at `38fd8c97`.
+Source-exact acceptance passed [two real disposable rTorrent servers with
+four installed tests](https://github.com/gamesbyian/Chunks/actions/runs/45291389852)
+(including the actual Compose review/consent and journal-blocked group),
+[Android/JVM](https://github.com/gamesbyian/Chunks/actions/runs/45291389819),
+[R8](https://github.com/gamesbyian/Chunks/actions/runs/45291389785),
+[remote Delete/data regression](https://github.com/gamesbyian/Chunks/actions/runs/45291389840),
+[documentation](https://github.com/gamesbyian/Chunks/actions/runs/45291389876),
+and [native Add](https://github.com/gamesbyian/Chunks/actions/runs/45291389790)
+on **attempt 2**, both installed shards plus complete verifier. The native
+first attempt failed before any test because GitHub's Android system-image
+download returned Premature EOF; retain the original failure as CI
+infrastructure evidence, never as a successful test. Physical Pixel
+Files/Downloads/Drive/TalkBack, protected Seedhost bulk mutation and signed
+assembled release are **not** qualified by these disposable checks.
 
 ## Current implementation checkpoint (2026-11-17)
 
