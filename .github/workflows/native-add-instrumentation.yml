@@ -49,7 +49,10 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/build.gradle.kts"
-      # Changes to the test command must re-run this suite.
+      # Changes to the test command or required pinned SDK image must rerun.
+      - ".github/workflows/native-add-instrumentation.yml"
+      - "tools/install_android35_image_retry.sh"
+      - "tests/test_ci_android35_image_retry.py"
       - "tools/native_add_review.sh"
       # The screenshot classification manifest and its offline contract decide which
       # captures are mandatory evidence; changing either must re-run the gate.
@@ -92,6 +95,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_attempts.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_android35_image_retry.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -151,6 +155,8 @@ jobs:
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
+      - name: Retry pinned API35 Google APIs system-image installation before emulator boot
+        run: bash tools/install_android35_image_retry.sh
       - name: Run full native Add review suite from exact-source installed APKs
         uses: reactivecircus/android-emulator-runner@v2
         with:
