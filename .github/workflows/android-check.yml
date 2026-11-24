@@ -78,7 +78,7 @@ jobs:
         run: timeout 240s python3 tools/prefetch_robolectric_sdk.py --sdk 35
       - name: Compile Android and run JVM tests
         run: |
-          if ! gradle --no-daemon --init-script tools/ci_jvm_two_forks.init.gradle :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.ProtocolClientOperationsPanelTest; then
+          if ! gradle --no-daemon --init-script tools/ci_jvm_two_forks.init.gradle :app:testDebugUnitTest :app:assembleDebug; then
             # Native (JNI) crashes leave only a JVM fatal-error report; surface its summary.
             for report in $(find . -name 'hs_err_pid*.log' -not -path './.git/*' 2>/dev/null); do
               echo "JVM fatal error report: $report"
