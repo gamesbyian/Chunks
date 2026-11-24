@@ -41,6 +41,11 @@ adb_status=$?
 python3 tools/parse_instrumentation_stream.py --raw "$raw" --junit "$junit"
 junit_status=$?
 set -e
+if (( adb_status != 0 || junit_status != 0 )); then
+  state="$(timeout 5s adb get-state 2>/dev/null || true)"
+  case "$state" in device|offline|unauthorized) ;; *) state=unknown ;; esac
+  echo "CHUNKS_PREBUILT_INSTRUMENT: shard=$index adb_exit=$adb_status receipt_exit=$junit_status adb_state=$state"
+fi
 mkdir -p "$RUNNER_TEMP/chunks-add-native-review"
 # Retrying screenshot retrieval is allowed; never rerun test mutations.
 for attempt in 1 2 3; do
