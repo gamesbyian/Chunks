@@ -2,14 +2,12 @@ package io.github.gamesbyian.chunks
 
 import android.os.Bundle
 import android.util.Base64
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -145,9 +143,10 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             }.getOrDefault(false)
         }
         checkpoint("connect-visible")
-        rule.waitForIdle()
-        // Exactly one Connect dispatch.
-        rule.onNode(connect, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
+        // Keep one bounded dispatch path after the enabled witness. The host
+        // failure at the old isolated click cannot be retried once dispatched.
+        // The shared helper only relocates a node before calling its action.
+        LazyComposeActions.activateOnce(rule, connect, useUnmergedTree = true)
         checkpoint("connect")
         try {
             rule.waitUntil(90_000) {
