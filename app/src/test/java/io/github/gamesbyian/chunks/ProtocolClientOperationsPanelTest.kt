@@ -27,7 +27,8 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.assertTextContains
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.junit.Rule
 import org.junit.Test
@@ -379,18 +380,15 @@ class ProtocolClientOperationsPanelTest {
 
     @Test fun cancelledDispatchedCommandSurvivesNavigationAndSameProfileReconnect() {
         val owner = ProtocolOperationReceiptOwner()
-        val transportUnwinding = CompletableDeferred<Unit>()
+        val transportHeld = CompletableDeferred<Unit>()
         val releaseTransport = CompletableDeferred<Unit>()
         val fake = Fake().apply {
             afterStartWrite = {
-                try {
-                    awaitCancellation()
-                } finally {
-                    withContext(NonCancellable) {
-                        transportUnwinding.complete(Unit)
-                        releaseTransport.await()
-                    }
+                withContext(NonCancellable) {
+                    transportHeld.complete(Unit)
+                    releaseTransport.await()
                 }
+                currentCoroutineContext().ensureActive()
             }
         }
         val factory = { ClientOperations(fake, 3, 1) }
@@ -409,14 +407,14 @@ class ProtocolClientOperationsPanelTest {
         }
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
-        rule.waitUntil(5_000) { fake.writes == 1 }
         val key = ProtocolOperationReceiptOwner.Key("profile-a", hash)
-        rule.runOnIdle {
-            assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
-            show = false
-        }
         try {
-            rule.waitUntil(5_000) { transportUnwinding.isCompleted }
+            rule.waitUntil(5_000) { transportHeld.isCompleted }
+            rule.runOnIdle {
+                assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+                show = false
+            }
+            rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATIONS).assertDoesNotExist()
             rule.runOnIdle { generation = "g2"; show = true }
             rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
             rule.onNodeWithText("Check this transfer without changing it").assertDoesNotExist()
