@@ -292,7 +292,8 @@ class ClientOperationsTest {
 
     @Test fun fileLayoutMismatchLeavesTheJobStoppedWithNoSkipOrStart() = runBlocking {
         val (fake, source) = fileChoiceFake()
-        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true, skippedFiles = mapOf(1 to "other")))
+        fake.files = fake.files.map { if (it.index == 1) it.copy(path = "unrelated/n/b") else it }
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true, skippedFiles = mapOf(1 to "b")))
         assertTrue("$outcome", outcome is ClientOperationOutcome.Pending)
         assertEquals("Only the stopped Add was written", 1, fake.writes)
         assertEquals(ClientRunState.STOPPED, fake.present?.runState)
@@ -339,12 +340,55 @@ class ClientOperationsTest {
         assertTrue(runCatching { ReviewedFilePriority("a", ClientFilePriority.SKIP) }.isFailure)
     }
 
-    @Test fun layoutMatchIgnoresOnlyTheTopFolderPrefix() {
-        val files = listOf(ClientFile(0, "Show/s1/e1.mkv", 1, 0, ClientFilePriority.NORMAL))
-        assertEquals(listOf(0), ClientFileLayout.match(files, mapOf(0 to "s1/e1.mkv")))
-        assertEquals(listOf(0), ClientFileLayout.match(files, mapOf(0 to "Show/s1/e1.mkv")))
-        assertEquals(null, ClientFileLayout.match(files, mapOf(0 to "s2/e1.mkv")))
-        assertEquals(null, ClientFileLayout.match(files, mapOf(1 to "s1/e1.mkv")))
+    @Test fun invalidReviewIsRefusedBeforeAnyRegistration() = runBlocking {
+        val (fake, source) = fileChoiceFake()
+        val outcome = ops(fake).add(ClientAddRequest(source, null, startNow = true, skippedFiles = mapOf(1 to "other/b")))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Refused)
+        assertEquals(0, fake.writes)
+    }
+
+    @Test fun layoutMatchUsesDeclaredRootAndCompleteUniqueIndicesAndSizes() {
+        val preview = TorrentMetainfoPreview("Show", hash, 2, 3, 16384,
+            files = listOf(TorrentMetainfoFile("Show/s1/e1.mkv", 1, false),
+                TorrentMetainfoFile("Show/s2/e1.mkv", 2, false)))
+        val rows = listOf(ClientFile(0, "Show/s1/e1.mkv", 1, 0, ClientFilePriority.NORMAL),
+            ClientFile(1, "Show/s2/e1.mkv", 2, 0, ClientFilePriority.NORMAL))
+        val review = mapOf(0 to "s1/e1.mkv")
+        fun match(files: List<ClientFile>) = ClientFileLayout.match(files, preview, review)
+        assertEquals(listOf(0), match(rows))
+        assertEquals(listOf(0), match(rows.map { it.copy(path = it.path.removePrefix("Show/")) }))
+        assertEquals(null, match(listOf(rows[0], rows[1].copy(path = "s2/e1.mkv"))))
+        assertEquals(null, match(rows + rows[0]))
+        assertEquals(null, match(rows.take(1)))
+        assertEquals(null, match(rows.map { if (it.index == 0) it.copy(path = "alien/Show/s1/e1.mkv") else it }))
+        assertEquals(null, match(rows.map { if (it.index == 0) it.copy(sizeBytes = 2) else it }))
+        assertEquals(null, match(rows.map { if (it.index == 0) it.copy(path = "/Show/s1/e1.mkv") else it }))
+        assertEquals(null, ClientFileLayout.match(rows, preview, mapOf(0 to "e1.mkv")))
+        assertEquals(null, ClientFileLayout.match(rows, preview, mapOf(1 to "s1/e1.mkv")))
+    }
+
+    @Test fun paddingMayBeOmittedButNeverRenumberedOrSelected() {
+        val preview = TorrentMetainfoPreview("n", hash, 3, 6, 16384, files = listOf(
+            TorrentMetainfoFile("n/a", 1, false), TorrentMetainfoFile("n/.pad/2", 2, true),
+            TorrentMetainfoFile("n/b", 3, false)))
+        val rows = listOf(ClientFile(0, "a", 1, 0, ClientFilePriority.NORMAL),
+            ClientFile(2, "b", 3, 0, ClientFilePriority.NORMAL))
+        assertEquals(listOf(2), ClientFileLayout.match(rows, preview, mapOf(2 to "b")))
+        assertEquals(null, ClientFileLayout.match(rows.map { if (it.index == 2) it.copy(index = 1) else it },
+            preview, mapOf(2 to "b")))
+        assertEquals(null, ClientFileLayout.match(rows, preview, mapOf(1 to ".pad/2")))
+        assertEquals(listOf(2), ClientFileLayout.match(rows + ClientFile(1, ".pad/2", 2, 0, ClientFilePriority.NORMAL),
+            preview, mapOf(2 to "b")))
+    }
+
+    @Test fun torrentSourceFreezesOriginalAndReturnedBuffers() {
+        val input = torrentBytes.copyOf()
+        val original = input.copyOf()
+        val source = ClientAddSource.TorrentFile(input)
+        input.fill(0)
+        source.bytes.fill(0)
+        org.junit.Assert.assertArrayEquals(original, source.bytes)
+        assertEquals(TorrentMetainfoReader.preview(original).infoHashV1, source.infoHash)
     }
 
     @Test fun nativeAddTimeFileChoicesAreOneWriteThenIndependentlyVerified() = runBlocking {
