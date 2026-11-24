@@ -85,6 +85,52 @@ class UnifiedTransferCatalogTest {
                 direction = UnifiedSortDirection.DESCENDING)).transfers)
     }
 
+    @Test fun nameKeysPreserveRootLowercaseOrderingAndExactTiesAcrossQueries() {
+        // Include strings for which ignoreCase comparison is not equivalent to
+        // whole-string Locale.ROOT normalization (notably dotted capital I).
+        val names = listOf("Alpha", "ALPHA", "alpha", "İ", "I", "i", "ı",
+            "Σ", "σ", "ς", "ΟΣ", "ος", "οσ", "Straße", "STRASSE", "", "É", "é")
+        val sources = listOf(server1, local).map { env ->
+            EnvironmentTransferSnapshot(env, EnvironmentAvailability.LIVE, true, 100L,
+                names.mapIndexed { index, name ->
+                    UnifiedTransferObservation(
+                        UnifiedTransferKey.of(env, index.toString(16).padStart(40, '0')),
+                        name, name, null, null, null, null, null, null)
+                }.reversed())
+        }
+        fun reference(rows: List<UnifiedTransferObservation>, direction: UnifiedSortDirection) =
+            rows.sortedWith(Comparator { a, b ->
+                val primary = a.displayName.lowercase(java.util.Locale.ROOT)
+                    .compareTo(b.displayName.lowercase(java.util.Locale.ROOT))
+                if (primary != 0) {
+                    if (direction == UnifiedSortDirection.ASCENDING) primary else -primary
+                } else {
+                    val env = a.key.environment.value.compareTo(b.key.environment.value)
+                    if (env != 0) env else a.key.infoHash.compareTo(b.key.infoHash)
+                }
+            })
+        for (direction in UnifiedSortDirection.entries) {
+            val query = UnifiedTransferQuery(direction = direction)
+            val result = UnifiedTransferCatalog.query(sources, query)
+            assertEquals(reference(sources.flatMap { it.transfers }, direction), result.transfers)
+            val grouped = UnifiedTransferCatalog.query(sources, query.copy(
+                groupByEnvironment = true, environmentOrder = listOf(server1, local)))
+            assertEquals(sources.flatMap { reference(it.transfers, direction) }, grouped.transfers)
+            val renamed = sources.map { source ->
+                source.copy(transfers = source.transfers.mapIndexed { index, row ->
+                    if (index == 0) row.copy(displayName = "ZZZ renamed") else row
+                })
+            }
+            assertEquals(reference(renamed.flatMap { it.transfers }, direction),
+                UnifiedTransferCatalog.query(renamed, query).transfers)
+            // A later query must use only its newly selected names.
+            val subset = query.copy(scope = EnvironmentViewScope.Only(setOf(local)), search = "alpha")
+            assertEquals(reference(renamed.last().transfers.filter {
+                it.displayName.contains("alpha", ignoreCase = true)
+            }, direction), UnifiedTransferCatalog.query(renamed, subset).transfers)
+        }
+    }
+
     @Test fun groupedAndUngroupedApplySameComparatorAndPreserveSelection() {
         val a = item(local, 'a', "Zebra", 30L)
         val b = item(local, 'b', "Apple", 10L)
