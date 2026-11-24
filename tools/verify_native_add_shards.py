@@ -56,16 +56,17 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
         "io.github.gamesbyian.chunks.engine.LocalPartialResumeProcessDeathInstrumentedTest" +
         "\\0" + name).encode()).hexdigest()
     for name in ("downloadThenDie", "restoreKeepsCheckpointedPieces")
+) | frozenset(
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.InstalledRemotePublicMediaInstrumentedTest" +
+        "\\0" + name).encode()).hexdigest()
+    for name in ("remoteInventoryGetsAutomaticArtworkWithoutIdentify",
+                 "coldReconnectKeepsRemoteOptOutWhileAnotherLookupWorks")
 ) | frozenset({
     # Needs the disposable ruTorrent server; executes in installed-remote-delete-data.yml.
     hashlib.sha256((
         "io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest" +
         "\\0" + "archiveThenSeparatelyRemoveOriginalAfterVerifiedNewRemoteAdd").encode()).hexdigest(),
-    # Needs a disposable rTorrent and public TVmaze HTTP; executes only in the
-    # manual installed-remote-public-media-one-shot.yml workflow.
-    hashlib.sha256((
-        "io.github.gamesbyian.chunks.InstalledRemotePublicMediaInstrumentedTest" +
-        "\\0" + "remoteInventoryGetsAutomaticArtworkWithoutIdentify").encode()).hexdigest(),
     # Needs the runner's disposable Transmission daemon; executes only in
     # installed-protocol-client.yml.
     hashlib.sha256((
