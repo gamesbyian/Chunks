@@ -19,11 +19,22 @@ if [ "${STUB_FAIL_AZURE:-0}" = 1 ] && grep -rq "azure.archive.ubuntu.com" "$APT_
 case " $* " in
   *" install "*)
     [ "${STUB_SKIP_INSTALL:-0}" = 1 ] && exit 0
-    for arg in "$@"; do case "$arg" in -*|install|Acquire*) ;; *) echo "$arg" >> "$STUB_INSTALLED";; esac; done;;
+    for arg in "$@"; do case "$arg" in -*|install|Acquire*) ;; *) echo "$arg" >> "$STUB_INSTALLED";; esac; done
+    exit "${STUB_INSTALL_EXIT:-0}";;
+  *" check "*) exit "${STUB_CHECK_EXIT:-0}";;
 esac
 exit 0
 ''',
-    "dpkg": '#!/usr/bin/env bash\n[ "$1" = "-s" ] && grep -qx "$2" "$STUB_INSTALLED" 2>/dev/null\n',
+    "dpkg-query": r'''#!/usr/bin/env bash
+pkg="${@: -1}"
+grep -qx "$pkg" "$STUB_INSTALLED" 2>/dev/null || exit 1
+if [ "${STUB_UNCONFIGURED:-0}" = 1 ]; then printf 'unpacked ok'; else printf 'installed ok'; fi
+''',
+    "dpkg": r'''#!/usr/bin/env bash
+[ "$1" = "--audit" ] || exit 1
+if [ "${STUB_AUDIT_DIRTY:-0}" = 1 ]; then echo 'package pending configuration'; fi
+exit 0
+''',
 }
 
 
@@ -67,6 +78,26 @@ class AptInstallRetryTest(unittest.TestCase):
 
     def test_apt_exit_zero_without_the_package_installed_is_a_failure(self):
         result, _ = self.run_script("python3-libtorrent", STUB_SKIP_INSTALL=1)
+        self.assertEqual(1, result.returncode)
+
+    def test_timeout_after_fully_configured_install_is_independently_recovered(self):
+        result, sources = self.run_script("rtorrent", "nginx", STUB_INSTALL_EXIT=124)
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("exact configured packages", result.stderr)
+        self.assertNotIn("APT_FALLBACK", result.stderr)
+        self.assertEqual(AZURE, sources)
+
+    def test_timeout_without_clean_dpkg_and_dependencies_is_never_recovered(self):
+        for condition in ("STUB_UNCONFIGURED", "STUB_AUDIT_DIRTY", "STUB_CHECK_EXIT"):
+            with self.subTest(condition=condition):
+                result, _ = self.run_script("rtorrent", STUB_INSTALL_EXIT=124, **{condition: 1})
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertNotIn("exact configured packages", result.stderr)
+
+    def test_unconfigured_package_or_non_timeout_error_is_never_success(self):
+        result, _ = self.run_script("rtorrent", STUB_UNCONFIGURED=1)
+        self.assertEqual(1, result.returncode)
+        result, _ = self.run_script("rtorrent", STUB_INSTALL_EXIT=100)
         self.assertEqual(1, result.returncode)
 
     def test_missing_arguments_are_a_usage_error(self):
