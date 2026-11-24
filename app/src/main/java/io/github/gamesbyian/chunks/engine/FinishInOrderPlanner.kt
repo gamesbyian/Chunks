@@ -135,6 +135,18 @@ internal object FinishInOrderPlanner {
         }, lookahead)
     }
 
+    /** Exact policy identity, including unrelated duplicate indices, before any use of priorities. */
+    fun identityProblem(policy: Policy, observed: List<Observed>): String? {
+        val byIndex = observed.associateBy { it.file.index }
+        if (byIndex.size != observed.size) return "Duplicate file observation"
+        for (entry in policy.order) {
+            val now = byIndex[entry.index] ?: return "A file in the reviewed order is missing"
+            if (now.file.path != entry.path || now.file.sizeBytes != entry.sizeBytes)
+                return "Files changed since the order was reviewed"
+        }
+        return null
+    }
+
     /**
      * Compute the next rolling assignment. [lastApplied] is what Chunks itself
      * last verified for each file; any other observed priority on a managed
@@ -151,14 +163,8 @@ internal object FinishInOrderPlanner {
          */
         twoBands: Boolean = false
     ): Decision {
+        identityProblem(policy, observed)?.let { return Decision.Refused(it) }
         val byIndex = observed.associateBy { it.file.index }
-        if (byIndex.size != observed.size) return Decision.Refused("Duplicate file observation")
-        for (entry in policy.order) {
-            val now = byIndex[entry.index]
-                ?: return Decision.Refused("A file in the reviewed order is missing")
-            if (now.file.path != entry.path || now.file.sizeBytes != entry.sizeBytes)
-                return Decision.Refused("Files changed since the order was reviewed")
-        }
         val roles = LinkedHashMap<Int, FileRole>()
         val newlyPinned = LinkedHashSet<Int>()
         val managed = ArrayList<Observed>()

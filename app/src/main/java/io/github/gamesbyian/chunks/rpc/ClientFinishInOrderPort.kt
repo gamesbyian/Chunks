@@ -48,10 +48,18 @@ internal class ClientFinishInOrderPort(
         val current = try { operations.files(infoHash) } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { return LocalFileBatchOutcome.STALE_REVIEW }
         val byIndex = current.associateBy { it.index }
+        if (byIndex.size != current.size || changes.map { it.index }.toSet().size != changes.size)
+            return LocalFileBatchOutcome.STALE_REVIEW
+        // The reviewed paths came from this same adapter, so a suffix match
+        // cannot establish identity. Check the whole reviewed order again.
+        if (record.policy.order.any { reviewed ->
+            val now = byIndex[reviewed.index]
+            now == null || now.sizeBytes != reviewed.sizeBytes || now.path != reviewed.path
+        }) return LocalFileBatchOutcome.STALE_REVIEW
         for (change in changes) {
             val reviewed = identity[change.index] ?: return LocalFileBatchOutcome.STALE_REVIEW
             val now = byIndex[change.index] ?: return LocalFileBatchOutcome.STALE_REVIEW
-            if (now.sizeBytes != reviewed.sizeBytes || !samePath(now.path, reviewed.path) ||
+            if (now.sizeBytes != reviewed.sizeBytes || now.path != reviewed.path ||
                 toPlanner(now.priority) != change.expectedPriority) return LocalFileBatchOutcome.STALE_REVIEW
         }
         val wanted = changes.associate { it.index to toClient(it.requestedPriority) }
@@ -89,10 +97,5 @@ internal class ClientFinishInOrderPort(
             file.index, file.path, file.sizeBytes, doneBytes = file.completedBytes ?: 0L,
             wanted = file.priority != ClientFilePriority.SKIP, priority = toPlanner(file.priority))
 
-        /** Clients differ only in whether the top folder is part of a file's path. */
-        fun samePath(actual: String, reviewed: String): Boolean {
-            val a = actual.trim('/'); val r = reviewed.trim('/')
-            return a == r || a.endsWith("/$r") || r.endsWith("/$a")
-        }
     }
 }

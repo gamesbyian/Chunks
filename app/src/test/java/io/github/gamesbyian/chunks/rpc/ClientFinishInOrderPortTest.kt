@@ -82,6 +82,25 @@ class ClientFinishInOrderPortTest {
         assertTrue("no write against a moved baseline", fake.writes.isEmpty())
     }
 
+    @Test fun changedOrAmbiguousFileIdentityRefusesBeforeAnyWrite() = runBlocking {
+        val variants: List<(List<ClientFile>) -> List<ClientFile>> = listOf(
+            { files -> files.map { if (it.index == 1) it.copy(path = "different/" + it.path) else it } },
+            { files -> files.map { if (it.index == 1) it.copy(path = it.path.substringAfter('/')) else it } },
+            { files -> files + files.first() },
+            { files -> files.filter { it.index != 0 } },
+            { files -> files.map { if (it.index == 0) it.copy(sizeBytes = 1001) else it } }
+        )
+        val changes = listOf(FinishInOrderPlanner.Change(1, FinishInOrderPlanner.NORMAL, FinishInOrderPlanner.HIGH))
+        for (variant in variants) {
+            val fake = Fake(episodes())
+            val rec = record(fake)
+            val port = ClientFinishInOrderPort(ops(fake), fake.levels) { _, _ -> true }
+            fake.files = variant(fake.files)
+            assertEquals(LocalFileBatchOutcome.STALE_REVIEW, port.apply(hash, rec, changes))
+            assertTrue(fake.writes.isEmpty())
+        }
+    }
+
     @Test fun anUnconfirmedWriteIsUncertainAndTheRunnerNeverReplaysIt() = runBlocking {
         val fake = Fake(episodes()).apply { apply = false }   // acknowledged, never observed
         val saved = mutableMapOf<String, FinishInOrderRecord>()
