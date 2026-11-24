@@ -42,6 +42,7 @@ class ProtocolClientOperationsPanelTest {
         var present = true
         var writes = 0
         var lose = false
+        var afterStartWrite: suspend () -> Unit = {}
         var dir = "/d"
         var movedData: Boolean? = null
         var sessions = 0
@@ -64,8 +65,10 @@ class ProtocolClientOperationsPanelTest {
             apply()
         }
         override suspend fun add(request: ClientAddRequest) = write {}
-        override suspend fun setStarted(hash: String, started: Boolean) =
+        override suspend fun setStarted(hash: String, started: Boolean) {
             write { state = if (started) ClientRunState.DOWNLOADING else ClientRunState.STOPPED }
+            afterStartWrite()
+        }
         override suspend fun remove(hash: String, deleteData: Boolean) = write { present = false }
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = write {}
         override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) =
@@ -253,6 +256,49 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(1, fake.writes)
     }
 
+    @Test fun cancelledDispatchedCommandSurvivesNavigationAndSameProfileReconnect() {
+        val owner = ProtocolOperationReceiptOwner()
+        val fake = Fake().apply { afterStartWrite = { kotlinx.coroutines.awaitCancellation() } }
+        val factory = { ClientOperations(fake, 3, 1) }
+        var show by mutableStateOf(true)
+        var generation by mutableStateOf("g1")
+        var profile by mutableStateOf("profile-a")
+        rule.setContent {
+            ChunksTheme {
+                if (show) ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = profile,
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = factory, onChanged = {},
+                    sourceGeneration = generation, receiptOwner = owner
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
+        rule.waitUntil(5_000) { fake.writes == 1 }
+        val key = ProtocolOperationReceiptOwner.Key("profile-a", hash)
+        rule.runOnIdle {
+            assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+            show = false
+        }
+        rule.waitForIdle()
+        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, owner.receipt(key)?.phase)
+        rule.runOnIdle { generation = "g2"; show = true }
+        rule.waitForIdle()
+        rule.onNodeWithText("Commands are paused until a read-only check.").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        rule.runOnIdle { profile = "profile-b" }
+        rule.waitForIdle()
+        rule.onNodeWithText("Commands are paused until a read-only check.").assertDoesNotExist()
+        rule.runOnIdle { profile = "profile-a" }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        rule.onNodeWithText("Check this transfer without changing it").performClick()
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.RECONCILED_PRESENT }
+        rule.onNodeWithText("Commands are paused until a read-only check.").assertDoesNotExist()
+        assertEquals("Read-only reconciliation and navigation never repeat the write", 1, fake.writes)
+    }
+
     @Test fun removeKeepsFilesUnlessExplicitlyChosen() {
         val fake = Fake()
         render(fake)
@@ -262,6 +308,19 @@ class ProtocolClientOperationsPanelTest {
         rule.waitUntil(5_000) { !fake.present }
         rule.waitForIdle()
         rule.onNodeWithText("Remove: confirmed on Seedbox qB.").assertExists()
+    }
+
+    @Test fun dataRemovalReportsRegistrationSeparatelyFromUnverifiedPayload() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) { !fake.present }
+        rule.waitForIdle()
+        rule.onNodeWithText("Transfer removed from Seedbox qB. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server.").assertExists()
+        rule.onNodeWithText("Remove and delete files: confirmed on Seedbox qB.").assertDoesNotExist()
+        assertEquals(1, fake.writes)
     }
 
     @Test fun staleListOffersNoCommands() {

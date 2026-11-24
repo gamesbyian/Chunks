@@ -59,6 +59,8 @@ internal class LocalTorrentClient(
     private val deleteReadbackTimeoutMs: Long = 15_000L
 ) : TorrentClient {
     override val kind = TorrentClientKind.LOCAL
+    // removeChecked returns normally only after the native exact-file readback reports ABSENT.
+    override val verifiesPayloadDeletionOnReturn = true
 
     override suspend fun session(): ClientSessionInfo = withContext(io) {
         ClientSessionInfo(
@@ -98,6 +100,12 @@ internal class LocalTorrentClient(
 
     override suspend fun add(request: ClientAddRequest) {
         val hash = request.source.infoHash
+        if (request.hasFileChoices) {
+            val source = request.source as? ClientAddSource.TorrentFile
+                ?: throw ClientRefusedException("File choices need reviewed metainfo")
+            if (!ClientFileLayout.reviewMatches(source.preview, request.reviewedChoices.mapValues { it.value.path }))
+                throw ClientRefusedException("File choices no longer match the reviewed metainfo; nothing was added")
+        }
         val folder = withContext(io) { places.resolve(request.directory) }
             ?: throw ClientRefusedException(
                 if (request.directory == null) "No verified download location on this device"
@@ -120,13 +128,13 @@ internal class LocalTorrentClient(
                     val result = LocalAddExecution.torrent(running, source.bytes, folder,
                         skipsRequested = request.skippedFiles.isNotEmpty(),
                         reviewedSkips = { files ->
-                            ClientFileLayout.match(files.map(::fileOf), request.skippedFiles)
+                            ClientFileLayout.match(files.map(::fileOf), source.preview, request.skippedFiles)
                                 ?.let { matched -> files.filter { it.index in matched } }
                         },
                         startNow = request.startNow,
                         reviewedPriorities = request.filePriorities.takeIf { it.isNotEmpty() }?.let { reviewed ->
                             { files ->
-                                ClientFileLayout.match(files.map(::fileOf), reviewed.mapValues { (_, c) -> c.path })
+                                ClientFileLayout.match(files.map(::fileOf), source.preview, reviewed.mapValues { (_, c) -> c.path })
                                     ?.let { reviewed.mapValues { (_, c) -> nativePriority(c.priority) } }
                             }
                         })

@@ -43,19 +43,28 @@ internal class ClientFinishInOrderPort(
         infoHash: String, record: FinishInOrderRecord, changes: List<FinishInOrderPlanner.Change>
     ): LocalFileBatchOutcome {
         if (changes.isEmpty()) return LocalFileBatchOutcome.UNCHANGED
-        val identity = record.policy.order.associateBy { it.index }
-        // Fresh preflight: every changed file is still the reviewed file at its expected level.
-        val current = try { operations.files(infoHash) } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { return LocalFileBatchOutcome.STALE_REVIEW }
-        val byIndex = current.associateBy { it.index }
-        for (change in changes) {
-            val reviewed = identity[change.index] ?: return LocalFileBatchOutcome.STALE_REVIEW
-            val now = byIndex[change.index] ?: return LocalFileBatchOutcome.STALE_REVIEW
-            if (now.sizeBytes != reviewed.sizeBytes || !samePath(now.path, reviewed.path) ||
-                toPlanner(now.priority) != change.expectedPriority) return LocalFileBatchOutcome.STALE_REVIEW
-        }
+        val reviewed = record.policy.order.associateBy { it.index }
+        if (changes.map { it.index }.toSet().size != changes.size ||
+            changes.any { it.index !in reviewed }) return LocalFileBatchOutcome.STALE_REVIEW
+
         val wanted = changes.associate { it.index to toClient(it.requestedPriority) }
-        return when (val outcome = operations.setFilePriorities(infoHash, wanted)) {
+        return when (operations.setFilePrioritiesChecked(infoHash, wanted,
+            layoutValid = { files ->
+                // These paths came from this adapter. Check the whole reviewed
+                // order at the write boundary and on independent readback.
+                val byIndex = files.associateBy { it.index }
+                reviewed.values.all { file ->
+                    val now = byIndex[file.index]
+                    now != null && now.sizeBytes == file.sizeBytes && now.path == file.path
+                }
+            },
+            precondition = { files ->
+                val byIndex = files.associateBy { it.index }
+                changes.all { change ->
+                    val now = byIndex.getValue(change.index)
+                    now.priority != ClientFilePriority.SKIP && toPlanner(now.priority) == change.expectedPriority
+                }
+            })) {
             is ClientOperationOutcome.Verified -> LocalFileBatchOutcome.VERIFIED
             // A definite refusal sent nothing.
             is ClientOperationOutcome.Refused -> LocalFileBatchOutcome.STALE_REVIEW
@@ -88,11 +97,5 @@ internal class ClientFinishInOrderPort(
         fun asPlannerFile(file: ClientFile) = LocalTransferFile(
             file.index, file.path, file.sizeBytes, doneBytes = file.completedBytes ?: 0L,
             wanted = file.priority != ClientFilePriority.SKIP, priority = toPlanner(file.priority))
-
-        /** Clients differ only in whether the top folder is part of a file's path. */
-        fun samePath(actual: String, reviewed: String): Boolean {
-            val a = actual.trim('/'); val r = reviewed.trim('/')
-            return a == r || a.endsWith("/$r") || r.endsWith("/$a")
-        }
     }
 }

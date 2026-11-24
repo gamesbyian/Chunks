@@ -187,7 +187,10 @@ internal fun ServerFinishInOrderPanel(
         is FinishInOrderRunner.Step.Idle -> null
         is FinishInOrderRunner.Step.Reconciled -> "The last interrupted change was checked; nothing was repeated."
         is FinishInOrderRunner.Step.Suspended -> step.record.suspendedReason
-        is FinishInOrderRunner.Step.StorageFailed -> "Chunks could not save its change journal, so nothing changed."
+        is FinishInOrderRunner.Step.StorageFailed ->
+            if (step.record.pending.isNotEmpty())
+                "Chunks could not save recovery of the interrupted change. Its earlier outcome is still unresolved; nothing was repeated."
+            else "Chunks could not save its change journal, so nothing changed."
     }
 
     val current = record

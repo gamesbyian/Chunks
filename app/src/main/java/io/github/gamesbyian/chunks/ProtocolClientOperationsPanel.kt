@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -36,10 +37,15 @@ import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
+import io.github.gamesbyian.chunks.rpc.ClientOperationWriteBoundary
+import io.github.gamesbyian.chunks.rpc.ClientRefusedException
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,7 +71,9 @@ private data class VerifiedMoveCopy(
 internal object ProtocolOperationText {
     fun describe(action: String, outcome: ClientOperationOutcome, clientLabel: String): String = when (outcome) {
         is ClientOperationOutcome.Verified -> "$action: confirmed on $clientLabel."
-        is ClientOperationOutcome.Pending -> "$action: requested, not yet confirmed (" +
+        is ClientOperationOutcome.Pending -> if (outcome.registrationAbsent)
+            "Transfer removed from $clientLabel. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server."
+        else "$action: requested, not yet confirmed (" +
             outcome.reason.lowercase() + "). Refresh to check."
         is ClientOperationOutcome.Uncertain -> "$action: the reply was lost, so the result is unknown. " +
             "Refresh before trying again; nothing was retried."
@@ -108,22 +116,43 @@ internal fun ProtocolClientOperationsPanel(
      */
     suggestForFiles: ((List<String>) -> Pair<String, String>?)? = null,
     /** The source's exact Chunks display-alias scope; null when none applies. */
-    sourceAliasScope: String? = null
+    sourceAliasScope: String? = null,
+    /** Exact authenticated typed-profile revision; null for existing Local/rTorrent Move-only controls. */
+    sourceGeneration: String? = null,
+    /** Privacy-visible, live exact client; the job itself may have disappeared. */
+    canReconcile: Boolean = current,
+    receiptOwner: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
+    isOwnerCurrent: () -> Boolean = { true }
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    val operations = remember(hash, sourceClientId, createOperations) { createOperations() }
+    val operations = remember(hash, sourceClientId, sourceGeneration, createOperations) { createOperations() }
+    val receiptKey = remember(hash, sourceClientId, sourceGeneration) {
+        sourceGeneration?.let { ProtocolOperationReceiptOwner.Key(sourceClientId, hash.lowercase(java.util.Locale.ROOT)) }
+    }
+    val inFlightReceipt = remember(receiptOwner, receiptKey, sourceGeneration) {
+        java.util.concurrent.atomic.AtomicReference<ProtocolOperationReceiptOwner.Ticket?>()
+    }
+    DisposableEffect(inFlightReceipt) {
+        onDispose {
+            // Retain a possible dispatch at the route boundary even while
+            // the transport or coroutine has not yet acknowledged cancellation.
+            inFlightReceipt.getAndSet(null)?.let(receiptOwner::cancel)
+        }
+    }
+    val retained = receiptKey?.let(receiptOwner::receipt)
     var session by remember(operations) { mutableStateOf<ClientSessionInfo?>(null) }
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
-    var busy by remember(hash) { mutableStateOf(false) }
-    var notice by remember(hash) { mutableStateOf<String?>(null) }
-    // Uncertain latch: cleared only by a newer accepted inventory.
-    var uncertainAt by remember(hash) { mutableStateOf<Any?>(null) }
-    val latched = uncertainAt != null && uncertainAt == inventoryWitness
-    var confirmRemove by remember(hash) { mutableStateOf(false) }
-    var deleteData by remember(hash) { mutableStateOf(false) }
-    var files by remember(hash) { mutableStateOf<List<ClientFile>?>(null) }
-    var showMove by remember(hash, sourceClientId) { mutableStateOf(false) }
+    var busy by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
+    var notice by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<String?>(null) }
+    // Legacy Copy/Move-only latch; explicit typed-client commands use the process-owned receipt.
+    var uncertainAt by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<Any?>(null) }
+    val copyLatched = uncertainAt != null && uncertainAt == inventoryWitness
+    val latched = copyLatched || retained?.blocksWrites == true
+    var confirmRemove by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
+    var deleteData by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
+    var files by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<List<ClientFile>?>(null) }
+    var showMove by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     // Retain source evidence for this authenticated job. Destination eligibility
     // can change while the panel is open, so derive the advice from current inputs.
     var routingFileNames by remember(operations, hash, routingMetadataPending) {
@@ -161,6 +190,7 @@ internal fun ProtocolClientOperationsPanel(
     var copied by remember(operations) { mutableStateOf<VerifiedMoveCopy?>(null) }
     val currentConnections by rememberUpdatedState(moveConnections)
     val currentOwner by rememberUpdatedState(operations.takeIf { current })
+    val currentReadOwner by rememberUpdatedState(operations.takeIf { canReconcile })
     val completedCopy = copied
     val finishableCopy = completedCopy?.takeIf { copy ->
         moveConnections[copy.target.id] == copy.target.connectionWitness
@@ -171,17 +201,17 @@ internal fun ProtocolClientOperationsPanel(
             notice = "Job copied to ${completedCopy.target.label}. The destination connection changed. The source job was kept."
         }
     }
-    var draft by remember(hash) { mutableStateOf<Map<Int, ClientFilePriority>>(emptyMap()) }
+    var draft by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<Map<Int, ClientFilePriority>>(emptyMap()) }
     // Change folder: the client's own set-location, verified by exact readback.
-    var relocating by remember(hash) { mutableStateOf(false) }
-    var relocateTo by remember(hash) { mutableStateOf("") }
-    var moveFiles by remember(hash) { mutableStateOf(false) }
-    var currentFolder by remember(hash) { mutableStateOf<String?>(null) }
+    var relocating by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
+    var relocateTo by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf("") }
+    var moveFiles by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
+    var currentFolder by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<String?>(null) }
 
     // Move-only (the owning Details screen already has the lifecycle controls)
     // reads the client session lazily, on the first Copy/Move tap: opening
     // Details must not cost an extra server round trip on every view.
-    var sessionWanted by remember(hash) { mutableStateOf(!moveOnly) }
+    var sessionWanted by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(!moveOnly) }
     LaunchedEffect(operations, sessionWanted) {
         if (!sessionWanted || session != null) return@LaunchedEffect
         try {
@@ -193,17 +223,77 @@ internal fun ProtocolClientOperationsPanel(
         }
     }
 
-    fun run(action: String, block: suspend () -> ClientOperationOutcome) {
-        if (busy || latched || !current) return
+    fun run(action: String, kind: ProtocolOperationKind, block: suspend () -> ClientOperationOutcome) {
+        if (busy || latched || !current || !isOwnerCurrent()) return
+        val key = receiptKey
+        val ticket = if (key == null) null else receiptOwner.begin(key, requireNotNull(sourceGeneration), kind)
+        if (key != null && ticket == null) {
+            notice = "A previous request needs checking before another command."
+            return
+        }
+        if (ticket != null) inFlightReceipt.set(ticket)
+        val policyEpoch = TransferPrivacyPolicyStore.revision
+        val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+        val credentialEpoch = RemoteCredentialLock.capture()
         busy = true
         notice = "$action…"
+        // Start the structured body before returning from the click, so even
+        // cancellation before its first suspension settles the acquired lease.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                val outcome = try {
+                    if (ticket == null) block()
+                    else withContext(ClientOperationWriteBoundary {
+                        if (currentOwner !== operations || !isOwnerCurrent() ||
+                            !RemoteCredentialLock.current(credentialEpoch) ||
+                            policyEpoch != TransferPrivacyPolicyStore.revision ||
+                            lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision ||
+                            !receiptOwner.possibleWrite(ticket))
+                            throw ClientRefusedException("The selected connection changed; nothing was written")
+                    }) { block() }
+                } catch (cancel: CancellationException) { throw cancel }
+                    catch (_: Exception) { ClientOperationOutcome.Uncertain(hash, "unexpected failure") }
+                if (ticket != null) receiptOwner.complete(ticket, outcome)
+                notice = ProtocolOperationText.describe(action, outcome, clientLabel)
+                if (ticket == null && outcome is ClientOperationOutcome.Uncertain) uncertainAt = inventoryWitness
+                if (currentOwner === operations || currentReadOwner === operations) onChanged()
+            } catch (cancel: CancellationException) {
+                if (ticket != null) receiptOwner.cancel(ticket)
+                throw cancel
+            } finally {
+                if (ticket != null) inFlightReceipt.compareAndSet(ticket, null)
+                busy = false
+            }
+        }
+    }
+
+    fun reconcile() {
+        val receipt = retained ?: return
+        if (busy || !canReconcile || !receipt.canReconcile || !isOwnerCurrent()) return
+        val policyEpoch = TransferPrivacyPolicyStore.revision
+        val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+        val credentialEpoch = RemoteCredentialLock.capture()
+        busy = true
         scope.launch {
-            val outcome = try { block() } catch (cancel: CancellationException) { throw cancel }
-                catch (_: Exception) { ClientOperationOutcome.Uncertain(hash, "unexpected failure") }
-            notice = ProtocolOperationText.describe(action, outcome, clientLabel)
-            if (outcome is ClientOperationOutcome.Uncertain) uncertainAt = inventoryWitness
-            busy = false
-            onChanged()
+            try {
+                val row = operations.client.torrent(hash)
+                if (currentReadOwner !== operations || !isOwnerCurrent() ||
+                    !RemoteCredentialLock.current(credentialEpoch) ||
+                    policyEpoch != TransferPrivacyPolicyStore.revision ||
+                    lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision) return@launch
+                if (row != null && !row.hash.equals(hash, ignoreCase = true))
+                    throw java.io.IOException("Wrong transfer identity")
+                if (receiptOwner.reconcile(receipt.ticket, row != null)) {
+                    notice = null
+                    onChanged()
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                notice = "Could not read this transfer. The previous request remains unresolved."
+            } finally {
+                busy = false
+            }
         }
     }
 
@@ -220,13 +310,13 @@ internal fun ProtocolClientOperationsPanel(
             if (ClientCapability.START_STOP in caps) {
                 val start = observedStarted != true
                 OutlinedButton(
-                    onClick = { run(if (start) "Start" else "Stop") { operations.setStarted(hash, start) } },
+                    onClick = { run(if (start) "Start" else "Stop", if (start) ProtocolOperationKind.START else ProtocolOperationKind.STOP) { operations.setStarted(hash, start) } },
                     enabled = enabled && observedStarted != null,
                     modifier = cell.heightIn(min = 48.dp).testTag(ChunksSemantics.PROTOCOL_START_STOP)
                 ) { Text(if (start) "Start" else "Stop") }
             }
             if (ClientCapability.RECHECK in caps) OutlinedButton(
-                onClick = { run("Recheck") { operations.recheck(hash) } },
+                onClick = { run("Recheck", ProtocolOperationKind.RECHECK) { operations.recheck(hash) } },
                 enabled = enabled, modifier = cell.heightIn(min = 48.dp)
             ) { Text("Recheck") }
             if (ClientCapability.FILE_PRIORITIES in caps) OutlinedButton(
@@ -338,7 +428,7 @@ internal fun ProtocolClientOperationsPanel(
                 }
             }
             if (finishableCopy != null) Button(onClick = {
-                run("Remove from $clientLabel after moving to ${finishableCopy.target.label}") {
+                run("Remove from $clientLabel after moving to ${finishableCopy.target.label}", ProtocolOperationKind.RETIRE_SOURCE) {
                     finishableCopy.transfer.retireSource(hash, finishableCopy.receipt) {
                         currentOwner === operations &&
                             currentConnections[finishableCopy.target.id] == finishableCopy.target.connectionWitness
@@ -369,7 +459,7 @@ internal fun ProtocolClientOperationsPanel(
             }
             val changed = draft.filter { (index, value) -> shown.firstOrNull { it.index == index }?.priority != value }
             Button(
-                onClick = { run("File priorities") { operations.setFilePriorities(hash, changed) }; files = null },
+                onClick = { run("File priorities", ProtocolOperationKind.FILE_PRIORITIES) { operations.setFilePriorities(hash, changed) }; files = null },
                 enabled = enabled && changed.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Apply ${changed.size} priority change" + if (changed.size == 1) "" else "s") }
@@ -420,7 +510,8 @@ internal fun ProtocolClientOperationsPanel(
             Button(onClick = {
                 val dir = target
                 relocating = false
-                run(if (moveFiles) "Move files to the new folder" else "Change folder") {
+                run(if (moveFiles) "Move files to the new folder" else "Change folder",
+                    if (moveFiles) ProtocolOperationKind.MOVE_FILES else ProtocolOperationKind.SET_LOCATION) {
                     operations.setLocation(hash, dir, moveFiles)
                 }
             }, enabled = enabled && valid, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -444,19 +535,28 @@ internal fun ProtocolClientOperationsPanel(
                 onClick = {
                     val withData = deleteData
                     confirmRemove = false
-                    run(if (withData) "Remove and delete files" else "Remove") { operations.remove(hash, withData) }
+                    run(if (withData) "Remove and delete files" else "Remove",
+                        if (withData) ProtocolOperationKind.REMOVE_DATA else ProtocolOperationKind.REMOVE) { operations.remove(hash, withData) }
                 },
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .testTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM)
             ) { Text(if (deleteData) "Remove and delete files" else "Remove, keep files") }
         }
-        notice?.let {
+        (notice ?: retained?.description())?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     .testTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS))
         }
-        if (latched) Text("Commands are paused until the list refreshes.",
+        if (retained?.blocksWrites == true) {
+            Text("Commands are paused until a read-only check.",
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+            if (retained.canReconcile) OutlinedButton(onClick = ::reconcile,
+                enabled = !busy && canReconcile,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Check this transfer without changing it")
+            }
+        } else if (copyLatched) Text("Commands are paused until the list refreshes.",
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
     }
 }

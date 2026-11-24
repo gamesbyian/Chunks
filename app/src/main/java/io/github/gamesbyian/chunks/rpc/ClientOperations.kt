@@ -2,6 +2,10 @@ package io.github.gamesbyian.chunks.rpc
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Result of one user-authorized operation on one exact client + hash.
@@ -13,12 +17,26 @@ internal sealed interface ClientOperationOutcome {
 
     data class Verified(override val hash: String, val observed: ClientTorrent?) : ClientOperationOutcome
     /** Write acknowledged; readback has not (yet) shown the postcondition. */
-    data class Pending(override val hash: String, val observed: ClientTorrent?, val reason: String) :
+    data class Pending(override val hash: String, val observed: ClientTorrent?, val reason: String,
+        /** Independently observed job absence; consequential payload deletion remains unverified. */
+        val registrationAbsent: Boolean = false) :
         ClientOperationOutcome
     /** Delivery unknown. Refresh read-only; never automatically repeat. */
     data class Uncertain(override val hash: String, val reason: String) : ClientOperationOutcome
     /** Nothing was written (precondition, capability or definite refusal). */
     data class Refused(override val hash: String, val reason: String) : ClientOperationOutcome
+}
+
+/**
+ * Optional caller-owned mutation lease. Called only after shared preflight,
+ * immediately before entering an adapter write. Adapter-specific additional
+ * checks may still refuse; crossing this boundary means a write is possible,
+ * not that the remote daemon received it.
+ */
+internal class ClientOperationWriteBoundary(private val check: () -> Unit) :
+    AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<ClientOperationWriteBoundary>
+    fun beforeWrite() = check()
 }
 
 /**
@@ -71,6 +89,12 @@ internal class ClientOperations(
         beforeAdd: suspend () -> String?
     ): ClientOperationOutcome {
         val hash = request.source.infoHash
+        val source = request.source as? ClientAddSource.TorrentFile
+            ?: return ClientOperationOutcome.Refused(hash, "File choices need reviewed metainfo")
+        val reviewed = request.reviewedChoices
+        val paths = reviewed.mapValues { (_, choice) -> choice.path }
+        if (!ClientFileLayout.reviewMatches(source.preview, paths))
+            return ClientOperationOutcome.Refused(hash, "File choices no longer match the reviewed metainfo; nothing was added")
         val session = try { session() } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
         val caps = session.capabilities
@@ -81,12 +105,11 @@ internal class ClientOperations(
             return ClientOperationOutcome.Refused(hash,
                 "This client cannot store ${it.name.lowercase()} file priority; nothing was added")
         }
-        val reviewed = request.reviewedChoices
         if (ClientCapability.ADD_WITH_FILE_CHOICES in caps) {
             // The client applies the choices inside its own Add; verify them here.
             val added = addOnce(request, expectedDirectory, beforeAdd)
             if (added is ClientOperationOutcome.Refused || added is ClientOperationOutcome.Uncertain) return added
-            return if (choicesObserved(hash, reviewed)) added
+            return if (choicesObserved(hash, source.preview, reviewed)) added
             else ClientOperationOutcome.Pending(hash, (added as? ClientOperationOutcome.Verified)?.observed,
                 "Added; the file choices were not confirmed")
         }
@@ -95,10 +118,11 @@ internal class ClientOperations(
         if (added !is ClientOperationOutcome.Verified) return added
         val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { null }
-        files?.let { ClientFileLayout.match(it, reviewed.mapValues { (_, choice) -> choice.path }) }
+        files?.let { ClientFileLayout.match(it, source.preview, paths) }
             ?: return ClientOperationOutcome.Pending(hash, added.observed,
                 "Added stopped; its file list did not match the review, so no file choices were applied and it was not started")
-        val applied = setFilePriorities(hash, reviewed.mapValues { (_, choice) -> choice.priority })
+        val applied = setFilePrioritiesChecked(hash, reviewed.mapValues { (_, choice) -> choice.priority },
+            layoutValid = { ClientFileLayout.match(it, source.preview, paths) != null })
         if (applied !is ClientOperationOutcome.Verified) return when (applied) {
             is ClientOperationOutcome.Uncertain -> applied
             else -> ClientOperationOutcome.Pending(hash, added.observed,
@@ -112,12 +136,13 @@ internal class ClientOperations(
         }
     }
 
-    private suspend fun choicesObserved(hash: String, reviewed: Map<Int, ReviewedFilePriority>): Boolean {
+    private suspend fun choicesObserved(hash: String, preview: TorrentMetainfoPreview,
+        reviewed: Map<Int, ReviewedFilePriority>): Boolean {
         repeat(readbackAttempts) { attempt ->
             if (attempt > 0) delay(readbackDelayMillis)
             val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { null } ?: return@repeat
-            ClientFileLayout.match(files, reviewed.mapValues { (_, choice) -> choice.path }) ?: return false
+            ClientFileLayout.match(files, preview, reviewed.mapValues { (_, choice) -> choice.path }) ?: return false
             val byIndex = files.associateBy { it.index }
             if (reviewed.all { (index, choice) -> byIndex[index]?.priority == choice.priority }) return true
         }
@@ -202,9 +227,18 @@ internal class ClientOperations(
     suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome =
         removeChecked(hash, deleteData = false) { client.removeJob(hash, beforeWrite) }
 
-    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome =
-        mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome {
+        val result = mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
             send) { observed -> if (observed == null) null else "Still registered" }
+        // Registration absence proves job removal, not filesystem cleanup.
+        // Local's adapter independently verifies the exact payload before a
+        // normal return. An ordinary remote ACK has no such authority.
+        return if (deleteData && result is ClientOperationOutcome.Verified &&
+            !client.verifiesPayloadDeletionOnReturn)
+            ClientOperationOutcome.Pending(result.hash, null,
+                "Downloaded-file deletion is not independently verified", registrationAbsent = true)
+        else result
+    }
 
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean): ClientOperationOutcome {
         ClientHashes.requireDirectory(directory)
@@ -230,7 +264,15 @@ internal class ClientOperations(
      * request to the level this client actually stores (qBittorrent has no
      * LOW, for example), so readback compares like with like.
      */
-    suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>): ClientOperationOutcome {
+    suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>): ClientOperationOutcome =
+        setFilePrioritiesChecked(hash, priorities, layoutValid = { true })
+
+    internal suspend fun setFilePrioritiesChecked(
+        hash: String,
+        priorities: Map<Int, ClientFilePriority>,
+        layoutValid: (List<ClientFile>) -> Boolean,
+        precondition: (List<ClientFile>) -> Boolean = { true }
+    ): ClientOperationOutcome {
         val exact = ClientHashes.requireHash(hash)
         if (priorities.isEmpty()) return ClientOperationOutcome.Refused(exact, "No file priorities requested")
         val info = try { session() } catch (e: CancellationException) { throw e }
@@ -241,14 +283,15 @@ internal class ClientOperations(
         val before = try { client.files(exact) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(exact, "Could not read the file list first") }
         val known = before.map { it.index }.toSet()
-        if (!known.containsAll(requested.keys))
+        if (known.size != before.size || !known.containsAll(requested.keys) ||
+            !layoutValid(before) || !precondition(before))
             return ClientOperationOutcome.Refused(exact, "File list changed; refresh first")
         write(exact) { client.setFilePriorities(exact, requested) }?.let { return it }
         repeat(readbackAttempts) { attempt ->
             if (attempt > 0) delay(readbackDelayMillis)
             val files = try { client.files(exact) } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { null }
-            if (files != null) {
+            if (files != null && files.map { it.index }.toSet().size == files.size && layoutValid(files)) {
                 val observed = files.associate { it.index to it.priority }
                 val ok = requested.all { (index, wanted) -> observed[index] == wanted }
                 if (ok) return ClientOperationOutcome.Verified(exact, null)
@@ -282,6 +325,9 @@ internal class ClientOperations(
 
     /** One write; returns a terminal outcome on failure, null when acknowledged. */
     private suspend fun write(hash: String, send: suspend () -> Unit): ClientOperationOutcome? = try {
+        val context = currentCoroutineContext()
+        context.ensureActive()
+        context[ClientOperationWriteBoundary]?.beforeWrite()
         send()
         null
     } catch (e: CancellationException) {
@@ -341,17 +387,41 @@ internal class ClientOperations(
 }
 
 /**
- * Matches reviewed metainfo paths to a client's own file list. Clients differ
- * only in whether they prefix the torrent's top-level folder; the index must
- * agree AND the paths must be equal after that prefix. Null = no faithful match.
+ * Exact v1 file layout, anchored to immutable reviewed metainfo. Clients may
+ * omit the ONE declared torrent root, but never arbitrary suffix components,
+ * and may omit BEP 47 padding (Local does). No duplicate, unexpected or
+ * missing payload indices; all observed byte lengths must match.
  */
 internal object ClientFileLayout {
-    fun match(clientFiles: List<ClientFile>, reviewed: Map<Int, String>): List<Int>? {
-        val byIndex = clientFiles.associateBy { it.index }
-        return reviewed.map { (index, path) ->
-            val actual = byIndex[index]?.path?.trim('/') ?: return null
-            val wanted = path.trim('/')
-            if (actual == wanted || actual.endsWith("/$wanted") || wanted.endsWith("/$actual")) index else return null
+    private fun declared(preview: TorrentMetainfoPreview): List<TorrentMetainfoFile> =
+        preview.files.ifEmpty { listOf(TorrentMetainfoFile(preview.name, preview.sizeBytes, false)) }
+
+    private fun pathFor(preview: TorrentMetainfoPreview, file: TorrentMetainfoFile, rooted: Boolean): String =
+        if (rooted || preview.files.isEmpty()) file.path else file.path.removePrefix(preview.name + "/")
+
+    fun reviewMatches(preview: TorrentMetainfoPreview, reviewed: Map<Int, String>): Boolean {
+        val expected = declared(preview)
+        return reviewed.all { (index, path) ->
+            val file = expected.getOrNull(index) ?: return@all false
+            !file.padding && (path == file.path || path == pathFor(preview, file, rooted = false))
         }
+    }
+
+    fun match(clientFiles: List<ClientFile>, preview: TorrentMetainfoPreview,
+        reviewed: Map<Int, String>): List<Int>? {
+        if (!reviewMatches(preview, reviewed)) return null
+        val expected = declared(preview)
+        val byIndex = clientFiles.associateBy { it.index }
+        if (byIndex.size != clientFiles.size || expected.indices.any { !expected[it].padding && it !in byIndex })
+            return null
+        // One coherent root convention for the whole observed list. Do not
+        // accept a mixture of rooted and relative rows or a renamed path.
+        val matches = listOf(true, false).any { rooted ->
+            clientFiles.all { row ->
+                val file = expected.getOrNull(row.index) ?: return@all false
+                row.path == pathFor(preview, file, rooted) && row.sizeBytes == file.sizeBytes
+            }
+        }
+        return if (matches) reviewed.keys.toList() else null
     }
 }

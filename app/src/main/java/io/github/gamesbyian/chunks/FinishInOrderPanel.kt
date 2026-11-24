@@ -215,7 +215,9 @@ internal fun FinishInOrderPanel(
         is FinishInOrderRunner.Step.Reconciled -> "Checked the interrupted change. Nothing was repeated."
         is FinishInOrderRunner.Step.Suspended -> step.record.suspendedReason
         is FinishInOrderRunner.Step.StorageFailed ->
-            "Couldn't save the pending change. File priorities weren't changed."
+            if (step.record.pending.isNotEmpty())
+                "Couldn't save the interrupted change's recovery. Its earlier outcome is still unresolved; nothing was repeated."
+            else "Couldn't save the pending change. File priorities weren't changed."
     }
 
     val current = record
