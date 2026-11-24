@@ -21,6 +21,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/storage/OwnedMediaStorePublicationJournal.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/storage/OwnedMediaStorePublicationJournalTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
+      - "tools/check_owned_mediastore_case_contract.py"
       - "tools/owned_mediastore_document_probe.sh"
       - "tools/test_owned_mediastore_document_probe_mock.sh"
       - ".github/workflows/storage-owned-mediastore-documents.yml"
@@ -45,6 +46,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Refuse false or unsafe cold ZIP batch receipts (offline)
         run: bash tools/test_batch_cold_restore_probe_mock.sh
+      - name: Reject stale source case counts and names before allocating an emulator (offline)
+        run: python3 tools/check_owned_mediastore_case_contract.py
       - name: Reject ambiguous device targets and counterfeit provider test receipts (offline)
         run: bash tools/test_owned_mediastore_document_probe_mock.sh
       - uses: actions/setup-java@v4
