@@ -138,7 +138,7 @@ class OpenWithActivityIntakeTest {
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             scenario.onActivity { activity ->
                 androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
-                    .incomingTorrent.value = uri
+                    .offerAdd(ExternalAddSource.TorrentDocument(uri))
             }
             scenario.recreate()
             waitForText("queued-rotation.mkv")
@@ -166,7 +166,7 @@ class OpenWithActivityIntakeTest {
             waitForText(INTERRUPTED_DOCUMENT_REVIEW)
             rule.onNode(hasText("must-not-replay.mkv", substring = true)).assertDoesNotExist()
             val owner = ViewModelProvider(restored.get())[LocalAddAttemptOwner::class.java]
-            assertNull(owner.incomingTorrent.value)
+            assertNull(owner.incomingDelivery)
             assertNull(owner.reviewedTorrent.value)
             assertNull(owner.session.attemptedTicket)
             restored.newIntent(view(document("reopened.torrent", "explicitly-reopened.mkv"),

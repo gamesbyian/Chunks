@@ -94,7 +94,7 @@ internal object LocalDownloadPlaces {
         return result
     }
 
-    private fun appDownloads(context: Context): File? =
+    internal fun appDownloads(context: Context): File? =
         context.getExternalFilesDir("Downloads")?.apply { mkdirs() }?.takeIf { it.isDirectory }
 
     /** Off the main thread. Records the resolved root for read-only panels. */
