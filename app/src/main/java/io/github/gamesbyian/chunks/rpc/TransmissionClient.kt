@@ -248,7 +248,7 @@ internal class TransmissionClient(
             var answeredAuth = false
             var answeredSession = false
             while (true) {
-                if (mutating) RemotePolicyWriteFence.check()
+                if (mutating) RemoteWriteOwnerFence.check()
                 beforeWrite()
                 val response = try {
                     wire.exchange(TransmissionReadOnlyRpc.Request(endpoint, body, authorization, csrfSession))
@@ -278,7 +278,10 @@ internal class TransmissionClient(
                         answeredAuth = true
                     }
                     in 200..299 -> {
-                        val root = try { JSONObject(response.body) } catch (_: Exception) {
+                        val root = try {
+                            if (method == "torrent-get" && args.has("ids")) ExactRpcJson.objectBody(response.body)
+                            else JSONObject(response.body)
+                        } catch (_: Exception) {
                             if (mutating) throw ClientWriteUncertainException("Invalid Transmission reply")
                             throw IOException("Invalid Transmission RPC response")
                         }

@@ -82,6 +82,7 @@ class ProtocolClientOperationsPanelTest {
     private inner class Target : TorrentClient {
         override val kind = TorrentClientKind.DELUGE
         var adds = 0
+        var afterAdd: suspend () -> Unit = {}
         var present = false
         var defaultDirectory: String? = "/d"
         var capabilities = ClientCapability.entries.toSet()
@@ -92,12 +93,76 @@ class ProtocolClientOperationsPanelTest {
         override suspend fun torrent(hash: String) = if (present) ClientTorrent(hash, "n",
             ClientRunState.STOPPED, 1, 0, 0, 0, "/d") else null
         override suspend fun files(hash: String) = emptyList<ClientFile>()
-        override suspend fun add(request: ClientAddRequest) { adds++; present = true }
+        override suspend fun add(request: ClientAddRequest) {
+            adds++
+            present = true
+            afterAdd()
+        }
         override suspend fun setStarted(hash: String, started: Boolean) = Unit
         override suspend fun remove(hash: String, deleteData: Boolean) = Unit
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = Unit
         override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) = Unit
         override suspend fun recheck(hash: String) = Unit
+    }
+
+    @Test fun cancelledCopyRetainsTheDestinationReceiptAcrossDetailsNavigation() {
+        val receipts = ProtocolOperationReceiptOwner()
+        val source = Fake()
+        val target = Target().apply { afterAdd = { kotlinx.coroutines.awaitCancellation() } }
+        val destination = ProtocolMoveTarget("copy-target", "Destination") { ClientOperations(target, 3, 1) }
+        var shown by mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                if (shown) ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Source", sourceClientId = "copy-source",
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(destination), sourceGeneration = "g1", receiptOwner = receipts
+                )
+            }
+        }
+        rule.waitForIdle()
+        val copyTag = ChunksSemantics.PROTOCOL_MOVE + ".copy-target"
+        val targetKey = ProtocolOperationReceiptOwner.Key("copy-target", hash)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(copyTag).performClick()
+        rule.waitUntil(5_000) { target.adds == 1 }
+        rule.runOnIdle {
+            assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, receipts.receipt(targetKey)?.phase)
+            shown = false
+        }
+        rule.waitForIdle()
+        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, receipts.receipt(targetKey)?.phase)
+        rule.runOnIdle { shown = true }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(copyTag).assertIsNotEnabled()
+        rule.onNodeWithText("Check job on Destination").performClick()
+        rule.waitUntil(5_000) { receipts.receipt(targetKey)?.phase == ProtocolOperationReceiptOwner.Phase.RECONCILED_PRESENT }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).assertDoesNotExist()
+        assertEquals(1, target.adds)
+        assertEquals(true, source.present)
+    }
+
+    @Test fun v2OnlyMoveSourceCannotAcquireAnUnsupportedDestinationLease() {
+        val source = Fake()
+        val target = Target()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = "ab".repeat(32), clientLabel = "This device", sourceClientId = "local",
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("destination", "Destination") { ClientOperations(target, 3, 1) }),
+                    moveOnly = true
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".destination").assertIsNotEnabled()
+        assertEquals(0, target.adds)
     }
 
     @Test fun moveCopiesJobThenRetiresSourceOnlyAfterSecondTap() {

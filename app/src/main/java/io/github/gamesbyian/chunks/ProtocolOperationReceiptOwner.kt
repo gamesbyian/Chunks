@@ -7,12 +7,12 @@ import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 internal enum class ProtocolOperationKind(val label: String) {
     START("Start"), STOP("Stop"), RECHECK("Recheck"), FILE_PRIORITIES("File priorities"),
     SET_LOCATION("Change folder"), MOVE_FILES("Move files"), REMOVE("Remove"),
-    REMOVE_DATA("Remove and delete files"), RETIRE_SOURCE("Finish move"),
+    REMOVE_DATA("Remove and delete files"), COPY_TARGET("Copy job"), RETIRE_SOURCE("Finish move"),
     FINISH_IN_ORDER("Finish in Order"), SMART_SEEDING("Smart Seeding")
 }
 
 /**
- * Process-owned receipt/lease for explicit, single-client typed remote commands.
+ * Process-owned receipts for typed remote commands and leases for per-transfer policies.
  * A key identifies the canonical principal and hash; the ticket also freezes its
  * authenticated generation. A same-principal reconnect does not erase the old
  * unresolved receipt, but only its own fresh read may reconcile it. No

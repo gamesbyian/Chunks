@@ -46,35 +46,48 @@ internal class ClientJobTransfer(
     /** The exact *object* returned by the last verified Copy; not a forgeable data-class value. */
     private var pendingRetirement: CopyResult.Copied? = null
 
-    suspend fun copy(hash: String, targetDirectory: String?, startOnTarget: Boolean): CopyResult =
-        attemptLock.withLock {
-            // A newer attempt supersedes any earlier authority, even if refused or uncertain.
-            pendingRetirement = null
-            val exact = ClientHashes.requireHash(hash)
-            val caps = try { source.session().capabilities }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { return@withLock CopyResult.Refused(exact, "Source client unavailable") }
-            if (ClientCapability.EXPORT_JOB !in caps)
-                return@withLock CopyResult.Refused(exact, "Source cannot export this job")
-            val present = try { sourceClient.torrent(exact) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { return@withLock CopyResult.Refused(exact, "Could not read the source first") }
-                ?: return@withLock CopyResult.Refused(exact, "Transfer is not in the source client")
-            val recreate = try { sourceClient.transferSource(present.hash) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { null }
-                ?: return@withLock CopyResult.Refused(exact,
-                    "This job cannot be re-created faithfully (private or no metainfo)")
-            if (recreate.infoHash != exact)
-                return@withLock CopyResult.Refused(exact, "Source exported a different identity")
-            val outcome = target.add(ClientAddRequest(recreate, targetDirectory, startOnTarget))
-            if (outcome !is ClientOperationOutcome.Verified)
-                return@withLock CopyResult.NotCopied(exact, outcome)
+    suspend fun copy(
+        hash: String,
+        targetDirectory: String?,
+        startOnTarget: Boolean,
+        stillAuthorized: () -> Boolean = { true }
+    ): CopyResult = attemptLock.withLock {
+        // A newer attempt supersedes any earlier authority, even if refused or uncertain.
+        pendingRetirement = null
+        val exact = ClientHashes.requireHash(hash)
+        val changed = "The selected connection changed"
+        if (!stillAuthorized()) return@withLock CopyResult.Refused(exact, changed)
+        val caps = try { source.session().capabilities }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { return@withLock CopyResult.Refused(exact, "Source client unavailable") }
+        if (ClientCapability.EXPORT_JOB !in caps)
+            return@withLock CopyResult.Refused(exact, "Source cannot export this job")
+        val present = try { sourceClient.torrent(exact) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { return@withLock CopyResult.Refused(exact, "Could not read the source first") }
+            ?: return@withLock CopyResult.Refused(exact, "Transfer is not in the source client")
+        if (!present.hash.equals(exact, ignoreCase = true))
+            return@withLock CopyResult.Refused(exact, "Source returned a different transfer")
+        if (!stillAuthorized()) return@withLock CopyResult.Refused(exact, changed)
+        val recreate = try { sourceClient.transferSource(exact) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { null }
+            ?: return@withLock CopyResult.Refused(exact,
+                "This job cannot be re-created faithfully (private or no metainfo)")
+        if (recreate.infoHash != exact)
+            return@withLock CopyResult.Refused(exact, "Source exported a different identity")
+        val outcome = target.add(ClientAddRequest(recreate, targetDirectory, startOnTarget),
+            beforeAdd = { if (stillAuthorized()) null else changed })
+        if (outcome !is ClientOperationOutcome.Verified)
+            return@withLock CopyResult.NotCopied(exact, outcome)
+        if (!stillAuthorized())
+            return@withLock CopyResult.NotCopied(exact, ClientOperationOutcome.Pending(exact, null,
+                "Connection changed after registration. Check the original destination. The source job was kept"))
 
-            CopyResult.Copied(exact, recreate is ClientAddSource.TorrentFile).also {
-                pendingRetirement = it
-            }
+        CopyResult.Copied(exact, recreate is ClientAddSource.TorrentFile).also {
+            pendingRetirement = it
         }
+    }
 
     /**
      * Second, separately user-confirmed step of Move. Must present the *same*

@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import android.content.Context
 import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientOperations
-import io.github.gamesbyian.chunks.rpc.RemotePolicyWriteFence
+import io.github.gamesbyian.chunks.rpc.RemoteWriteOwnerFence
 import io.github.gamesbyian.chunks.seeding.RemoteSeeding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,7 +16,7 @@ internal suspend fun tickProtocolRemotePolicies(
     ownerCurrent: () -> Boolean,
     receipts: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
     operations: () -> ClientOperations
-) = withContext(Dispatchers.IO + RemotePolicyWriteFence(ownerCurrent)) {
+) = withContext(Dispatchers.IO + RemoteWriteOwnerFence(ownerCurrent)) {
     val scope = FinishInOrderScopes.protocol(profileId)
     val finishInOrder = policies.mayHaveWork(scope)
     val smartSeeding = RemoteSeeding.EnforcementSwitch(context)

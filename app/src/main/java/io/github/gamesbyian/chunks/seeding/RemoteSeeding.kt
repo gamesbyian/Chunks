@@ -8,7 +8,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
-import io.github.gamesbyian.chunks.rpc.RemotePolicyWriteFence
+import io.github.gamesbyian.chunks.rpc.RemoteWriteOwnerFence
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -71,7 +71,7 @@ internal class RTorrentSeedingPort(
 
     override fun pause(infoHash: String): Boolean {
         stopAttempted = true
-        return runBlocking(RemotePolicyWriteFence(ownerCurrent)) {
+        return runBlocking(RemoteWriteOwnerFence(ownerCurrent)) {
             if (!ownerCurrent()) return@runBlocking false
             remote.setStarted(infoHash, desiredStarted = false) == LifecycleOutcome.Verified(false)
         }
@@ -151,7 +151,7 @@ internal class ProtocolSeedingPort(
         val bytes = bytesPerSecond ?: return false
         if (!uploadCapRepresentable(bytes)) return false
         stopAttempted = true
-        return runBlocking(RemotePolicyWriteFence(ownerCurrent)) {
+        return runBlocking(RemoteWriteOwnerFence(ownerCurrent)) {
             if (!ownerCurrent()) return@runBlocking false
             try { operations.client.setUploadCapBytesPerSecond(infoHash, bytes) }
             catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
@@ -162,7 +162,7 @@ internal class ProtocolSeedingPort(
 
     override fun pause(infoHash: String): Boolean {
         stopAttempted = true
-        return runBlocking(RemotePolicyWriteFence(ownerCurrent)) {
+        return runBlocking(RemoteWriteOwnerFence(ownerCurrent)) {
             if (!ownerCurrent()) return@runBlocking false
             operations.setStarted(infoHash, false) is io.github.gamesbyian.chunks.rpc.ClientOperationOutcome.Verified
         }

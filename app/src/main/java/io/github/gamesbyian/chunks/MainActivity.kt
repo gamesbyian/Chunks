@@ -121,7 +121,7 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyGate
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
-import io.github.gamesbyian.chunks.rpc.RemotePolicyWriteFence
+import io.github.gamesbyian.chunks.rpc.RemoteWriteOwnerFence
 import io.github.gamesbyian.chunks.seeding.RemoteSeeding
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -1795,7 +1795,7 @@ internal fun ChunksApp(
                     if (!ownerCurrent() || loading || stale || !mutationGate.tryStart()) break
                     var noWrite = false
                     try {
-                        val step = withContext(Dispatchers.IO + RemotePolicyWriteFence(ownerCurrent)) {
+                        val step = withContext(Dispatchers.IO + RemoteWriteOwnerFence(ownerCurrent)) {
                             store.rememberOwner(transfer.hash)
                             stepRemoteFinishInOrder(connectedRemote, store, transfer.hash, ownerCurrent)
                         }
