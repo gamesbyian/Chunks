@@ -309,9 +309,7 @@ class LocalTorrentClientTest {
         val outcome = d.ops.add(ClientAddRequest(ClientAddSource.TorrentFile(p.torrent), null, startNow = true,
             filePriorities = mapOf(high.index to
                 io.github.gamesbyian.chunks.rpc.ReviewedFilePriority("elsewhere/z.bin", ClientFilePriority.HIGH))))
-        assertTrue("$outcome", outcome is ClientOperationOutcome.Pending)
-        assertTrue(d.client.files(p.hash).all { it.priority == ClientFilePriority.NORMAL })
-        assertEquals("never started without confirmed choices", ClientRunState.STOPPED,
-            d.client.torrent(p.hash)?.runState)
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Refused)
+        assertNull("Invalid review is refused before registration", d.client.torrent(p.hash))
     }
 }

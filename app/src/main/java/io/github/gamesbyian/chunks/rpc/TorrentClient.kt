@@ -174,8 +174,13 @@ internal data class ClientFile(
 internal sealed interface ClientAddSource {
     val infoHash: String
 
-    class TorrentFile(val bytes: ByteArray) : ClientAddSource {
-        override val infoHash: String = TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase(Locale.ROOT)
+    class TorrentFile(bytes: ByteArray) : ClientAddSource {
+        // The bytes used for dispatch must remain the same source that supplied
+        // the reviewed hash/layout, even if a caller later mutates its buffer.
+        private val frozenBytes = bytes.copyOf()
+        val bytes: ByteArray get() = frozenBytes.copyOf()
+        internal val preview = TorrentMetainfoReader.preview(frozenBytes)
+        override val infoHash: String = preview.infoHashV1.lowercase(Locale.ROOT)
         override fun toString(): String = "TorrentFile(<redacted>)"
     }
 
