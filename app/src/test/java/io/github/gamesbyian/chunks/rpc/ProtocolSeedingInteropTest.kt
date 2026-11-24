@@ -41,6 +41,37 @@ class ProtocolSeedingInteropTest {
         return if (port.stopAttempted) RemoteSeeding.Tick.STOP_ATTEMPTED else RemoteSeeding.Tick.NO_WRITE
     }
 
+    private suspend fun assertRetiredOwnerCannotStop(
+        client: TorrentClient, hash: String, environment: String,
+        eligible: (ClientSeedingFacts) -> Boolean
+    ) {
+        waitFor("real daemon counters make the transfer eligible", 90_000) {
+            client.seedingFacts(hash)?.let(eligible) == true
+        }
+        val current = java.util.concurrent.atomic.AtomicBoolean(true)
+        var stops = 0
+        val observed = object : TorrentClient by client {
+            override suspend fun seedingFacts(hashRead: String): ClientSeedingFacts? =
+                client.seedingFacts(hashRead).also { facts ->
+                    if (hashRead == hash && facts != null && eligible(facts) && store.get(hash) != null)
+                        current.set(false)
+                }
+
+            override suspend fun setStarted(hash: String, started: Boolean) {
+                if (!started) stops++
+                client.setStarted(hash, started)
+            }
+        }
+        val port = ProtocolSeedingPort(ClientOperations(observed), activationBaseline = false,
+            ownerCurrent = current::get)
+        SeedingController(port, store).tick(environment, emptyList(), default, System.currentTimeMillis())
+        assertTrue("test retired the owner after an actual daemon observation", !current.get())
+        assertEquals("retired policy owner sends no Stop", 0, stops)
+        assertEquals(null, store.get(hash)?.stopAttemptedReason)
+        assertEquals(true, client.torrent(hash)?.runState?.started)
+        stage("retired_owner=real_observation_no_stop_or_journal")
+    }
+
     private lateinit var kind: RemoteBackendKind
     private fun env(name: String) = System.getenv("CHUNKS_INTEROP_" + kind.name + "_" + name).orEmpty()
     private fun stage(text: String) = println("CHUNKS_PROTOCOL_SEEDING_INTEROP: " + kind.name + " " + text)
@@ -150,6 +181,9 @@ class ProtocolSeedingInteropTest {
                     (if (stopped) "stopped_by_rule=verified" else "no_false_stop=true"))
                 return@runBlocking
             }
+            assertRetiredOwnerCannotStop(client, hash, environment) {
+                it.seeding == true && (it.seedingSeconds ?: 0) >= 8
+            }
             var probes = 0
             waitFor("the client's own seeding time passes 8 s and the rule stops the job") {
                 if (probes++ % 10 == 0) client.seedingFacts(hash)?.let {
@@ -226,6 +260,12 @@ class ProtocolSeedingInteropTest {
             leech.resume(hash)
             leech.connectPeer(hash, java.net.InetSocketAddress("127.0.0.1", peerPort))
             waitFor("Local leech got every piece from the client") { leech.status(hash)?.progressPpm == 1_000_000 }
+            assertRetiredOwnerCannotStop(client, hash, environment) {
+                val downloaded = it.downloadedBytes ?: 0
+                it.seeding == true && downloaded > 0 &&
+                    java.math.BigDecimal(it.uploadedBytes ?: 0) >=
+                    java.math.BigDecimal(downloaded).multiply(java.math.BigDecimal("0.5"))
+            }
             waitFor("the client's own counters pass the ratio and the rule stops the job", 90_000) {
                 tick(ops, environment)
                 assignments.get(hash)?.let { it.stoppedByRule != null || it.stopAttemptedReason != null } == true
