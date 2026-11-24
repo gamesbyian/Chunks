@@ -77,13 +77,13 @@ internal fun LocalLibraryCopyPanel(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var busy by androidx.compose.runtime.remember(transfer.infoHash) {
+    var busy by androidx.compose.runtime.remember(transfer.infoHash, transfer.nativeReviewToken) {
         androidx.compose.runtime.mutableStateOf(false)
     }
-    var outcome by androidx.compose.runtime.remember(transfer.infoHash) {
+    var outcome by androidx.compose.runtime.remember(transfer.infoHash, transfer.nativeReviewToken) {
         androidx.compose.runtime.mutableStateOf<LocalSingleLibraryMediaStoreCopy.Result?>(null)
     }
-    var batchOutcome by androidx.compose.runtime.remember(transfer.infoHash) {
+    var batchOutcome by androidx.compose.runtime.remember(transfer.infoHash, transfer.nativeReviewToken) {
         androidx.compose.runtime.mutableStateOf<LocalMultiLibraryMediaStoreCopy.Result?>(null)
     }
     androidx.compose.material3.Card {
@@ -96,6 +96,7 @@ internal fun LocalLibraryCopyPanel(
             androidx.compose.material3.Button(
                 onClick = {
                     busy = true
+                    batchOutcome = null
                     scope.launch {
                         val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             val engine = engineProvider()
@@ -103,7 +104,8 @@ internal fun LocalLibraryCopyPanel(
                                 LocalSingleLibraryMediaStoreCopy.State.BLOCKED,
                                 "The local transfer engine is unavailable; no copy was attempted.")
                             else try {
-                                LocalSingleLibraryMediaStoreCopy.copyNew(context, engine, transfer.infoHash)
+                                LocalSingleLibraryMediaStoreCopy.copyNew(context, engine, transfer.infoHash,
+                                    expectedNativeReviewToken = transfer.nativeReviewToken)
                             } catch (_: Exception) {
                                 LocalSingleLibraryMediaStoreCopy.Result(
                                     LocalSingleLibraryMediaStoreCopy.State.NEEDS_ATTENTION,
@@ -115,12 +117,14 @@ internal fun LocalLibraryCopyPanel(
                         busy = false
                     }
                 },
-                enabled = !busy && outcome == null && batchOutcome == null,
+                enabled = !busy && outcome == null &&
+                    (batchOutcome == null || batchOutcome?.state == LocalMultiLibraryMediaStoreCopy.State.BLOCKED),
                 modifier = androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(if (busy) "Checking completed file…" else "Copy single file to Downloads") }
             androidx.compose.material3.Button(
                 onClick = {
                     busy = true
+                    outcome = null
                     scope.launch {
                         val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             val engine = engineProvider()
@@ -128,7 +132,8 @@ internal fun LocalLibraryCopyPanel(
                                 LocalMultiLibraryMediaStoreCopy.State.BLOCKED,
                                 "The local transfer engine is unavailable; no copy was attempted.")
                             else try {
-                                LocalMultiLibraryMediaStoreCopy.copyNew(context, engine, transfer.infoHash)
+                                LocalMultiLibraryMediaStoreCopy.copyNew(context, engine, transfer.infoHash,
+                                    expectedNativeReviewToken = transfer.nativeReviewToken)
                             } catch (_: Exception) {
                                 LocalMultiLibraryMediaStoreCopy.Result(
                                     LocalMultiLibraryMediaStoreCopy.State.NEEDS_ATTENTION,
@@ -140,7 +145,8 @@ internal fun LocalLibraryCopyPanel(
                         busy = false
                     }
                 },
-                enabled = !busy && outcome == null && batchOutcome == null,
+                enabled = !busy && batchOutcome == null &&
+                    (outcome == null || outcome?.state == LocalSingleLibraryMediaStoreCopy.State.BLOCKED),
                 modifier = androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(if (busy) "Checking completed files…" else "Copy multiple files to Downloads") }
             Text("Multiple-file copies are independent: if a later file fails, earlier verified copies remain and an uncertain file needs review.")

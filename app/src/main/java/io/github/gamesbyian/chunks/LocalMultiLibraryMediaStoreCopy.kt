@@ -39,12 +39,19 @@ internal object LocalMultiLibraryMediaStoreCopy {
         context: Context,
         engine: LocalTorrentEngine,
         infoHash: String,
+        expectedNativeReviewToken: String? = null,
         cancelled: () -> Boolean = { false }
     ): Result {
         if (cancelled()) return blocked("Cancelled before destination creation.")
+        val initial = runCatching { engine.status(infoHash) }.getOrNull()
+            ?: return blocked("The exact transfer is unavailable.")
+        val token = initial.nativeReviewToken
+        if (token.isBlank() || (expectedNativeReviewToken != null && token != expectedNativeReviewToken))
+            return blocked("The reviewed transfer changed. No destination was created.")
         fun snapshot(): LocalLibraryCopySource? {
             val transfer = engine.status(infoHash) ?: return null
             if (!transfer.infoHash.equals(infoHash, ignoreCase = true) ||
+                transfer.nativeReviewToken != token || transfer.error != null ||
                 !transfer.metadataKnown || transfer.progressPpm != 1_000_000 ||
                 transfer.state !in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING))
                 return null

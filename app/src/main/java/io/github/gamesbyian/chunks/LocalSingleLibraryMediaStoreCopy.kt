@@ -40,12 +40,17 @@ internal object LocalSingleLibraryMediaStoreCopy {
         context: Context,
         engine: LocalTorrentEngine,
         infoHash: String,
+        expectedNativeReviewToken: String? = null,
         cancelled: () -> Boolean = { false }
     ): Result {
         if (cancelled()) return blocked("Cancelled before destination creation.")
         val transfer = try { engine.status(infoHash) } catch (_: Exception) { null }
             ?: return blocked("This transfer is no longer available.")
-        if (!transfer.metadataKnown || transfer.progressPpm != 1_000_000 ||
+        val token = transfer.nativeReviewToken
+        if (!transfer.infoHash.equals(infoHash, ignoreCase = true) || token.isBlank() ||
+            (expectedNativeReviewToken != null && token != expectedNativeReviewToken))
+            return blocked("The reviewed transfer changed. No destination was created.")
+        if (transfer.error != null || !transfer.metadataKnown || transfer.progressPpm != 1_000_000 ||
             transfer.state !in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING))
             return blocked("The transfer's finished bytes are not ready for independent copying.")
         val source = try { LocalLibraryCopySource.of(engine, transfer) } catch (_: Exception) { null }
@@ -66,7 +71,8 @@ internal object LocalSingleLibraryMediaStoreCopy {
 
         val refreshed = try { engine.status(infoHash) } catch (_: Exception) { null }
             ?: return blocked("The transfer disappeared before copying.")
-        if (refreshed.infoHash != transfer.infoHash || refreshed.progressPpm != 1_000_000 ||
+        if (refreshed.infoHash != transfer.infoHash || refreshed.nativeReviewToken != token ||
+            !refreshed.metadataKnown || refreshed.error != null || refreshed.progressPpm != 1_000_000 ||
             refreshed.state !in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING))
             return blocked("The transfer changed before the copy.")
         val checked = try { LocalLibraryCopySource.of(engine, refreshed) } catch (_: Exception) { null }
@@ -79,6 +85,15 @@ internal object LocalSingleLibraryMediaStoreCopy {
         val payload = try { readAndRecheck(source.sourceRoot, file.source, file.sizeBytes, cancelled) }
             catch (_: Exception) { return blocked("The original file changed or could not be read safely. No destination was created.") }
         if (cancelled()) return blocked("Cancelled before destination creation.")
+        val latest = runCatching { engine.status(infoHash) }.getOrNull()
+        val latestSource = latest?.takeIf {
+            it.infoHash == transfer.infoHash && it.nativeReviewToken == token &&
+                it.metadataKnown && it.error == null && it.progressPpm == 1_000_000 &&
+                it.state in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING)
+        }?.let { runCatching { LocalLibraryCopySource.of(engine, it) }.getOrNull() }
+        if (latestSource == null || latestSource.sourceRoot != source.sourceRoot ||
+            latestSource.files != source.files)
+            return blocked("The reviewed source changed before destination creation.")
         val suffix = relative.substringAfterLast('.')
         val mime = when (suffix) {
             "txt" -> "text/plain"

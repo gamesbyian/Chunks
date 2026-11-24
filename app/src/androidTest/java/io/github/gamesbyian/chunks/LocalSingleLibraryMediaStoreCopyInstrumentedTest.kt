@@ -129,6 +129,11 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }, null, null))
 
+            assertTrue(status.nativeReviewToken.isNotBlank())
+            val stale = LocalSingleLibraryMediaStoreCopy.copyNew(context, local, added.infoHash,
+                expectedNativeReviewToken = status.nativeReviewToken + "-stale")
+            assertEquals(LocalSingleLibraryMediaStoreCopy.State.BLOCKED, stale.state)
+            assertNull(stale.publishedUri)
             val result = AtomicReference<LocalSingleLibraryMediaStoreCopy.Result?>()
             compose.setContent {
                 MaterialTheme {
@@ -333,12 +338,23 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
                 }, null, null))
                 val before = ownRows(marker, includePending = true)
                 val warningsBefore = batchWarnings()
+                assertTrue(status.nativeReviewToken.isNotBlank())
+                val stale = LocalMultiLibraryMediaStoreCopy.copyNew(context, engine, status.infoHash,
+                    expectedNativeReviewToken = status.nativeReviewToken + "-stale")
+                assertEquals(LocalMultiLibraryMediaStoreCopy.State.BLOCKED, stale.state)
+                assertEquals(before, ownRows(marker, includePending = true))
+                assertEquals(warningsBefore, batchWarnings())
+                val wrongMode = AtomicReference<LocalSingleLibraryMediaStoreCopy.Result?>()
                 compose.setContent {
                     MaterialTheme {
                         LocalLibraryCopyPanel(status, engineProvider = { engine },
-                            onBatchResult = { result.set(it) })
+                            onBatchResult = { result.set(it) }, onResult = { wrongMode.set(it) })
                     }
                 }
+                compose.onNodeWithText("Copy single file to Downloads").performClick()
+                compose.waitUntil(90_000) { wrongMode.get() != null }
+                assertEquals(LocalSingleLibraryMediaStoreCopy.State.BLOCKED, wrongMode.get()?.state)
+                assertEquals(before, ownRows(marker, includePending = true))
                 compose.onNodeWithText("Copy multiple files to Downloads").performClick()
                 compose.waitUntil(90_000) { result.get() != null }
                 val response = requireNotNull(result.get())
