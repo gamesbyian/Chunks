@@ -4,6 +4,8 @@
 
 **Forensic refinement (FE-01/02/04/05; #2025/#2026):** Engine ACK or independently absent registration alone proves neither physical payload absence nor deletion authority. Distinguish job removal, backend-acknowledged/queued deletion, independently verified payload deletion and inconclusive outcomes. Refuse preflight/completion on wrong/mixed/duplicate/malformed/incomplete identity. Retain exact account generation/hash uncertainty across screen disposal, cancellation and reconnect; read-only resolution, no replay. Expose inability to verify disk state.
 
+While a dispatched typed command is still settling, a replacement Details screen must keep the same job's command authority fenced. Read-only reconciliation becomes available only after the request settles into a reconcilable state. Leaving Details may revoke an unsubmitted preflight immediately.
+
 **Owner decision, 2026-11-13; implementation reconciled 2026-11-14. Environment acceptance is recorded separately in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [#1679 evidence](evidence/remote-1679/README.md).** Applies first to rTorrent, and later to backend-neutral remote adapters. Work is staged within existing R1 owner-host acceptance and R3 remote-integrity cohorts, **not** a competing P0 subsystem. See [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md), [ARCHITECTURE](ARCHITECTURE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and [WORK-QUEUE](WORK-QUEUE.md).
 
 ## Observable behavior

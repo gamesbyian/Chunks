@@ -99,6 +99,8 @@ These are **investigation targets, not claims of shipped support**. Version rang
 
 **Deluge official Web API:** https://deluge.readthedocs.io/en/latest/reference/webapi.html . The Web API is JSON-RPC v1 at /json and can proxy methods to a selected daemon after web authorization. Flood's experimental Deluge implementation may use native daemon/Rencode instead; that is a **different transport**. Prefer the existing owner testable HTTPS web entry point first.
 
+Deluge Web UI routes daemon calls through a shared connection. Its global connected flag cannot prove that the selected daemon still owns that connection. Use the selected host's status as the connection witness. The separate status and daemon calls cannot provide an atomic routing guarantee on a shared Web UI. [#2072](https://github.com/gamesbyian/Chunks/issues/2072)
+
 **Other surfaces:** test each against primary vendor protocols and active versions before writing production adapters. New supported backend names require measured test coverage and a security/maintenance owner, not just a row in this table.
 
 ## Shared user journey, defaults and UX
