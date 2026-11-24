@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
  * previously saved credentials before a later opt-in can run.
  */
 internal class RemoteCredentialActionQueue {
-    private var lastJob: Job? = null
+    @Volatile private var lastJob: Job? = null
+    fun isSettled(): Boolean = lastJob?.isCompleted != false
     private var revision = 0L
 
     fun submit(scope: CoroutineScope, action: suspend (revision: Long) -> Unit): Job {

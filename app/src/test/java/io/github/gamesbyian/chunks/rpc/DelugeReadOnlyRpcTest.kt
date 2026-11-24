@@ -41,6 +41,42 @@ class DelugeReadOnlyRpcTest {
     private fun client(script: Scripted, host: String = daemon, url: String = endpoint) =
         DelugeReadOnlyRpc(RemoteCredentials(url, "", "only-web-password"), host, script)
 
+    @Test fun lateDelugeVectorReadCannotReplaceTheReviewedLayout() = runBlocking {
+        var fileReads = 0
+        var writes = 0
+        val client = DelugeClient(RemoteCredentials(endpoint, "", "fixture-password"), daemon,
+            DelugeReadOnlyRpc.Wire { request ->
+                val call = org.json.JSONObject(request.body.toString(Charsets.UTF_8))
+                val id = call.getInt("id")
+                when (val method = call.getString("method")) {
+                    "auth.login" -> DelugeReadOnlyRpc.Response(200,
+                        """{"id":$id,"error":null,"result":true}""",
+                        mapOf("Set-Cookie" to listOf("_session_id=$sid")))
+                    "web.get_hosts" -> result(id, """[["$daemon","127.0.0.1",58846,"fixture"]]""")
+                    "web.get_host_status" -> result(id, """["$daemon","Connected","2.1"]""")
+                    "daemon.get_method_list" -> result(id, """["core.set_torrent_options"]""")
+                    "web.connected" -> result(id, "true")
+                    "core.get_config_value" -> result(id, """"/data"""")
+                    "core.get_torrent_status" -> {
+                        fileReads++
+                        val secondPath = if (fileReads == 1) "root/other.bin" else "different/other.bin"
+                        result(id, """{"files":[{"index":0,"path":"root/selected.bin","size":42},
+                            {"index":1,"path":"$secondPath","size":84}],"file_priorities":[4,4]}""")
+                    }
+                    "core.set_torrent_options" -> { writes++; result(id, "null") }
+                    else -> error("Unexpected fixture method $method")
+                }
+            })
+        val reviewed = listOf(
+            ClientFile(0, "root/selected.bin", 42L, null, ClientFilePriority.NORMAL),
+            ClientFile(1, "root/other.bin", 84L, null, ClientFilePriority.NORMAL))
+        val outcome = ClientOperations(client, readbackAttempts = 1)
+            .setReviewedFilePriorities(hash, reviewed, mapOf(0 to ClientFilePriority.HIGH))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Refused)
+        assertEquals(2, fileReads)
+        assertEquals(0, writes)
+    }
+
     @Test fun exactRegisteredDaemonMustBeVerifiedBeforeSessionConnectAndInventoryRead() = runBlocking {
         val script = Scripted(login(), hosts(), status(), connected(), result(5, "true"), update())
         val snapshot = client(script).inspect()

@@ -38,6 +38,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         fun uploadCapRepresentable(bytesPerSecond: Long): Boolean = true
         /** True only after the engine confirms the transfer is paused. */
         fun pause(infoHash: String): Boolean
+        fun mayMutate(): Boolean = true
     }
 
     data class Assignment(
@@ -63,8 +64,10 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
     }
 
     fun tick(environment: String, rules: List<SeedingRule>, default: SeedingPolicy, nowMs: Long) {
+        if (!engine.mayMutate()) return
         val epoch = store.epoch() ?: nowMs.also { if (!store.setEpoch(it)) return }
         for (facts in engine.transfers()) {
+            if (!engine.mayMutate()) return
             var assignment = store.get(facts.infoHash)
             if (assignment == null) {
                 assignment = if (facts.addedAtMs < epoch) Assignment(null, null, null)
@@ -89,6 +92,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
     }
 
     private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment) {
+        if (!engine.mayMutate()) return
         // No cap in a policy means "do not manage this setting", not an
         // instruction to erase an independently configured per-job cap.
         // libtorrent exposes an Int upload limit. Never narrow a saved Long
@@ -149,7 +153,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         // service-wide poll or authorize an unverified automatic Pause.
         val observation = runCatching { engine.observe(hash) }.getOrNull() ?: return
         val decision = SeedingEnforcement.decide(policy, observation)
-        if (decision is SeedingEnforcement.Decision.Stop) {
+        if (decision is SeedingEnforcement.Decision.Stop && engine.mayMutate()) {
             // Commit the attempt BEFORE calling the engine. A failed commit is
             // a known no-write outcome. If the process dies after this commit,
             // the durable marker prevents repeating an uncertain Pause.

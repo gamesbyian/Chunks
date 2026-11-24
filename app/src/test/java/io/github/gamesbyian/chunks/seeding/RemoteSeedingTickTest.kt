@@ -1,6 +1,12 @@
 package io.github.gamesbyian.chunks.seeding
 
 import androidx.test.core.app.ApplicationProvider
+import io.github.gamesbyian.chunks.FinishInOrderScopes
+import io.github.gamesbyian.chunks.FinishInOrderStore
+import io.github.gamesbyian.chunks.engine.FinishInOrderPlanner
+import io.github.gamesbyian.chunks.engine.FinishInOrderRecord
+import io.github.gamesbyian.chunks.tickProtocolRemotePolicies
+import kotlinx.coroutines.runBlocking
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientCapability
 import io.github.gamesbyian.chunks.rpc.ClientFile
@@ -33,14 +39,83 @@ import org.robolectric.annotation.Config
 class RemoteSeedingTickTest {
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
 
+    private fun orderRecord() = FinishInOrderRecord(FinishInOrderPlanner.Policy(
+        FinishInOrderPlanner.Mode.BALANCED,
+        listOf(FinishInOrderPlanner.OrderedFile(0, "series/01.mkv", 100L),
+            FinishInOrderPlanner.OrderedFile(1, "series/02.mkv", 100L)), 1))
+
+    @Test fun inactiveOrRetiredProfileNeverCreatesASessionAndActivePoliciesShareOneInventory() = runBlocking {
+        val profile = "first"
+        val other = "other"
+        val hash = "a".repeat(40)
+        val store = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile))
+        assertTrue(store.save(hash, orderRecord()))
+        val client = FakeClient()
+        val operations = ClientOperations(client)
+        var factories = 0
+        suspend fun tick(id: String, ownerCurrent: () -> Boolean) {
+            tickProtocolRemotePolicies(context, id, FinishInOrderStore.scheduledPolicies(context), ownerCurrent) {
+                factories++
+                operations
+            }
+        }
+        tick(other) { true }
+        tick(profile) { false }
+        assertEquals(0, factories)
+        assertEquals(0, client.reads)
+        assertEquals(0, client.sessions)
+
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        tick(profile) { true }
+        assertEquals(1, factories)
+        assertEquals(1, client.sessions)
+        assertEquals(1, client.inventories)
+    }
+
+    @Test fun legacyPolicyOwnerDiscoveryPreservesExactJournalAndUsesScopedScheduling() {
+        val scope = FinishInOrderScopes.protocol("legacy")
+        val otherScope = FinishInOrderScopes.protocol("other")
+        val hash = "B".repeat(40)
+        val prefs = context.getSharedPreferences("chunks_finish_in_order_v1", android.content.Context.MODE_PRIVATE)
+        val key = "policy_" + java.security.MessageDigest.getInstance("SHA-256")
+            .digest((scope + "\u0000" + hash).toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        val record = orderRecord().copy(finished = true, pending = listOf(
+            FinishInOrderPlanner.Change(0, FinishInOrderPlanner.NORMAL, FinishInOrderPlanner.HIGH)))
+        val old = record.encode()
+        assertTrue(prefs.edit().putString(key, old).commit())
+        assertTrue(FinishInOrderStore.scheduledPolicies(context).mayHaveWork(otherScope))
+        val store = FinishInOrderStore(context, scope)
+        assertEquals(record, store.get(hash))
+        store.rememberOwner(hash)
+        assertEquals(old, prefs.getString(key, null))
+        assertTrue(FinishInOrderStore.scheduledPolicies(context).mayHaveWork(scope))
+        assertFalse(FinishInOrderStore.scheduledPolicies(context).mayHaveWork(otherScope))
+        assertTrue(store.update(hash, record.copy(suspendedReason = "Waiting for review")))
+        assertEquals(record.pending, FinishInOrderStore(context, scope).get(hash)?.pending)
+        assertFalse(FinishInOrderStore.scheduledPolicies(context).mayHaveWork(scope))
+        assertTrue(store.remove(hash))
+        assertNull(FinishInOrderStore(context, scope).get(hash))
+    }
+
     private class FakeClient : TorrentClient {
         override val kind = TorrentClientKind.QBITTORRENT
         val jobs = LinkedHashMap<String, Boolean>()   // hash -> started
         val facts = HashMap<String, ClientSeedingFacts>()
         var reads = 0
+        var inventories = 0
+        var sessions = 0
         var stops = 0
-        override suspend fun session() = ClientSessionInfo(kind, "4.6", "/dl", ClientCapability.entries.toSet())
-        override suspend fun torrents(): List<ClientTorrent> { reads++; return jobs.keys.mapNotNull { torrent(it) } }
+        override suspend fun session(): ClientSessionInfo {
+            sessions++
+            return ClientSessionInfo(kind, "4.6", "/dl", ClientCapability.entries.toSet())
+        }
+        override suspend fun torrents(): List<ClientTorrent> {
+            reads++
+            inventories++
+            return jobs.keys.mapNotNull { torrent(it) }
+        }
         override suspend fun torrent(hash: String) = jobs[hash]?.let {
             ClientTorrent(hash, hash, if (it) ClientRunState.SEEDING else ClientRunState.STOPPED, 1, 1, 0, 0, "/dl")
         }

@@ -36,10 +36,11 @@ import kotlinx.coroutines.withContext
 
 /** One runner step for a server transfer, serialized with every other policy edit. */
 internal suspend fun stepRemoteFinishInOrder(
-    remote: RTorrentRemote, store: FinishInOrderStore, hash: String
+    remote: RTorrentRemote, store: FinishInOrderStore, hash: String, ownerCurrent: () -> Boolean = { true }
 ): FinishInOrderRunner.Step? = FinishInOrderController.exclusive {
+    if (!ownerCurrent()) return@exclusive null
     store.get(hash)?.let { record ->
-        FinishInOrderRunner(RemoteFinishInOrderPort(remote) { h, r -> store.update(h, r) })
+        FinishInOrderRunner(RemoteFinishInOrderPort(remote) { h, r -> ownerCurrent() && store.update(h, r) })
             .step(hash, record)
     }
 }
@@ -48,11 +49,12 @@ internal suspend fun stepRemoteFinishInOrder(
 internal suspend fun stepClientFinishInOrder(
     operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
     storedLevels: Set<io.github.gamesbyian.chunks.rpc.ClientFilePriority>,
-    store: FinishInOrderStore, hash: String
+    store: FinishInOrderStore, hash: String, ownerCurrent: () -> Boolean = { true }
 ): FinishInOrderRunner.Step? = FinishInOrderController.exclusive {
+    if (!ownerCurrent()) return@exclusive null
     store.get(hash)?.let { record ->
         FinishInOrderRunner(io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort(operations, storedLevels) { h, r ->
-            store.update(h, r)
+            ownerCurrent() && store.update(h, r)
         }).step(hash, record)
     }
 }

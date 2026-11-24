@@ -1820,12 +1820,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (changes.isEmpty()) return LocalFileBatchOutcome.UNCHANGED
         val key = normal(infoHash)
         val reviewed = record.policy.order.associateBy { it.index }
+        fun matches(rows: List<LocalTransferFile>): Boolean {
+            val byIndex = rows.associateBy { it.index }
+            return rows.size == byIndex.size && reviewed.values.all { expected ->
+                val file = byIndex[expected.index]
+                file != null && file.path == expected.path && file.sizeBytes == expected.sizeBytes
+            }
+        }
         synchronized(this) {
             val handle = handles[key]?.takeIf { it.isValid }
                 ?: return LocalFileBatchOutcome.NOT_FOUND
-            val byIndex = (files(key) ?: return LocalFileBatchOutcome.STALE_REVIEW)
-                .associateBy { it.index }
-            if (changes.size > FinishInOrderPlanner.MAX_FILES ||
+            val current = files(key) ?: return LocalFileBatchOutcome.STALE_REVIEW
+            val byIndex = current.associateBy { it.index }
+            if (!matches(current) || changes.size > FinishInOrderPlanner.MAX_FILES ||
                 changes.map { it.index }.toSet().size != changes.size ||
                 changes.any { change ->
                     val fresh = byIndex[change.index]
@@ -1853,12 +1860,18 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
         val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
         while (true) {
-            val actual = try {
-                synchronized(this) { handles[key]?.takeIf { it.isValid }?.filePriorities() }
-            } catch (_: Exception) { null }
-            if (actual != null && changes.all { change ->
-                    actual.getOrNull(change.index)?.swig()?.toInt() == change.requestedPriority
-                }) return LocalFileBatchOutcome.VERIFIED
+            try {
+                synchronized(this) {
+                    val actual = handles[key]?.takeIf { it.isValid }?.filePriorities()
+                    if (actual != null && changes.all { change ->
+                        actual.getOrNull(change.index)?.swig()?.toInt() == change.requestedPriority
+                    }) {
+                        val observed = files(key)
+                        return if (observed != null && matches(observed)) LocalFileBatchOutcome.VERIFIED
+                            else LocalFileBatchOutcome.UNCERTAIN
+                    }
+                }
+            } catch (_: Exception) {}
             if (System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
             Thread.sleep(25)
         }

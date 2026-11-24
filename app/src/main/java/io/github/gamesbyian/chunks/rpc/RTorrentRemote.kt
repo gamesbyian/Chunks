@@ -1785,6 +1785,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         expectedSizeBytes: Long,
         expectedPriority: Int,
         desiredPriority: Int
+    ): FilePriorityOutcome =
+        setFilePriorityChecked(hash, fileIndex, expectedPath, expectedSizeBytes, expectedPriority, desiredPriority) { true }
+
+    internal suspend fun setFilePriorityChecked(
+        hash: String,
+        fileIndex: Int,
+        expectedPath: String,
+        expectedSizeBytes: Long,
+        expectedPriority: Int,
+        desiredPriority: Int,
+        layoutValid: (List<RemoteFile>) -> Boolean
     ): FilePriorityOutcome {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
         require(fileIndex in 0..11999) { "Invalid file index" }
@@ -1796,7 +1807,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
 
         val before = listFiles(hash)
-        require(fileIndex < before.size) { "File index no longer exists; refresh" }
+        require(fileIndex < before.size && layoutValid(before)) { "File index no longer exists; refresh" }
         val original = before[fileIndex]
         require(original.path == expectedPath &&
             original.sizeBytes == expectedSizeBytes &&
@@ -1819,7 +1830,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // Re-read the file layout and bracket it with a fresh exact-hash
         // witness immediately before the first write.
         val currentFiles = listFiles(hash)
-        check(currentFiles.size == before.size &&
+        check(currentFiles.size == before.size && layoutValid(currentFiles) &&
             currentFiles.getOrNull(fileIndex)?.let {
                 it.path == expectedPath && it.sizeBytes == expectedSizeBytes &&
                     it.priority == expectedPriority
@@ -1852,7 +1863,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (_: Exception) { false }
-            if (!stillExact) {
+            if (!stillExact || !layoutValid(after)) {
                 FilePriorityOutcome.Uncertain(hash, fileIndex)
             } else {
                 val observed = after.getOrNull(fileIndex)
@@ -2458,6 +2469,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     // A deadline may expire during blocking auth preflight.
                     // It must revoke dispatch before a destructive body is sent.
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    if (mutation) RemotePolicyWriteFence.check()
                     beforeWrite()
                     connection.outputStream.use { it.write(request) }
                     val status = connection.responseCode

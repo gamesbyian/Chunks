@@ -219,7 +219,14 @@ internal class LocalTorrentClient(
      * High per file, each against the engine's fresh exact file identity.
      * Any failure after the first native write is uncertain, never replayed.
      */
-    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) {
+    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) =
+        setFilePriorities(hash, priorities) { true }
+
+    override suspend fun setFilePriorities(
+        hash: String,
+        priorities: Map<Int, ClientFilePriority>,
+        validateSnapshot: (List<ClientFile>) -> Boolean
+    ) {
         val exact = ClientHashes.requireHash(hash)
         write { running ->
             var wrote = false
@@ -235,15 +242,20 @@ internal class LocalTorrentClient(
                 LocalFileBatchOutcome.UNCERTAIN -> throw ClientWriteUncertainException("Local file priority change not confirmed")
             }
             val current = fresh()
-            if (!current.map { it.index }.toSet().containsAll(priorities.keys)) fail("File list changed; refresh first")
+            val expected = current.map(::fileOf)
+            if (!current.map { it.index }.toSet().containsAll(priorities.keys) || !validateSnapshot(expected))
+                fail("File list changed; refresh first")
+            fun sameFiles(): List<LocalTransferFile> = fresh().also { files ->
+                if (!ClientFileLayout.sameRoster(expected, files.map(::fileOf))) fail("File list changed; refresh first")
+            }
             val skip = current.filter { priorities[it.index] == ClientFilePriority.SKIP && it.wanted }
             if (skip.isNotEmpty()) settle(running.setFilesWantedBatch(exact, skip, false))
-            val unskip = fresh().filter { file ->
+            val unskip = sameFiles().filter { file ->
                 val wanted = priorities[file.index]
                 wanted != null && wanted != ClientFilePriority.SKIP && !file.wanted
             }
             if (unskip.isNotEmpty()) settle(running.setFilesWantedBatch(exact, unskip, true))
-            for (file in fresh().sortedBy { it.index }) {
+            for (file in sameFiles().sortedBy { it.index }) {
                 val wanted = priorities[file.index] ?: continue
                 if (wanted == ClientFilePriority.SKIP || priorityOf(file) == wanted) continue
                 settle(running.setFilePriority(exact, file, nativePriority(wanted)))

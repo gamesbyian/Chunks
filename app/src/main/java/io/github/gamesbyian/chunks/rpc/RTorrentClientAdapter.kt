@@ -70,11 +70,15 @@ internal class RTorrentClientAdapter(
     }
 
     override suspend fun files(hash: String): List<ClientFile> =
-        remote.listFiles(ClientHashes.requireHash(hash)).mapIndexed { index, file ->
+        fileRows(remote.listFiles(ClientHashes.requireHash(hash)))
+
+    private fun fileRows(files: List<RemoteFile>): List<ClientFile> =
+        files.mapIndexed { index, file ->
             ClientFile(index, file.path, file.sizeBytes, null, when (file.priority) {
                 0 -> ClientFilePriority.SKIP
+                1 -> ClientFilePriority.NORMAL
                 2 -> ClientFilePriority.HIGH
-                else -> ClientFilePriority.NORMAL
+                else -> throw IOException("Unrecognized rTorrent file priority")
             })
         }
 
@@ -133,9 +137,18 @@ internal class RTorrentClientAdapter(
         }
     }
 
-    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) {
+    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) =
+        setFilePriorities(hash, priorities) { true }
+
+    override suspend fun setFilePriorities(
+        hash: String,
+        priorities: Map<Int, ClientFilePriority>,
+        validateSnapshot: (List<ClientFile>) -> Boolean
+    ) {
         val exact = ClientHashes.requireHash(hash)
         val before = remote.listFiles(exact)
+        val expected = fileRows(before)
+        if (!validateSnapshot(expected)) throw ClientRefusedException("rTorrent file list changed; refresh first")
         var sent = 0
         for ((index, wanted) in priorities.toSortedMap()) {
             val file = before.getOrNull(index) ?: throw ClientRefusedException("File list changed; refresh first")
@@ -146,7 +159,9 @@ internal class RTorrentClientAdapter(
             }
             if (file.priority == desired) continue
             val outcome = try {
-                remote.setFilePriority(exact, index, file.path, file.sizeBytes, file.priority, desired)
+                remote.setFilePriorityChecked(exact, index, file.path, file.sizeBytes, file.priority, desired) {
+                    ClientFileLayout.sameRoster(expected, fileRows(it))
+                }
             } catch (refused: IllegalArgumentException) {
                 if (sent > 0) throw ClientWriteUncertainException("Some file priorities may have changed")
                 throw ClientRefusedException(refused.message ?: "rTorrent refused the priority change")
