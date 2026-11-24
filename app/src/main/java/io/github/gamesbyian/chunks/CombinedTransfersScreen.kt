@@ -442,7 +442,9 @@ internal fun CombinedTransfersScreen(
     hasRememberedRemoteLogin: Boolean = false,
     onWelcomeAdd: (() -> Unit)? = null,
     /** Authenticated read-only profiles for additional remote protocols. */
-    protocolProfiles: List<CombinedReadOnlyProtocolProfile> = emptyList()
+    protocolProfiles: List<CombinedReadOnlyProtocolProfile> = emptyList(),
+    /** The host checks the captured saved record or transient session against live ownership. */
+    protocolOwnerCurrent: (CombinedReadOnlyProtocolProfile) -> Boolean = { true }
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -1276,7 +1278,8 @@ internal fun CombinedTransfersScreen(
                     suggestForFiles = { names -> moveSuggestionFor(protocolTargets, names) },
                     sourceAliasScope = aliasScopes[focusedKey.environment],
                     sourceGeneration = profile.identityWitness,
-                    canReconcile = focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true
+                    canReconcile = focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true,
+                    isOwnerCurrent = { protocolOwnerCurrent(profile) }
                 )
             }
         }

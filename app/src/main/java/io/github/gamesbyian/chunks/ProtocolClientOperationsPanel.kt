@@ -120,7 +120,8 @@ internal fun ProtocolClientOperationsPanel(
     sourceGeneration: String? = null,
     /** Privacy-visible, live exact client; the job itself may have disappeared. */
     canReconcile: Boolean = current,
-    receiptOwner: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner
+    receiptOwner: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
+    isOwnerCurrent: () -> Boolean = { true }
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -212,7 +213,7 @@ internal fun ProtocolClientOperationsPanel(
     }
 
     fun run(action: String, kind: ProtocolOperationKind, block: suspend () -> ClientOperationOutcome) {
-        if (busy || latched || !current) return
+        if (busy || latched || !current || !isOwnerCurrent()) return
         val key = receiptKey
         val ticket = if (key == null) null else receiptOwner.begin(key, requireNotNull(sourceGeneration), kind)
         if (key != null && ticket == null) {
@@ -221,6 +222,7 @@ internal fun ProtocolClientOperationsPanel(
         }
         val policyEpoch = TransferPrivacyPolicyStore.revision
         val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+        val credentialEpoch = RemoteCredentialLock.capture()
         busy = true
         notice = "$action…"
         // Start the structured body before returning from the click, so even
@@ -230,7 +232,8 @@ internal fun ProtocolClientOperationsPanel(
                 val outcome = try {
                     if (ticket == null) block()
                     else withContext(ClientOperationWriteBoundary {
-                        if (currentOwner !== operations ||
+                        if (currentOwner !== operations || !isOwnerCurrent() ||
+                            !RemoteCredentialLock.current(credentialEpoch) ||
                             policyEpoch != TransferPrivacyPolicyStore.revision ||
                             lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision ||
                             !receiptOwner.possibleWrite(ticket))
@@ -253,14 +256,16 @@ internal fun ProtocolClientOperationsPanel(
 
     fun reconcile() {
         val receipt = retained ?: return
-        if (busy || !canReconcile || !receipt.canReconcile) return
+        if (busy || !canReconcile || !receipt.canReconcile || !isOwnerCurrent()) return
         val policyEpoch = TransferPrivacyPolicyStore.revision
         val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+        val credentialEpoch = RemoteCredentialLock.capture()
         busy = true
         scope.launch {
             try {
                 val row = operations.client.torrent(hash)
-                if (currentReadOwner !== operations ||
+                if (currentReadOwner !== operations || !isOwnerCurrent() ||
+                    !RemoteCredentialLock.current(credentialEpoch) ||
                     policyEpoch != TransferPrivacyPolicyStore.revision ||
                     lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision) return@launch
                 if (row != null && !row.hash.equals(hash, ignoreCase = true))

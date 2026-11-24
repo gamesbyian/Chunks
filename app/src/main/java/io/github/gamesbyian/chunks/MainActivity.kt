@@ -1951,6 +1951,20 @@ internal fun ChunksApp(
                         shortLabel = profile.label)
                 },
                 protocolProfiles = combinedProtocolProfiles,
+                protocolOwnerCurrent = run {
+                    val expectedSaved = savedProtocolProfiles.associateBy { it.id }
+                    val expectedTransient = transientReadOnlyProfile
+                    { candidate: CombinedReadOnlyProtocolProfile ->
+                        section == Section.COMBINED &&
+                            savedProtocolProfiles.firstOrNull { it.id == candidate.id }.let { current ->
+                                val expected = expectedSaved[candidate.id]
+                                if (expected != null) current == expected &&
+                                    candidate.verifiedAtMillis == expected.lastVerifiedAtMillis
+                                else current == null && candidate === expectedTransient &&
+                                    transientReadOnlyProfile === expectedTransient
+                            }
+                    }
+                },
                 onOpenLocal = { localFromCombined = true; section = Section.LOCAL },
                 // Opening the local device inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
