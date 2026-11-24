@@ -91,16 +91,19 @@ internal class DelugeClient(
             .put(JSONArray(listOf("files", "file_priorities", "file_progress")))) as? JSONObject
             ?: throw IOException("Deluge file list unavailable")
         val files = row.optJSONArray("files") ?: throw ClientRefusedException("Deluge does not know this transfer")
+        if (files.length() == 0) return emptyList()
         val priorities = row.optJSONArray("file_priorities") ?: JSONArray()
-        val progress = row.optJSONArray("file_progress") ?: JSONArray()
-        return (0 until files.length()).map { i ->
-            val file = files.getJSONObject(i)
-            val size = file.getLong("size")
-            val index = file.optInt("index", i)
-            val p = progress.optDouble(index, -1.0)
-            ClientFile(index, file.getString("path"), size,
-                if (p in 0.0..1.0) (size * p).toLong() else null,
-                fromDeluge(priorities.optInt(index, if (legacyPriorities) 1 else 4)))
+        if (priorities.length() != files.length()) throw IOException("Inconsistent Deluge file priorities")
+        val progress = row.optJSONArray("file_progress")?.takeIf { it.length() == files.length() }
+        return exactIndexedFiles(files).map { (index, file) ->
+            val size = file.exactFileInteger("size")?.takeIf { it >= 0 }
+                ?: throw IOException("Invalid Deluge file length")
+            val priority = exactWireInteger(priorities.opt(index))?.takeIf { it in 0L..7L }
+                ?: throw IOException("Invalid Deluge file priority")
+            val fraction = exactProgressFraction(progress?.opt(index))
+            ClientFile(index, file.exactFilePath("path"), size,
+                fraction?.let { (size * it).toLong() },
+                fromDeluge(priority.toInt()))
         }
     }
 

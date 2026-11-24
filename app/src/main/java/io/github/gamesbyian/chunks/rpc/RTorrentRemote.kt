@@ -144,6 +144,8 @@ internal enum class RemoteReadAuthEvidence {
 }
 
 class RTorrentRemote(private val auth: RemoteCredentials) {
+    /** Process-only connection generation for receipts that must never retain the transport. */
+    internal val commandGeneration = java.util.UUID.randomUUID().toString()
     @Volatile private var acceptedReadChallenge = false
     // A successfully authenticated READ may have received the only challenge
     // available on a method-aware gateway. Retain bounded challenge headers in

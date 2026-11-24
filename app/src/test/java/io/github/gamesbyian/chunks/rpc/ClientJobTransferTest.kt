@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.rpc
 
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -73,7 +74,12 @@ class ClientJobTransferTest {
         var authorized = true
         source.onTorrentRead = { authorized = false }
 
-        assertTrue(move.retireSource(hash, copied) { authorized } is ClientOperationOutcome.Refused)
+        var dispatches = 0
+        val retired = withContext(ClientOperationWriteBoundary { dispatches++ }) {
+            move.retireSource(hash, copied) { authorized }
+        }
+        assertTrue(retired is ClientOperationOutcome.Refused)
+        assertEquals("A revoked source never reaches the adapter write boundary", 0, dispatches)
         source.onTorrentRead = {}
         authorized = true
         assertTrue(move.retireSource(hash, copied) { authorized } is ClientOperationOutcome.Refused)

@@ -30,7 +30,9 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -147,6 +149,7 @@ internal fun ServerFinishInOrderPanel(
     twoBands: Boolean,
     step: suspend (FinishInOrderStore) -> FinishInOrderRunner.Step?,
     onMutationStarted: () -> Boolean,
+    mutationCurrent: () -> Boolean = { true },
     onSettled: () -> Unit
 ) {
     if (asLocal.size < 2) return
@@ -168,8 +171,9 @@ internal fun ServerFinishInOrderPanel(
             return
         }
         working = true
-        coroutines.launch {
+        coroutines.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
+                coroutineContext.ensureActive()
                 message = try { block() } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
@@ -212,7 +216,9 @@ internal fun ServerFinishInOrderPanel(
                         act {
                             val policy = FinishInOrderPlanner.policyFor(mode, asLocal, order)
                             val saved = FinishInOrderController.exclusive {
-                                withContext(Dispatchers.IO) { store.save(hash, FinishInOrderRecord(policy)) }
+                                withContext(Dispatchers.IO) {
+                                    mutationCurrent() && store.save(hash, FinishInOrderRecord(policy))
+                                }
                             }
                             if (!saved) "Chunks could not save Finish in Order. Nothing changed."
                             else describe(step(store))
@@ -240,7 +246,7 @@ internal fun ServerFinishInOrderPanel(
                                 val saved = FinishInOrderController.exclusive {
                                     withContext(Dispatchers.IO) {
                                         val next = store.get(hash)?.finishNext(index)
-                                        next != null && store.save(hash, next)
+                                        next != null && mutationCurrent() && store.save(hash, next)
                                     }
                                 }
                                 if (!saved) "This file could not be moved first now. Nothing changed."
@@ -256,7 +262,9 @@ internal fun ServerFinishInOrderPanel(
                 if (current.suspendedReason != null) Button(onClick = {
                     act {
                         val resumed = FinishInOrderController.exclusive {
-                            store.get(hash)?.let { store.save(hash, it.copy(suspendedReason = null)) } == true
+                            store.get(hash)?.let {
+                                mutationCurrent() && store.save(hash, it.copy(suspendedReason = null))
+                            } == true
                         }
                         if (!resumed) "Chunks could not save the change. Nothing changed."
                         else describe(step(store))

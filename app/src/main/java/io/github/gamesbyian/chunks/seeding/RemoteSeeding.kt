@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks.seeding
 
 import android.content.Context
+import io.github.gamesbyian.chunks.ProtocolOperationKind
+import io.github.gamesbyian.chunks.ProtocolOperationReceiptOwner
+import io.github.gamesbyian.chunks.ProtocolOperationReceipts
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
@@ -94,9 +97,15 @@ internal class ProtocolSeedingPort(
     private val activationBaseline: Boolean,
     private val inventory: List<ClientTorrent>? = null,
     private val ownerCurrent: () -> Boolean = { true },
+    private val reservePolicy: ((String) -> AutoCloseable?)? = null,
     private val nowMs: () -> Long = System::currentTimeMillis
 ) : StopTrackingPort {
     override fun mayMutate() = ownerCurrent()
+
+    override fun withPolicyAccess(infoHash: String, work: () -> Unit) {
+        val reserve = reservePolicy
+        if (reserve == null) work() else reserve(infoHash)?.use { work() }
+    }
 
     // The client's own per-transfer cap step, read once per tick; null = no per-transfer cap.
     private val capStep: Long? by lazy {
@@ -174,8 +183,13 @@ internal object RemoteSeeding {
     class EnforcementSwitch(context: Context) {
         private val prefs = context.applicationContext
             .getSharedPreferences("chunks_remote_seeding_enforcement", Context.MODE_PRIVATE)
-        fun enabled(environment: String): Boolean =
-            runCatching { prefs.getBoolean(key(environment), false) }.getOrDefault(false)
+        fun enabled(environment: String): Boolean = enabledKey(key(environment))
+        fun currentPreference(environment: String): () -> Boolean {
+            val preference = key(environment)
+            return { enabledKey(preference) }
+        }
+        private fun enabledKey(preference: String): Boolean =
+            runCatching { prefs.getBoolean(preference, false) }.getOrDefault(false)
         fun set(environment: String, on: Boolean): Boolean =
             runCatching { prefs.edit().putBoolean(key(environment), on).commit() }.getOrDefault(false)
         private fun key(environment: String) = "on:" + PreferencesAssignmentStore.digest(environment)
@@ -202,7 +216,9 @@ internal object RemoteSeeding {
         ownerCurrent: () -> Boolean = { true }
     ): Tick {
         val environment = environmentOf(remote) ?: return Tick.NOT_RUN
-        return run(context, environment, nowMs) { baseline -> RTorrentSeedingPort(remote, baseline, ownerCurrent) { nowMs } }
+        return run(context, environment, nowMs) { baseline, enabled ->
+            RTorrentSeedingPort(remote, baseline, { ownerCurrent() && enabled() }) { nowMs }
+        }
     }
 
     /** The seeding-rule environment ID of a Transmission/qBittorrent/Deluge profile. */
@@ -214,18 +230,22 @@ internal object RemoteSeeding {
         operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
         nowMs: Long = System.currentTimeMillis(),
         inventory: List<ClientTorrent>? = null,
-        ownerCurrent: () -> Boolean = { true }
-    ): Tick = run(context, protocolEnvironment(profileId), nowMs) { baseline ->
-        ProtocolSeedingPort(operations, baseline, inventory, ownerCurrent) { nowMs }
+        ownerCurrent: () -> Boolean = { true },
+        receipts: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner
+    ): Tick = run(context, protocolEnvironment(profileId), nowMs) { baseline, enabled ->
+        ProtocolSeedingPort(operations, baseline, inventory, { ownerCurrent() && enabled() },
+            reservePolicy = { hash -> receipts.reservePolicy(profileId, hash, ProtocolOperationKind.SMART_SEEDING) }
+        ) { nowMs }
     }
 
     private fun run(context: Context, environment: String, nowMs: Long,
-                    port: (activationBaseline: Boolean) -> StopTrackingPort): Tick {
-        if (!EnforcementSwitch(context).enabled(environment)) return Tick.NOT_RUN
+                    port: (activationBaseline: Boolean, enabled: () -> Boolean) -> StopTrackingPort): Tick {
+        val enabled = EnforcementSwitch(context).currentPreference(environment)
+        if (!enabled()) return Tick.NOT_RUN
         val snapshot = SeedingRuleStore(context).load()
         if (snapshot.unreadable) return Tick.NOT_RUN
         val store = PreferencesAssignmentStore(context, environment)
-        val engine = port(store.epoch() == null)
+        val engine = port(store.epoch() == null, enabled)
         try {
             SeedingController(engine, store)
                 .tick(environment, snapshot.rules, snapshot.defaults[environment] ?: SeedingPolicy(), nowMs)

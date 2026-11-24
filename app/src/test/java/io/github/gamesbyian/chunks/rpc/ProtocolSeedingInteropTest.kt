@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.rpc
 
+import io.github.gamesbyian.chunks.ProtocolOperationKind
+import io.github.gamesbyian.chunks.ProtocolOperationReceiptOwner
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.InteropAssignmentStore
@@ -48,6 +50,18 @@ class ProtocolSeedingInteropTest {
         waitFor("real daemon counters make the transfer eligible", 90_000) {
             client.seedingFacts(hash)?.let(eligible) == true
         }
+        val receipts = ProtocolOperationReceiptOwner()
+        val key = ProtocolOperationReceiptOwner.Key(environment, hash)
+        val manual = requireNotNull(receipts.begin(key, "interop-generation", ProtocolOperationKind.FILE_PRIORITIES))
+        val blockedPort = ProtocolSeedingPort(ClientOperations(client), activationBaseline = false,
+            reservePolicy = { job -> receipts.reservePolicy(environment, job, ProtocolOperationKind.SMART_SEEDING) })
+        SeedingController(blockedPort, store).tick(environment, emptyList(), default, System.currentTimeMillis())
+        assertTrue("manual lease prevented automatic dispatch", !blockedPort.stopAttempted)
+        assertEquals(null, store.get(hash)?.stopAttemptedReason)
+        assertEquals(true, client.torrent(hash)?.runState?.started)
+        receipts.cancel(manual)
+        stage("manual_command=real_eligible_job_no_stop_or_journal")
+
         val current = java.util.concurrent.atomic.AtomicBoolean(true)
         var stops = 0
         val observed = object : TorrentClient by client {

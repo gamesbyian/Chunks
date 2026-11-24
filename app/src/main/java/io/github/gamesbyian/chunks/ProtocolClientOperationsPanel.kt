@@ -70,6 +70,8 @@ private data class VerifiedMoveCopy(
     val receipt: ClientJobTransfer.CopyResult.Copied
 )
 
+private data class FinishInOrderAction(val lease: AutoCloseable, val ownerCurrent: () -> Boolean)
+
 /** Plain-language, credential-free outcome text shared by every protocol. */
 internal object ProtocolOperationText {
     fun describe(action: String, outcome: ClientOperationOutcome, clientLabel: String): String = when (outcome) {
@@ -89,7 +91,7 @@ internal object ProtocolOperationText {
  * transfer. Every command goes through the shared [ClientOperations]
  * workflow (exact precondition, one write, exact readback). Offered actions
  * come from the client's own session capabilities. An uncertain result
- * locks further commands until a fresh list is read.
+ * holds further commands until an explicit exact read reconciles the receipt.
  */
 @Composable
 internal fun ProtocolClientOperationsPanel(
@@ -100,8 +102,8 @@ internal fun ProtocolClientOperationsPanel(
     observedStarted: Boolean?,
     /** The list row is current, complete and privacy-visible. */
     current: Boolean,
-    /** Changes whenever a fresh inventory is accepted. */
-    inventoryWitness: Any?,
+    /** Exact connection generation, or the process-owned Local singleton. */
+    sourceGeneration: String,
     createOperations: () -> ClientOperations,
     onChanged: () -> Unit,
     /** Other connected clients this job may be copied/moved to (job only). */
@@ -120,8 +122,6 @@ internal fun ProtocolClientOperationsPanel(
     suggestForFiles: ((List<String>) -> Pair<String, String>?)? = null,
     /** The source's exact Chunks display-alias scope; null when none applies. */
     sourceAliasScope: String? = null,
-    /** Exact authenticated typed-profile revision; null for existing Local/rTorrent Move-only controls. */
-    sourceGeneration: String? = null,
     /** Privacy-visible, live exact client; the job itself may have disappeared. */
     canReconcile: Boolean = current,
     receiptOwner: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
@@ -130,8 +130,9 @@ internal fun ProtocolClientOperationsPanel(
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val operations = remember(hash, sourceClientId, sourceGeneration, createOperations) { createOperations() }
-    val receiptKey = remember(hash, sourceClientId, sourceGeneration) {
-        sourceGeneration?.let { ProtocolOperationReceiptOwner.Key(sourceClientId, hash.lowercase(java.util.Locale.ROOT)) }
+    val receiptKey = remember(hash, sourceClientId) {
+        runCatching { ClientHashes.requireHash(hash) }.getOrNull()
+            ?.let { ProtocolOperationReceiptOwner.Key(sourceClientId, it) }
     }
     val inFlightReceipt = remember(receiptOwner, receiptKey, sourceGeneration) {
         java.util.concurrent.atomic.AtomicReference<ProtocolOperationReceiptOwner.Ticket?>()
@@ -148,10 +149,7 @@ internal fun ProtocolClientOperationsPanel(
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
     var busy by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     var notice by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<String?>(null) }
-    // Legacy Copy/Move-only latch; explicit typed-client commands use the process-owned receipt.
-    var uncertainAt by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<Any?>(null) }
-    val copyLatched = uncertainAt != null && uncertainAt == inventoryWitness
-    val latched = copyLatched || retained?.blocksWrites == true
+    val latched = retained?.blocksWrites == true
     var confirmRemove by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     var deleteData by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     var files by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<List<ClientFile>?>(null) }
@@ -228,16 +226,22 @@ internal fun ProtocolClientOperationsPanel(
 
     fun run(action: String, kind: ProtocolOperationKind, block: suspend () -> ClientOperationOutcome) {
         if (busy || latched || !current || !isOwnerCurrent()) return
-        val key = receiptKey
-        val ticket = if (key == null) null else receiptOwner.begin(key, requireNotNull(sourceGeneration), kind)
-        if (key != null && ticket == null) {
+        val key = receiptKey ?: return
+        val ticket = receiptOwner.begin(key, sourceGeneration, kind)
+        if (ticket == null) {
             notice = "A previous request needs checking before another command."
             return
         }
-        if (ticket != null) inFlightReceipt.set(ticket)
+        inFlightReceipt.set(ticket)
         val policyEpoch = TransferPrivacyPolicyStore.revision
         val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
         val credentialEpoch = RemoteCredentialLock.capture()
+        val ownerCurrent = {
+            (moveOnly || currentOwner === operations) && isOwnerCurrent() &&
+                RemoteCredentialLock.current(credentialEpoch) &&
+                policyEpoch == TransferPrivacyPolicyStore.revision &&
+                lifecycleEpoch == TransferPrivacyRuntime.lifecycleRevision
+        }
         busy = true
         notice = "$action…"
         // Start the structured body before returning from the click, so even
@@ -245,26 +249,21 @@ internal fun ProtocolClientOperationsPanel(
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 val outcome = try {
-                    if (ticket == null) block()
-                    else withContext(ClientOperationWriteBoundary {
-                        if (currentOwner !== operations || !isOwnerCurrent() ||
-                            !RemoteCredentialLock.current(credentialEpoch) ||
-                            policyEpoch != TransferPrivacyPolicyStore.revision ||
-                            lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision ||
-                            !receiptOwner.possibleWrite(ticket))
+                    withContext(RemoteWriteOwnerFence(ownerCurrent) + ClientOperationWriteBoundary {
+                        if (!ownerCurrent() || !receiptOwner.possibleWrite(ticket))
                             throw ClientRefusedException("The selected connection changed; nothing was written")
                     }) { block() }
                 } catch (cancel: CancellationException) { throw cancel }
                     catch (_: Exception) { ClientOperationOutcome.Uncertain(hash, "unexpected failure") }
-                if (ticket != null) receiptOwner.complete(ticket, outcome)
+                receiptOwner.complete(ticket, outcome)
                 notice = ProtocolOperationText.describe(action, outcome, clientLabel)
-                if (ticket == null && outcome is ClientOperationOutcome.Uncertain) uncertainAt = inventoryWitness
-                if (currentOwner === operations || currentReadOwner === operations) onChanged()
+                if (isOwnerCurrent() && (moveOnly || currentOwner === operations || currentReadOwner === operations))
+                    onChanged()
             } catch (cancel: CancellationException) {
-                if (ticket != null) receiptOwner.cancel(ticket)
+                receiptOwner.cancel(ticket)
                 throw cancel
             } finally {
-                if (ticket != null) inFlightReceipt.compareAndSet(ticket, null)
+                inFlightReceipt.compareAndSet(ticket, null)
                 busy = false
             }
         }
@@ -513,7 +512,7 @@ internal fun ProtocolClientOperationsPanel(
             if (finishableCopy != null) Button(onClick = {
                 run("Remove from $clientLabel after moving to ${finishableCopy.target.label}", ProtocolOperationKind.RETIRE_SOURCE) {
                     finishableCopy.transfer.retireSource(hash, finishableCopy.receipt) {
-                        currentOwner === operations && isOwnerCurrent() && finishableCopy.target.ownerCurrent() &&
+                        (moveOnly || currentOwner === operations) && isOwnerCurrent() && finishableCopy.target.ownerCurrent() &&
                             currentConnections[finishableCopy.target.id] == finishableCopy.target.connectionWitness
                     }
                 }
@@ -557,6 +556,9 @@ internal fun ProtocolClientOperationsPanel(
             if (levelsNow != null && ClientCapability.FILE_PRIORITIES in caps &&
                 shown.none { it.completedBytes == null }) {
                 val asLocal = remember(shown) { shown.map(ClientFinishInOrderPort::asPlannerFile) }
+                val action = remember(operations, receiptOwner) {
+                    java.util.concurrent.atomic.AtomicReference<FinishInOrderAction?>()
+                }
                 ServerFinishInOrderPanel(
                     hash = hash, scope = FinishInOrderScopes.protocol(sourceClientId), asLocal = asLocal,
                     stale = !current || busy || latched,
@@ -567,9 +569,40 @@ internal fun ProtocolClientOperationsPanel(
                         "It moves on while Chunks is open and connected to this client.",
                     isActive = { index -> shown.firstOrNull { it.index == index }?.priority == ClientFilePriority.HIGH },
                     twoBands = ClientFilePriority.LOW !in levelsNow,
-                    step = { store -> stepClientFinishInOrder(operations, levelsNow, store, hash) },
-                    onMutationStarted = { if (busy || latched || !current) false else { busy = true; true } },
-                    onSettled = { busy = false; files = null; onChanged() })
+                    step = { store ->
+                        action.get()?.let { active ->
+                            withContext(RemoteWriteOwnerFence(active.ownerCurrent)) {
+                                stepClientFinishInOrder(operations, levelsNow, store, hash, active.ownerCurrent)
+                            }
+                        }
+                    },
+                    onMutationStarted = {
+                        if (busy || latched || !current || !isOwnerCurrent()) false
+                        else {
+                            val lease = receiptOwner.reservePolicy(sourceClientId, hash, ProtocolOperationKind.FINISH_IN_ORDER)
+                            if (lease == null) false
+                            else {
+                                val policyEpoch = TransferPrivacyPolicyStore.revision
+                                val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+                                val credentialEpoch = RemoteCredentialLock.capture()
+                                action.set(FinishInOrderAction(lease) {
+                                    currentOwner === operations && isOwnerCurrent() &&
+                                        RemoteCredentialLock.current(credentialEpoch) &&
+                                        policyEpoch == TransferPrivacyPolicyStore.revision &&
+                                        lifecycleEpoch == TransferPrivacyRuntime.lifecycleRevision
+                                })
+                                busy = true
+                                true
+                            }
+                        }
+                    },
+                    mutationCurrent = { action.get()?.ownerCurrent?.invoke() == true },
+                    onSettled = {
+                        action.getAndSet(null)?.lease?.close()
+                        busy = false
+                        files = null
+                        onChanged()
+                    })
             }
         }
         if (!moveOnly && relocating) {
@@ -631,12 +664,14 @@ internal fun ProtocolClientOperationsPanel(
                     .testTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM)
             ) { Text(if (deleteData) "Remove and delete files" else "Remove, keep files") }
         }
-        (notice ?: retained?.description())?.let {
+        val operationStatus = if (retained?.phase == ProtocolOperationReceiptOwner.Phase.POLICY_RUNNING)
+            retained.description() else notice ?: retained?.description()
+        operationStatus?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     .testTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS))
         }
-        if (retained?.blocksWrites == true) {
+        if (retained?.blocksWrites == true && retained.phase != ProtocolOperationReceiptOwner.Phase.POLICY_RUNNING) {
             Text("Commands are paused until a read-only check.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
             if (retained.canReconcile) OutlinedButton(onClick = ::reconcile,
@@ -644,8 +679,7 @@ internal fun ProtocolClientOperationsPanel(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Check this transfer without changing it")
             }
-        } else if (copyLatched) Text("Commands are paused until the list refreshes.",
-            style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+        }
     }
 }
 

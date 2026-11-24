@@ -150,7 +150,9 @@ internal data class CombinedServerSource(
     /** Live authenticated RTorrentRemote identity, never a saved profile string. */
     val authenticatedSession: Any? = null,
     /** Parent's accepted inventory revision, required for destructive review identity. */
-    val snapshotRevision: Long = 0L
+    val snapshotRevision: Long = 0L,
+    /** Read-only refresh. Unlike lifecycle.settled, it does not release a mutation lease. */
+    val refresh: () -> Unit = {}
 )
 
 /**
@@ -1118,6 +1120,9 @@ internal fun CombinedTransfersScreen(
     val latestServer = rememberUpdatedState(server)
     val latestServerId = rememberUpdatedState(serverId)
     val latestFocus = rememberUpdatedState(signedInFocus)
+    val latestMoveFocus = rememberUpdatedState(focusedKey)
+    val latestLocalPrivacy = rememberUpdatedState(localPrivacy.mayShow)
+    val latestServerPrivacy = rememberUpdatedState(serverPrivacy?.mayShow == true)
     val latestStallAllowed = rememberUpdatedState(server?.stale == false &&
         serverPrivacy?.mayShow == true && server?.authenticatedSession != null)
     var pendingStall by remember {
@@ -1187,6 +1192,17 @@ internal fun CombinedTransfersScreen(
         val exactRemoteRow = authenticatedExactRemovalRow(focusedKey, server, serverId)
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
+        val localSource = remember(localRunning) { LocalEngineHolder.current() }
+        val localMoveSession = localSource != null && localPrivacy.mayShow
+        val localMoveReadable = localMoveSession &&
+            sourcesByEnvironment[EnvironmentSnapshots.LOCAL]?.canClaimCompleteLiveInventory == true
+        val serverMoveSession = focusedKey.environment == serverId && verifiedOwner != null && serverPrivacy?.mayShow == true
+        val serverMoveReadable = serverMoveSession &&
+            sourcesByEnvironment[focusedKey.environment]?.canClaimCompleteLiveInventory == true
+        val moveReceipt = if (focusedKey.infoHash.matches(V1_TRANSFER_HASH))
+            ProtocolOperationReceipts.owner.receipt(
+                ProtocolOperationReceiptOwner.Key(focusedKey.environment.value, focusedKey.infoHash.lowercase(java.util.Locale.ROOT))
+            ) else null
         val renameScope = aliasScopes[focusedKey.environment]
         // Copy/Move uses the shared job-only port, including the device's own
         // engine. The explicit Copy action checks the destination independently.
@@ -1201,14 +1217,18 @@ internal fun CombinedTransfersScreen(
         }
         val localMoveConnection = if (localPrivacy.mayShow)
             ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device",
-                aliasScopes[EnvironmentSnapshots.LOCAL], createOperations = localTargetOperations) else null
+                aliasScopes[EnvironmentSnapshots.LOCAL], ownerCurrent = { latestLocalPrivacy.value },
+                createOperations = localTargetOperations) else null
         val localMoveTarget = localMoveConnection?.takeUnless { localRunning && localFrame.stale }
         val rtorrentMoveConnection = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
-            serverId != null && serverPrivacy?.mayShow == true
+            serverId != null && serverPrivacy?.mayShow == true && it.addAccountScope() == server?.aliasScope
         }?.let { remote ->
             ProtocolMoveTarget(requireNotNull(serverId).value,
                 labels[serverId]?.removePrefix("Server · ") ?: "rTorrent", aliasScopes[serverId],
-                connectionWitness = remote) {
+                connectionWitness = remote, ownerCurrent = {
+                    latestServer.value?.authenticatedSession === remote &&
+                        latestServerId.value == serverId && latestServerPrivacy.value
+                }) {
                 io.github.gamesbyian.chunks.rpc.ClientOperations(
                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
             }
@@ -1269,7 +1289,6 @@ internal fun CombinedTransfersScreen(
                     current = details.readState == TransferDetailReadState.CURRENT &&
                         focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true &&
                         focusedKey.infoHash.matches(V1_TRANSFER_HASH),
-                    inventoryWitness = focusedProtocolListing?.snapshot?.observedAtEpochMillis,
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
                     moveTargets = protocolTargets,
@@ -1314,7 +1333,7 @@ internal fun CombinedTransfersScreen(
             // uncertain deletions must stay visible), so Details keeps showing it.
             localOperations = if (focusedKey.environment == EnvironmentSnapshots.LOCAL &&
                 localPrivacy?.mayShow != false &&
-                (details.readState == TransferDetailReadState.CURRENT ||
+                (details.readState == TransferDetailReadState.CURRENT || (moveReceipt != null && localMoveSession) ||
                     LocalDetailsRuns.outcomes[focusedKey.infoHash] != null)) ({
                 val current = details.readState == TransferDetailReadState.CURRENT
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1327,14 +1346,14 @@ internal fun CombinedTransfersScreen(
                     // Job-only Copy/Move to another connected client through the same
                     // shared receipt; Local lifecycle/files/Remove above stay authoritative.
                     val outbound = protocolMoveTargets + listOfNotNull(rtorrentMoveTarget)
-                    if (current && outbound.isNotEmpty() && !localFrame.stale) {
+                    if ((localMoveReadable && current && outbound.isNotEmpty()) ||
+                        (moveReceipt != null && localMoveSession)) {
                         ProtocolClientOperationsPanel(
                             hash = focusedKey.infoHash,
                             clientLabel = "this device",
                             sourceClientId = EnvironmentSnapshots.LOCAL.value,
                             observedStarted = details.observation?.started,
-                            current = focusedKey.infoHash.matches(V1_TRANSFER_HASH),
-                            inventoryWitness = localObservedAt,
+                            current = current && localMoveReadable && focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                             createOperations = localClientOperations,
                             onChanged = {},
                             moveTargets = outbound,
@@ -1343,57 +1362,67 @@ internal fun CombinedTransfersScreen(
                             suggestedTarget = moveSuggestionFor(outbound),
                             routingMetadataPending = details.observation?.metadataPending,
                             suggestForFiles = { names -> moveSuggestionFor(outbound, names) },
-                            sourceAliasScope = aliasScopes[focusedKey.environment]
+                            sourceAliasScope = aliasScopes[focusedKey.environment],
+                            sourceGeneration = EnvironmentSnapshots.LOCAL.value,
+                            canReconcile = localMoveReadable,
+                            isOwnerCurrent = {
+                                latestMoveFocus.value == focusedKey && latestLocalPrivacy.value &&
+                                    LocalEngineHolder.current() === localSource
+                            }
                         )
                     }
                 }
             }) else null,
-            exactServerOperations = if (canShowExactRemoval) ({
+            exactServerOperations = if (canShowExactRemoval ||
+                (serverMoveSession && moveReceipt != null)) ({
                 val owner = requireNotNull(server)
                 val mutation = requireNotNull(owner.lifecycle)
                 val boundRemote = requireNotNull(activeRemoteForRemoval)
-                val boundRow = requireNotNull(exactRemoteRow)
+                val boundRow = exactRemoteRow
                 val operationsStale = owner.stale ||
                     details.readState != TransferDetailReadState.CURRENT ||
                     sourcesByEnvironment[focusedKey.environment]
                         ?.canClaimCompleteLiveInventory != true
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    RemoteHashRecheckControl(
-                        remote = boundRemote, transfer = boundRow,
-                        aliasScope = owner.aliasScope,
-                        snapshotStale = operationsStale, mainView = owner.fullView,
-                        onMutationStarted = mutation.begin, onSettled = mutation.settled
-                    )
-                    TransferSessionRemoveControl(
-                        remote = boundRemote, transfer = boundRow,
-                        snapshotStale = operationsStale,
-                        mainView = owner.fullView,
-                        onMutationStarted = mutation.begin,
-                        onSettled = mutation.settled,
-                        environmentLabel = labels[focusedKey.environment],
-                        snapshotRevision = owner.snapshotRevision
-                    )
-                    // The SAME exact authenticated adapter and lease. File
-                    // reads are explicit, bounded and privacy-gated; the
-                    // already-reviewed existing priority/ordering components
-                    // independently verify every consequential write.
-                    CanonicalRemoteFilesControls(
-                        remote = boundRemote, transfer = boundRow,
-                        aliasScope = owner.aliasScope,
-                        snapshotStale = operationsStale,
-                        mainView = owner.fullView,
-                        snapshotRevision = owner.snapshotRevision,
-                        onMutationStarted = mutation.begin,
-                        onSettled = mutation.settled,
-                        retainDuringRefresh = details.readState == TransferDetailReadState.CURRENT ||
-                            details.readState == TransferDetailReadState.STALE
-                    )
+                    if (canShowExactRemoval && boundRow != null) {
+                        RemoteHashRecheckControl(
+                            remote = boundRemote, transfer = boundRow,
+                            aliasScope = owner.aliasScope,
+                            snapshotStale = operationsStale, mainView = owner.fullView,
+                            onMutationStarted = mutation.begin, onSettled = mutation.settled
+                        )
+                        TransferSessionRemoveControl(
+                            remote = boundRemote, transfer = boundRow,
+                            snapshotStale = operationsStale,
+                            mainView = owner.fullView,
+                            onMutationStarted = mutation.begin,
+                            onSettled = mutation.settled,
+                            environmentLabel = labels[focusedKey.environment],
+                            snapshotRevision = owner.snapshotRevision
+                        )
+                        // The SAME exact authenticated adapter and lease. File
+                        // reads are explicit, bounded and privacy-gated; the
+                        // already-reviewed existing priority/ordering components
+                        // independently verify every consequential write.
+                        CanonicalRemoteFilesControls(
+                            remote = boundRemote, transfer = boundRow,
+                            aliasScope = owner.aliasScope,
+                            snapshotStale = operationsStale,
+                            mainView = owner.fullView,
+                            snapshotRevision = owner.snapshotRevision,
+                            onMutationStarted = mutation.begin,
+                            onSettled = mutation.settled,
+                            retainDuringRefresh = details.readState == TransferDetailReadState.CURRENT ||
+                                details.readState == TransferDetailReadState.STALE
+                        )
+                    }
                     // Use the exact same Copy/Move receipt controller as the
                     // other protocols. Existing rTorrent lifecycle/Remove/Files
                     // controls remain authoritative and are never duplicated.
                     val connectedTargets = protocolMoveTargets.filter { it.id != requireNotNull(serverId).value } +
                         listOfNotNull(localMoveTarget)
-                    if (connectedTargets.isNotEmpty() && !operationsStale) {
+                    if ((connectedTargets.isNotEmpty() && !operationsStale) ||
+                        (moveReceipt != null && serverMoveSession)) {
                         ProtocolClientOperationsPanel(
                             hash = focusedKey.infoHash,
                             clientLabel = labels[requireNotNull(serverId)]?.removePrefix("Server · ") ?: "rTorrent",
@@ -1401,7 +1430,6 @@ internal fun CombinedTransfersScreen(
                             observedStarted = details.observation?.started,
                             current = details.readState == TransferDetailReadState.CURRENT &&
                                 !operationsStale && focusedKey.infoHash.matches(V1_TRANSFER_HASH),
-                            inventoryWitness = owner.snapshotRevision,
                             // Stable per bound session: a new adapter per recomposition
                             // would re-read the server session on every list refresh.
                             createOperations = remember(boundRemote) {
@@ -1410,14 +1438,21 @@ internal fun CombinedTransfersScreen(
                                         io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(boundRemote))
                                 }
                             },
-                            onChanged = mutation.settled,
+                            onChanged = owner.refresh,
                             moveTargets = connectedTargets,
                             moveConnections = moveConnections,
                             moveOnly = true,
                             suggestedTarget = moveSuggestionFor(connectedTargets),
                             routingMetadataPending = details.observation?.metadataPending,
                             suggestForFiles = { names -> moveSuggestionFor(connectedTargets, names) },
-                            sourceAliasScope = aliasScopes[focusedKey.environment]
+                            sourceAliasScope = aliasScopes[focusedKey.environment],
+                            sourceGeneration = boundRemote.commandGeneration,
+                            canReconcile = serverMoveReadable,
+                            isOwnerCurrent = {
+                                latestMoveFocus.value == focusedKey && latestServerId.value == serverId &&
+                                    latestServerPrivacy.value &&
+                                    verifiedCombinedLifecycleOwner(latestServer.value, serverId) === boundRemote
+                            }
                         )
                     }
                 }
