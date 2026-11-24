@@ -47,6 +47,7 @@ import io.github.gamesbyian.chunks.ChunkedProgressBar
 import io.github.gamesbyian.chunks.ChunksBanner
 import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTone
+import io.github.gamesbyian.chunks.ExternalIntakeDelivery
 import io.github.gamesbyian.chunks.R
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
@@ -68,7 +69,7 @@ internal fun CreateTorrentScreen(
     /** Tests start from an already-listed source; the app always starts empty. */
     initialSource: CreateTorrentSource? = null,
     /** A file shared to the "Create torrent" target; listed once, then consumed. */
-    shared: SharedCreateDocument.Request? = null,
+    shared: ExternalIntakeDelivery.Create? = null,
     onSharedConsumed: () -> Unit = {},
     /** Source itself lives in an Activity-retained RAM owner when supplied. */
     retainedSourceState: androidx.compose.runtime.MutableState<CreateTorrentSource?>? = null,
@@ -132,13 +133,13 @@ internal fun CreateTorrentScreen(
         if (uri != null) scan(block = { CreateTorrentSource.fromTree(sourceContext, uri) { cancel.get() } })
     }
     LaunchedEffect(shared) {
-        when (shared) {
+        when (val request = shared?.request) {
             is SharedCreateDocument.Request.File -> scan(
-                block = { CreateTorrentSource.fromDocument(sourceContext, shared.uri) },
+                block = { CreateTorrentSource.fromDocument(sourceContext, request.uri) },
                 onHandled = onSharedConsumed
             )
             is SharedCreateDocument.Request.Unusable -> {
-                source = null; result = null; message = shared.reason
+                source = null; result = null; message = request.reason
                 onSharedConsumed()
             }
             null -> return@LaunchedEffect

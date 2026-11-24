@@ -5,7 +5,6 @@ import android.net.Uri
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.runtime.mutableStateOf
 import androidx.test.core.app.ApplicationProvider
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -40,22 +39,19 @@ class ExternalSourceReplacementTest {
 
     @Test fun invalidNewDocumentDoesNotSilentlyOverwriteLockedMagnetDraft() {
         val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=Superseded"
-        val incomingMagnet = mutableStateOf<String?>(null)
-        val incomingDocument = mutableStateOf<Uri?>(null)
+        val owner = LocalAddAttemptOwner()
         policy(TransferLockMode.ONCE_PER_PROCESS)
         rule.setContent {
             ChunksTheme {
-                ChunksApp(sharedMagnet = incomingMagnet.value, incomingTorrent = incomingDocument.value,
-                    onIncomingMagnetConsumed = { incomingMagnet.value = null },
-                    onIncomingTorrentConsumed = { incomingDocument.value = null })
+                ChunksApp(owner)
             }
         }
-        rule.runOnIdle { incomingMagnet.value = magnet }
+        rule.runOnIdle { owner.offerAdd(ExternalAddSource.Magnet(magnet)) }
         rule.onNodeWithText("Transfers on this device are locked").assertExists()
         // The provider intentionally refuses this new source. Even a refused
         // document must not cause the old, never-consumed magnet to be offered.
         rule.runOnIdle {
-            incomingDocument.value = Uri.parse("content://missing.example/new.torrent")
+            owner.offerAdd(ExternalAddSource.TorrentDocument(Uri.parse("content://missing.example/new.torrent")))
         }
         rule.waitForIdle()
         rule.onNodeWithText("Transfers on this device are locked").assertExists()

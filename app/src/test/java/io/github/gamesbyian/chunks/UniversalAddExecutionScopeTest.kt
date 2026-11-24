@@ -29,7 +29,7 @@ class UniversalAddExecutionScopeTest {
                 LocalAddAttemptOwner::class.java]
             val transient = CoroutineScope(Dispatchers.Unconfined + screenJob)
             val local = UniversalAddExecutionScope.select(owner.addAttemptScope, transient)
-            val remote = UniversalAddExecutionScope.select(owner.remoteAttemptScope, transient)
+            val remote = UniversalAddExecutionScope.select(owner.addAttemptScope, transient)
             assertSame(local, remote)
             assertSame(owner.addAttemptScope, local)
             val retainedJob = requireNotNull(local.coroutineContext[Job])
@@ -47,6 +47,7 @@ class UniversalAddExecutionScopeTest {
             assertSame(local, recovered.addAttemptScope)
             assertSame(owner.session, recovered.session)
             assertSame(owner.remoteSessions, recovered.remoteSessions)
+            assertSame(owner.attempts, recovered.attempts)
         } finally {
             store.clear()
         }
@@ -70,7 +71,7 @@ class UniversalAddExecutionScopeTest {
         val owner = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
             LocalAddAttemptOwner::class.java]
         val local = owner.addAttemptScope
-        val remote = owner.remoteAttemptScope
+        val remote = owner.addAttemptScope
         assertSame(local, remote)
         assertTrue(requireNotNull(local.coroutineContext[Job]).isActive)
         store.clear()

@@ -1,6 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
@@ -21,6 +20,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import io.github.gamesbyian.chunks.media.ChunksMedia
 import io.github.gamesbyian.chunks.media.MediaPrivacySettings
+import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -44,6 +44,7 @@ import org.robolectric.annotation.GraphicsMode
 class RemoteSecondAddArtworkChoiceTest {
     @get:Rule val rule = createComposeRule()
     private val server = FakeRTorrent()
+    private val owner = LocalAddAttemptOwner()
 
     @Before fun launch() {
         // ChunksMedia is process-wide: an earlier class in the same JVM may have
@@ -53,13 +54,15 @@ class RemoteSecondAddArtworkChoiceTest {
             .updateSettings(MediaPrivacySettings())
         rule.setContent {
             ChunksTheme {
-                ChunksApp(sharedMagnet = null, incomingTorrent = null,
-                    onIncomingMagnetConsumed = {}, onIncomingTorrentConsumed = {})
+                ChunksApp(owner)
             }
         }
     }
 
-    @After fun stop() = server.close()
+    @After fun stop() {
+        owner.addAttemptScope.cancel()
+        server.close()
+    }
 
     private fun list(): SemanticsNodeInteraction = rule.onNode(hasScrollToIndexAction())
     private fun visible(text: String) =

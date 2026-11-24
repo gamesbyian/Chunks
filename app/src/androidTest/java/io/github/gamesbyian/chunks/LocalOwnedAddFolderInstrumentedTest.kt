@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 class LocalOwnedAddFolderInstrumentedTest {
     @Test fun appOwnedDownloadRootAcceptsExistingNonemptyChosenSubfolder() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val root = requireNotNull(LocalEngineHolder.appDownloads(context))
+        val root = requireNotNull(LocalDownloadPlaces.appDownloads(context))
         val label = "chunks-folder-test-" + System.nanoTime().toString(16)
         val proposed = requireNotNull(LocalOwnedAddFolder.proposed(root, label))
         try {
@@ -32,7 +32,7 @@ class LocalOwnedAddFolderInstrumentedTest {
 
     @Test fun aFolderNameCannotLeaveTheLocalAppOwnedDownloadRoot() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val root = requireNotNull(LocalEngineHolder.appDownloads(context))
+        val root = requireNotNull(LocalDownloadPlaces.appDownloads(context))
         assertNull(LocalOwnedAddFolder.proposed(root, "../remote"))
         assertNull(LocalOwnedAddFolder.prepare(root, "../remote"))
         assertEquals(root, LocalOwnedAddFolder.prepare(root, ""))

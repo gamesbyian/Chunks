@@ -8,6 +8,7 @@ stdout, endpoints or environment values.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,32 @@ STATUS = "INSTRUMENTATION_STATUS: "
 STATUS_CODE = "INSTRUMENTATION_STATUS_CODE: "
 RESULT_CODE = "INSTRUMENTATION_CODE: "
 OUTCOMES = {0: "passed", -1: "error", -2: "failed", -3: "skipped", -4: "skipped"}
+
+
+def interrupted_stream_witness(text: str) -> str:
+    """Keep count and fixed platform categories when a structural receipt cannot be issued."""
+    events: Counter[str] = Counter()
+    terminators: Counter[str] = Counter()
+    crash = False
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith(STATUS_CODE):
+            code = line[len(STATUS_CODE):].strip()
+            if code in ("1", "0", "-1", "-2", "-3", "-4"):
+                events[code] += 1
+            else:
+                events["invalid"] += 1
+        elif line.startswith(RESULT_CODE):
+            code = line[len(RESULT_CODE):].strip()
+            terminators["complete" if code == "-1" else
+                        "rejected" if re.fullmatch(r"-?[0-9]{1,9}", code) else "invalid"] += 1
+        elif line == "INSTRUMENTATION_RESULT: shortMsg=Process crashed.":
+            crash = True
+    total = terminators.total()
+    eof = "missing" if total == 0 else "multiple" if total > 1 else next(iter(terminators))
+    return (f"started={events['1']} passed={events['0']} errors={events['-1']} "
+            f"failed={events['-2']} skipped={events['-3'] + events['-4']} "
+            f"invalid_status={events['invalid']} terminator={eof} process_crash={str(crash).lower()}")
 
 
 def failure_locations(text: str) -> list[str]:
@@ -412,7 +439,13 @@ def main() -> None:
     p.add_argument("--junit", type=Path, required=True)
     args = p.parse_args()
     raw = args.raw.read_text(encoding="utf-8", errors="replace")
-    cases = parse_stream(raw)
+    try:
+        cases = parse_stream(raw)
+    except ValueError:
+        print("CHUNKS_PREBUILT_INTERRUPTED: " + interrupted_stream_witness(raw))
+        for location in failure_locations(raw):
+            print("CHUNKS_PREBUILT_FAILURE_LOCATION: " + location)
+        raise SystemExit("Android instrumentation receipt could not be verified")
     write_junit(cases, args.junit)
     values = {kind: sum(x.outcome == kind for x in cases)
               for kind in ("passed", "failed", "error", "skipped")}

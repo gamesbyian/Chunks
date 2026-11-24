@@ -78,10 +78,7 @@ import io.github.gamesbyian.chunks.engine.LocalDeleteDataReadback
 import io.github.gamesbyian.chunks.engine.LocalDeleteDataReceipt
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
-import io.github.gamesbyian.chunks.engine.LocalEngineConfig
-import io.github.gamesbyian.chunks.engine.LocalDiskIoMode
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
-import io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery
 import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
@@ -146,93 +143,6 @@ internal class LocalMoveServer(
     val aliasScope: String,
     val observe: suspend (String) -> TransferMove.Observation
 )
-
-internal object LocalEngineHolder {
-    private var engine: LocalTorrentEngine? = null
-
-    /** The running engine, if the user has added anything; never starts networking. */
-    @Synchronized
-    fun current(): LocalTorrentEngine? = engine
-
-    /**
-     * Starts the engine (and its listening socket) on first explicit use, or to
-     * restore transfers saved earlier. Restored transfers always come back stopped.
-     */
-    @Synchronized
-    fun get(context: Context): LocalTorrentEngine {
-        engine?.let { return it }
-        // The upstream portable backend avoids the reproduced Android 15 FUSE
-        // NodeTracker abort during memory-mapped writes. Paths and file policy stay unchanged.
-        val candidate = LocalTorrentEngine(
-            LocalEngineConfig(stateDirectory = stateDirectory(context), diskIoMode = LocalDiskIoMode.POSIX)
-        )
-        val verified = LocalEngineStartupSettings.open(
-            candidate = candidate,
-            savedDht = dhtPreferred(context),
-            savedLimits = rateLimitsPreferred(context),
-            start = { it.start() },
-            setDht = { running, desired -> running.setDhtEnabled(desired) },
-            setLimits = { running, desired -> running.setRateLimits(desired) },
-            close = { it.close() }
-        )
-        // Never expose a partially started engine as the live singleton.
-        engine = verified
-        return verified
-    }
-
-    private fun prefs(context: Context) = context.getSharedPreferences("local-engine", Context.MODE_PRIVATE)
-    fun dhtPreferred(context: Context) = prefs(context).getBoolean("dht", false)
-
-    /**
-     * No optimistic DHT setting: do not claim/persist a change that the running
-     * engine could not read back. A commit failure is also unconfirmed.
-     * This never starts an engine merely to toggle a future preference.
-     */
-    @Synchronized
-    fun setDhtPreferred(context: Context, enabled: Boolean): Boolean {
-        val running = engine
-        return LocalDhtPreferenceTransaction.commitIfApplied(
-            requested = enabled,
-            applyToRunningEngine = running?.let { { it.setDhtEnabled(enabled) } },
-            savePreference = { value -> prefs(context).edit().putBoolean("dht", value).commit() }
-        )
-    }
-
-    fun rateLimitsPreferred(context: Context) = prefs(context).let {
-        LocalRateLimits(it.getInt("download-limit", 0).coerceAtLeast(0), it.getInt("upload-limit", 0).coerceAtLeast(0))
-    }
-
-    /**
-     * Save a future-start preference only if no engine exists; otherwise demand
-     * an exact native readback before the durable commit. Failed/uncertain
-     * application must not overwrite the previous saved speed limits.
-     */
-    @Synchronized
-    fun setRateLimitsPreferred(context: Context, limits: LocalRateLimits): Boolean {
-        val running = engine
-        return LocalRateLimitPreferenceTransaction.commitIfApplied(
-            requested = limits,
-            applyToRunningEngine = running?.let { { it.setRateLimits(limits) } },
-            savePreference = { value ->
-                prefs(context).edit()
-                    .putInt("download-limit", value.downloadBytesPerSecond)
-                    .putInt("upload-limit", value.uploadBytesPerSecond)
-                    .commit()
-            }
-        )
-    }
-
-    /** Start only if an earlier session left transfers to restore. */
-    @Synchronized
-    fun restoreIfSaved(context: Context): LocalTorrentEngine? = engine
-        ?: if (LocalRestoreDiscovery.shouldAttemptRestore(stateDirectory(context))) get(context) else null
-
-    private fun stateDirectory(context: Context) = File(context.filesDir, "local-engine")
-
-    /** The only destination offered in this slice: a real POSIX folder Chunks owns. */
-    fun appDownloads(context: Context): File? =
-        context.getExternalFilesDir("Downloads")?.apply { mkdirs() }?.takeIf { it.isDirectory }
-}
 
 private data class LocalScreenReadout(
     val transfers: List<LocalTransferStatus>?,
@@ -1573,6 +1483,18 @@ internal fun LocalEngineScreen(
                 }
             }
             val hasMagnetDraft = magnet.isNotEmpty() && !isLink
+            // Expose the actual admission prerequisite, not raw source, path or engine detail.
+            val magnetUnavailable = when {
+                busy -> "A local operation is in progress."
+                sourceReading -> "Waiting for source review."
+                !addInventoryReady -> "Waiting for a fresh confirmed local transfer list."
+                dhtSaving || placeSaving -> "Waiting for local settings to settle."
+                proposedAddDestination == null -> "Choose a verified local download location."
+                magnetCheck !is MagnetDraftCheck.Valid -> "Review a valid magnet."
+                !validUniversalAddAlias(addAliasState?.value.orEmpty()) -> "Review the display name."
+                localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
+                else -> null
+            }
             val disabledReason = when {
                 localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
                 isLink -> "Get the .torrent from this link first (Get torrent from link above)."
@@ -1812,10 +1734,8 @@ internal fun LocalEngineScreen(
                         })
                 },
                 submit = when {
-                    hasMagnetDraft -> UniversalAddAction(!busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
-                        magnetCheck is MagnetDraftCheck.Valid &&
-                        validUniversalAddAlias(addAliasState?.value.orEmpty()) &&
-                        localAddAttemptSession?.attemptedTicket == null, onSubmit = addMagnet)
+                    hasMagnetDraft -> UniversalAddAction(magnetUnavailable == null,
+                        onSubmit = addMagnet, unavailableReason = magnetUnavailable)
                     add != null && magnet.isBlank() -> UniversalAddAction(canAddTorrent, onSubmit = addTorrent)
                     else -> UniversalAddAction(false, onSubmit = {}, unavailableReason = disabledReason)
                 },

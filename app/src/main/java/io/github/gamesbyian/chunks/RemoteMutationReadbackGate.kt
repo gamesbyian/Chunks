@@ -1,5 +1,9 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 /**
  * A remote command must be followed by a fresh read that STARTED after the
  * command settled. A read already in flight before or during a write cannot
@@ -10,11 +14,14 @@ package io.github.gamesbyian.chunks
  */
 internal class RemoteMutationReadbackGate {
     private var generation = 0L
-    private var commandPending = false
-    private var awaitingReadback = false
+    private var commandPending by mutableStateOf(false)
+    private var awaitingReadback by mutableStateOf(false)
+
+    /** Observable advisory readiness; tryStart remains the atomic admission on the UI lane. */
+    val canStart: Boolean get() = !commandPending && !awaitingReadback
 
     fun tryStart(): Boolean {
-        if (commandPending || awaitingReadback) return false
+        if (!canStart) return false
         commandPending = true
         awaitingReadback = true
         ++generation

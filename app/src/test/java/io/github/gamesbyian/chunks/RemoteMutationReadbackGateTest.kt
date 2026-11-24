@@ -5,6 +5,23 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RemoteMutationReadbackGateTest {
+    @Test fun displayedReadinessAndActualAdmissionShareTheSameLatch() {
+        val gate = RemoteMutationReadbackGate()
+        assertTrue(gate.canStart)
+        assertTrue(gate.tryStart())
+        assertFalse(gate.canStart)
+        val overlappingRead = gate.ticket()
+        gate.settled()
+        assertFalse(gate.canStart)
+        assertFalse(gate.acceptFreshRead(overlappingRead))
+        assertFalse(gate.canStart)
+        assertTrue(gate.acceptFreshRead(gate.ticket()))
+        assertTrue(gate.canStart)
+        assertTrue(gate.tryStart())
+        gate.abandonKnownNoWrite()
+        assertTrue(gate.canStart)
+    }
+
     @Test fun onlyAnObservationStartedAfterSettlementCanClearTheMutationLatch() {
         val gate = RemoteMutationReadbackGate()
         val earlierRead = gate.ticket()

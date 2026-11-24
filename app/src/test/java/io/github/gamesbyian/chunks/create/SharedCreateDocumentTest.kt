@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTheme
+import io.github.gamesbyian.chunks.ExternalIntakeDelivery
 import io.github.gamesbyian.chunks.SharedTorrentDocument
 import org.junit.Assert.*
 import org.junit.Rule
@@ -70,7 +71,7 @@ class SharedCreateDocumentTest {
         var consumed = false
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) {
-                CreateTorrentScreen(onBack = {}, shared = SharedCreateDocument.Request.File(document),
+                CreateTorrentScreen(onBack = {}, shared = ExternalIntakeDelivery.Create(SharedCreateDocument.Request.File(document)),
                     onSharedConsumed = { consumed = true })
             } }
         }

@@ -26,6 +26,8 @@ on:
       - "tools/local_intake_journey.sh"
       - "tools/test_local_intake_journey.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineHolder.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlaces.kt"
       - "tools/android10_downloads_instrumentation.sh"
       - "tools/test_android10_downloads_instrumentation_mock.sh"
       # Checked Add/Start, path reservations and native collision surveys

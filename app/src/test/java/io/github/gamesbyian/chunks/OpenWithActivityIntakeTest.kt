@@ -119,8 +119,12 @@ class OpenWithActivityIntakeTest {
             owner.reviewedTorrent.value = null
             owner.readingSharedDocument.value = first
             controller.newIntent(view(second, "application/x-bittorrent"))
-            assertEquals("New source queued before Compose callback",
-                second, owner.pendingSharedDocument.value)
+            // The retained one-shot event is itself the queue. If Compose
+            // has already adopted it, the held draft is the sole authority.
+            val unclaimed = ((owner.incomingDelivery as? ExternalIntakeDelivery.Add)?.source
+                as? ExternalAddSource.TorrentDocument)?.uri
+            assertTrue("New source has exactly one retained queue before or after Compose adoption",
+                (unclaimed == second) xor (owner.pendingSharedDocument.value == second))
             assertEquals("First source not silently replaced",
                 first, owner.readingSharedDocument.value)
             assertEquals(null, owner.session.attemptedTicket)
@@ -138,7 +142,7 @@ class OpenWithActivityIntakeTest {
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             scenario.onActivity { activity ->
                 androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
-                    .incomingTorrent.value = uri
+                    .offerAdd(ExternalAddSource.TorrentDocument(uri))
             }
             scenario.recreate()
             waitForText("queued-rotation.mkv")
@@ -166,7 +170,7 @@ class OpenWithActivityIntakeTest {
             waitForText(INTERRUPTED_DOCUMENT_REVIEW)
             rule.onNode(hasText("must-not-replay.mkv", substring = true)).assertDoesNotExist()
             val owner = ViewModelProvider(restored.get())[LocalAddAttemptOwner::class.java]
-            assertNull(owner.incomingTorrent.value)
+            assertNull(owner.incomingDelivery)
             assertNull(owner.reviewedTorrent.value)
             assertNull(owner.session.attemptedTicket)
             restored.newIntent(view(document("reopened.torrent", "explicitly-reopened.mkv"),

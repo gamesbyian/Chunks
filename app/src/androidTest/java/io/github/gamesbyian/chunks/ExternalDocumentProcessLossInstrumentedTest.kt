@@ -184,7 +184,7 @@ class ExternalDocumentProcessLossInstrumentedTest {
         }
         assertTrue(withResumed { activity, owner ->
             assertEquals(taskId, activity.taskId)
-            assertNull(owner.incomingTorrent.value)
+            assertNull(owner.incomingDelivery)
             assertNull(owner.pendingSharedDocument.value)
             assertNull(owner.reviewedTorrent.value)
             assertNull(owner.session.attemptedTicket)
