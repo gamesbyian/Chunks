@@ -195,7 +195,12 @@ internal object RemoteSeeding {
         environmentOf(remote)?.let { EnforcementSwitch(context).enabled(it) } == true
 
     /** One controller step for [remote]. Blocking; call off main, holding the server's mutation gate. */
-    fun tick(context: Context, remote: RTorrentRemote, nowMs: Long = System.currentTimeMillis()): Tick {
+    fun tick(
+        context: Context,
+        remote: RTorrentRemote,
+        nowMs: Long = System.currentTimeMillis(),
+        ownerCurrent: () -> Boolean = { true }
+    ): Tick {
         val environment = environmentOf(remote) ?: return Tick.NOT_RUN
         return run(context, environment, nowMs) { baseline -> RTorrentSeedingPort(remote, baseline, ownerCurrent) { nowMs } }
     }
