@@ -16,6 +16,10 @@ The first [remote public artwork run 45297217074](https://github.com/gamesbyian/
 
 [#2015](https://github.com/gamesbyian/Chunks/pull/2015) merged at `6958d26b92d0b4e374b48c1625bf67122b4a2bcc` after [both native shards and verifier](https://github.com/gamesbyian/Chunks/actions/runs/45297747665) and [docs](https://github.com/gamesbyian/Chunks/actions/runs/45297747623). It protects the live Android workflow from disclosing account inventory through screenshots and prepares a read-only folder-picker comparison. [Trusted protected run 45299641531](https://github.com/gamesbyian/Chunks/actions/runs/45299641531) was dispatched at the exact merged SHA. Its live result is tracked under #1680.
 
+The protected run byte-matched the installed app and reached `connect-visible`. Its mapped source frame is the old split semantic Connect click before the live folder picker. No protected Android folder acceptance is inferred. [#2017](https://github.com/gamesbyian/Chunks/pull/2017) uses the shared at-most-once Connect action and keeps the read-only account scope, redacted witnesses and independent live readback intact.
+
+[Assembled five-client run 45297926971](https://github.com/gamesbyian/Chunks/actions/runs/45297926971) passed on main `c0e6d461c19799a37820a842c9af6132f8f41d26` after the stopped rTorrent snapshot batch merged. It independently matched the 74,843,996-byte installed APK, SHA-256 `7973e940178d43947a95505bd98571abb39002562dc4d2e473fec68cabbb45b7`. Real Transmission, qBittorrent and Deluge positive and fault phases passed. The same job confirmed the installed rTorrent Add fault and real process-loss phases, Local no-replay and restoration of the same foreign-provider Android task with a fresh PID and explicit reopen. Later PRs in this checkpoint leave the shipped Android and build sources unchanged. Physical Pixel acceptance remains under #1786.
+
 
 ## 2026-11-23 UTC — Exact-account stopped rTorrent batch accepted (#2009)
 
