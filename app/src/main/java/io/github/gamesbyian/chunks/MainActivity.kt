@@ -813,7 +813,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     val heldLocalObservation = retainedAddOwner.attempts
         .observationRevision(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
     LaunchedEffect(
-        incomingTorrent, sharedMagnet, pendingSharedDocument, pendingSharedMagnet,
+        incomingDelivery, pendingSharedDocument, pendingSharedMagnet,
         sharedTorrentReading, addDestination, aliasScope, localReviewedTorrent.value,
         heldLocalObservation, activeLocalAddAttempt.coordinator.phase,
         activeLocalAddAttempt.originalDocument.deletion,
@@ -825,10 +825,10 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     ) {
         val document = pendingSharedDocument
         val text = pendingSharedMagnet
-        // MainActivity can queue the new URI before Compose consumes that same
-        // incoming event. Let the one-shot effect admit it before promoting
-        // anything already held, so one delivery cannot reappear as a second draft.
-        if (incomingTorrent != null || sharedMagnet != null || sharedTorrentReading ||
+        // An unclaimed delivery (Add or Create) outranks promotion of an
+        // already-held source. Read the current owner, not a captured Compose
+        // value: a later Android event may have arrived since composition.
+        if (retainedAddOwner.incomingDelivery != null || sharedTorrentReading ||
             (document == null && text == null)) return@LaunchedEffect
         releaseVerifiedAttemptsForNewSource()
         if (addSourceOccupied()) return@LaunchedEffect

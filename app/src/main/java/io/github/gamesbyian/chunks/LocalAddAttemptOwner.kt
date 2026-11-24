@@ -42,11 +42,10 @@ internal class LocalAddAttemptOwner : ViewModel() {
 
     fun offerAdd(candidate: ExternalAddSource?) {
         if (candidate == null) return
-        // Preserve a replacement even if the previous Compose reader is disposed.
-        if (candidate is ExternalAddSource.TorrentDocument &&
-            (reviewedTorrent.value != null || readingSharedDocument.value != null)) {
-            pendingSharedDocument.value = candidate.uri
-        }
+        // Until a consumer claims this exact event, this slot is its only
+        // authority. A second provisional copy in pendingSharedDocument could
+        // survive a newer Create delivery and unexpectedly resurface as Add.
+        // The retained slot already survives disposal of the earlier reader.
         incomingDelivery = ExternalIntakeDelivery.Add(candidate)
     }
 

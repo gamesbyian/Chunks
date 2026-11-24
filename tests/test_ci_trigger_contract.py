@@ -362,6 +362,26 @@ class AndroidCiTriggerContract(unittest.TestCase):
         self.assertIn(".github/workflows/disposable-rtorrent-probe.yml",
                       pull_request_paths(source))
 
+    def test_native_delete_defers_drafts_without_losing_any_probe(self):
+        # The JNI matrix depends on the shared APK build, so no runner is
+        # allocated on a draft. Ready/manual events retain all proof lanes.
+        source = (ROOT / ".github/workflows/native-delete-boundary-research.yml").read_text()
+        self.assertIn(
+            "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+            source)
+        condition = "if: github.event_name != 'pull_request' || !github.event.pull_request.draft"
+        for job in ("targeted-native-probe", "build-native-delete-apks"):
+            self.assertIn(f"  {job}:\n    {condition}", source)
+        self.assertIn("  targeted-android-jni-probe:\n    needs: build-native-delete-apks", source)
+        self.assertIn("api: [29, 35]", source)
+        self.assertIn("workflow_dispatch:", source)
+        self.assertIn("cancel-in-progress: true", source)
+        self.assertIn("NativeDeleteFlagsLinuxProbeTest", source)
+        self.assertIn("tools/native_delete_android_probe.sh", source)
+        self.assertIn("sha256sum -c SHA256SUMS", source)
+        self.assertIn("tools/parse_instrumentation_stream.py", pull_request_paths(source))
+        self.assertNotIn("continue-on-error: true", source)
+
     def test_r8_waits_for_readiness_and_atlas_is_deferred_by_default(self):
         # Preserve both real installed-device classes and R8 exact-case checks;
         # only draft event scheduling should change.

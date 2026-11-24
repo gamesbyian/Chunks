@@ -80,6 +80,26 @@ class PendingExternalAddSourceInstrumentedTest {
             queued.toString().contains("privateFixture"))
     }
 
+    @Test fun supersededUnclaimedDocumentCannotResurfaceFromASecondQueue() {
+        val owner = LocalAddAttemptOwner()
+        val first = Uri.parse("content://documents.example/provider/first.torrent")
+        val next = Uri.parse("content://documents.example/provider/next.torrent")
+        owner.readingSharedDocument.value = first
+        owner.offerAdd(ExternalAddSource.TorrentDocument(next))
+        val stale = owner.incomingDelivery
+        assertEquals(ExternalAddSource.TorrentDocument(next),
+            (stale as ExternalIntakeDelivery.Add).source)
+        assertNull("Unclaimed Add has no second pending authority", owner.pendingSharedDocument.value)
+        owner.offerCreate(SharedCreateDocument.Request.File(next))
+        val create = owner.incomingDelivery
+        assertFalse(owner.claimIncoming(stale))
+        assertTrue(owner.claimIncoming(create))
+        assertNull(owner.incomingDelivery)
+        assertNull(owner.pendingSharedDocument.value)
+        assertEquals(first, owner.readingSharedDocument.value)
+        assertNull(owner.session.attemptedTicket)
+    }
+
     @Test fun olderConsumerCannotClaimAnIdenticalNewDeliveryOrACreateShare() {
         val owner = LocalAddAttemptOwner()
         val uri = Uri.parse("content://documents.example/provider/fixture.torrent")

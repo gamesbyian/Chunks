@@ -9,6 +9,8 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/NativeDeleteFilesBoundaryInstrumentedTest.kt"
       - "tools/native_delete_android_probe.sh"
       - "tools/parse_instrumentation_stream.py"
+    # Defer draft churn; ready and later changes must execute all three probes.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +22,7 @@ concurrency:
 
 jobs:
   targeted-native-probe:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 16
     steps:
@@ -51,6 +54,7 @@ jobs:
           retention-days: 7
 
   build-native-delete-apks:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
