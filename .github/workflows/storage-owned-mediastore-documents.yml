@@ -35,13 +35,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  owned-documents:
+  build-owned-documents:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [29, 35]
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - name: Refuse false or unsafe cold ZIP batch receipts (offline)
@@ -65,6 +61,44 @@ jobs:
           fi
       - name: Compile app and instrumented tests
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Freeze exact APK pair for both Android versions
+        run: |
+          mkdir -p "$RUNNER_TEMP/owned-documents-apks"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/owned-documents-apks/app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/owned-documents-apks/test.apk"
+          git rev-parse HEAD > "$RUNNER_TEMP/owned-documents-apks/source-sha"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/owned-documents-apks/source-tree"
+          (cd "$RUNNER_TEMP/owned-documents-apks" && sha256sum app.apk test.apk > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-owned-documents-apks
+          path: ${{ runner.temp }}/owned-documents-apks/
+          retention-days: 14
+          if-no-files-found: error
+
+  owned-documents:
+    needs: build-owned-documents
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chunks-owned-documents-apks
+          path: ${{ runner.temp }}/owned-documents-apks
+      - name: Reject stale source or changed APK pair
+        run: |
+          test "$(cat "$RUNNER_TEMP/owned-documents-apks/source-sha")" = "$(git rev-parse HEAD)"
+          test "$(cat "$RUNNER_TEMP/owned-documents-apks/source-sha")" = "$GITHUB_SHA"
+          test "$(cat "$RUNNER_TEMP/owned-documents-apks/source-tree")" = "$(git rev-parse HEAD^{tree})"
+          (cd "$RUNNER_TEMP/owned-documents-apks" && sha256sum -c SHA256SUMS)
+          mkdir -p app/build/outputs/apk/{debug,androidTest/debug}
+          cp "$RUNNER_TEMP/owned-documents-apks/app.apk" app/build/outputs/apk/debug/app-debug.apk
+          cp "$RUNNER_TEMP/owned-documents-apks/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
       - name: Require real emulator acceleration
         run: |
           test -c /dev/kvm
