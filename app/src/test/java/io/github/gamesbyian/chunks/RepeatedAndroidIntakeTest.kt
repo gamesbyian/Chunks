@@ -169,7 +169,11 @@ class RepeatedAndroidIntakeTest {
 
     private fun awaitExactRegistration(hash: String) {
         try {
-            rule.waitUntil(30_000) { server.jobs.containsKey(hash) }
+            // ViewModel-retained coroutines resume on Android's main looper,
+            // outside Compose's virtual frame clock. Synchronize a read-only
+            // sample with the actual UI dispatcher, rather than only polling
+            // the concurrent map while advancing virtual frames.
+            rule.waitUntil(30_000) { rule.runOnIdle { server.jobs.containsKey(hash) } }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
             val state = rule.runOnIdle {
                 val target = owner.addDestination.value
@@ -178,7 +182,10 @@ class RepeatedAndroidIntakeTest {
                 }
                 "targetRemote=${target is UniversalAddRouteTarget.RTorrent} " +
                     "ticket=${session?.attemptTicket != null} phase=${session?.coordinator?.phase} " +
-                    "submitting=${session?.submitting} loads=${server.loads().size}"
+                    "submitting=${session?.submitting} loads=${server.loads().size} " +
+                    "preflightLists=${server.methods.count { it == "d.multicall2" }} " +
+                    "nameReads=${server.methods.count { it == "d.name" }} " +
+                    "defaultReads=${server.methods.count { it == "directory.default" }}"
             }
             throw AssertionError("Explicit Add did not register the expected fixture: $state", failure)
         }
@@ -262,17 +269,33 @@ class RepeatedAndroidIntakeTest {
         val first = openWith("settling-first.mkv")
         waitForText("settling-first.mkv")
         submitEnabled()
-        rule.mainClock.autoAdvance = false
-        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
-        // Deliver the second handoff before the first attempt can settle.
+        // Hold the actual fixture load reply, not the Compose virtual clock.
+        // Registration is observed while the one explicit submission is still
+        // awaiting its response. The second share cannot race a guessed delay.
+        val gate = java.util.concurrent.CountDownLatch(1)
+        server.loadReplyGate = gate
         val bytes = torrent("settling-second.mkv")
         val uri = Uri.parse("content://chunks.test.documents/settling-second.mkv.torrent")
-        shadowOf(context.contentResolver).registerInputStream(uri, bytes.inputStream())
-        val accepted = requireNotNull(SharedTorrentDocument.fromIntent(
-            Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
-        rule.runOnUiThread { owner.offerAdd(ExternalAddSource.TorrentDocument(accepted)) }
-        rule.mainClock.autoAdvance = true
-        awaitExactRegistration(first)
+        try {
+            LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
+            awaitExactRegistration(first)
+            rule.runOnIdle {
+                val target = owner.addDestination.value as UniversalAddRouteTarget.RTorrent
+                val session = requireNotNull(owner.remoteSessions.existingForAccount(target.accountScope))
+                assertTrue("First Add must still be in flight at the second share", session.submitting)
+            }
+            shadowOf(context.contentResolver).registerInputStream(uri, bytes.inputStream())
+            val accepted = requireNotNull(SharedTorrentDocument.fromIntent(
+                Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
+            rule.runOnIdle { owner.offerAdd(ExternalAddSource.TorrentDocument(accepted)) }
+            rule.runOnIdle {
+                assertEquals("No second load while the first reply is held", 1, server.loads().size)
+            }
+        } finally {
+            gate.countDown()
+            server.loadReplyGate = null
+        }
+        assertTrue("Fixture must not release the response by timeout", !server.loadReplyTimedOut)
         waitForText("settling-second.mkv")
         submitEnabled()
         LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
