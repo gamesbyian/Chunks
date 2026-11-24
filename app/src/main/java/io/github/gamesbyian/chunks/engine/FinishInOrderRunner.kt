@@ -45,7 +45,19 @@ internal class FinishInOrderRunner(private val port: Port) {
         val byIndex = observed.associateBy { it.file.index }
 
         if (current.pending.isNotEmpty()) {
-            // Observation only: never replay an interrupted batch.
+            // Observation only: never replay an interrupted batch or clear its
+            // journal using priorities from a different or ambiguous file layout.
+            val identityProblem = FinishInOrderPlanner.identityProblem(current.policy, observed)
+            val pendingIndices = current.pending.map { it.index }
+            val validPending = pendingIndices.toSet().size == pendingIndices.size &&
+                current.policy.order.map { it.index }.toSet().containsAll(pendingIndices)
+            if (identityProblem != null || !validPending) {
+                val suspended = current.copy(suspendedReason =
+                    (identityProblem ?: "Invalid interrupted priority journal") +
+                    ". The interrupted change cannot be confirmed. Review the files before resuming.")
+                return if (port.save(infoHash, suspended)) Step.Suspended(suspended)
+                else Step.StorageFailed(current)
+            }
             val now = current.pending.map { byIndex[it.index]?.file?.priority }
             val reconciled = when {
                 current.pending.zip(now).all { (change, seen) -> seen == change.requestedPriority } ->
@@ -58,7 +70,7 @@ internal class FinishInOrderRunner(private val port: Port) {
                     "An earlier priority change was interrupted and only partly landed. " +
                     "Review the file priorities, then resume Finish in Order.")
             }
-            port.save(infoHash, reconciled)
+            if (!port.save(infoHash, reconciled)) return Step.StorageFailed(current)
             return if (reconciled.suspendedReason != null) Step.Suspended(reconciled)
                 else Step.Reconciled(reconciled)
         }

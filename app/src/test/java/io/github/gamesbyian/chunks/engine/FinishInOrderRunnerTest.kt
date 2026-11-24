@@ -138,6 +138,37 @@ class FinishInOrderRunnerTest {
         assertTrue(half.log.none { it.startsWith("apply") })
     }
 
+    @Test fun interruptedJournalRequiresExactUnambiguousReviewedFiles() = kotlinx.coroutines.runBlocking {
+        val original = FakePort(episodes(3))
+        val pending = record(original).copy(pending = listOf(Change(3, 4, 7)))
+        val changes: List<(MutableList<LocalTransferFile>) -> Unit> = listOf(
+            { files -> files[0] = files[0].copy(path = "different/" + files[0].path, priority = 7) },
+            { files -> files[0] = files[0].copy(sizeBytes = 101, priority = 7) },
+            { files -> files.add(files[0].copy(priority = 7)); Unit },
+            { files -> files.removeAt(1); Unit }
+        )
+        for (change in changes) {
+            val port = FakePort(episodes(3))
+            change(port.files)
+            val result = FinishInOrderRunner(port).step(hash, pending) as Step.Suspended
+            assertEquals(pending.pending, result.record.pending)
+            assertEquals(pending.lastApplied, result.record.lastApplied)
+            assertEquals(result.record, port.stored)
+            assertTrue(port.log.none { it.startsWith("apply") })
+        }
+    }
+
+    @Test fun interruptedJournalIsNotReportedReconciledWhenStorageFails() = kotlinx.coroutines.runBlocking {
+        val port = FakePort(episodes(3))
+        val pending = record(port).copy(pending = listOf(Change(3, 4, 7)))
+        port.stored = pending
+        port.saveWorks = false
+        val step = FinishInOrderRunner(port).step(hash, pending) as Step.StorageFailed
+        assertEquals(pending, step.record)
+        assertEquals(pending, port.stored)
+        assertTrue(port.log.isEmpty())
+    }
+
     @Test fun userPriorityChangeIsPinnedAndLeftAlone() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3))
         val applied = (FinishInOrderRunner(port).step(hash, record(port)) as Step.Applied).record
