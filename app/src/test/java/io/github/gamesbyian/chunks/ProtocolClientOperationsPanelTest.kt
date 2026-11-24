@@ -25,6 +25,10 @@ import io.github.gamesbyian.chunks.rpc.TorrentClient
 import org.junit.Assert.assertEquals
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.assertTextContains
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.withContext
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -375,7 +379,20 @@ class ProtocolClientOperationsPanelTest {
 
     @Test fun cancelledDispatchedCommandSurvivesNavigationAndSameProfileReconnect() {
         val owner = ProtocolOperationReceiptOwner()
-        val fake = Fake().apply { afterStartWrite = { kotlinx.coroutines.awaitCancellation() } }
+        val transportUnwinding = CompletableDeferred<Unit>()
+        val releaseTransport = CompletableDeferred<Unit>()
+        val fake = Fake().apply {
+            afterStartWrite = {
+                try {
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) {
+                        transportUnwinding.complete(Unit)
+                        releaseTransport.await()
+                    }
+                }
+            }
+        }
         val factory = { ClientOperations(fake, 3, 1) }
         var show by mutableStateOf(true)
         var generation by mutableStateOf("g1")
@@ -398,10 +415,16 @@ class ProtocolClientOperationsPanelTest {
             assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
             show = false
         }
-        rule.waitForIdle()
-        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, owner.receipt(key)?.phase)
-        rule.runOnIdle { generation = "g2"; show = true }
-        rule.waitForIdle()
+        try {
+            rule.waitUntil(5_000) { transportUnwinding.isCompleted }
+            rule.runOnIdle { generation = "g2"; show = true }
+            rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+            rule.onNodeWithText("Check this transfer without changing it").assertDoesNotExist()
+            assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+        } finally {
+            releaseTransport.complete(Unit)
+        }
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.UNKNOWN }
         rule.onNodeWithText("Commands are paused until a read-only check.").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
         rule.runOnIdle { profile = "profile-b" }

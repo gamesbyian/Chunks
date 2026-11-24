@@ -75,4 +75,22 @@ class ProtocolOperationReceiptOwnerTest {
         assertNotNull(owner.begin(sameHashOther, "generation-2", ProtocolOperationKind.STOP))
         assertNull(owner.receipt(key))
     }
+
+    @Test fun aDepartingDetailsRouteCanRevokePreflightButCannotSettleAnActiveWrite() {
+        val owner = ProtocolOperationReceiptOwner()
+        val preflight = requireNotNull(owner.begin(key, "g1", ProtocolOperationKind.REMOVE))
+        owner.abandonPreflight(preflight)
+        assertFalse(owner.possibleWrite(preflight))
+
+        val active = requireNotNull(owner.begin(key, "g1", ProtocolOperationKind.REMOVE))
+        assertTrue(owner.possibleWrite(active))
+        owner.abandonPreflight(active)
+        assertNull(owner.begin(key, "g2", ProtocolOperationKind.REMOVE))
+        assertFalse(owner.reconcile(active, present = false))
+        assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+
+        owner.cancel(active)
+        assertEquals(phase, owner.receipt(key)?.phase)
+        assertTrue(owner.reconcile(active, present = false))
+    }
 }
