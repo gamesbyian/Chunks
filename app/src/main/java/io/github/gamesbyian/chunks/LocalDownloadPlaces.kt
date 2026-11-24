@@ -72,7 +72,7 @@ internal object LocalDownloadPlaces {
             result += LocalPlaceChoice(place, failure,
                 needsStoragePermission = failure == LocalPublicDownloadsAccess.NEEDS_PERMISSION)
         }
-        LocalEngineHolder.appDownloads(context)?.let { root ->
+        appDownloads(context)?.let { root ->
             result += LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.APP_STORAGE, root,
                 "Chunks app folder",
                 "Private to Chunks on this device storage. Removed if Chunks is uninstalled."),
@@ -93,6 +93,9 @@ internal object LocalDownloadPlaces {
         }
         return result
     }
+
+    private fun appDownloads(context: Context): File? =
+        context.getExternalFilesDir("Downloads")?.apply { mkdirs() }?.takeIf { it.isDirectory }
 
     /** Off the main thread. Records the resolved root for read-only panels. */
     fun resolve(context: Context): LocalPlaceResolution {
@@ -118,11 +121,11 @@ internal object LocalDownloadPlaces {
 
     /**
      * The folder storage panels should measure: the last resolved default if
-     * it currently exists, otherwise Chunks' app folder. Never creates folders.
+     * it currently exists, otherwise Chunks' app-specific Downloads directory.
      */
     fun measuredRoot(context: Context): File? =
         prefs(context).getString(KEY_RESOLVED_ROOT, null)?.let(::File)?.takeIf { it.isDirectory }
-            ?: LocalEngineHolder.appDownloads(context)
+            ?: appDownloads(context)
 
     /**
      * IO lane, only after an explicit Add confirmation: lazily create
