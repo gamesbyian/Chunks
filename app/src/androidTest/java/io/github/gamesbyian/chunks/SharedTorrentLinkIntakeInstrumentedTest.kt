@@ -63,6 +63,27 @@ class SharedTorrentLinkIntakeInstrumentedTest {
         assertNull(ExternalAddSource.fromIntent(Intent(Intent.ACTION_VIEW, Uri.parse(url))))
     }
 
+    @Test fun installedTransportConnectsOnlyToTheValidatedAddress() {
+        // Real OkHttp/Android TCP path, stopped immediately before the syscall.
+        // No WAN request, public tracker, or remote mutation is involved.
+        val allowed = java.net.InetAddress.getByName("207.241.224.2")
+        val forbidden = java.net.InetAddress.getByName("127.0.0.1")
+        val attempts = java.util.concurrent.CopyOnWriteArrayList<java.net.InetSocketAddress>()
+        val lookups = java.util.concurrent.atomic.AtomicInteger()
+        val transport = PinnedTorrentLinkTransport(
+            proxies = { listOf(java.net.Proxy.NO_PROXY) },
+            beforeConnect = {
+                attempts += it
+                throw java.io.IOException("offline installed socket witness")
+            })
+        val result = TorrentLinkFetcher(resolve = {
+            if (lookups.incrementAndGet() == 1) listOf(allowed) else listOf(forbidden)
+        }, transport = transport).fetch(TorrentLinkCheck.inspect(url) as TorrentLinkCheck.Fetchable)
+        assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE), result)
+        assertEquals(1, lookups.get())
+        assertEquals(listOf(java.net.InetSocketAddress(allowed, 443)), attempts.toList())
+    }
+
     @Test fun destinationChooserDescribesALinkWithoutClaimingToAddIt() {
         rule.setContent {
             MaterialTheme {
