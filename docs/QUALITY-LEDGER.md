@@ -2,6 +2,20 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-24 UTC — Typed remote quiet-policy catalog baseline (FE-10/09)
+
+Recovered Codex's isolated, successful [measurement run 45475362393](https://github.com/gamesbyian/Chunks/actions/runs/45475362393), source `7ecfb8ea58a0641451444fee84ba08668f0cf419` based on accepted `f385517d`. It exercised the actual typed RemoteSeeding gate and assignment store through a counted fake client under JVM/Robolectric (API35). The temporary branch filtered to one measurement test; **do not** treat it as full foundation acceptance. The retained measurement test can run with the regular unfiltered suite or by explicit Gradle `--tests '*RemoteSeedingTickTest.measuresRemoteSeedingActivationAndQuietPollAtCatalogSizes'`. No hard machine-dependent timing assertion.
+
+| Jobs | First disabled check (ms) | Activation (ms) | Quiet enabled median (ms) | Five-sample range (ms) |
+| ---: | ---: | ---: | ---: | ---: |
+| 100 | 40.069 | 67.514 | 2.920 | 2.631–3.136 |
+| 1,000 | 0.509 | 34.405 | 7.014 | 6.161–12.026 |
+| 10,000 | 1.868 | 94.232 | 21.186 | 13.611–49.575 |
+| 50,000 | 0.305 | 228.171 | 56.784 | 56.197–91.455 |
+
+Each disabled check read zero client data; activation plus seven subsequent enabled ticks each used one inventory, zero extra per-job facts, zero Stops. The activation baseline was durably represented in the fake Android preferences store. The cold first sample includes warmup and is not a monotonic scale benchmark. Timings exclude actual daemon/network payload decoding, device disk behavior, Compose catalogs, allocation/GC profiling and active rules. They do not justify a new polling cadence, another cache, or storage-schema migration. Next measure real adapter payload/read costs, active-rule workloads, foreground/background catalog refresh and device memory/frame impact separately; retain authentication and no-replay fences.
+
+
 ## 2026-11-24 UTC — Legacy remote policy preservation and strict Add replies accepted
 
 [#2052](https://github.com/gamesbyian/Chunks/pull/2052) merged at `f385517d319fd45ce9469ca1e232aafe586daaf6` with #2054 and #2055 by ancestry. Exact head `97e102f81aca53ec979e9cc5915963421fc3adfb` passed [foundation](https://github.com/gamesbyian/Chunks/actions/runs/45467845843) with all 3,009 executed tests, [real-client interop](https://github.com/gamesbyian/Chunks/actions/runs/45467845752), [R8](https://github.com/gamesbyian/Chunks/actions/runs/45467845794), [Combined](https://github.com/gamesbyian/Chunks/actions/runs/45467845845), [remote deletion](https://github.com/gamesbyian/Chunks/actions/runs/45467845773) and [docs](https://github.com/gamesbyian/Chunks/actions/runs/45467842531). It preserves existing Finish in Order records and queued priority changes, protects unassigned remote jobs on the first current activation observation, and leaves an ambiguous typed Add reply uncertain until explicit read-only reconciliation. The merge adds only the intervening #2058 evidence docs to the qualified tree.
