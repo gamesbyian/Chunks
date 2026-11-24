@@ -36,6 +36,7 @@ import org.robolectric.annotation.Config
 class ProtocolClientOperationsPanelTest {
     @get:Rule val rule = createComposeRule()
     private val hash = "ab".repeat(20)
+    private val testReceipts = ProtocolOperationReceiptOwner()
 
     private inner class Fake : TorrentClient {
         override val kind = TorrentClientKind.QBITTORRENT
@@ -155,7 +156,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = "ab".repeat(32), clientLabel = "This device", sourceClientId = "local",
-                    observedStarted = false, current = true, sourceGeneration = "fixture-generation",
+                    observedStarted = false, current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("destination", "Destination") { ClientOperations(target, 3, 1) }),
                     moveOnly = true
@@ -176,7 +177,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
-                    current = true, sourceGeneration = "fixture-generation",
+                    current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge") { ClientOperations(target, 3, 1) })
                 )
@@ -205,7 +206,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Source", sourceClientId = "source",
-                    observedStarted = false, current = true, sourceGeneration = "fixture-generation",
+                    observedStarted = false, current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = sourceOperations, onChanged = {},
                     moveConnections = mapOf("t" to targetRevision),
                     moveTargets = listOfNotNull(ProtocolMoveTarget("t", "Target", connectionWitness = targetRevision) {
@@ -243,7 +244,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
-                    current = true, sourceGeneration = "fixture-generation",
+                    current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge", targetScope) { ClientOperations(target, 3, 1) }),
                     sourceAliasScope = sourceScope
@@ -270,7 +271,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rtorrent-account",
-                    observedStarted = false, current = true, sourceGeneration = "fixture-generation",
+                    observedStarted = false, current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other-deluge", "Deluge") {
                         ClientOperations(destination, 3, 1)
@@ -339,7 +340,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
-                    current = current, sourceGeneration = "fixture-generation",
+                    current = current, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(fake, 3, 1) },
                     onChanged = {}
                 )
@@ -419,7 +420,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "profile-a",
-                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    observedStarted = false, current = true,
                     createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
                     sourceGeneration = "g1", receiptOwner = owner
                 )
@@ -496,7 +497,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
-                    current = true, sourceGeneration = "fixture-generation",
+                    current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { created.incrementAndGet(); ClientOperations(source, 3, 1) },
                     onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("local", "This device") { ClientOperations(Fake(), 3, 1) }),
@@ -519,7 +520,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
-                    current = true, sourceGeneration = "fixture-generation",
+                    current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
                         ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
@@ -551,7 +552,7 @@ class ProtocolClientOperationsPanelTest {
                 val selected = destination
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Source", sourceClientId = "source", observedStarted = false,
-                    current = true, sourceGeneration = "fixture-generation",
+                    current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = sourceOperations, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("same-id", "Destination",
                         connectionWitness = selected) { ClientOperations(selected, 3, 1) }),
@@ -587,7 +588,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
-                    current = true, sourceGeneration = "fixture-generation",
+                    current = true, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = sourceOperations, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
                         ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
