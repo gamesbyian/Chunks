@@ -152,6 +152,15 @@ class AndroidCiTriggerContract(unittest.TestCase):
         self.assertTrue(dispatches_for_changed_paths(
             docs, (".github/workflows/native-add-instrumentation.yml",)))
 
+    def test_combined_catalog_ordering_selects_real_installed_campaign(self):
+        combined = (ROOT / ".github/workflows/installed-combined-two-servers.yml").read_text()
+        for name in ("UnifiedTransferCatalog.kt", "TransferSortOrdering.kt"):
+            with self.subTest(name=name):
+                self.assertTrue(dispatches_for_changed_paths(combined, (
+                    "app/src/main/java/io/github/gamesbyian/chunks/model/" + name,)))
+        self.assertFalse(dispatches_for_changed_paths(combined, (
+            "app/src/test/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalogPerformanceTest.kt",)))
+
     def test_shared_one_shot_compose_helper_selects_all_executing_installed_owners(self):
         # The shared lazy semantics helper drives actual installed Add,
         # Connect and removal gestures. Its owner workflow was previously

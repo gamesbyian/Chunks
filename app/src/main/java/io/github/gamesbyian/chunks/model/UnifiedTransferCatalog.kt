@@ -210,7 +210,17 @@ object UnifiedTransferCatalog {
                     UnifiedTransferFilter.ATTENTION -> item.hasError
                 }
         }
-        val comparator = comparator(query.sortKey, query.direction)
+        // Normalize only the selected, filtered names, once per distinct spelling.
+        // Query-local storage cannot survive an alias change or a client/scope change.
+        // Keep Locale.ROOT and the existing exact identity tie-breaks unchanged.
+        val nameKeys = if (query.sortKey == UnifiedSortKey.NAME) {
+            buildMap<String, String> {
+                filtered.forEach { row ->
+                    getOrPut(row.displayName) { row.displayName.lowercase(Locale.ROOT) }
+                }
+            }
+        } else emptyMap()
+        val comparator = comparator(query.sortKey, query.direction, nameKeys)
         if (!query.groupByEnvironment) {
             return UnifiedTransferQueryResult(filtered.sortedWith(comparator), selected, emptyList(), missing)
         }
@@ -228,11 +238,12 @@ object UnifiedTransferCatalog {
         return UnifiedTransferQueryResult(groups.flatMap { it.transfers }, selected, groups, missing)
     }
 
-    private fun comparator(key: UnifiedSortKey, direction: UnifiedSortDirection):
+    private fun comparator(key: UnifiedSortKey, direction: UnifiedSortDirection,
+                           nameKeys: Map<String, String>):
         Comparator<UnifiedTransferObservation> = Comparator { a, b ->
         val primary = when (key) {
-            UnifiedSortKey.NAME -> TransferSortOrdering.compareKnown(a.displayName.lowercase(Locale.ROOT),
-                b.displayName.lowercase(Locale.ROOT), direction)
+            UnifiedSortKey.NAME -> TransferSortOrdering.compareKnown(nameKeys.getValue(a.displayName),
+                nameKeys.getValue(b.displayName), direction)
             else -> {
                 fun value(item: UnifiedTransferObservation): Long? = when (key) {
                     UnifiedSortKey.ADDED_AT -> item.addedAtEpochMillis

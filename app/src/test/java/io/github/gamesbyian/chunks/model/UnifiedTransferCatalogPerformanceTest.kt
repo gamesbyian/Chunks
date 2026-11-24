@@ -10,6 +10,58 @@ import org.junit.Test
  * Report timings without machine-dependent pass thresholds; enforce data/identity semantics.
  */
 class UnifiedTransferCatalogPerformanceTest {
+    @Test fun measuresDistinctNameSortAgainstPriorComparator() {
+        // The original benchmark deliberately has only 74 raw spellings.
+        // Exercise the opposite cardinality extreme as well: every row has a
+        // unique raw name, including non-ASCII case mappings.
+        for (size in listOf(100, 1_000, 10_000, 50_000)) {
+            val sources = (0 until 5).map { client ->
+                val env = EnvironmentId("distinct-$client")
+                EnvironmentTransferSnapshot(env, EnvironmentAvailability.LIVE, true, 100L,
+                    (0 until size / 5).map { index ->
+                        val name = if (index % 2 == 0) "İtem $client $index" else "ITEM $client $index"
+                        UnifiedTransferObservation(
+                            UnifiedTransferKey.of(env, index.toString(16).padStart(40, '0')),
+                            name, name, null, null, null, null, null, null)
+                    }.shuffled(Random(71 + client)))
+            }
+            // Reference reproduces the old comparator and exact tie rules.
+            // It times flatten+sort only; the candidate includes the full
+            // query, so do not interpret the ratio as a precise UI speedup.
+            fun reference() = sources.flatMap { it.transfers }.sortedWith(Comparator { a, b ->
+                val name = a.displayName.lowercase(Locale.ROOT)
+                    .compareTo(b.displayName.lowercase(Locale.ROOT))
+                if (name != 0) name else {
+                    val env = a.key.environment.value.compareTo(b.key.environment.value)
+                    if (env != 0) env else a.key.infoHash.compareTo(b.key.infoHash)
+                }
+            })
+            fun candidate() = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery()).transfers
+            val expected = reference()
+            assertEquals(size, expected.size)
+            assertEquals(expected, candidate())
+            val before = mutableListOf<Long>()
+            val after = mutableListOf<Long>()
+            fun sample(operation: () -> List<UnifiedTransferObservation>, times: MutableList<Long>) {
+                val start = System.nanoTime()
+                val actual = operation()
+                times.add((System.nanoTime() - start) / 1_000)
+                assertEquals(expected, actual)
+            }
+            repeat(5) { iteration ->
+                if (iteration % 2 == 0) {
+                    sample(::reference, before)
+                    sample(::candidate, after)
+                } else {
+                    sample(::candidate, after)
+                    sample(::reference, before)
+                }
+            }
+            println("CHUNKS_DISTINCT_NAME_SORT: jobs=$size old_flatten_sort_median_us=${before.sorted()[2]} " +
+                "candidate_query_median_us=${after.sorted()[2]}")
+        }
+    }
+
     @Test fun measuresMixedClientCatalogQueriesAndOnePercentUpdates() {
         for (size in listOf(100, 1_000, 10_000, 50_000)) {
             val environments = (0 until 5).map { EnvironmentId("fixture-$it") }

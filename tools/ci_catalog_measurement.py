@@ -15,6 +15,7 @@ POLICY_CLASS = "io.github.gamesbyian.chunks.seeding.RemoteSeedingTickTest"
 CATALOG_CLASS = "io.github.gamesbyian.chunks.model.UnifiedTransferCatalogPerformanceTest"
 POLICY_TEST = "measuresRemoteSeedingActivationAndQuietPollAtCatalogSizes"
 CATALOG_TEST = "measuresMixedClientCatalogQueriesAndOnePercentUpdates"
+DISTINCT_TEST = "measuresDistinctNameSortAgainstPriorComparator"
 POLICY = re.compile(
     r"CHUNKS_POLICY_CATALOG: jobs=(100|1000|10000|50000) "
     r"disabled_us=([0-9]{1,9}) activation_us=([0-9]{1,9}) "
@@ -27,8 +28,13 @@ CATALOG = re.compile(
     r"median_us=([0-9]{1,9}) range_us=([0-9]{1,9})-([0-9]{1,9})"
 )
 
+DISTINCT = re.compile(
+    r"CHUNKS_DISTINCT_NAME_SORT: jobs=(100|1000|10000|50000) "
+    r"old_flatten_sort_median_us=([0-9]{1,9}) candidate_query_median_us=([0-9]{1,9})"
+)
 
-def collect(directory, klass, test, pattern, expected, prefix, policy=False):
+
+def collect(directory, klass, test, pattern, expected, prefix, policy=False, distinct=False):
     path = directory / ("TEST-" + klass + ".xml")
     try:
         if path.stat().st_size > 2_000_000:
@@ -59,12 +65,17 @@ def collect(directory, klass, test, pattern, expected, prefix, policy=False):
                     row = {"jobs": size, "disabled_us": disabled, "activation_us": activation,
                            "median_us": median, "min_us": low, "max_us": high,
                            "inventories_per_enabled_tick": 1, "extra_facts_per_tick": 0}
+                elif distinct:
+                    old, candidate = map(int, g[1:])
+                    key = (size,)
+                    row = {"jobs": size, "old_flatten_sort_median_us": old,
+                           "candidate_query_median_us": candidate}
                 else:
                     median, low, high = map(int, g[2:])
                     key = (size, g[1])
                     row = {"jobs": size, "case": g[1],
                            "median_us": median, "min_us": low, "max_us": high}
-                if key in rows or not low <= median <= high:
+                if key in rows or (not distinct and not low <= median <= high):
                     return None
                 rows[key] = row
         if set(rows) != set(expected):
@@ -82,6 +93,9 @@ def receipt(directory):
         "unified_catalog": collect(directory, CATALOG_CLASS, CATALOG_TEST, CATALOG,
                                    [(s, c) for s in SIZES for c in CASES],
                                    "CHUNKS_UNIFIED_CATALOG:"),
+        "distinct_name_sort": collect(directory, CATALOG_CLASS, DISTINCT_TEST, DISTINCT,
+                                      [(s,) for s in SIZES], "CHUNKS_DISTINCT_NAME_SORT:",
+                                      distinct=True),
     }
 
 

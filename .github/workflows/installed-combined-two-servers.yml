@@ -10,6 +10,8 @@ on:
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt"
       # Navigation and remote header changes can break these real journeys.
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
