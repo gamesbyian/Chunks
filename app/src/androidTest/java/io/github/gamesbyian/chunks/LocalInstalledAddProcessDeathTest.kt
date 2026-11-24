@@ -48,7 +48,44 @@ class LocalInstalledAddProcessDeathTest {
             journey.activate(ChunksSemantics.FOOTER_ADD)
             LazyComposeActions.replaceText(rule, hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD), magnet)
             journey.chooseStartPreference(ToggleableState.On)
-            journey.submit()
+            lateinit var owner: LocalAddAttemptOwner
+            it.onActivity { activity ->
+                owner = androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+            }
+            rule.runOnIdle {
+                assertTrue("Explicit fixture magnet reached the retained source owner",
+                    owner.sourceDraft.value == magnet)
+                assertEquals(UniversalAddRouteTarget.Local, owner.addDestination.value)
+                assertTrue("No previous Local Add ticket", owner.session.attemptedTicket == null)
+            }
+            try {
+                journey.submit()
+            } catch (failure: AssertionError) {
+                val matches = rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_SUBMIT)).fetchSemanticsNodes()
+                val node = matches.singleOrNull()
+                val description = node?.config?.getOrElseNullable(
+                    androidx.compose.ui.semantics.SemanticsProperties.StateDescription) { null }
+                // The description is fixed by the Local Add readiness predicate.
+                // Never retain raw source or path text.
+                val diagnostic = description?.takeIf { it in setOf(
+                    "Unavailable: A local operation is in progress.",
+                    "Unavailable: Waiting for source review.",
+                    "Unavailable: Waiting for a fresh confirmed local transfer list.",
+                    "Unavailable: Waiting for local settings to settle.",
+                    "Unavailable: Choose a verified local download location.",
+                    "Unavailable: Review a valid magnet.",
+                    "Unavailable: Review the display name.",
+                    "Unavailable: Finish the previous Add before adding another."
+                ) } ?: "unclassified"
+                val state = rule.runOnIdle {
+                    "sourceMatches=${owner.sourceDraft.value == magnet} " +
+                        "queuedDelivery=${owner.incomingDelivery != null} " +
+                        "reading=${owner.readingSharedDocument.value != null} " +
+                        "reviewedDocument=${owner.reviewedTorrent.value != null} " +
+                        "ticket=${owner.session.attemptedTicket != null}"
+                }
+                throw AssertionError("Local submit unavailable: matches=${matches.size} reason=$diagnostic $state", failure)
+            }
             journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
             journey.awaitTransferReceipt("Start unverified")
             val job = requireNotNull(LocalEngineHolder.current()).list().single { it.infoHash.equals(hash, true) }

@@ -25,7 +25,7 @@ class RemoteAddViewModelLifetimeTest {
         try {
             val provider = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())
             val first = provider[LocalAddAttemptOwner::class.java]
-            val scope = first.remoteAttemptScope
+            val scope = first.addAttemptScope
             val job = requireNotNull(scope.coroutineContext[Job])
             assertTrue(job.isActive)
             val draft = first.remoteSessions.forAccount("fixture-server\u0000account-a")
@@ -37,7 +37,8 @@ class RemoteAddViewModelLifetimeTest {
             val restored = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
                 LocalAddAttemptOwner::class.java]
             assertSame(first, restored)
-            assertSame(scope, restored.remoteAttemptScope)
+            assertSame(first.attempts, restored.attempts)
+            assertSame(scope, restored.addAttemptScope)
             assertSame(draft, restored.remoteSessions.forAccount("fixture-server\u0000account-a"))
             assertTrue(restored.remoteSessions.forAccount("fixture-server\u0000account-a").alreadyAttempted)
             assertTrue(job.isActive)
@@ -55,19 +56,25 @@ class RemoteAddViewModelLifetimeTest {
             val sharedUri = android.net.Uri.parse("content://chunks.test.documents/queued-torrent")
             // This state is recorded synchronously by MainActivity.accept() before
             // the Compose Add surface has necessarily observed the external intent.
-            first.incomingTorrent.value = sharedUri
+            first.offerAdd(ExternalAddSource.TorrentDocument(sharedUri))
+            val document = requireNotNull(first.incomingDelivery) as ExternalIntakeDelivery.Add
             val restored = provider[LocalAddAttemptOwner::class.java]
-            assertSame(sharedUri, restored.incomingTorrent.value)
-            restored.incomingTorrent.value = null
+            assertSame(document, restored.incomingDelivery)
+            assertTrue((document.source as ExternalAddSource.TorrentDocument).uri == sharedUri)
+            assertTrue(restored.claimIncoming(document))
             assertTrue("Consuming the one-shot URI must also clear the Activity's source",
-                first.incomingTorrent.value == null)
+                first.incomingDelivery == null)
+            assertFalse(restored.claimIncoming(document))
 
             val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40)
-            first.incomingMagnet.value = magnet
+            first.offerAdd(ExternalAddSource.Magnet(magnet))
+            val text = requireNotNull(first.incomingDelivery) as ExternalIntakeDelivery.Add
             assertSame(first, restored)
-            assertTrue(restored.incomingMagnet.value == magnet)
-            restored.incomingMagnet.value = null
-            assertTrue(first.incomingMagnet.value == null)
+            assertSame(text, restored.incomingDelivery)
+            assertTrue(text.source == ExternalAddSource.Magnet(magnet))
+            assertFalse(restored.claimIncoming(document))
+            assertTrue(restored.claimIncoming(text))
+            assertTrue(first.incomingDelivery == null)
             assertFalse("Retaining an incoming source never authorizes an Add ticket",
                 restored.remoteSessions.forAccount("test-server\\u0000account").alreadyAttempted)
         } finally {
@@ -84,10 +91,11 @@ class RemoteAddViewModelLifetimeTest {
                 android.net.Uri.parse("content://chunks.test.documents/create-source"))
             // The Create screen owns a read-only scan. Its external request
             // must remain until the scan completes, even if Activity recreates.
-            first.createReviewRequest.value = shared
+            val delivery = ExternalIntakeDelivery.Create(shared)
+            first.createReviewRequest.value = delivery
             val restored = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
                 LocalAddAttemptOwner::class.java]
-            assertSame(shared, restored.createReviewRequest.value)
+            assertSame(delivery, restored.createReviewRequest.value)
             val reviewed = io.github.gamesbyian.chunks.create.CreateTorrentSource("Shared file", emptyList())
             restored.createSource.value = reviewed
             restored.createReviewRequest.value = null
@@ -105,7 +113,7 @@ class RemoteAddViewModelLifetimeTest {
         val store = ViewModelStore()
         val owner = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
             LocalAddAttemptOwner::class.java]
-        val job = requireNotNull(owner.remoteAttemptScope.coroutineContext[Job])
+        val job = requireNotNull(owner.addAttemptScope.coroutineContext[Job])
         assertTrue(job.isActive)
         store.clear()
         assertTrue("An Activity finishing permanently must not keep an orphaned Add executor",

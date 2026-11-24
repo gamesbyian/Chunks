@@ -2,6 +2,52 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-24 UTC — Android intake and Local runtime ownership accepted
+
+[#2060](https://github.com/gamesbyian/Chunks/pull/2060) merged at `d5c2fdea25abc37047f41335b6ff43ac5867eafd`, tree-identical to qualified `e7da82e4c3cf247ad72f4cf38c0a287b818685b5`. #2059/#2063/#2064 are verified ancestors. [Foundation 45499638004](https://github.com/gamesbyian/Chunks/actions/runs/45499638004) passed 3,013 executed, 108 skips; all three repeated-intake regressions passed. [Installed Universal Add 45499637852](https://github.com/gamesbyian/Chunks/actions/runs/45499637852) passed all lanes and aggregate including foreign-task recovery and Local process-death no replay. [Native Add attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45499637927/attempts/1) was red solely at ClipboardUriIntakeInstrumentedTest line 111; [attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45499637927/attempts/2) reused immutable APK pair artifact 14970293293. Verifier job 138831838298 selected shard 0 attempt 1 (208 executed/23 skipped) and shard 1 attempt 2 (227 executed/30 skipped), total 435 executed/53 skipped/0 failed, 25 real PNGs. Root cause of prior red remains unproved.
+
+Other exact-head successes: [R8 45499637967](https://github.com/gamesbyian/Chunks/actions/runs/45499637967), [real rTorrent 45499637839](https://github.com/gamesbyian/Chunks/actions/runs/45499637839), [Combined 45499637847](https://github.com/gamesbyian/Chunks/actions/runs/45499637847), [remote deletion 45499638014](https://github.com/gamesbyian/Chunks/actions/runs/45499638014), [API29 Downloads 45499637930](https://github.com/gamesbyian/Chunks/actions/runs/45499637930), [native delete Linux/API29/API35 45499637917](https://github.com/gamesbyian/Chunks/actions/runs/45499637917), [docs 45499637982](https://github.com/gamesbyian/Chunks/actions/runs/45499637982). Owner-deferred atlas skipped, not accepted. No physical/TalkBack or release claim. #2063 draft suppression had zero native jobs; ready campaign retained all probes.
+
+The #2064 collector emitted all expected numeric samples on the green foundation. Medians in ms:
+
+| Rows | Name sort | Grouped speed unchanged | Grouped speed 1% update | Media search | Quiet policy |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 0.122 | 0.085 | 0.104 | 0.088 | 0.971 |
+| 1,000 | 1.756 | 1.395 | 1.351 | 0.776 | 5.123 |
+| 10,000 | 12.144 | 3.911 | 3.849 | 3.979 | 25.978 |
+| 50,000 | 54.384 | 11.574 | 12.639 | 11.372 | 47.490 |
+
+50k name range 41.587–142.619 ms, versus earlier median 113.403 ms. Policy retained one inventory and zero extra facts per enabled tick. Advisory synthetic host timings only; no comparison proves a speedup without matched workload and controls. #2065 is a draft candidate with distinct-name and Unicode controls; still needs exact-head measurement, heap/device evidence and appropriate qualification.
+
+## 2026-11-24 UTC — Exact artifact diagnosis and catalog measurement recovery
+
+#2060 head `9f7ff1c56d7f241fb3608ebd685e71a6885ec8b4` passed [R8](https://github.com/gamesbyian/Chunks/actions/runs/45495651676), [native Add](https://github.com/gamesbyian/Chunks/actions/runs/45495651497), [real rTorrent/HTTPS](https://github.com/gamesbyian/Chunks/actions/runs/45495651359), [Combined](https://github.com/gamesbyian/Chunks/actions/runs/45495651373), [remote delete](https://github.com/gamesbyian/Chunks/actions/runs/45495651502), [native delete Linux/API29/API35](https://github.com/gamesbyian/Chunks/actions/runs/45495653423), [docs](https://github.com/gamesbyian/Chunks/actions/runs/45495651717), and [API29 attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45495651574/attempts/2). API29 attempt 1 was a pre-install Maven HTTP403; retain it. Atlas deferred.
+
+[Foundation 45495651356](https://github.com/gamesbyian/Chunks/actions/runs/45495651356) is RED (3,121 reported, 108 skips, 3 failures). Downloaded JUnit artifact `14968139630` confirms all three exact-registration timeouts reached `targetRemote=true ticket=true phase=WRITE_ATTEMPTED submitting=true`, with loads 0, 0 and 1 respectively. The one prior successful load is not the missing second registration. Admission readiness is therefore not the complete explanation. This phase does not prove the wire boundary was crossed. Next candidate synchronizes read-only samples on the actual UI dispatcher, holds an actual fixture load reply for the settling race rather than freezing Compose's clock, and prevents a truncated fixture socket from blocking the single serving thread. Retain all exact registration and no-replay assertions. Root cause remains unproved; this is a test-harness hypothesis, not a product fix.
+
+[Installed 45495651642](https://github.com/gamesbyian/Chunks/actions/runs/45495651642) is RED. Both remote lanes and the complete foreign-provider same-task recovery/reopen passed. The subsequent Local phase 1 timed out after seven minutes. Downloaded artifact `14970315912` has an empty instrumentation phase-1 stream; the bounded logcat has no corresponding Local registration/kill marker. It does not prove that Add UI was reached or that a product failure occurred. Do not extend the deadline or infer a pass. Preserve previous head's separate disabled-submit failure.
+
+The two named synthetic benchmark tests passed within the red JVM suite. Recovered their exact five-sample medians from artifact 14968139630 (microseconds converted to milliseconds):
+
+| Rows | Name sort | Grouped speed unchanged | Grouped speed 1% update | Media search |
+| ---: | ---: | ---: | ---: | ---: |
+| 100 | 0.191 | 0.101 | 0.112 | 0.280 |
+| 1,000 | 2.398 | 1.283 | 3.785 | 0.930 |
+| 10,000 | 16.058 | 5.015 | 4.831 | 7.368 |
+| 50,000 | 113.403 | 22.168 | 20.705 | 22.268 |
+
+At 50k, name-sort range 61.789–129.522 ms. Quiet typed policy medians 0.927/7.481/48.838/62.282 ms (100/1k/10k/50k), with zero extra per-job facts and one inventory per enabled tick. These are advisory hosted synthetic measurements, not release acceptance, and not actual UI/network/heap data. Profile large-catalog name sorting before selecting an optimization. #2064 adds a bounded allowlisted numeric receipt for future foundation logs; its offline docs run 45495920112 passed. Integrate by ancestry to collect the next actual run without an extra build.
+
+
+## 2026-11-24 UTC — Runtime/intake ownership qualification remains red; catalog test accepted
+
+[#2062](https://github.com/gamesbyian/Chunks/pull/2062) merged at `de7b84089a1c8894b91e7861bd1eb7fa3f5afe39`. Exact head `26f934c606a65baa124539b0c05c7f93e03cf5d5` passed [unfiltered foundation](https://github.com/gamesbyian/Chunks/actions/runs/45491508883) and [docs](https://github.com/gamesbyian/Chunks/actions/runs/45491499120), including the retained quiet-policy and mixed-client catalog tests. Standard streams did not expose the new mixed-catalog timing samples; do not fabricate them. A separately instrumented measurement remains useful.
+
+[#2060](https://github.com/gamesbyian/Chunks/pull/2060) head `8e798a594d261130efd6c7629811bf618223c626` passed [native Add](https://github.com/gamesbyian/Chunks/actions/runs/45491865624), [R8](https://github.com/gamesbyian/Chunks/actions/runs/45491867314), [real HTTPS/rTorrent lifecycle](https://github.com/gamesbyian/Chunks/actions/runs/45491865720), [Combined](https://github.com/gamesbyian/Chunks/actions/runs/45491865571), [remote deletion](https://github.com/gamesbyian/Chunks/actions/runs/45491865590), [API29 Downloads](https://github.com/gamesbyian/Chunks/actions/runs/45491865523), [native delete Linux/API29/API35](https://github.com/gamesbyian/Chunks/actions/runs/45491865534) and [docs](https://github.com/gamesbyian/Chunks/actions/runs/45491833701). Native-delete draft suppression #2063 was demonstrated by skipped [45491608864](https://github.com/gamesbyian/Chunks/actions/runs/45491608864); the assembled ready campaign executed all original probes. Its earlier compile failures on 803b2580 remain red ([45475032226](https://github.com/gamesbyian/Chunks/actions/runs/45475032226)); 1fdb811a compiled both app/test APKs and passed Linux before cancellation by the superseding draft.
+
+Two blocking reds on 8e798a59: [foundation](https://github.com/gamesbyian/Chunks/actions/runs/45491865665), 3,118 reported cases including 108 skips and 3 failures, all RepeatedAndroidIntakeTest registration waits after explicit Add; and [installed five-client](https://github.com/gamesbyian/Chunks/actions/runs/45491865593), both remote lanes passed, foreign-document same-task process-death/reopen passed, then Local Add process-death test could not activate a unique enabled Add before its registration checkpoint. Preserve both; do not classify as generic fixture failures. The next assembled candidate aligns rTorrent button readiness with the same current route/inventory/mutation latch rechecked at click, uses the existing one-shot semantic action in the repeated-intake JVM witnesses and exposes fixed Local readiness diagnostics and exact retained-source checks. Root cause of all four failures is not yet proved. No gate weakened; requalify the assembled source.
+
+
 ## 2026-11-24 UTC — Typed remote quiet-policy catalog baseline (FE-10/09)
 
 Recovered Codex's isolated, successful [measurement run 45475362393](https://github.com/gamesbyian/Chunks/actions/runs/45475362393), source `7ecfb8ea58a0641451444fee84ba08668f0cf419` based on accepted `f385517d`. It exercised the actual typed RemoteSeeding gate and assignment store through a counted fake client under JVM/Robolectric (API35). The temporary branch filtered to one measurement test; **do not** treat it as full foundation acceptance. The retained measurement test can run with the regular unfiltered suite or by explicit Gradle `--tests '*RemoteSeedingTickTest.measuresRemoteSeedingActivationAndQuietPollAtCatalogSizes'`. No hard machine-dependent timing assertion.

@@ -6,7 +6,7 @@ import sys
 import unittest
 import xml.etree.ElementTree as ET
 
-from tools.parse_instrumentation_stream import (failure_locations, parse_stream,
+from tools.parse_instrumentation_stream import (failure_locations, interrupted_stream_witness, parse_stream,
                                                 safe_stopped_magnet_failure, write_junit)
 
 
@@ -33,6 +33,27 @@ def stream(*rows, final=-1):
 
 
 class InstrumentationStreamTests(unittest.TestCase):
+    def test_interrupted_stream_reports_counts_without_creating_receipt_or_leaking_payload(self):
+        raw = event("example.Foo", "first", total=2) + (
+            "INSTRUMENTATION_STATUS_CODE: 1\n"
+            "INSTRUMENTATION_STATUS_CODE: https://private.invalid/status\n"
+            "INSTRUMENTATION_RESULT: shortMsg=Process crashed.\n"
+            "INSTRUMENTATION_RESULT: longMsg=https://private.invalid/token\n")
+        with tempfile.TemporaryDirectory() as tmp:
+            source, report = Path(tmp) / "raw.txt", Path(tmp) / "TEST.xml"
+            source.write_text(raw)
+            result = subprocess.run([sys.executable, "tools/parse_instrumentation_stream.py",
+                                     "--raw", str(source), "--junit", str(report)],
+                                    text=True, capture_output=True)
+            self.assertFalse(report.exists())
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("started=2 passed=1 errors=0 failed=0 skipped=0 "
+                      "invalid_status=1 terminator=missing process_crash=true", result.stdout)
+        self.assertNotIn("private.invalid", result.stdout + result.stderr)
+        self.assertIn("terminator=rejected", interrupted_stream_witness(raw + "INSTRUMENTATION_CODE: 0\n"))
+        self.assertIn("terminator=invalid", interrupted_stream_witness(raw + "INSTRUMENTATION_CODE: secret\n"))
+        self.assertIn("terminator=multiple", interrupted_stream_witness(raw + "INSTRUMENTATION_CODE: 0\n" * 2))
+
     def test_locations_ignore_passed_stdout_and_malformed_frames(self):
         location = "  at io.github.gamesbyian.chunks.SampleTest.check(SampleTest.kt:42)"
         self.assertEqual([], failure_locations(stream(event("example.Foo", "ok").replace(

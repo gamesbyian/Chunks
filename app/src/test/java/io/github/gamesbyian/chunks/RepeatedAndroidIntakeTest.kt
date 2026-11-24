@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -9,7 +10,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.runtime.mutableStateOf
 import androidx.test.core.app.ApplicationProvider
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -19,13 +19,17 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import io.github.gamesbyian.chunks.create.CreateTorrentSourceTest
+import io.github.gamesbyian.chunks.create.SharedCreateDocument
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -44,19 +48,20 @@ class RepeatedAndroidIntakeTest {
     @get:Rule val rule = createComposeRule()
     private val server = FakeRTorrent()
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
-    /** Exactly what MainActivity.accept() hands ChunksApp after onNewIntent(ACTION_VIEW). */
-    private val incoming = mutableStateOf<Uri?>(null)
+    private val owner = LocalAddAttemptOwner()
 
     @org.junit.Before fun launch() {
         rule.setContent {
             ChunksTheme {
-                ChunksApp(sharedMagnet = null, incomingTorrent = incoming.value,
-                    onIncomingMagnetConsumed = {}, onIncomingTorrentConsumed = { incoming.value = null })
+                ChunksApp(owner)
             }
         }
     }
 
-    @After fun stop() = server.close()
+    @After fun stop() {
+        owner.addAttemptScope.cancel()
+        server.close()
+    }
 
     private fun b(text: String) = "${text.toByteArray().size}:$text"
     private fun torrent(name: String) = ("d8:announce" + b("https://tracker.example/announce") +
@@ -99,6 +104,24 @@ class RepeatedAndroidIntakeTest {
         rule.waitForIdle()
     }
 
+    @Test fun connectedCreateShareAdoptsTheRetainedSource() {
+        connect()
+        val authority = CreateTorrentSourceTest.AUTHORITY
+        Robolectric.setupContentProvider(CreateTorrentSourceTest.FakeProvider::class.java, authority)
+        val tree = DocumentsContract.buildTreeDocumentUri(authority, "root")
+        val file = DocumentsContract.buildDocumentUriUsingTree(tree, "c")
+        shadowOf(context.contentResolver).registerInputStreamSupplier(file) {
+            CreateTorrentSourceTest.bytes("c").inputStream()
+        }
+        rule.runOnIdle { owner.offerCreate(SharedCreateDocument.Request.File(file)) }
+        waitForText("c.mp4")
+        rule.runOnIdle {
+            assertTrue(owner.createSource.value != null)
+            assertEquals(null, owner.createReviewRequest.value)
+        }
+        rule.onNodeWithText("Torrent created").assertDoesNotExist()
+    }
+
     /**
      * The installed delete-data / two-server journeys enter canonical Transfers this way:
      * Connect, Continue to Connections, View transfers. The server-scoped Transfers search
@@ -127,14 +150,45 @@ class RepeatedAndroidIntakeTest {
         // The same VIEW intent MainActivity receives is what selects this document.
         val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")
         val accepted = requireNotNull(SharedTorrentDocument.fromIntent(intent)) { "Not an accepted Open With" }
-        rule.runOnIdle { incoming.value = accepted }
+        rule.runOnIdle { owner.offerAdd(ExternalAddSource.TorrentDocument(accepted)) }
         rule.waitForIdle()
         return TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase()
     }
 
     private fun submitEnabled() {
-        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+        // A fresh post-command inventory can still be loading when a new
+        // source review appears. Wait for the actual enabled contract.
+        rule.waitUntil(30_000) {
+            runCatching { list().performScrollToNode(submit) }
+            val nodes = rule.onAllNodes(submit).fetchSemanticsNodes()
+            nodes.size == 1 && androidx.compose.ui.semantics.SemanticsProperties.Disabled !in nodes.single().config
+        }
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
+    }
+
+    private fun awaitExactRegistration(hash: String) {
+        try {
+            // ViewModel-retained coroutines resume on Android's main looper,
+            // outside Compose's virtual frame clock. Synchronize a read-only
+            // sample with the actual UI dispatcher, rather than only polling
+            // the concurrent map while advancing virtual frames.
+            rule.waitUntil(30_000) { rule.runOnIdle { server.jobs.containsKey(hash) } }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            val state = rule.runOnIdle {
+                val target = owner.addDestination.value
+                val session = (target as? UniversalAddRouteTarget.RTorrent)?.let {
+                    owner.remoteSessions.existingForAccount(it.accountScope)
+                }
+                "targetRemote=${target is UniversalAddRouteTarget.RTorrent} " +
+                    "ticket=${session?.attemptTicket != null} phase=${session?.coordinator?.phase} " +
+                    "submitting=${session?.submitting} loads=${server.loads().size} " +
+                    "preflightLists=${server.methods.count { it == "d.multicall2" }} " +
+                    "nameReads=${server.methods.count { it == "d.name" }} " +
+                    "defaultReads=${server.methods.count { it == "directory.default" }}"
+            }
+            throw AssertionError("Explicit Add did not register the expected fixture: $state", failure)
+        }
     }
 
     @Test fun secondOpenWithDuringFirstProviderReadDoesNotSilentlyReplaceIt() {
@@ -156,11 +210,11 @@ class RepeatedAndroidIntakeTest {
         shadowOf(context.contentResolver).registerInputStream(secondUri,
             torrent("inflight-second.mkv").inputStream())
         try {
-            rule.runOnIdle { incoming.value = firstUri }
+            rule.runOnIdle { owner.offerAdd(ExternalAddSource.TorrentDocument(firstUri)) }
             rule.waitUntil(15_000) { started.count == 0L }
             // The previous source is selected, but its parsed review cannot
             // yet be shown. The second handoff must be held for a choice.
-            rule.runOnIdle { incoming.value = secondUri }
+            rule.runOnIdle { owner.offerAdd(ExternalAddSource.TorrentDocument(secondUri)) }
             waitForText("Use new source")
             release.countDown()
             waitForText("inflight-first.mkv")
@@ -183,7 +237,7 @@ class RepeatedAndroidIntakeTest {
         val first = openWith("first-torrent.mkv")
         waitForText("first-torrent.mkv")
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
         waitForText("Verified: added")
         assertTrue(server.jobs.containsKey(first))
 
@@ -194,8 +248,8 @@ class RepeatedAndroidIntakeTest {
             rule.onAllNodesWithText("Use new source").fetchSemanticsNodes().isEmpty())
         // The defect: the finished attempt hid the new source and the Add action.
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-        rule.waitUntil(30_000) { server.jobs.containsKey(second) }
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        awaitExactRegistration(second)
         waitForText("Verified: added")
         assertEquals("Exactly one load per explicit Add, never a replay of the first",
             2, server.loads().size)
@@ -215,22 +269,38 @@ class RepeatedAndroidIntakeTest {
         val first = openWith("settling-first.mkv")
         waitForText("settling-first.mkv")
         submitEnabled()
-        rule.mainClock.autoAdvance = false
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-        // Deliver the second handoff before the first attempt can settle.
+        // Hold the actual fixture load reply, not the Compose virtual clock.
+        // Registration is observed while the one explicit submission is still
+        // awaiting its response. The second share cannot race a guessed delay.
+        val gate = java.util.concurrent.CountDownLatch(1)
+        server.loadReplyGate = gate
         val bytes = torrent("settling-second.mkv")
         val uri = Uri.parse("content://chunks.test.documents/settling-second.mkv.torrent")
-        shadowOf(context.contentResolver).registerInputStream(uri, bytes.inputStream())
-        val accepted = requireNotNull(SharedTorrentDocument.fromIntent(
-            Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
-        rule.runOnUiThread { incoming.value = accepted }
-        rule.mainClock.autoAdvance = true
-        rule.waitUntil(30_000) { server.jobs.containsKey(first) }
+        try {
+            LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
+            awaitExactRegistration(first)
+            rule.runOnIdle {
+                val target = owner.addDestination.value as UniversalAddRouteTarget.RTorrent
+                val session = requireNotNull(owner.remoteSessions.existingForAccount(target.accountScope))
+                assertTrue("First Add must still be in flight at the second share", session.submitting)
+            }
+            shadowOf(context.contentResolver).registerInputStream(uri, bytes.inputStream())
+            val accepted = requireNotNull(SharedTorrentDocument.fromIntent(
+                Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
+            rule.runOnIdle { owner.offerAdd(ExternalAddSource.TorrentDocument(accepted)) }
+            rule.runOnIdle {
+                assertEquals("No second load while the first reply is held", 1, server.loads().size)
+            }
+        } finally {
+            gate.countDown()
+            server.loadReplyGate = null
+        }
+        assertTrue("Fixture must not release the response by timeout", !server.loadReplyTimedOut)
         waitForText("settling-second.mkv")
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
         val second = TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase()
-        rule.waitUntil(30_000) { server.jobs.containsKey(second) }
+        awaitExactRegistration(second)
         assertEquals("Exactly one load per explicit Add", 2, server.loads().size)
     }
 
@@ -247,8 +317,8 @@ class RepeatedAndroidIntakeTest {
         rule.onNodeWithText("Use new source").performScrollTo().performClick()
         waitForText("draft-b.mkv")
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-        rule.waitUntil(30_000) { server.jobs.containsKey(replacement) }
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        awaitExactRegistration(replacement)
         assertEquals("Only the explicitly chosen replacement is submitted", setOf(replacement), server.jobs.keys)
     }
 

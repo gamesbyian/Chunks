@@ -33,6 +33,9 @@ internal class FakeRTorrent(
     /** Simulate another client starting a job that this Add explicitly requested stopped. */
     @Volatile var startStoppedLoads: Boolean = false
     @Volatile var diagnosticReplyGate: java.util.concurrent.CountDownLatch? = null
+    /** Hold a real observed registration's response for a deterministic intake race. */
+    @Volatile var loadReplyGate: java.util.concurrent.CountDownLatch? = null
+    @Volatile var loadReplyTimedOut = false
     val calls = CopyOnWriteArrayList<Pair<String, List<String>>>()
     private val socket = ServerSocket(0, 32, InetAddress.getByName("127.0.0.1"))
     val endpoint = "http://127.0.0.1:${socket.localPort}/RPC2"
@@ -137,6 +140,9 @@ internal class FakeRTorrent(
                 val default = directoryDefault?.takeIf { it.startsWith("/") }
                 if (hash.isNotEmpty()) jobs[hash] = Job(hash, name, explicit ?: default ?: unsetDefaultLandsIn,
                     started = method == "load.start" || method == "load.raw_start" || startStoppedLoads)
+                loadReplyGate?.let { gate ->
+                    if (!gate.await(20, java.util.concurrent.TimeUnit.SECONDS)) loadReplyTimedOut = true
+                }
                 num(0)
             }
             else -> return fault(-506, "not in fixture")
@@ -145,6 +151,9 @@ internal class FakeRTorrent(
     }
 
     private fun serve(connection: Socket) { connection.use {
+        // A canceled or truncated fixture request must not monopolize the
+        // single socket-serving thread and starve every subsequent preflight.
+        it.soTimeout = 5_000
         val reader = BufferedReader(InputStreamReader(it.getInputStream(), Charsets.UTF_8))
         val request = reader.readLine() ?: return
         var length = 0
@@ -159,7 +168,11 @@ internal class FakeRTorrent(
         }
         val body = CharArray(length).also { chars ->
             var read = 0
-            while (read < length) read += reader.read(chars, read, length - read)
+            while (read < length) {
+                val count = reader.read(chars, read, length - read)
+                if (count <= 0) return
+                read += count
+            }
         }
         val result = answer(String(body)).toByteArray()
         it.getOutputStream().apply {
