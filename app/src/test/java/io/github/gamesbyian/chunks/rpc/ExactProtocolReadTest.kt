@@ -98,7 +98,7 @@ class ExactProtocolReadTest {
             val f = fixture(kind, emptyList(), beforeReply = { method ->
                 if (method in setOf("session-get", "auth/login", "auth.login")) current = false
             })
-            withContext(RemotePolicyWriteFence { current }) {
+            withContext(RemoteWriteOwnerFence { current }) {
                 f.client.session()
                 assertFalse("Fixture retired the owner during $kind authentication", current)
                 try {

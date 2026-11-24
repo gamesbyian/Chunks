@@ -295,7 +295,7 @@ internal class QBittorrentClient(
         var relogged = false
         while (true) {
             val session = cookie ?: login().also { cookie = it }
-            if (mutating) RemotePolicyWriteFence.check()
+            if (mutating) RemoteWriteOwnerFence.check()
             beforeWrite()
             val response = try {
                 wire.exchange(QBittorrentReadOnlyRpc.Request(
