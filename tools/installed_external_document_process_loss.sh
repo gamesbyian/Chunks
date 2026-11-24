@@ -233,11 +233,38 @@ elif item: print("other-window")
 else: print("unknown")
 PY
 )"
-  printf 'CHUNKS_DOCUMENT_RESTORE_DIAG: process=%s task_same=%s pid_changed=%s ui=%s foreground=%s document_intake=%s\n' \
+  # Classify Android's own lifecycle events before the next independent
+  # installed journey clears logcat. Retain counts only, never raw entries.
+  local events="unavailable"
+  if timeout 12s adb logcat -b events -d -t 1000 > "$scratch/restore-events.txt" 2>/dev/null; then
+    events="$(python3 - "$scratch/restore-events.txt" "$old_task" "$pkg" <<'PY_EVENTS'
+import re, sys
+from collections import Counter
+from pathlib import Path
+
+events = Counter()
+task, package = sys.argv[2:]
+target = re.compile(r'(?<![\w.])' + re.escape(package) + r'(?=[/,\s\]])')
+for line in Path(sys.argv[1]).read_text(errors="replace").splitlines():
+    hit = re.search(r'\b(am_proc_start|am_proc_died|am_kill|am_crash|wm_finish_activity|wm_resume_activity|wm_task_removed)\s*:\s*\[(.*)\]', line)
+    if not hit:
+        continue
+    tag, value = hit.groups()
+    if target.search(value) or (tag == "wm_task_removed" and value.split(",", 1)[0].strip() == task):
+        events[tag] += 1
+print(",".join(f"{tag}={events[tag]}" for tag in (
+    "am_proc_start", "am_proc_died", "am_kill", "am_crash",
+    "wm_finish_activity", "wm_resume_activity", "wm_task_removed")))
+PY_EVENTS
+)"
+  fi
+  local focus_command=quiet
+  if grep -Eqi 'error|exception|unknown|not found' "$scratch/task-focus.txt"; then focus_command=reported-error; fi
+  printf 'CHUNKS_DOCUMENT_RESTORE_DIAG: process=%s task_same=%s pid_changed=%s ui=%s foreground=%s document_intake=%s focus_command=%s events=%s\n' \
     "$([[ -n "$current_pid" ]] && echo present || echo absent)" \
     "$([[ -n "$current_task" && "$current_task" == "$old_task" ]] && echo true || echo false)" \
     "$([[ -n "$current_pid" && "$current_pid" != "$old_pid" ]] && echo true || echo false)" \
-    "$xml" "$focused" "$sender_replayed" | tee "$out/document-restored-diagnostic.txt"
+    "$xml" "$focused" "$sender_replayed" "$focus_command" "$events" | tee "$out/document-restored-diagnostic.txt"
 }
 open_source "--ez fixture_keep_task true" ||
   { fail "foreign provider VIEW not delivered"; exit 1; }

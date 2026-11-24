@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -129,6 +130,16 @@ internal fun ProtocolClientOperationsPanel(
     val receiptKey = remember(hash, sourceClientId, sourceGeneration) {
         sourceGeneration?.let { ProtocolOperationReceiptOwner.Key(sourceClientId, hash.lowercase(java.util.Locale.ROOT)) }
     }
+    val inFlightReceipt = remember(receiptOwner, receiptKey, sourceGeneration) {
+        java.util.concurrent.atomic.AtomicReference<ProtocolOperationReceiptOwner.Ticket?>()
+    }
+    DisposableEffect(inFlightReceipt) {
+        onDispose {
+            // Retain a possible dispatch at the route boundary even while
+            // the transport or coroutine has not yet acknowledged cancellation.
+            inFlightReceipt.getAndSet(null)?.let(receiptOwner::cancel)
+        }
+    }
     val retained = receiptKey?.let(receiptOwner::receipt)
     var session by remember(operations) { mutableStateOf<ClientSessionInfo?>(null) }
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
@@ -220,6 +231,7 @@ internal fun ProtocolClientOperationsPanel(
             notice = "A previous request needs checking before another command."
             return
         }
+        if (ticket != null) inFlightReceipt.set(ticket)
         val policyEpoch = TransferPrivacyPolicyStore.revision
         val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
         val credentialEpoch = RemoteCredentialLock.capture()
@@ -249,6 +261,7 @@ internal fun ProtocolClientOperationsPanel(
                 if (ticket != null) receiptOwner.cancel(ticket)
                 throw cancel
             } finally {
+                if (ticket != null) inFlightReceipt.compareAndSet(ticket, null)
                 busy = false
             }
         }

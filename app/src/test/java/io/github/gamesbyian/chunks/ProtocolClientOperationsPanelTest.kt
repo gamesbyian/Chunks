@@ -276,9 +276,13 @@ class ProtocolClientOperationsPanelTest {
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
         rule.waitUntil(5_000) { fake.writes == 1 }
-        rule.runOnIdle { show = false }
         val key = ProtocolOperationReceiptOwner.Key("profile-a", hash)
-        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.UNKNOWN }
+        rule.runOnIdle {
+            assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+            show = false
+        }
+        rule.waitForIdle()
+        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, owner.receipt(key)?.phase)
         rule.runOnIdle { generation = "g2"; show = true }
         rule.waitForIdle()
         rule.onNodeWithText("Commands are paused until a read-only check.").assertExists()
