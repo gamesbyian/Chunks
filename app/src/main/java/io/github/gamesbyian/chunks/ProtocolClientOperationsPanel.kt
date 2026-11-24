@@ -37,6 +37,7 @@ import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
+import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientOperationWriteBoundary
 import io.github.gamesbyian.chunks.rpc.RemoteWriteOwnerFence
 import io.github.gamesbyian.chunks.rpc.ClientRefusedException
@@ -414,14 +415,19 @@ internal fun ProtocolClientOperationsPanel(
                         modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION))
                 }
             }
+            val copyHash = runCatching { ClientHashes.requireHash(hash) }.getOrNull()
+            if (copyHash == null) {
+                Text("Copying this job requires a v1 transfer identity.", style = MaterialTheme.typography.bodySmall)
+            }
             moveTargets.sortedByDescending { it.id == routingSuggestion?.first }.forEach { target ->
-                val targetKey = ProtocolOperationReceiptOwner.Key(target.id, hash.lowercase(java.util.Locale.ROOT))
-                val targetReceipt = receiptOwner.receipt(targetKey)
+                val targetKey = copyHash?.let { ProtocolOperationReceiptOwner.Key(target.id, it) }
+                val targetReceipt = targetKey?.let(receiptOwner::receipt)
                 OutlinedButton(onClick = {
+                    val key = targetKey ?: return@OutlinedButton
                     val ownerCurrent = captureCopyOwner(target)
                     if (busy || latched || !ownerCurrent()) return@OutlinedButton
                     val generation = RemoteCredentialLock.capture().toString()
-                    val ticket = receiptOwner.begin(targetKey, generation, ProtocolOperationKind.COPY_TARGET)
+                    val ticket = receiptOwner.begin(key, generation, ProtocolOperationKind.COPY_TARGET)
                         ?: return@OutlinedButton
                     inFlightReceipt.set(ticket)
                     busy = true
@@ -490,7 +496,7 @@ internal fun ProtocolClientOperationsPanel(
                             busy = false
                         }
                     }
-                }, enabled = enabled && targetReceipt?.blocksWrites != true,
+                }, enabled = enabled && targetKey != null && targetReceipt?.blocksWrites != true,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         .testTag(ChunksSemantics.PROTOCOL_MOVE + "." + target.id)) {
                     Text("Copy job to ${target.label}")

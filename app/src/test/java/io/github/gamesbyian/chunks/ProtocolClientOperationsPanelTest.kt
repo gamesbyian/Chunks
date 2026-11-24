@@ -143,6 +143,27 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(true, source.present)
     }
 
+    @Test fun v2OnlyMoveSourceCannotAcquireAnUnsupportedDestinationLease() {
+        val source = Fake()
+        val target = Target()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = "ab".repeat(32), clientLabel = "This device", sourceClientId = "local",
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("destination", "Destination") { ClientOperations(target, 3, 1) }),
+                    moveOnly = true
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".destination").assertIsNotEnabled()
+        assertEquals(0, target.adds)
+    }
+
     @Test fun moveCopiesJobThenRetiresSourceOnlyAfterSecondTap() {
         val fake = Fake()
         val target = Target()
