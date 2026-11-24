@@ -74,6 +74,7 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
         assertEquals("Disposable emulator required", "1", qemu)
         val originalSelector = ProxySelector.getDefault()
         val originalFactory = HttpsURLConnection.getDefaultSSLSocketFactory()
+        val originalSourceTransport = DebugTorrentLinkTransportOverride.transport
         val cert = CertificateFactory.getInstance("X.509").generateCertificate(
             Base64.decode(requireNotNull(args.getString("chunks_media_cert")), Base64.DEFAULT).inputStream())
         val trust = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
@@ -90,11 +91,42 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
                 listOf(if (uri.scheme == "https") proxy else Proxy.NO_PROXY)
             override fun connectFailed(uri: URI?, sa: SocketAddress?, ioe: IOException?) = Unit
         }
+        // The production torrent transport deliberately refuses proxy routing.
+        // This fixture is a real counted HTTPS exchange in the test APK, not a
+        // production proxy exception. Only debug/QA variants have the in-memory
+        // injection point; the release variant always uses pinned direct TLS.
+        val controlledSource = TorrentLinkTransport { uri, _, timeout ->
+            check(uri.scheme.equals("https", true) && uri.host == "example.com" &&
+                uri.rawUserInfo == null && (uri.port == -1 || uri.port == 443))
+            val connection = uri.toURL().openConnection(proxy) as HttpsURLConnection
+            try {
+                connection.sslSocketFactory = tls.socketFactory
+                connection.instanceFollowRedirects = false
+                connection.useCaches = false
+                connection.connectTimeout = timeout
+                connection.readTimeout = timeout
+                connection.setRequestProperty("Accept", "application/x-bittorrent")
+                connection.setRequestProperty("User-Agent", "Chunks")
+                val code = connection.responseCode
+                object : TorrentLinkHop {
+                    override val status = code
+                    override val contentLength get() = connection.contentLengthLong
+                    override fun header(name: String) = connection.getHeaderField(name)
+                    override fun body() = connection.inputStream
+                    override fun close() = connection.disconnect()
+                }
+            } catch (failure: Exception) {
+                connection.disconnect()
+                throw failure
+            }
+        }
         HttpsURLConnection.setDefaultSSLSocketFactory(tls.socketFactory)
         ProxySelector.setDefault(selector)
+        DebugTorrentLinkTransportOverride.transport = controlledSource
         try {
             block()
         } finally {
+            DebugTorrentLinkTransportOverride.transport = originalSourceTransport
             ProxySelector.setDefault(originalSelector)
             HttpsURLConnection.setDefaultSSLSocketFactory(originalFactory)
         }
@@ -147,6 +179,7 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
                 listOf(
                     "NO_HOST" to TorrentLinkResult.NO_HOST,
                     "LOCAL_NETWORK" to TorrentLinkResult.LOCAL_NETWORK,
+                    "PROXY" to TorrentLinkResult.PROXY,
                     "OFFLINE" to TorrentLinkResult.OFFLINE,
                     "TIMEOUT" to TorrentLinkResult.TIMEOUT,
                     "REFUSED" to TorrentLinkResult.REFUSED,

@@ -152,7 +152,7 @@ internal sealed class TorrentLinkResult {
  */
 internal class TorrentLinkFetcher(
     private val resolve: (String) -> List<InetAddress> = { InetAddress.getAllByName(it).toList() },
-    private val transport: TorrentLinkTransport = PinnedTorrentLinkTransport(),
+    private val transport: TorrentLinkTransport = defaultTorrentLinkTransport(),
     private val maxBytes: Int = MAX_BYTES,
     private val maxRedirects: Int = 5,
     private val timeoutMs: Int = 15_000

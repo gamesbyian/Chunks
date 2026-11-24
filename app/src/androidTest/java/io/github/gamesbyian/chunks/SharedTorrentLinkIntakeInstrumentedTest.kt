@@ -84,6 +84,18 @@ class SharedTorrentLinkIntakeInstrumentedTest {
         assertEquals(listOf(java.net.InetSocketAddress(allowed, 443)), attempts.toList())
     }
 
+    @Test fun installedProductionTransportRefusesConfiguredProxyWithoutConnecting() {
+        val allowed = java.net.InetAddress.getByName("207.241.224.2")
+        val proxy = java.net.Proxy(java.net.Proxy.Type.HTTP,
+            java.net.InetSocketAddress("127.0.0.1", 18091))
+        val transport = PinnedTorrentLinkTransport(
+            proxies = { listOf(proxy, java.net.Proxy.NO_PROXY) },
+            beforeConnect = { org.junit.Assert.fail("No connection behind an unverifiable proxy") })
+        val result = TorrentLinkFetcher(resolve = { listOf(allowed) }, transport = transport)
+            .fetch(TorrentLinkCheck.inspect(url) as TorrentLinkCheck.Fetchable)
+        assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.PROXY), result)
+    }
+
     @Test fun destinationChooserDescribesALinkWithoutClaimingToAddIt() {
         rule.setContent {
             MaterialTheme {
