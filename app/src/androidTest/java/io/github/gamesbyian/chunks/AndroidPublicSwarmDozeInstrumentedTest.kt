@@ -10,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import java.io.File
+import java.net.InetSocketAddress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -56,6 +57,10 @@ class AndroidPublicSwarmDozeInstrumentedTest {
         try {
             assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(hash).outcome)
             LocalEngineService.start(context)
+            if (args.getString("chunksDozeHostPeer") == "1") {
+                assertTrue("The controlled emulator must dial the independent host seeder",
+                    engine.connectPeer(hash, InetSocketAddress("10.0.2.2", 18791)))
+            }
             val warm = 4L shl 20
             val started = System.nanoTime()
             var status = requireNotNull(engine.status(hash))

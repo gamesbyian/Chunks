@@ -26,6 +26,10 @@ on:
         description: "Force deep Doze during a foreground-service download and record whether bytes keep arriving"
         type: boolean
         default: false
+      controlled_doze:
+        description: "Use one disposable verified host peer for Doze, without Internet swarm discovery"
+        type: boolean
+        default: false
       netflap:
         description: "Turn Wi-Fi and mobile data off for 30 s mid-download, then require verified growth to resume"
         type: boolean
@@ -50,12 +54,41 @@ jobs:
           CHUNKS_INTERRUPT: ${{ inputs.interrupt }}
           CHUNKS_DOZE: ${{ inputs.doze }}
           CHUNKS_NETFLAP: ${{ inputs.netflap }}
+          CHUNKS_CONTROLLED_DOZE: ${{ inputs.controlled_doze }}
         run: |
           set -euo pipefail
+          if [[ "$CHUNKS_CONTROLLED_DOZE" == true && "$CHUNKS_DOZE" != true ]]; then
+            echo "::error::Controlled peer is available only for the Doze experiment"
+            exit 1
+          fi
           script="$(bash tools/select_android_public_swarm_mode.sh "$CHUNKS_INTERRUPT" "$CHUNKS_DOZE" "$CHUNKS_NETFLAP")"
           printf 'script=%s\n' "$script" >> "$GITHUB_OUTPUT"
           printf 'CHUNKS_SWARM_MODE selected=%s\n' "$script"
+      - name: Stage a controlled independent peer and synthetic pieces
+        if: inputs.controlled_doze
+        env:
+          SECONDS_LIMIT: ${{ inputs.seconds }}
+        run: |
+          set -euo pipefail
+          [[ "$SECONDS_LIMIT" =~ ^[0-9]{2,4}$ && "$SECONDS_LIMIT" -ge 30 && "$SECONDS_LIMIT" -le 1800 ]]
+          bash tools/apt_install_retry.sh python3-libtorrent
+          peer="$RUNNER_TEMP/chunks-doze-peer"
+          mkdir -p "$peer"
+          /usr/bin/python3 tools/seed_doze_fixture.py "$peer" > "$peer/peer.log" 2>&1 &
+          echo "$!" > "$peer/pid"
+          for _ in $(seq 1 120); do
+            if [[ -f "$peer/ready" ]]; then break; fi
+            kill -0 "$(cat "$peer/pid")"
+            sleep 0.5
+          done
+          test -f "$peer/ready"
+          {
+            echo "CHUNKS_PUBLIC_SWARM_TORRENT=$peer/fixture.torrent"
+            echo "CHUNKS_PUBLIC_SWARM_SECONDS=$SECONDS_LIMIT"
+            echo "CHUNKS_DOZE_CONTROLLED_PEER=1"
+          } >> "$GITHUB_ENV"
       - name: Collect the Debian netinst torrent (no web seeds, Debian tracker only)
+        if: '!inputs.controlled_doze'
         env:
           BUDGET_MIB: ${{ inputs.budget_mib }}
           SECONDS_LIMIT: ${{ inputs.seconds }}
@@ -100,3 +133,22 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/${{ steps.mode.outputs.script }}
+      - name: Read back independent seeder bytes and stop the controlled peer
+        if: always() && inputs.controlled_doze
+        env:
+          ANDROID_OBSERVATION: ${{ job.status }}
+        run: |
+          peer="$RUNNER_TEMP/chunks-doze-peer"
+          if [[ -f "$peer/pid" ]]; then
+            kill -TERM "$(cat "$peer/pid")" || true
+            for _ in $(seq 1 20); do
+              grep -q 'CHUNKS_DOZE_PEER: payload_uploaded_bytes=' "$peer/peer.log" && break
+              sleep 0.25
+            done
+            cat "$peer/peer.log"
+          fi
+          if [[ "$ANDROID_OBSERVATION" == success ]]; then
+            grep -Fxq 'CHUNKS_DOZE_PEER: seed_verified_bytes=67108864' "$peer/peer.log"
+            uploaded="$(sed -n 's/^CHUNKS_DOZE_PEER: payload_uploaded_bytes=\([0-9]\+\)$/\1/p' "$peer/peer.log")"
+            [[ "$uploaded" =~ ^[0-9]{1,9}$ ]] && (( uploaded >= 4194304 ))
+          fi

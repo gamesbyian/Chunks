@@ -68,9 +68,14 @@ trap restore EXIT
 echo "CHUNKS_SWARM_DOZE allowlisted: $(adb shell dumpsys deviceidle whitelist | grep -c "$pkg" || true)"
 adb logcat -c
 log=$(mktemp)
+controlled_args=()
+if [[ "${CHUNKS_DOZE_CONTROLLED_PEER:-}" == 1 ]]; then
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]]
+  controlled_args=(-e chunksDozeHostPeer 1)
+fi
 adb shell am instrument -w -r -e class "$pkg.AndroidPublicSwarmDozeInstrumentedTest" \
   -e chunksDoze 1 -e chunksSwarmTorrent public-swarm.torrent -e chunksSwarmSeconds "$CHUNKS_PUBLIC_SWARM_SECONDS" \
-  "$pkg.test/androidx.test.runner.AndroidJUnitRunner" >"$log" 2>&1 &
+  "${controlled_args[@]}" "$pkg.test/androidx.test.runner.AndroidJUnitRunner" >"$log" 2>&1 &
 inst=$!
 ready=0
 for _ in $(seq 1 $(( CHUNKS_PUBLIC_SWARM_SECONDS / 2 + 30 ))); do
