@@ -11,6 +11,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import java.io.File
+import java.net.InetSocketAddress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -87,6 +88,11 @@ class AndroidPublicSwarmNetworkFlapInstrumentedTest {
         try {
             assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(hash).outcome)
             LocalEngineService.start(context)
+            val controlled = args.getString("chunksNetFlapHostPeer") == "1"
+            if (controlled) {
+                assertTrue("The controlled emulator must dial the independent host seeder",
+                    engine.connectPeer(hash, InetSocketAddress("10.0.2.2", 18791)))
+            }
             val warm = 4L shl 20
             val started = System.nanoTime()
             var status = requireNotNull(engine.status(hash))
@@ -108,6 +114,15 @@ class AndroidPublicSwarmNetworkFlapInstrumentedTest {
             // Require loss of the app-visible validated default Internet network.
             requireNetworkWitness(witness, DefaultNetworkValidationWitness.Phase.NEED_RETURN, 18)
             log("network_witness_default_internet_lost=true")
+            if (controlled) {
+                val deadline = System.nanoTime() + 18_000_000_000L
+                while (requireNotNull(engine.status(hash)).peers != 0 && System.nanoTime() < deadline) {
+                    Thread.sleep(500)
+                }
+                assertEquals("The controlled peer must also disconnect during the outage",
+                    0, requireNotNull(engine.status(hash)).peers)
+                log("controlled_peer_disconnected=true")
+            }
             waitForFile(onFlag, 180)
             requireNetworkWitness(witness, DefaultNetworkValidationWitness.Phase.COMPLETE, 90)
             log("network_witness_default_internet_restored=true")

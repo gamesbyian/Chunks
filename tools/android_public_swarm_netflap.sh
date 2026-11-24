@@ -40,6 +40,12 @@ if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != dev
   echo "Selected adb device unavailable" >&2; exit 2
 fi
 
+controlled_args=()
+if [[ "${CHUNKS_NETFLAP_CONTROLLED_PEER:-}" == 1 ]]; then
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]]
+  controlled_args=(-e chunksNetFlapHostPeer 1)
+fi
+
 CHUNKS_WIFI_BASELINE= CHUNKS_DATA_BASELINE=
 # svc returns an acknowledgement, not proof that a requested radio state
 # changed. The app's separate ConnectivityManager witness must ALSO observe
@@ -98,11 +104,11 @@ adb exec-in run-as "$pkg" sh -c 'mkdir -p cache && cat > cache/public-swarm.torr
 adb logcat -c
 adb shell am instrument -w -r -e class "$pkg.AndroidPublicSwarmNetworkFlapInstrumentedTest" \
   -e chunksNetFlap 1 -e chunksSwarmTorrent public-swarm.torrent -e chunksSwarmSeconds "$CHUNKS_PUBLIC_SWARM_SECONDS" \
-  "$pkg.test/androidx.test.runner.AndroidJUnitRunner" >"$log" 2>&1 &
+  "${controlled_args[@]}" "$pkg.test/androidx.test.runner.AndroidJUnitRunner" >"$log" 2>&1 &
 inst=$!
 ready=0
 for _ in $(seq 1 $(( CHUNKS_PUBLIC_SWARM_SECONDS / 2 + 30 ))); do
-  if adb logcat -d -s ChunksSwarm:I | grep -q "CHUNKS_SWARM_NETFLAP: ready"; then ready=1; break; fi
+  if adb logcat -d -s ChunksSwarm:I | grep -F "CHUNKS_SWARM_NETFLAP: ready" >/dev/null; then ready=1; break; fi
   kill -0 "$inst" 2>/dev/null || break
   sleep 2
 done
@@ -185,4 +191,11 @@ if (( ready_bytes < 4194304 || at_loss < ready_bytes ||
       at_return < at_loss || continued < at_return + 2097152 )); then
   echo "::error::Native per-hash bytes did not grow after the validated network returned" >&2
   exit 1
+fi
+
+if [[ "${CHUNKS_NETFLAP_CONTROLLED_PEER:-}" == 1 ]]; then
+  [[ "$(grep -Fxc 'CHUNKS_SWARM_NETFLAP: controlled_peer_disconnected=true' <<< "$native_receipts" || true)" == 1 ]] || {
+    echo "::error::Controlled seeder disconnection was not observed during radio loss" >&2
+    exit 1
+  }
 fi
