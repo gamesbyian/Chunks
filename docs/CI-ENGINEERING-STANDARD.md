@@ -1,5 +1,7 @@
 # CI efficiency, verification intelligence and agent diagnostics standard
 
+**Forensic efficiency (FE-14):** Optimize measured redundant work; report comparable phase timings, critical path AND total runner minutes. Build once and reuse verified immutable artifacts where compatible, retaining isolated engine/device observations, digest and negative witness. No speculative trigger pruning or weaker exact-source acceptance. [CI-POLICY](CI-POLICY.md) is executable authority.
+
 **Status:** normative engineering standard. **Scope:** all GitHub Actions, build/test automation, CI scripts, runners, caches, artifacts, and verification reporting in Chunks. **Authority:** [AGENTS](../AGENTS.md) governs agent conduct, [CI-POLICY](CI-POLICY.md) governs currently applicable selection and release gates, [WORK-QUEUE](WORK-QUEUE.md) orders active work, [QUALITY-LEDGER](QUALITY-LEDGER.md) records actual evidence. This standard governs how CI is audited, improved, and maintained; it does not claim that the desired mechanisms already exist or replace any product safety contract.
 
 ## Objective and governing principle

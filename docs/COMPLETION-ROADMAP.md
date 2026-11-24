@@ -4,6 +4,8 @@
 
 # Chunks: dependency-ordered completion and validation
 
+> **Forensic follow-through (2026-11-23):** [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) integrates FE-01–20 from the [audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md). Correctness/security first (#2025/#2026/#2027), then ownership convergence and measured optimization alongside independent functional completion. No rewrite or new calendar. Final R4 retains actual-client, physical, release and accessibility gates; atlas stays future scope.
+
 > **Owner client naming and summary count · 2026-11-15:** R1 batch must adopt [user-facing client terminology and included scope](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md), validate actual selected-client count backing `N clients included`, and preserve internal stable environment identities. Include All/Local/remote, offline/stale, number of configured/selected clients and accessibility acceptance.
 
 

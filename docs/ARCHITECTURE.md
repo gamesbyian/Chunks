@@ -2,6 +2,8 @@
 
 # Chunks architecture and behavior contracts
 
+> **Current implementation map and ownership direction (2026-11-23):** [Forensic audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) traces the single Android module: native Local and four authenticated remote clients, common TorrentClient/ClientOperations port, shared Add submission/observation transaction with remaining parallel preparation/lifetime paths, combined catalog and media projections, foreground service, resume storage and owned publication. Later implementation supersedes older planned/deferred prose where shipped; see [remote adapters](REMOTE-BACKEND-ADAPTERS.md) and [technical ledger](TECHNICAL-COMPLETENESS-LEDGER.md). Exact observation distinguishes proven absence from malformed/incomplete inventory; bind operation authority to exact account generation/hash, retain uncertainty above disposable screens and propagate cancellation. Extract cohesive runtime, connection, intake and policy ownership only at demonstrated seams. Measure performance and prove reachability; no rewrite or duplicate authorities. See [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration).
+
 > **Remote capability and deletion seam (2026-11-13):** [REMOTE-CAPABILITY-DISCOVERY-AND-DELETION](REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md) refines the existing backend-neutral adapter contract without adding a new executor. Per exact authenticated environment, distinguish observed method, authority, prerequisites and outcome; read-only connect/reconnect probes cannot establish destructive permission. Session-only rTorrent removal remains independent of optional ruTorrent erasedata; never infer plugin presence from an HTTP-RPC path or implement remote arbitrary shell/custom5 as a general delete-data fallback. Bind capability freshness, UI availability and destructive recheck to the same identity/lease.
 
 
@@ -29,7 +31,7 @@ Transfer presentation (alias, media identity, artwork pin, enrichment opt-out, p
 Manual cross-engine Move copies/registers **job registration only**, verifies destination and separately retires source **job**, leaves payload bytes untouched, and carries compatible presentation context; speed/ratio/seeding policies transfer only by explicit choice. `SmartRoutingEvaluator` is side-effect-free until this Add/Move orchestration uses it. Future Transmission/qBittorrent/Deluge should provide observations/commands and capabilities at these seams, **not** new product screens or persistence silos. Scope and sequencing: [WORK-QUEUE](WORK-QUEUE.md); normative behavior: [universal navigation](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md), [smart routing/source lifecycle](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md), [job movement](CROSS-ENGINE-TRANSFER-JOBS.md).
 
 
-## Future protocol-neutral remote adapter seam (approved design, deferred work)
+## Protocol-neutral remote adapter seam (historical design; implemented core, remaining qualification)
 
 The canonical [multi-backend adapter contract](REMOTE-BACKEND-ADAPTERS.md) defines the shared environment/hash identity, observation freshness/coverage, typed capability/permission negotiation, exact-profile mutation receipts, idempotency/uncertain recovery, provider-specific auth and conformance suite. Keep rTorrent transport/SCGI/XML-RPC out of cross-engine inventory, Add, media/artwork, rule evaluation and job-only movement. Existing rTorrent may be refactored incrementally **only after current rTorrent/local reliability and UX architecture gates**; adapters for Transmission/qBittorrent/Deluge follow later. Do not introduce parallel catalog or UI infrastructure, Flood as a mandatory server or payload bytes in job Move. Decisions: [D-MULTI-BACKEND-20261105](DECISIONS.md).
 
@@ -45,7 +47,7 @@ Treat a locally running torrent, its owned staging files, and a final external P
 
 
 
-## Future backend adapters and TV presentation seam (deferred contract)
+## Further backend adapters and TV presentation seam (historical design; later expansion)
 
 Do not entangle the normalized transfer catalog, environment/hash identity, freshness, capability probing or outcome-state logic with rTorrent-only XML-RPC classes or local-only Compose screens. After rTorrent release-quality acceptance, add isolated authenticated protocol adapters starting with Transmission and qBittorrent, retaining exact scoped target authority and per-backend negative/real-server proof. Android TV gets a separate Compose-for-TV presentation over the same tested core; D-pad/focus code must not invade engine execution. Avoid speculative refactors while actual native metadata integrity, Android reliability and current P0 gates remain open. Canonical future contract: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md).
 
