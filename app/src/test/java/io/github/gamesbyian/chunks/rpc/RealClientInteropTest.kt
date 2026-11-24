@@ -206,7 +206,11 @@ class RealClientInteropTest {
                 stage("payload_kept=independently_observed")
             }
         } else {
-        assertVerified("remove_with_data", ops.remove(hash, deleteData = true))
+        val removal = ops.remove(hash, deleteData = true)
+        assertTrue("Remote ACK and job absence cannot certify payload deletion: $removal",
+            removal is ClientOperationOutcome.Pending && removal.registrationAbsent)
+        assertEquals("The exact job is independently absent", null, client.torrent(hash))
+        stage("remove_with_data=registration_absent_payload_unverified")
         if (payloadRoot != null) {
             var gone = false
             for (i in 0 until 60) {

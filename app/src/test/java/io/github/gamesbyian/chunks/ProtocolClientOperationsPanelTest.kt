@@ -264,6 +264,19 @@ class ProtocolClientOperationsPanelTest {
         rule.onNodeWithText("Remove: confirmed on Seedbox qB.").assertExists()
     }
 
+    @Test fun dataRemovalReportsRegistrationSeparatelyFromUnverifiedPayload() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) { !fake.present }
+        rule.waitForIdle()
+        rule.onNodeWithText("Transfer removed from Seedbox qB. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server.").assertExists()
+        rule.onNodeWithText("Remove and delete files: confirmed on Seedbox qB.").assertDoesNotExist()
+        assertEquals(1, fake.writes)
+    }
+
     @Test fun staleListOffersNoCommands() {
         val fake = Fake()
         render(fake, current = false)

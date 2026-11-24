@@ -65,7 +65,9 @@ private data class VerifiedMoveCopy(
 internal object ProtocolOperationText {
     fun describe(action: String, outcome: ClientOperationOutcome, clientLabel: String): String = when (outcome) {
         is ClientOperationOutcome.Verified -> "$action: confirmed on $clientLabel."
-        is ClientOperationOutcome.Pending -> "$action: requested, not yet confirmed (" +
+        is ClientOperationOutcome.Pending -> if (outcome.registrationAbsent)
+            "Transfer removed from $clientLabel. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server."
+        else "$action: requested, not yet confirmed (" +
             outcome.reason.lowercase() + "). Refresh to check."
         is ClientOperationOutcome.Uncertain -> "$action: the reply was lost, so the result is unknown. " +
             "Refresh before trying again; nothing was retried."

@@ -16,6 +16,7 @@ class ClientOperationsTest {
         val levels: Set<ClientFilePriority> = ClientFilePriority.entries.toSet()
     ) : TorrentClient {
         override val kind = TorrentClientKind.TRANSMISSION
+        override var verifiesPayloadDeletionOnReturn = false
         var writes = 0
         var failWrite: Exception? = null
         var applyWrite: (Fake) -> Unit = {}
@@ -112,6 +113,27 @@ class ClientOperationsTest {
         val result = ops(fake).remove(hash, deleteData = true)
         assertTrue(result is ClientOperationOutcome.Pending)
         assertEquals(1, fake.writes)
+    }
+
+    @Test fun remoteRemovalAckAndExactAbsenceDoNotVerifyPayloadDeletion() = runBlocking {
+        val fake = Fake(torrent(ClientRunState.STOPPED)).apply { applyWrite = { it.present = null } }
+        val outcome = ops(fake).remove(hash, deleteData = true)
+        assertTrue(outcome is ClientOperationOutcome.Pending)
+        assertTrue((outcome as ClientOperationOutcome.Pending).registrationAbsent)
+        assertEquals(1, fake.writes)
+        assertEquals(2, fake.reads)
+    }
+
+    @Test fun sessionOnlyOrIndependentlyVerifiedPayloadRemovalCanBeConfirmed() = runBlocking {
+        val jobOnly = Fake(torrent(ClientRunState.STOPPED)).apply { applyWrite = { it.present = null } }
+        assertTrue(ops(jobOnly).remove(hash, deleteData = false) is ClientOperationOutcome.Verified)
+        val proven = Fake(torrent(ClientRunState.STOPPED)).apply {
+            verifiesPayloadDeletionOnReturn = true
+            applyWrite = { it.present = null }
+        }
+        assertTrue(ops(proven).remove(hash, deleteData = true) is ClientOperationOutcome.Verified)
+        assertEquals(1, jobOnly.writes)
+        assertEquals(1, proven.writes)
     }
 
     @Test fun observedPostconditionIsVerified() = runBlocking {

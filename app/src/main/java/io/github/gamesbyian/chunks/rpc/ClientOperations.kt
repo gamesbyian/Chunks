@@ -13,7 +13,9 @@ internal sealed interface ClientOperationOutcome {
 
     data class Verified(override val hash: String, val observed: ClientTorrent?) : ClientOperationOutcome
     /** Write acknowledged; readback has not (yet) shown the postcondition. */
-    data class Pending(override val hash: String, val observed: ClientTorrent?, val reason: String) :
+    data class Pending(override val hash: String, val observed: ClientTorrent?, val reason: String,
+        /** Independently observed job absence; consequential payload deletion remains unverified. */
+        val registrationAbsent: Boolean = false) :
         ClientOperationOutcome
     /** Delivery unknown. Refresh read-only; never automatically repeat. */
     data class Uncertain(override val hash: String, val reason: String) : ClientOperationOutcome
@@ -202,9 +204,18 @@ internal class ClientOperations(
     suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome =
         removeChecked(hash, deleteData = false) { client.removeJob(hash, beforeWrite) }
 
-    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome =
-        mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
+    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome {
+        val result = mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
             send) { observed -> if (observed == null) null else "Still registered" }
+        // Registration absence proves job removal, not filesystem cleanup.
+        // Local's adapter independently verifies the exact payload before a
+        // normal return. An ordinary remote ACK has no such authority.
+        return if (deleteData && result is ClientOperationOutcome.Verified &&
+            !client.verifiesPayloadDeletionOnReturn)
+            ClientOperationOutcome.Pending(result.hash, null,
+                "Downloaded-file deletion is not independently verified", registrationAbsent = true)
+        else result
+    }
 
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean): ClientOperationOutcome {
         ClientHashes.requireDirectory(directory)

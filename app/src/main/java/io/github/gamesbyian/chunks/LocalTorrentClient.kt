@@ -59,6 +59,8 @@ internal class LocalTorrentClient(
     private val deleteReadbackTimeoutMs: Long = 15_000L
 ) : TorrentClient {
     override val kind = TorrentClientKind.LOCAL
+    // removeChecked returns normally only after the native exact-file readback reports ABSENT.
+    override val verifiesPayloadDeletionOnReturn = true
 
     override suspend fun session(): ClientSessionInfo = withContext(io) {
         ClientSessionInfo(
