@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import android.net.Uri
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -23,6 +24,7 @@ import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.TorrentClient
 import io.github.gamesbyian.chunks.rpc.TorrentClientKind
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -121,6 +123,64 @@ class ProtocolAddSourceParityTest {
         assertTrue(attempt.outcome is ClientOperationOutcome.Verified)
         assertEquals(1, fake.writes)
         assertEquals(torrentHash, (fake.added!!.source as ClientAddSource.TorrentFile).infoHash)
+    }
+
+    @Test fun reauthenticationWithTheSameUrlRequiresAReadFromTheNewOwner() {
+        val original = Any()
+        val owner = mutableStateOf(original)
+        val link = "https://example.org/parity.torrent"
+        val draft = mutableStateOf(link)
+        val torrent = mutableStateOf<PendingLocalAdd?>(null)
+        val first = Fake()
+        val second = Fake()
+        val attempt = ProtocolAddAttempt()
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        rule.setContent {
+            val renderedOwner = owner.value
+            ChunksTheme {
+                ProtocolAddScreen(
+                    profileId = "tr", clientLabel = "Box",
+                    createOperations = {
+                        ClientOperations(if (renderedOwner === original) first else second, 3, 1)
+                    },
+                    destinationPicker = {},
+                    sourceDraft = draft, reviewedTorrent = torrent,
+                    startState = mutableStateOf(false), attempt = attempt,
+                    attemptScope = androidx.compose.runtime.rememberCoroutineScope(),
+                    onViewTransfer = {},
+                    isSourceOwnerCurrent = { owner.value === renderedOwner },
+                    fetchTorrentLink = {
+                        if (renderedOwner === original) {
+                            started.complete(Unit)
+                            release.await()
+                        }
+                        TorrentLinkResult.Fetched(torrentBytes, TorrentMetainfoReader.preview(torrentBytes), "example.org")
+                    }
+                )
+            }
+        }
+        fun fetch() = LazyComposeActions.activateOnce(rule, hasText("Get torrent from link"))
+        fetch()
+        rule.waitUntil(5_000) { started.isCompleted }
+        rule.runOnIdle {
+            owner.value = Any()
+            release.complete(Unit)
+        }
+        rule.waitUntil(5_000) {
+            rule.onAllNodes(hasText("Get torrent from link")).fetchSemanticsNodes().size == 1
+        }
+        rule.runOnIdle {
+            assertEquals(link, draft.value)
+            assertNull(torrent.value)
+            assertEquals(0, first.writes + second.writes)
+        }
+        fetch()
+        rule.waitUntil(5_000) { torrent.value != null }
+        rule.runOnIdle {
+            assertEquals(torrentHash, torrent.value?.preview?.infoHashV1)
+            assertEquals(0, first.writes + second.writes)
+        }
     }
 
     @Test fun aBase32MagnetIsNormalizedToItsHexIdentityLikeEveryClient() {

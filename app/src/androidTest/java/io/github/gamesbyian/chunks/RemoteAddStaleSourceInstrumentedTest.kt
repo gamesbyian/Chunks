@@ -100,6 +100,67 @@ class RemoteAddStaleSourceInstrumentedTest {
         }
     }
 
+    @Test fun oldAccountFetchCannotSelectBytesAfterReauthenticationWithTheSameUrl() {
+        val started = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<TorrentLinkResult>()
+        val original = Any()
+        var owner by mutableStateOf(original)
+        var source by mutableStateOf(link)
+        val session = RemoteAddSession(null)
+        var adopted = 0
+        var writes = 0
+        rule.setContent {
+            val renderedOwner = owner
+            MaterialTheme {
+                VerifiedAddScreen(
+                    remote = remote,
+                    magnet = source,
+                    destination = "/srv/disposable",
+                    session = session,
+                    onMagnet = { source = it },
+                    onDestination = {},
+                    onBack = {}, onComplete = {},
+                    onMutationStarted = { writes++; false },
+                    onMutationSettled = {},
+                    onTorrentAdopted = { _, _, _ -> adopted++ },
+                    isSourceOwnerCurrent = { owner === renderedOwner },
+                    fetchTorrentLink = {
+                        if (renderedOwner === original) {
+                            started.complete(Unit)
+                            release.await()
+                        } else reviewed
+                    }
+                )
+            }
+        }
+        fun fetch() = LazyComposeActions.activateOnce(rule, hasText("Get torrent from link"))
+        fetch()
+        rule.waitUntil(10_000) { started.isCompleted }
+        rule.runOnIdle {
+            owner = Any()
+            release.complete(reviewed)
+        }
+        // The re-enabled Get action witnesses completion of the old coroutine.
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasText("Get torrent from link")).fetchSemanticsNodes().size == 1
+        }
+        rule.runOnIdle {
+            assertEquals(link, source)
+            assertNull(session.selectedBytes)
+            assertNull(session.selectedTorrent)
+            assertFalse(session.useFile)
+            assertEquals(0, adopted)
+            assertEquals(0, writes)
+        }
+        fetch()
+        rule.waitUntil(10_000) { session.useFile }
+        rule.runOnIdle {
+            assertTrue(session.selectedBytes?.contentEquals(bytes) == true)
+            assertEquals(1, adopted)
+            assertEquals(0, writes)
+        }
+    }
+
     @Test fun unchangedSourceMayBeReviewedWithoutAnyRemoteWrite() {
         val session = RemoteAddSession(null)
         var source by mutableStateOf(link)
