@@ -85,8 +85,8 @@ internal class DelugeReadOnlyRpc(
             throw IOException("Invalid Deluge daemon version")
         }
 
-        // The ONLY non-accessor in this adapter is explicitly selecting a
-        // verified daemon for this private web session. No torrent changes.
+        // The only non-accessor selects a verified daemon in the Web UI's
+        // shared slot. The cookie authenticates the request, not the slot.
         val supported = rpc("web.connect", JSONArray().put(daemonHostId), 4, cookie) as? JSONArray
             ?: throw IOException("Selected Deluge daemon refused connection")
         // web.connect returns *daemon* methods; web.update_ui itself is a
@@ -96,7 +96,10 @@ internal class DelugeReadOnlyRpc(
             !(0 until supported.length()).any { supported.opt(it) == "core.get_torrents_status" }) {
             throw IOException("Selected Deluge daemon lacks inventory capability")
         }
-        if (rpc("web.connected", JSONArray(), 5, cookie) != true) {
+        val bound = rpc("web.get_host_status", JSONArray().put(daemonHostId), 5, cookie) as? JSONArray
+            ?: throw IOException("Deluge active daemon status unavailable")
+        if (bound.opt(0) != daemonHostId ||
+            !(bound.opt(1) as? String).equals("connected", ignoreCase = true)) {
             throw IOException("Deluge Web UI is not connected to the selected daemon")
         }
         val keys = JSONArray(listOf(
@@ -173,14 +176,16 @@ internal class DelugeReadOnlyRpc(
             throw if (response.status in 100..599) RpcHttpStatusException(response.status)
             else IOException("Invalid Deluge HTTP response")
         }
-        return decode(response.body, id).opt("result")
+        return decode(response.body, id, inventory = name == "web.update_ui").opt("result")
     }
 
-    private fun decode(text: String, id: Int): JSONObject {
-        val obj = try { JSONObject(text) } catch (_: Exception) {
+    private fun decode(text: String, id: Int, inventory: Boolean = false): JSONObject {
+        val obj = try {
+            if (inventory) JSONObject(text) else ExactRpcJson.objectBody(text)
+        } catch (_: Exception) {
             throw IOException("Malformed Deluge JSON-RPC reply")
         }
-        if ((obj.opt("id") as? Number)?.toInt() != id ||
+        if (exactWireInteger(obj.opt("id")) != id.toLong() ||
             obj.opt("error") != null && !obj.isNull("error") ||
             !obj.has("result")) throw IOException("Deluge RPC result failed validation")
         return obj

@@ -30,6 +30,7 @@ class ExactProtocolReadTest {
         addWire: ((Int) -> String)? = null,
         removeWire: ((id: Int, attempt: Int) -> String)? = null,
         transmissionStatus: Any = 0,
+        delugeHostStatus: () -> String = { "Connected" },
         beforeReply: (String) -> Unit = {}
     ): Fixture {
         var writes = 0
@@ -103,7 +104,7 @@ class ExactProtocolReadTest {
                     val result = when (method) {
                         "auth.login", "web.connected" -> "true"
                         "web.get_hosts" -> """[["fixture-host","127.0.0.1",58846,"fixture"]]"""
-                        "web.get_host_status" -> """["fixture-host","Connected","2.1"]"""
+                        "web.get_host_status" -> """["fixture-host","${delugeHostStatus()}","2.1"]"""
                         "daemon.get_method_list" -> """["core.add_torrent_magnet","core.remove_torrent","core.get_torrents_status"]"""
                         "core.get_config_value" -> """"/data""""
                         "core.get_torrent_status" -> requireNotNull(fileWire)
@@ -331,6 +332,20 @@ class ExactProtocolReadTest {
             }
             assertEquals(2, logins)
         }
+    }
+
+    @Test fun delugeGlobalWebConnectionCannotAuthorizeAnotherDaemonsWrite() = runBlocking {
+        var host = "Connected"
+        val f = fixture(TorrentClientKind.DELUGE, listOf(listOf(hash)),
+            delugeHostStatus = { host }, beforeReply = { method ->
+                if (method == "core.get_torrents_status") host = "Online"
+            })
+        // The selected daemon was still bound at preflight. Before dispatch
+        // it became merely available while Web UI stayed globally connected.
+        val outcome = ClientOperations(f.client, readbackAttempts = 1).remove(hash, deleteData = true)
+        assertTrue(outcome is ClientOperationOutcome.Refused)
+        assertEquals(0, f.writes())
+        assertTrue(runCatching { f.client.torrent(hash) }.exceptionOrNull() is ClientRefusedException)
     }
 
     @Test fun malformedTransmissionStatusCannotProveStoppedAdd() = runBlocking {

@@ -311,14 +311,18 @@ internal class DelugeClient(
 
     /** Login (once), confirm the exact registered host, and connect only it. */
     private suspend fun connect() {
-        if (daemonMethods != null && call("web.connected", JSONArray()) == true) return
+        if (daemonMethods != null) {
+            // Deluge's Web UI routes all core calls through one shared daemon
+            // slot. A global `web.connected` does not identify its active host.
+            val bound = selectedHostStatus()
+            if ((bound.opt(1) as? String).equals("connected", ignoreCase = true)) return
+            throw ClientRefusedException("The selected Deluge daemon is no longer connected")
+        }
         val hosts = call("web.get_hosts", JSONArray()) as? JSONArray
             ?: throw IOException("Deluge did not return a host list")
         val matches = (0 until hosts.length()).count { (hosts.opt(it) as? JSONArray)?.opt(0) == daemonHostId }
         if (matches != 1) throw ClientRefusedException("Deluge daemon ID is missing or ambiguous")
-        val status = call("web.get_host_status", JSONArray().put(daemonHostId)) as? JSONArray
-            ?: throw IOException("Deluge daemon status unavailable")
-        if (status.opt(0) != daemonHostId) throw IOException("Deluge host status belonged to another daemon")
+        val status = selectedHostStatus()
         val state = (status.opt(1) as? String)?.lowercase()
         daemonVersion = (status.opt(2) as? String)?.takeIf { it.isNotBlank() && it.length <= 128 }
         val methods = when (state) {
@@ -326,12 +330,20 @@ internal class DelugeClient(
             "online" -> (call("web.connect", JSONArray().put(daemonHostId)) as? JSONArray)
             else -> throw ClientRefusedException("Selected Deluge daemon is unavailable")
         } ?: throw IOException("Deluge daemon method list unavailable")
-        if (call("web.connected", JSONArray()) != true) throw IOException("Deluge Web UI is not connected")
+        if (!(selectedHostStatus().opt(1) as? String).equals("connected", ignoreCase = true))
+            throw IOException("Deluge Web UI is not connected to the selected daemon")
         daemonMethods = (0 until methods.length()).mapNotNull { methods.opt(it) as? String }
             .map { if (it.contains('.')) it else "core.$it" }.toSet()
         if (daemonVersion == null) {
             daemonVersion = (call("daemon.info", JSONArray()) as? String)?.take(128)
         }
+    }
+
+    private suspend fun selectedHostStatus(): JSONArray {
+        val status = call("web.get_host_status", JSONArray().put(daemonHostId)) as? JSONArray
+            ?: throw IOException("Deluge daemon status unavailable")
+        if (status.opt(0) != daemonHostId) throw IOException("Deluge host status belonged to another daemon")
+        return status
     }
 
     private suspend fun call(
@@ -388,6 +400,8 @@ internal class DelugeClient(
                     if (authRejected && !relogged) {
                         // Web session not authenticated: rejected before dispatch.
                         cookie = null
+                        if (mutating && !(selectedHostStatus().opt(1) as? String).equals("connected", ignoreCase = true))
+                            throw ClientRefusedException("The selected Deluge daemon is no longer connected")
                         relogged = true
                         continue
                     }
