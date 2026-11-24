@@ -79,19 +79,20 @@ internal class QBittorrentClient(
         } catch (e: IOException) {
             throw e
         } catch (_: Exception) { throw IOException("Invalid qBittorrent file list") }
-        return (0 until rows.length()).map { i ->
-            val row = rows.getJSONObject(i)
-            val size = row.getLong("size")
-            val progress = row.optDouble("progress", -1.0)
+        return exactIndexedFiles(rows).map { (index, row) ->
+            val size = row.exactFileInteger("size")?.takeIf { it >= 0 }
+                ?: throw IOException("Invalid qBittorrent file length")
+            val progress = exactProgressFraction(row.opt("progress"))
             ClientFile(
-                index = row.optInt("index", i),
-                path = row.getString("name"),
+                index = index,
+                path = row.exactFilePath("name"),
                 sizeBytes = size,
-                completedBytes = if (progress in 0.0..1.0) (size * progress).toLong() else null,
-                priority = when (row.optInt("priority", 1)) {
-                    0 -> ClientFilePriority.SKIP
-                    6, 7 -> ClientFilePriority.HIGH
-                    else -> ClientFilePriority.NORMAL
+                completedBytes = progress?.let { (size * it).toLong() },
+                priority = when (row.exactFileInteger("priority")) {
+                    0L -> ClientFilePriority.SKIP
+                    1L -> ClientFilePriority.NORMAL
+                    6L, 7L -> ClientFilePriority.HIGH
+                    else -> throw IOException("Invalid qBittorrent file priority")
                 }
             )
         }

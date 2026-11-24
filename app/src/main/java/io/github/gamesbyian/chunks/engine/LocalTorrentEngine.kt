@@ -2287,6 +2287,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return snapshot(key, handles[key] ?: return null)
     }
 
+    /** A missing native snapshot for a registered hash cannot prove absence. */
+    @Synchronized
+    internal fun exactStatus(infoHash: String): LocalTransferStatus? {
+        if (!started) throw java.io.IOException("The local engine is not running")
+        val key = normal(infoHash)
+        val handle = synchronized(handles) { handles[key] } ?: return null
+        val row = snapshot(key, handle) ?: throw java.io.IOException("The local transfer is not observable")
+        val info = handle.torrentFile()
+        if (info != null && identity(info) != key)
+            throw java.io.IOException("The local transfer identity changed")
+        return row
+    }
+
     @Synchronized
     fun list(): List<LocalTransferStatus> =
         synchronized(handles) { handles.toList() }.mapNotNull { (hash, handle) -> snapshot(hash, handle) }

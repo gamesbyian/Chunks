@@ -19,6 +19,35 @@ internal fun <T> exactProtocolRow(rows: List<T>, expectedHash: String, hashOf: (
     return rows[0]
 }
 
+/** Use documented positional order only when the entire roster omits explicit indices. */
+internal fun exactIndexedFiles(rows: JSONArray): List<Pair<Int, JSONObject>> {
+    val seen = BooleanArray(rows.length())
+    val explicit = rows.optJSONObject(0)?.has("index") == true
+    return List(rows.length()) { position ->
+        val row = rows.optJSONObject(position) ?: throw IOException("Malformed client file row")
+        if (row.has("index") != explicit) throw IOException("Mixed client file index modes")
+        val index = if (explicit) row.exactFileInteger("index")
+            ?.takeIf { it in 0L until rows.length().toLong() }?.toInt()
+            ?: throw IOException("Invalid client file index") else position
+        if (seen[index]) throw IOException("Duplicate client file index")
+        seen[index] = true
+        index to row
+    }
+}
+
+internal fun JSONObject.exactFileInteger(field: String): Long? = exactWireInteger(opt(field))
+
+internal fun exactWireInteger(value: Any?): Long? = when (value) {
+    is Int -> value.toLong()
+    is Long -> value
+    else -> null
+}
+
+internal fun JSONObject.exactFilePath(field: String): String =
+    (opt(field) as? String)?.takeIf { it.isNotEmpty() } ?: throw IOException("Invalid client file path")
+
+internal fun exactProgressFraction(value: Any?): Double? =
+    (value as? Number)?.toDouble()?.takeIf { it in 0.0..1.0 }
 
 /**
  * Android's JSON object reader can discard earlier duplicate keys before

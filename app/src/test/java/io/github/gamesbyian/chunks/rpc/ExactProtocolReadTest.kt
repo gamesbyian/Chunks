@@ -26,6 +26,7 @@ class ExactProtocolReadTest {
         replies: List<List<String>>,
         cancelPath: String? = null,
         duplicateWireKeys: Boolean = false,
+        fileWire: String? = null,
         beforeReply: (String) -> Unit = {}
     ): Fixture {
         var writes = 0
@@ -42,7 +43,9 @@ class ExactProtocolReadTest {
                     beforeReply(method)
                     val args = when (method) {
                         "session-get" -> """{"version":"4.0","download-dir":"/data"}"""
-                        "torrent-get" -> if (duplicateWireKeys)
+                        "torrent-get" -> if (fileWire != null)
+                            """{"torrents":[{"hashString":"$hash",$fileWire}]}"""
+                            else if (duplicateWireKeys)
                             """{"torrents":[{"hashString":"$other"}],"torrents":[]}"""
                             else """{"torrents":${rows("hashString")}}"""
                         "torrent-add", "torrent-remove", "torrent-stop" -> { writes++; "{}" }
@@ -66,6 +69,7 @@ class ExactProtocolReadTest {
                             """[{"hash":"$other","ha\u0073h":"$hash","state":"pausedDL","save_path":"/data"}]"""
                             else rows("hash"))
                         "torrents/export" -> QBittorrentReadOnlyRpc.Response(404, "")
+                        "torrents/files" -> QBittorrentReadOnlyRpc.Response(200, requireNotNull(fileWire))
                         "torrents/add", "torrents/delete", "torrents/stop" -> { writes++; QBittorrentReadOnlyRpc.Response(200, "Ok.") }
                         else -> error("Unexpected method $method")
                     }
@@ -83,6 +87,7 @@ class ExactProtocolReadTest {
                         "web.get_host_status" -> """["fixture-host","Connected","2.1"]"""
                         "daemon.get_method_list" -> """["core.add_torrent_magnet","core.remove_torrent","core.get_torrents_status"]"""
                         "core.get_config_value" -> """"/data""""
+                        "core.get_torrent_status" -> requireNotNull(fileWire)
                         "core.get_torrents_status" -> if (duplicateWireKeys)
                             """{"$hash":{"name":"one"},"$hash":{"name":"two","state":"Paused","save_path":"/data"}}"""
                             else JSONObject().apply {
@@ -102,6 +107,54 @@ class ExactProtocolReadTest {
 
     private val kinds = listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.QBITTORRENT, TorrentClientKind.DELUGE)
     private val invalid = listOf(listOf(other), listOf(hash, other), listOf(hash, hash.uppercase()), listOf("bad"))
+
+    @Test fun exactFileAdaptersRejectMalformedIndexAndPriorityEvidence() = runBlocking {
+        val qb = TorrentClientKind.QBITTORRENT
+        val deluge = TorrentClientKind.DELUGE
+        val transmission = TorrentClientKind.TRANSMISSION
+        fun qbRows(firstIndex: String, secondIndex: String) =
+            """[{$firstIndex"name":"root/first","size":1,"priority":1},
+                {$secondIndex"name":"root/other","size":2,"priority":6}]"""
+        val bad = listOf(
+            qb to qbRows(""""index":0,""", """"index":0,"""),
+            qb to qbRows(""""index":"0",""", """"index":1,"""),
+            qb to qbRows(""""index":null,""", """"index":1,"""),
+            qb to qbRows("", """"index":1,"""),
+            qb to qbRows(""""index":0,""", """"index":2,"""),
+            qb to """[{"index":0,"name":"one","size":1,"priority":null}]""",
+            deluge to """{"files":[{"index":0,"path":"one","size":1}],"file_priorities":[]}""",
+            deluge to """{"files":[{"index":0,"path":"one","size":1}],"file_priorities":["4"]}""",
+            deluge to """{"files":[{"index":0.5,"path":"one","size":1}],"file_priorities":[4]}""",
+            transmission to """"files":[{"name":"one","length":1}],"fileStats":[{"wanted":"true","priority":0}]""",
+            transmission to """"files":[{"name":"one","length":1}],"fileStats":[{"wanted":true,"priority":8}]"""
+        )
+        for ((kind, wire) in bad) {
+            val f = fixture(kind, emptyList(), fileWire = wire)
+            assertTrue("$kind accepted a malformed file roster",
+                runCatching { f.client.files(hash) }.exceptionOrNull() is java.io.IOException)
+            assertEquals(0, f.writes())
+        }
+    }
+
+    @Test fun exactFileAdaptersAcceptCompleteExplicitOrLegacyPositionalEvidence() = runBlocking {
+        val qb = fixture(TorrentClientKind.QBITTORRENT, emptyList(), fileWire =
+            """[{"index":1,"name":"root/other","size":2,"priority":6},
+                {"index":0,"name":"root/first","size":1,"priority":1}]""")
+        assertEquals(mapOf(0 to ClientFilePriority.NORMAL, 1 to ClientFilePriority.HIGH),
+            qb.client.files(hash).associate { it.index to it.priority })
+        val legacy = fixture(TorrentClientKind.QBITTORRENT, emptyList(), fileWire =
+            """[{"name":"one","size":1,"priority":0,"progress":"1.0"}]""")
+        assertEquals(0, legacy.client.files(hash).single().index)
+        assertNull(legacy.client.files(hash).single().completedBytes)
+        val deluge = fixture(TorrentClientKind.DELUGE, emptyList(), fileWire =
+            """{"files":[{"index":1,"path":"root/other","size":2},{"index":0,"path":"root/first","size":1}],
+                "file_priorities":[0,7]}""")
+        assertEquals(mapOf(0 to ClientFilePriority.SKIP, 1 to ClientFilePriority.HIGH),
+            deluge.client.files(hash).associate { it.index to it.priority })
+        val transmission = fixture(TorrentClientKind.TRANSMISSION, emptyList(), fileWire =
+            """"files":[{"name":"one","length":1,"bytesCompleted":1}],"fileStats":[{"wanted":false,"priority":-1}]""")
+        assertEquals(ClientFile(0, "one", 1, 1, ClientFilePriority.SKIP), transmission.client.files(hash).single())
+    }
 
     @Test fun retiredPolicyOwnerCannotSendMutationsAfterAuthentication() = runBlocking {
         for (kind in kinds) {

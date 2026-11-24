@@ -108,7 +108,7 @@ class ProtocolSurfacesRenderTest {
         show(width, scale) {
             ProtocolClientOperationsPanel(
                 hash = hash, clientLabel = "Seedbox qBittorrent", sourceClientId = "qb",
-                observedStarted = false, current = true, inventoryWitness = 1L,
+                observedStarted = false, current = true, sourceGeneration = "fixture-generation",
                 createOperations = { ClientOperations(Fake(), 3, 1) }, onChanged = {},
                 moveTargets = listOf(ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(Fake(), 3, 1) })
             )
@@ -195,7 +195,7 @@ class ProtocolSurfacesRenderTest {
             Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qBittorrent", sourceClientId = "qb-render",
-                    observedStarted = true, current = true, inventoryWitness = 1L,
+                    observedStarted = true, current = true, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(episodes, 3, 1) }, onChanged = {})
             }
         }

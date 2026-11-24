@@ -86,7 +86,7 @@ internal class LocalTorrentClient(
     override suspend fun torrent(hash: String): ClientTorrent? = withContext(io) {
         val exact = ClientHashes.requireHash(hash)
         val running = engine() ?: throw IOException(ENGINE_UNAVAILABLE)
-        running.status(exact)?.let(::torrentOf)
+        running.exactStatus(exact)?.let(::torrentOf)
     }
 
     override suspend fun files(hash: String): List<ClientFile> = withContext(io) {

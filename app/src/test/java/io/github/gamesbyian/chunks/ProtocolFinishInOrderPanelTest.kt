@@ -69,7 +69,7 @@ class ProtocolFinishInOrderPanelTest {
                     androidx.compose.ui.Modifier.verticalScroll(rememberScrollState())) {
                     ProtocolClientOperationsPanel(
                         hash = hash, clientLabel = "Seedbox qB", sourceClientId = clientId, observedStarted = true,
-                        current = true, inventoryWitness = 1L,
+                        current = true, sourceGeneration = "fixture-generation",
                         createOperations = { ClientOperations(client, 3, 1) }, onChanged = {})
                 }
             }

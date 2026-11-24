@@ -44,6 +44,27 @@ class ProtocolOperationReceiptOwnerTest {
         assertTrue(requireNotNull(owner.receipt(key)).description().contains("not independently verified"))
     }
 
+    @Test fun policyAndExplicitCommandExcludeEachOtherOnlyForTheSameJob() {
+        val owner = ProtocolOperationReceiptOwner()
+        val policy = requireNotNull(owner.reservePolicy(key.profileId, key.hash.uppercase(), ProtocolOperationKind.FINISH_IN_ORDER))
+        assertNull(owner.begin(key, "g1", ProtocolOperationKind.STOP))
+        assertNull(owner.reservePolicy(key.profileId, key.hash, ProtocolOperationKind.SMART_SEEDING))
+        assertNotNull(owner.begin(sameHashOther, "g1", ProtocolOperationKind.STOP))
+        policy.close()
+
+        val command = requireNotNull(owner.begin(key, "g1", ProtocolOperationKind.STOP))
+        assertTrue(owner.possibleWrite(command))
+        owner.cancel(command)
+        assertNull(owner.reservePolicy(key.profileId, key.hash, ProtocolOperationKind.FINISH_IN_ORDER))
+        policy.close()
+        assertEquals(phase, owner.receipt(key)?.phase)
+        assertTrue(owner.reconcile(command, present = true))
+        owner.reservePolicy(key.profileId, key.hash, ProtocolOperationKind.FINISH_IN_ORDER)?.use {
+            assertNull(owner.begin(key, "g2", ProtocolOperationKind.FILE_PRIORITIES))
+        } ?: fail("Read-only reconciliation should release the command block")
+        assertNotNull(owner.begin(key, "g2", ProtocolOperationKind.FILE_PRIORITIES))
+    }
+
     @Test fun capacityNeverSilentlyEvictsUnresolvedReceipts() {
         val owner = ProtocolOperationReceiptOwner(capacity = 1)
         val ticket = requireNotNull(owner.begin(key, "generation-1", ProtocolOperationKind.START))

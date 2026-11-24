@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks.seeding
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.FinishInOrderScopes
 import io.github.gamesbyian.chunks.FinishInOrderStore
+import io.github.gamesbyian.chunks.ProtocolOperationKind
+import io.github.gamesbyian.chunks.ProtocolOperationReceiptOwner
 import io.github.gamesbyian.chunks.engine.FinishInOrderPlanner
 import io.github.gamesbyian.chunks.engine.FinishInOrderRecord
 import io.github.gamesbyian.chunks.tickProtocolRemotePolicies
@@ -107,6 +109,8 @@ class RemoteSeedingTickTest {
         var inventories = 0
         var sessions = 0
         var stops = 0
+        var fileReads = 0
+        var afterFacts: () -> Unit = {}
         override suspend fun session(): ClientSessionInfo {
             sessions++
             return ClientSessionInfo(kind, "4.6", "/dl", ClientCapability.entries.toSet())
@@ -119,8 +123,14 @@ class RemoteSeedingTickTest {
         override suspend fun torrent(hash: String) = jobs[hash]?.let {
             ClientTorrent(hash, hash, if (it) ClientRunState.SEEDING else ClientRunState.STOPPED, 1, 1, 0, 0, "/dl")
         }
-        override suspend fun seedingFacts(hash: String): ClientSeedingFacts? { reads++; return facts[hash] }
-        override suspend fun files(hash: String) = emptyList<ClientFile>()
+        override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
+            reads++
+            return facts[hash].also { afterFacts() }
+        }
+        override suspend fun files(hash: String): List<ClientFile> {
+            fileReads++
+            return emptyList()
+        }
         override suspend fun add(request: ClientAddRequest) = Unit
         override suspend fun setStarted(hash: String, started: Boolean) { if (!started) stops++; jobs[hash] = started }
         override suspend fun remove(hash: String, deleteData: Boolean) = Unit
@@ -131,6 +141,35 @@ class RemoteSeedingTickTest {
 
     private val old = "a".repeat(40)
     private val new = "b".repeat(40)
+
+    @Test fun knownKeepSeedingAndTerminalPoliciesDoNotReadPerJobCounters() {
+        val client = FakeClient()
+        val profile = "steady-policy-catalog"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val store = PreferencesAssignmentStore(context, environment)
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        assertTrue(store.setEpoch(1_000))
+        val keepSeeding = SeedingController.Assignment(SeedingPolicy(), SeedingResolution.Source.DEFAULT, null)
+        val ratio = keepSeeding.copy(policy = SeedingPolicy(ratioGoal = BigDecimal.ONE))
+        val interrupted = ratio.copy(stopAttemptedReason = "ratio", note = "An unresolved earlier Stop")
+        repeat(100) { index ->
+            val hash = index.toString(16).padStart(40, '0')
+            client.jobs[hash] = true
+            client.facts[hash] = ClientSeedingFacts(hash, 2_000, 1_000, 10, true, false, emptyList())
+            assertTrue(store.put(hash, if (index == 0) interrupted else keepSeeding))
+        }
+        client.jobs[new] = true
+        client.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 10, true, false, emptyList())
+        assertTrue(store.put(new, ratio))
+
+        val tick = RemoteSeeding.tickProtocol(context, profile, ClientOperations(client, 2, 1), nowMs = 2_000)
+        assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED, tick)
+        assertEquals(1, client.inventories)
+        assertEquals("One catalog read and only the actionable ratio observation", 2, client.reads)
+        assertEquals(1, client.stops)
+        assertEquals(interrupted, store.get("0".repeat(40)))
+        assertTrue(store.get(new)?.stoppedByRule != null)
+    }
 
     @Test fun offReadsNothingAndOnStopsOnlyANewJobOnceWithAPersistedJournal() {
         val client = FakeClient().apply {
@@ -166,6 +205,65 @@ class RemoteSeedingTickTest {
         assertEquals(true, client.jobs[new])
         assertFalse("another account's switch is independent",
             RemoteSeeding.EnforcementSwitch(context).enabled(RemoteSeeding.protocolEnvironment("other")))
+    }
+
+    @Test fun aBusyOrUnresolvedManualCommandDefersBothPoliciesWithoutWritingAJournal() = runBlocking {
+        val profile = "manual-command"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val client = FakeClient()
+        val ops = ClientOperations(client, 2, 1)
+        val owner = ProtocolOperationReceiptOwner()
+        val key = ProtocolOperationReceiptOwner.Key(profile, new)
+        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to SeedingPolicy(ratioGoal = BigDecimal.ONE)))))
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        assertEquals(RemoteSeeding.Tick.NO_WRITE,
+            RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000, receipts = owner))
+
+        client.jobs[new] = true
+        client.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 60, true, false, emptyList())
+        val policy = orderRecord()
+        val orders = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile))
+        assertTrue(orders.save(new, policy))
+        val command = requireNotNull(owner.begin(key, "g1", ProtocolOperationKind.REMOVE))
+        assertTrue(owner.possibleWrite(command))
+        owner.cancel(command)
+
+        tickProtocolRemotePolicies(context, profile, FinishInOrderStore.scheduledPolicies(context),
+            ownerCurrent = { true }, receipts = owner) { ops }
+        assertEquals(0, client.stops)
+        assertEquals(0, client.fileReads)
+        assertEquals(policy, orders.get(new))
+        assertNull(PreferencesAssignmentStore(context, environment).get(new)?.stopAttemptedReason)
+
+        assertTrue(owner.reconcile(command, present = true))
+        tickProtocolRemotePolicies(context, profile, FinishInOrderStore.scheduledPolicies(context),
+            ownerCurrent = { true }, receipts = owner) { ops }
+        assertEquals(1, client.stops)
+        assertTrue(PreferencesAssignmentStore(context, environment).get(new)?.stoppedByRule != null)
+        assertEquals(0, client.fileReads) // Stop retired the active inventory.
+    }
+
+    @Test fun disablingEnforcementDuringObservationRevokesThePendingStop() {
+        val profile = "revoked-opt-in"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val client = FakeClient()
+        val ops = ClientOperations(client, 2, 1)
+        val setting = RemoteSeeding.EnforcementSwitch(context)
+        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to SeedingPolicy(ratioGoal = BigDecimal.ONE)))))
+        assertTrue(setting.set(environment, true))
+        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000)
+        client.jobs[new] = true
+        client.facts[new] = ClientSeedingFacts(new, 0, 1_000, 60, true, false, emptyList())
+        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000)
+        client.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 60, true, false, emptyList())
+        client.afterFacts = { assertTrue(setting.set(environment, false)) }
+
+        assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 4_000))
+        assertFalse(setting.enabled(environment))
+        assertEquals(0, client.stops)
+        assertNull(PreferencesAssignmentStore(context, environment).get(new)?.stopAttemptedReason)
     }
 
     /** The installed switch journey's exact production path: a saved default cap, applied once. */

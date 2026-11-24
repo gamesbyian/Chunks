@@ -7,11 +7,12 @@ import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 internal enum class ProtocolOperationKind(val label: String) {
     START("Start"), STOP("Stop"), RECHECK("Recheck"), FILE_PRIORITIES("File priorities"),
     SET_LOCATION("Change folder"), MOVE_FILES("Move files"), REMOVE("Remove"),
-    REMOVE_DATA("Remove and delete files"), COPY_TARGET("Copy job"), RETIRE_SOURCE("Finish move")
+    REMOVE_DATA("Remove and delete files"), COPY_TARGET("Copy job"), RETIRE_SOURCE("Finish move"),
+    FINISH_IN_ORDER("Finish in Order"), SMART_SEEDING("Smart Seeding")
 }
 
 /**
- * Process-owned receipt/lease for explicit, single-client typed remote commands.
+ * Process-owned receipts for typed remote commands and leases for per-transfer policies.
  * A key identifies the canonical principal and hash; the ticket also freezes its
  * authenticated generation. A same-principal reconnect does not erase the old
  * unresolved receipt, but only its own fresh read may reconcile it. No
@@ -20,10 +21,10 @@ internal enum class ProtocolOperationKind(val label: String) {
  */
 internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
     data class Key(val profileId: String, val hash: String)
-    class Ticket internal constructor(val key: Key, val generation: String,
+    class Ticket internal constructor(val key: Key, val generation: String?,
         val kind: ProtocolOperationKind, internal val sequence: Long)
 
-    enum class Phase { PREFLIGHT, POSSIBLE_WRITE, UNKNOWN, ACK_PENDING, REGISTRATION_ABSENT,
+    enum class Phase { POLICY_RUNNING, PREFLIGHT, POSSIBLE_WRITE, UNKNOWN, ACK_PENDING, REGISTRATION_ABSENT,
         RECONCILED_PRESENT, RECONCILED_ABSENT }
 
     data class Receipt(val ticket: Ticket, val phase: Phase) {
@@ -34,6 +35,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         fun description(): String {
             val action = ticket.kind.label
             return when (phase) {
+                Phase.POLICY_RUNNING -> "$action is checking this transfer."
                 Phase.PREFLIGHT -> "$action: checking the client before a request."
                 Phase.POSSIBLE_WRITE -> "$action: request in progress."
                 Phase.UNKNOWN -> "$action: the previous request may have reached this client. Its result is unknown."
@@ -51,18 +53,31 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
 
     private val entries = mutableStateMapOf<Key, Receipt>()
     private var sequence = 0L
+    private val v1Hash = Regex("[0-9a-f]{40}")
 
     @Synchronized fun receipt(key: Key): Receipt? = entries[key]
 
     @Synchronized fun begin(key: Key, generation: String, kind: ProtocolOperationKind): Ticket? {
-        require(generation.isNotBlank() && key.profileId.isNotBlank() && key.hash.matches(Regex("[0-9a-f]{40}")))
+        require(generation.isNotBlank() && key.profileId.isNotBlank() && v1Hash.matches(key.hash))
+        return acquire(key, generation, kind, Phase.PREFLIGHT)
+    }
+
+    /** Policies keep uncertainty in their own durable journals. This lease only prevents overlapping commands. */
+    @Synchronized fun reservePolicy(profileId: String, hash: String, kind: ProtocolOperationKind): AutoCloseable? {
+        val key = Key(profileId, hash.lowercase(java.util.Locale.ROOT))
+        if (profileId.isBlank() || !v1Hash.matches(key.hash)) return null
+        val ticket = acquire(key, null, kind, Phase.POLICY_RUNNING) ?: return null
+        return AutoCloseable { cancel(ticket) }
+    }
+
+    private fun acquire(key: Key, generation: String?, kind: ProtocolOperationKind, phase: Phase): Ticket? {
         if (entries[key]?.blocksWrites == true) return null
         if (key !in entries && entries.size >= capacity) {
             val evict = entries.values.filterNot { it.blocksWrites }.minByOrNull { it.ticket.sequence }
                 ?: return null
             entries.remove(evict.ticket.key)
         }
-        return Ticket(key, generation, kind, ++sequence).also { entries[key] = Receipt(it, Phase.PREFLIGHT) }
+        return Ticket(key, generation, kind, ++sequence).also { entries[key] = Receipt(it, phase) }
     }
 
     @Synchronized fun possibleWrite(ticket: Ticket): Boolean {
@@ -74,7 +89,8 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
 
     @Synchronized fun complete(ticket: Ticket, outcome: ClientOperationOutcome) {
         val current = entries[ticket.key] ?: return
-        if (current.ticket !== ticket || current.canReconcile || !current.blocksWrites) return
+        if (current.ticket !== ticket || current.phase == Phase.POLICY_RUNNING ||
+            current.canReconcile || !current.blocksWrites) return
         val phase = if (!outcome.hash.equals(ticket.key.hash, ignoreCase = true)) Phase.UNKNOWN
         else when (outcome) {
             is ClientOperationOutcome.Verified, is ClientOperationOutcome.Refused -> null
@@ -90,7 +106,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         val current = entries[ticket.key] ?: return
         if (current.ticket !== ticket) return
         when (current.phase) {
-            Phase.PREFLIGHT -> entries.remove(ticket.key)
+            Phase.POLICY_RUNNING, Phase.PREFLIGHT -> entries.remove(ticket.key)
             Phase.POSSIBLE_WRITE -> entries[ticket.key] = Receipt(ticket, Phase.UNKNOWN)
             else -> Unit
         }

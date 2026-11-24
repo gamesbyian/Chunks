@@ -56,24 +56,61 @@ app_pid() {
   [[ "$value" =~ ^[0-9]{1,7}$ ]] || return 1
   printf '%s\n' "$value"
 }
+has_saved_task_state() {
+  timeout 10s adb shell dumpsys activity -a activities > "$scratch/saved-task.txt" 2>/dev/null || return 1
+  python3 - "$scratch/saved-task.txt" "$pkg" "$1" <<'PY'
+import re, sys
+from pathlib import Path
+
+lines = Path(sys.argv[1]).read_text(errors="replace").splitlines()
+component = re.escape(sys.argv[2] + "/.MainActivity")
+task = re.escape(sys.argv[3])
+header = re.compile(rf"^([ \t]*)\* Hist\s+#\d+: ActivityRecord\{{[^}}]*{component} t{task}\b")
+records = []
+for index, line in enumerate(lines):
+    if not (match := header.search(line)):
+        continue
+    prefix = match.group(1) + "  "
+    details = []
+    for detail in lines[index + 1:]:
+        if not detail.startswith(prefix):
+            break
+        details.append(detail.strip())
+    records.append(details)
+if len(records) != 1:
+    sys.exit(1)
+details = records[0]
+has_state = any(line.startswith("mHaveState=true ") for line in details)
+stopped = any(re.match(r"state=STOPPED\b.*\bfinishing=false\b", line) for line in details)
+sys.exit(0 if has_state and stopped else 1)
+PY
+}
 # The raw UI XML stays in a private temporary directory, never in CI logs.
+# Some UiAutomator errors leave an old dump on-device even with exit status 0.
+# Clear it before each request and require nodes from the exact app package.
 screen_contains() {
-  timeout 12s adb shell uiautomator dump /sdcard/chunks-process-task.xml > "$scratch/dump-status.txt" 2>&1 || return 1
-  timeout 12s adb shell cat /sdcard/chunks-process-task.xml > "$scratch/window.xml" 2>/dev/null || return 1
-  python3 - "$scratch/window.xml" "$1" <<'PY'
+  local capture='f=/sdcard/chunks-process-task.xml; rm -f "$f" && uiautomator dump "$f" >/dev/null && cat "$f"'
+  timeout 15s adb shell "$capture" > "$scratch/window.xml" 2>/dev/null || return 1
+  python3 - "$scratch/window.xml" "$pkg" "$1" "${2:-}" <<'PY'
 import sys, xml.etree.ElementTree as ET
 try:
     root = ET.parse(sys.argv[1]).getroot()
-    if any(sys.argv[2] in n.attrib.get(attr, "")
-           for n in root.iter() for attr in ("text", "content-desc")): sys.exit(0)
-except ET.ParseError:
+    values = [node.get(attr, "") for node in root.iter("node")
+              if node.get("package") == sys.argv[2] for attr in ("text", "content-desc")]
+    if sys.argv[4] and any(sys.argv[4] in value for value in values):
+        sys.exit(2)
+    if any(sys.argv[3] in value for value in values):
+        sys.exit(0)
+except (OSError, ET.ParseError):
     pass
 sys.exit(1)
 PY
 }
 await_text() {
+  local status
   for attempt in {1..20}; do
-    if screen_contains "$1"; then return 0; fi
+    if screen_contains "$@"; then return 0; else status=$?; fi
+    if [[ "$status" == 2 ]]; then return 2; fi
     sleep 0.7
   done
   return 1
@@ -252,9 +289,11 @@ for line in Path(sys.argv[1]).read_text(errors="replace").splitlines():
     tag, value = hit.groups()
     if target.search(value) or (tag == "wm_task_removed" and value.split(",", 1)[0].strip() == task):
         events[tag] += 1
+        if tag == "wm_finish_activity" and "proc died without state saved" in value:
+            events["no_saved_state_reason"] += 1
 print(",".join(f"{tag}={events[tag]}" for tag in (
     "am_proc_start", "am_proc_died", "am_kill", "am_crash",
-    "wm_finish_activity", "wm_resume_activity", "wm_task_removed")))
+    "wm_finish_activity", "wm_resume_activity", "wm_task_removed", "no_saved_state_reason")))
 PY_EVENTS
 )"
   fi
@@ -279,8 +318,14 @@ echo "CHUNKS_DOCUMENT_TASK: foreign-provider-original-review"
 # Home/stop then real SIGKILL from the exact app's debug UID, OUTSIDE target
 # instrumentation. Never use am force-stop, which removes saved task state.
 adb shell input keyevent KEYCODE_HOME || { fail "could not background app"; exit 1; }
-sleep 2
-[[ "$(task_id)" == "$old_task" ]] || { fail "task missing before process kill"; exit 1; }
+saved=false
+for attempt in {1..15}; do
+  if has_saved_task_state "$old_task"; then saved=true; break; fi
+  sleep 0.5
+done
+[[ "$saved" == true ]] || { fail "Android did not confirm stopped state for the original task"; exit 1; }
+[[ "$(app_pid)" == "$old_pid" ]] || { fail "original app process changed before the controlled kill"; exit 1; }
+echo "CHUNKS_DOCUMENT_TASK: android-saved-stopped-state-before-kill"
 timeout 15s adb shell run-as "$pkg" /system/bin/kill -9 "$old_pid" >/dev/null 2>&1 ||
   { fail "exact UID process kill was refused"; exit 1; }
 live=""
@@ -304,10 +349,16 @@ new_task="$(task_id)" || { fail "restored task identity unavailable"; exit 1; }
 new_pid="$(app_pid)" || { fail "restored app process identity unavailable"; exit 1; }
 if [[ "$new_task" != "$old_task" ]]; then fail "task changed during restoration"; exit 1; fi
 if [[ "$new_pid" == "$old_pid" ]]; then fail "app process did not change"; exit 1; fi
-if screen_contains "$source_name"; then
-  fail "old reviewed source replayed without fresh grant"; exit 1
+if await_text "$notice" "$source_name"; then
+  echo "CHUNKS_DOCUMENT_TASK: same-task-new-process-no-source-replay"
+else
+  replay_status=$?
+  if [[ "$replay_status" == 2 ]]; then
+    fail "old reviewed source replayed without fresh grant"; exit 1
+  fi
+  diagnose_missing_interrupted_notice
+  fail "no fresh app UI proved the notice without the previous review"; exit 1
 fi
-echo "CHUNKS_DOCUMENT_TASK: same-task-new-process-no-source-replay"
 
 # The explicit second VIEW is the only route to reacquire a foreign URI grant.
 open_source "--ez fixture_keep_task true" ||

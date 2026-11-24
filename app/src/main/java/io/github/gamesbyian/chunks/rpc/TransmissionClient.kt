@@ -72,17 +72,21 @@ internal class TransmissionClient(
         return (0 until files.length()).map { i ->
             val file = files.getJSONObject(i)
             val stat = stats.getJSONObject(i)
+            val size = file.exactFileInteger("length")?.takeIf { it >= 0 }
+                ?: throw IOException("Invalid Transmission file length")
+            val wanted = stat.opt("wanted") as? Boolean ?: throw IOException("Invalid Transmission file selection")
+            val priority = when (stat.exactFileInteger("priority")) {
+                -1L -> ClientFilePriority.LOW
+                0L -> ClientFilePriority.NORMAL
+                1L -> ClientFilePriority.HIGH
+                else -> throw IOException("Invalid Transmission file priority")
+            }
             ClientFile(
                 index = i,
-                path = file.getString("name"),
-                sizeBytes = file.getLong("length"),
-                completedBytes = file.optLong("bytesCompleted", -1).takeIf { it >= 0 },
-                priority = if (!stat.optBoolean("wanted", true)) ClientFilePriority.SKIP
-                    else when (stat.optInt("priority", 0)) {
-                        -1 -> ClientFilePriority.LOW
-                        1 -> ClientFilePriority.HIGH
-                        else -> ClientFilePriority.NORMAL
-                    }
+                path = file.exactFilePath("name"),
+                sizeBytes = size,
+                completedBytes = file.exactFileInteger("bytesCompleted")?.takeIf { it in 0L..size },
+                priority = if (wanted) priority else ClientFilePriority.SKIP
             )
         }
     }
