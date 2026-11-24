@@ -6,12 +6,14 @@ name: Installed local resume after process death
 on:
   pull_request:
     branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeStore.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalPartialResumeProcessDeathInstrumentedTest.kt"
       - "tools/installed_partial_resume_death.sh"
+      - "tools/verify_installed_apk_bytes.sh"
       - ".github/workflows/installed-partial-resume-death.yml"
   workflow_dispatch:
 
@@ -23,13 +25,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  installed-resume-death:
+  build-resume-apks:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [29, 35]
+    timeout-minutes: 18
+    outputs:
+      artifact-name: ${{ steps.freeze.outputs.artifact-name }}
     steps:
       - uses: actions/checkout@v4
       - name: Refuse a synthetic PR merge with an unreviewed source tree
@@ -58,6 +59,47 @@ jobs:
           fi
       - name: Build the source-matched app and Android instrumentation
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Freeze source and installed APK pair
+        id: freeze
+        run: |
+          output="$RUNNER_TEMP/resume-death-apks"
+          mkdir -p "$output"
+          cp app/build/outputs/apk/debug/app-debug.apk "$output/app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$output/test.apk"
+          git rev-parse HEAD > "$output/source-sha"
+          git rev-parse HEAD^{tree} > "$output/source-tree"
+          (cd "$output" && sha256sum app.apk test.apk > SHA256SUMS)
+          echo "artifact-name=chunks-resume-death-apks-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.freeze.outputs.artifact-name }}
+          path: ${{ runner.temp }}/resume-death-apks/
+          retention-days: 14
+          if-no-files-found: error
+
+  installed-resume-death:
+    needs: build-resume-apks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-resume-apks.outputs.artifact-name }}
+          path: ${{ runner.temp }}/resume-death-apks/
+      - name: Verify immutable APK pair and source checkout
+        run: |
+          input="$RUNNER_TEMP/resume-death-apks"
+          test "$(cat "$input/source-sha")" = "$(git rev-parse HEAD)"
+          test "$(cat "$input/source-tree")" = "$(git rev-parse HEAD^{tree})"
+          (cd "$input" && sha256sum --strict --check SHA256SUMS)
+          mkdir -p app/build/outputs/apk/debug app/build/outputs/apk/androidTest/debug
+          cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
+          cp "$input/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
       - name: Prepare emulator
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
@@ -78,7 +120,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-resume-death-api${{ matrix.api }}
+          name: chunks-resume-death-api${{ matrix.api }}-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chunks-resume-death-api${{ matrix.api }}/
           retention-days: 14
           if-no-files-found: warn
