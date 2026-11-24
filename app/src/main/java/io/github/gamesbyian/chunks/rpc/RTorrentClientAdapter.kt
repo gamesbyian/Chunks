@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.rpc
 
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 
 /**
  * Bridges the established [RTorrentRemote] adapter onto [TorrentClient]
@@ -22,8 +23,8 @@ internal class RTorrentClientAdapter(
 
     override suspend fun session(): ClientSessionInfo {
         val version = remote.version()
-        val default = runCatching { remote.defaultDirectory() }.getOrNull()?.takeIf { it.startsWith("/") }
-        val deleteData = runCatching { remote.discoverDeleteDataCapability() }.getOrNull()?.actionable == true
+        val default = optionalRead { remote.defaultDirectory() }?.takeIf { it.startsWith("/") }
+        val deleteData = optionalRead { remote.discoverDeleteDataCapability() }?.actionable == true
         val caps = buildSet {
             addAll(listOf(ClientCapability.ADD_TORRENT_FILE, ClientCapability.ADD_MAGNET,
                 ClientCapability.ADD_STOPPED, ClientCapability.ADD_TO_DIRECTORY,
@@ -38,30 +39,30 @@ internal class RTorrentClientAdapter(
 
     override suspend fun transferSource(hash: String): ClientAddSource? {
         val exact = ClientHashes.requireHash(hash)
-        runCatching { remote.originalMetainfoForSnapshot(exact) }.getOrNull()?.let { bytes ->
+        optionalRead { remote.originalMetainfoForSnapshot(exact) }?.let { bytes ->
             val file = runCatching { ClientAddSource.TorrentFile(bytes) }.getOrNull()
             if (file?.infoHash == exact) return file
         }
         val row = torrent(exact) ?: return null
-        return when (val trackers = runCatching { remote.readPublicTrackers(exact) }.getOrNull()) {
+        return when (val trackers = optionalRead { remote.readPublicTrackers(exact) }) {
             is RTorrentRemote.PublicTrackers.Urls -> ClientMagnets.build(exact, row.name, trackers.urls)
             else -> null // private or unreadable: a bare magnet would not be faithful
         }
     }
 
-    override suspend fun torrents(): List<ClientTorrent> = remote.listTransfers("main").map(::torrentOf)
+    override suspend fun torrents(): List<ClientTorrent> = remote.listCompleteSessionTransfers().map(::torrentOf)
 
     override suspend fun torrent(hash: String): ClientTorrent? {
         val exact = ClientHashes.requireHash(hash)
-        val rows = remote.listTransfers("main").filter { it.hash.equals(exact, ignoreCase = true) }
-        if (rows.size > 1) throw IOException("Ambiguous rTorrent identity")
-        val row = rows.singleOrNull() ?: return null
+        val row = remote.readClientTransfer(exact) ?: return null
         // rTorrent reports a multi-file job's directory as <parent>/<name>.
         // Report the Add parent only with an exact d.is_multi_file = 1 and a
         // matching final segment (the established Add readback rule).
         val multi = (remote.call("d.is_multi_file", listOf(row.hash)) as? Long)
             ?: throw IOException("Invalid rTorrent multi-file flag")
         if (multi !in 0L..1L) throw IOException("Invalid rTorrent multi-file flag")
+        if ((remote.call("d.hash", listOf(exact)) as? String)?.equals(exact, true) != true)
+            throw IOException("rTorrent identity changed during exact observation")
         val parent = if (multi == 1L && row.name.isNotBlank() && !row.name.contains('/') &&
             row.directory.endsWith("/" + row.name))
             row.directory.removeSuffix("/" + row.name).ifEmpty { "/" } else row.directory
@@ -177,8 +178,16 @@ internal class RTorrentClientAdapter(
     }
 
     private suspend fun torrentRow(hash: String): RemoteTransfer =
-        remote.listTransfers("main").singleOrNull { it.hash.equals(hash, ignoreCase = true) }
+        remote.readClientTransfer(hash)
             ?: throw ClientRefusedException("Transfer is not in this client")
+
+    private suspend fun <T> optionalRead(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
+    }
 
     private fun torrentOf(row: RemoteTransfer): ClientTorrent {
         val complete = row.metadataPending != true && row.sizeBytes > 0 && row.completedBytes >= row.sizeBytes
