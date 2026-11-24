@@ -56,9 +56,9 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
         runner = (ROOT / "tools/installed_protocol_client.sh").read_text()
         host = (ROOT / "tools/installed_external_document_process_loss.sh").read_text()
         self.assertIn("bash tools/installed_external_document_process_loss.sh || failed=1", runner)
-        # A failed external task/URI gate must keep this job red but can no
-        # longer prevent independent actual-client and Add fault execution.
-        self.assertGreater(runner.index("bash tools/installed_external_document_process_loss.sh"),
+        # Foreign document runs first on its fresh isolated lane; other lanes
+        # are independently scheduled and the aggregate stays red on failure.
+        self.assertLess(runner.index("bash tools/installed_external_document_process_loss.sh"),
                            runner.index("run_local_add_death || failed=1"))
         self.assertLess(runner.index("bash tools/installed_external_document_process_loss.sh"),
                         runner.index("exit $failed"))
