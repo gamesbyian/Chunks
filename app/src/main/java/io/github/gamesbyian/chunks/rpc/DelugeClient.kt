@@ -335,11 +335,17 @@ internal class DelugeClient(
                     if (mutating && response.status >= 500) throw ClientWriteUncertainException("Deluge server error")
                     throw ClientRefusedException("Deluge HTTP ${response.status}")
                 }
-                val json = try { JSONObject(response.body) } catch (_: Exception) {
+                val exactRead = method == "core.get_torrent_status" ||
+                    (method == "core.get_torrents_status" && params.optJSONObject(0)?.has("id") == true)
+                val json = try {
+                    if (exactRead) ExactRpcJson.objectBody(response.body) else JSONObject(response.body)
+                } catch (_: Exception) {
                     if (mutating) throw ClientWriteUncertainException("Invalid Deluge reply")
                     throw IOException("Malformed Deluge JSON-RPC reply")
                 }
-                if ((json.opt("id") as? Number)?.toInt() != id) {
+                val reply = json.opt("id")
+                val replyId = if (exactRead) reply as? Long else (reply as? Number)?.toInt()?.toLong()
+                if (replyId != id.toLong()) {
                     if (mutating) throw ClientWriteUncertainException("Mismatched Deluge reply")
                     throw IOException("Mismatched Deluge reply")
                 }

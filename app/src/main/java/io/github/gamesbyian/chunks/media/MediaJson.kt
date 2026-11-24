@@ -33,9 +33,14 @@ sealed class Json {
         const val MAX_CHARS = 2_000_000
         const val MAX_MEMBERS = 20_000
 
-        fun parse(text: String): Json {
-            if (text.length > MAX_CHARS) throw MediaJsonException("Response too large")
-            val p = Parser(text)
+        fun parse(text: String): Json = parse(text, MAX_CHARS, MAX_MEMBERS, rejectDuplicates = false)
+
+        internal fun parseUnique(text: String, maxChars: Int, maxMembers: Int): Json =
+            parse(text, maxChars, maxMembers, rejectDuplicates = true)
+
+        private fun parse(text: String, maxChars: Int, maxMembers: Int, rejectDuplicates: Boolean): Json {
+            if (text.length > maxChars) throw MediaJsonException("Response too large")
+            val p = Parser(text, maxMembers, rejectDuplicates)
             val v = p.value(0)
             p.ws()
             if (p.i != text.length) throw MediaJsonException("Trailing content")
@@ -85,7 +90,7 @@ sealed class Json {
         }
     }
 
-    private class Parser(val s: String) {
+    private class Parser(val s: String, val maxMembers: Int, val rejectDuplicates: Boolean) {
         var i = 0
         var members = 0
 
@@ -108,7 +113,7 @@ sealed class Json {
             }
         }
 
-        private fun count() { if (++members > MAX_MEMBERS) fail("Too many members") }
+        private fun count() { if (++members > maxMembers) fail("Too many members") }
 
         private fun literal(word: String, v: Json): Json {
             if (!s.startsWith(word, i)) fail("Bad literal")
@@ -149,7 +154,10 @@ sealed class Json {
                             'r' -> sb.append('\r'); 't' -> sb.append('\t')
                             'u' -> {
                                 if (i + 4 > s.length) fail("Bad unicode escape")
-                                val code = s.substring(i, i + 4).toIntOrNull(16) ?: fail("Bad unicode escape")
+                                val digits = s.substring(i, i + 4)
+                                if (digits.any { it !in '0'..'9' && it !in 'a'..'f' && it !in 'A'..'F' })
+                                    fail("Bad unicode escape")
+                                val code = digits.toInt(16)
                                 sb.append(code.toChar()); i += 4
                             }
                             else -> fail("Bad escape '$e'")
@@ -185,6 +193,7 @@ sealed class Json {
                 ws()
                 if (i >= s.length || s[i] != '"') fail("Expected key")
                 val key = stringValue()
+                if (rejectDuplicates && key in map) fail("Duplicate object member")
                 ws()
                 if (i >= s.length || s[i++] != ':') fail("Expected :")
                 val v = value(depth + 1)

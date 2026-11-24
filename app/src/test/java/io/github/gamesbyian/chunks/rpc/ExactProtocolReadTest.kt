@@ -20,7 +20,12 @@ class ExactProtocolReadTest {
 
     private class Fixture(val client: TorrentClient, val writes: () -> Int)
 
-    private fun fixture(kind: TorrentClientKind, replies: List<List<String>>, cancelPath: String? = null): Fixture {
+    private fun fixture(
+        kind: TorrentClientKind,
+        replies: List<List<String>>,
+        cancelPath: String? = null,
+        duplicateWireKeys: Boolean = false
+    ): Fixture {
         var writes = 0
         val queue = ArrayDeque(replies)
         fun rows(field: String): String = JSONArray(queue.removeFirst().map {
@@ -34,7 +39,9 @@ class ExactProtocolReadTest {
                     val method = JSONObject(req.body.toString(Charsets.UTF_8)).getString("method")
                     val args = when (method) {
                         "session-get" -> """{"version":"4.0","download-dir":"/data"}"""
-                        "torrent-get" -> """{"torrents":${rows("hashString")}}"""
+                        "torrent-get" -> if (duplicateWireKeys)
+                            """{"torrents":[{"hashString":"$other"}],"torrents":[]}"""
+                            else """{"torrents":${rows("hashString")}}"""
                         "torrent-add", "torrent-remove" -> { writes++; "{}" }
                         else -> error("Unexpected method $method")
                     }
@@ -51,7 +58,9 @@ class ExactProtocolReadTest {
                         "app/version" -> QBittorrentReadOnlyRpc.Response(200, "v5.1")
                         "app/webapiVersion" -> QBittorrentReadOnlyRpc.Response(200, "2.11")
                         "app/defaultSavePath" -> QBittorrentReadOnlyRpc.Response(200, "/data")
-                        "torrents/info" -> QBittorrentReadOnlyRpc.Response(200, rows("hash"))
+                        "torrents/info" -> QBittorrentReadOnlyRpc.Response(200, if (duplicateWireKeys)
+                            """[{"hash":"$other","ha\u0073h":"$hash","state":"pausedDL","save_path":"/data"}]"""
+                            else rows("hash"))
                         "torrents/export" -> QBittorrentReadOnlyRpc.Response(404, "")
                         "torrents/add", "torrents/delete" -> { writes++; QBittorrentReadOnlyRpc.Response(200, "Ok.") }
                         else -> error("Unexpected method $method")
@@ -69,10 +78,12 @@ class ExactProtocolReadTest {
                         "web.get_host_status" -> """["fixture-host","Connected","2.1"]"""
                         "daemon.get_method_list" -> """["core.add_torrent_magnet","core.remove_torrent","core.get_torrents_status"]"""
                         "core.get_config_value" -> """"/data""""
-                        "core.get_torrents_status" -> JSONObject().apply {
-                            queue.removeFirst().forEach { put(it, JSONObject().put("name", "fixture")
-                                .put("state", "Paused").put("save_path", "/data")) }
-                        }.toString()
+                        "core.get_torrents_status" -> if (duplicateWireKeys)
+                            """{"$hash":{"name":"one"},"$hash":{"name":"two","state":"Paused","save_path":"/data"}}"""
+                            else JSONObject().apply {
+                                queue.removeFirst().forEach { put(it, JSONObject().put("name", "fixture")
+                                    .put("state", "Paused").put("save_path", "/data")) }
+                            }.toString()
                         "core.add_torrent_magnet", "core.remove_torrent" -> { writes++; "true" }
                         else -> error("Unexpected method $method")
                     }
@@ -86,6 +97,19 @@ class ExactProtocolReadTest {
 
     private val kinds = listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.QBITTORRENT, TorrentClientKind.DELUGE)
     private val invalid = listOf(listOf(other), listOf(hash, other), listOf(hash, hash.uppercase()), listOf("bad"))
+
+    @Test fun duplicateDecodedWireKeysNeverAuthorizeAnExactReadOrAdd() = runBlocking {
+        for (kind in kinds) {
+            val fixture = fixture(kind, emptyList(), duplicateWireKeys = true)
+            try {
+                fixture.client.torrent(hash)
+                fail("$kind accepted an ambiguous wire reply")
+            } catch (_: java.io.IOException) { }
+            val ops = ClientOperations(fixture.client, readbackAttempts = 1)
+            assertTrue(ops.add(request) is ClientOperationOutcome.Refused)
+            assertEquals("zero mutation requests for $kind", 0, fixture.writes())
+        }
+    }
 
     @Test fun emptyAndCaseInsensitiveExactPositiveRemainDistinct() = runBlocking {
         for (kind in kinds) {
