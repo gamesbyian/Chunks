@@ -59,7 +59,7 @@ internal class QBittorrentClient(
             val file = runCatching { ClientAddSource.TorrentFile(exported) }.getOrNull()
             if (file?.infoHash == exact) return file
         }
-        val rows = optionalRead { JSONArray(request("GET", "torrents/info?hashes=$exact")) } ?: return null
+        val rows = optionalRead { ExactRpcJson.arrayBody(request("GET", "torrents/info?hashes=$exact")) } ?: return null
         val row = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hash") } ?: return null
         val magnet = row.optString("magnet_uri").takeIf { it.startsWith("magnet:?") } ?: return null
         return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
@@ -74,7 +74,7 @@ internal class QBittorrentClient(
 
     override suspend fun files(hash: String): List<ClientFile> {
         val exact = ClientHashes.requireHash(hash)
-        val rows = try { JSONArray(request("GET", "torrents/files?hash=$exact")) } catch (e: CancellationException) {
+        val rows = try { ExactRpcJson.arrayBody(request("GET", "torrents/files?hash=$exact")) } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
             throw e
@@ -204,7 +204,7 @@ internal class QBittorrentClient(
 
     override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
         val exact = ClientHashes.requireHash(hash)
-        val rows = try { JSONArray(request("GET", "torrents/info?hashes=$exact")) } catch (e: CancellationException) {
+        val rows = try { ExactRpcJson.arrayBody(request("GET", "torrents/info?hashes=$exact")) } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
             throw IOException("Invalid qBittorrent seeding facts")
@@ -213,7 +213,7 @@ internal class QBittorrentClient(
         // The private flag: in torrents/info on newer Web APIs, else torrents/properties.
         val private: Boolean? = when {
             r.has("private") -> r.optBoolean("private")
-            else -> optionalRead { JSONObject(request("GET", "torrents/properties?hash=$exact")) }
+            else -> optionalRead { ExactRpcJson.objectBody(request("GET", "torrents/properties?hash=$exact")) }
                 ?.let { p -> if (p.has("is_private")) p.optBoolean("is_private") else null }
         }
         val trackers = if (private == false) optionalRead {
@@ -241,7 +241,9 @@ internal class QBittorrentClient(
 
     private suspend fun info(hash: String?): List<ClientTorrent> {
         val body = request("GET", "torrents/info" + (hash?.let { "?hashes=$it" } ?: ""))
-        val rows = try { JSONArray(body) } catch (_: Exception) {
+        val rows = try {
+            if (hash != null) ExactRpcJson.arrayBody(body) else JSONArray(body)
+        } catch (_: Exception) {
             throw IOException("Invalid qBittorrent inventory response")
         }
         if (rows.length() > 50_000) throw IOException("qBittorrent inventory exceeds safety limit")

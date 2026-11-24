@@ -278,7 +278,10 @@ internal class TransmissionClient(
                         answeredAuth = true
                     }
                     in 200..299 -> {
-                        val root = try { JSONObject(response.body) } catch (_: Exception) {
+                        val root = try {
+                            if (method == "torrent-get" && args.has("ids")) ExactRpcJson.objectBody(response.body)
+                            else JSONObject(response.body)
+                        } catch (_: Exception) {
                             if (mutating) throw ClientWriteUncertainException("Invalid Transmission reply")
                             throw IOException("Invalid Transmission RPC response")
                         }
