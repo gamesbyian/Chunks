@@ -58,6 +58,7 @@ internal data class ProtocolMoveTarget(
     val aliasScope: String? = null,
     /** Stable for the current authenticated connection, even across a label change. */
     val connectionWitness: Any = id,
+    val ownerCurrent: () -> Boolean = { true },
     val createOperations: () -> ClientOperations
 )
 
@@ -379,7 +380,18 @@ internal fun ProtocolClientOperationsPanel(
             }
             moveTargets.sortedByDescending { it.id == routingSuggestion?.first }.forEach { target ->
                 OutlinedButton(onClick = {
-                    if (busy || latched) return@OutlinedButton
+                    if (busy || latched || !isOwnerCurrent() || !target.ownerCurrent()) return@OutlinedButton
+                    val policyEpoch = TransferPrivacyPolicyStore.revision
+                    val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+                    val credentialEpoch = RemoteCredentialLock.capture()
+                    val ownerCurrent: () -> Boolean = {
+                        scope.coroutineContext[kotlinx.coroutines.Job]?.isActive == true &&
+                            currentOwner === operations && isOwnerCurrent() && target.ownerCurrent() &&
+                            currentConnections[target.id] == target.connectionWitness &&
+                            RemoteCredentialLock.current(credentialEpoch) &&
+                            policyEpoch == TransferPrivacyPolicyStore.revision &&
+                            lifecycleEpoch == TransferPrivacyRuntime.lifecycleRevision
+                    }
                     busy = true
                     copied = null
                     notice = "Copying job to ${target.label}…"
@@ -392,8 +404,12 @@ internal fun ProtocolClientOperationsPanel(
                             )
                         } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
                         val result = try {
-                            transfer?.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true)
-                        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
+                            transfer?.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true,
+                                stillAuthorized = ownerCurrent)
+                        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) {
+                            ClientJobTransfer.CopyResult.NotCopied(hash,
+                                ClientOperationOutcome.Uncertain(hash, "The destination result could not be confirmed"))
+                        }
                         when (result) {
                             is ClientJobTransfer.CopyResult.Copied -> {
                                 copied = VerifiedMoveCopy(target, requireNotNull(transfer), result)
@@ -404,6 +420,7 @@ internal fun ProtocolClientOperationsPanel(
                                 val to = target.aliasScope
                                 if (from != null && to != null) {
                                     val carried = withContext(Dispatchers.IO) {
+                                        if (!ownerCurrent()) return@withContext TransferAliasStore.MoveAliasCarry.FAILED
                                         runCatching { TransferAliasStore(context).carryVerifiedMoveAlias(from, to, hash) }
                                             .getOrDefault(TransferAliasStore.MoveAliasCarry.FAILED)
                                     }
@@ -430,7 +447,7 @@ internal fun ProtocolClientOperationsPanel(
             if (finishableCopy != null) Button(onClick = {
                 run("Remove from $clientLabel after moving to ${finishableCopy.target.label}", ProtocolOperationKind.RETIRE_SOURCE) {
                     finishableCopy.transfer.retireSource(hash, finishableCopy.receipt) {
-                        currentOwner === operations &&
+                        currentOwner === operations && isOwnerCurrent() && finishableCopy.target.ownerCurrent() &&
                             currentConnections[finishableCopy.target.id] == finishableCopy.target.connectionWitness
                     }
                 }
