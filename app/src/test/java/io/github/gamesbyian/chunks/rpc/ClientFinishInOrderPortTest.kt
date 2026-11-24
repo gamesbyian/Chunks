@@ -20,6 +20,7 @@ class ClientFinishInOrderPortTest {
         override val kind = TorrentClientKind.TRANSMISSION
         val writes = mutableListOf<Map<Int, ClientFilePriority>>()
         var apply = true
+        var afterWrite: (List<ClientFile>) -> List<ClientFile> = { it }
         override suspend fun session() = ClientSessionInfo(kind, "4", "/d", ClientCapability.entries.toSet(), levels)
         override suspend fun torrents() = emptyList<ClientTorrent>()
         override suspend fun torrent(hash: String) =
@@ -30,7 +31,7 @@ class ClientFinishInOrderPortTest {
         override suspend fun remove(hash: String, deleteData: Boolean) = Unit
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) {
             writes += priorities
-            if (apply) files = files.map { f -> priorities[f.index]?.let { f.copy(priority = it) } ?: f }
+            if (apply) files = afterWrite(files.map { f -> priorities[f.index]?.let { f.copy(priority = it) } ?: f })
         }
         override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) = Unit
         override suspend fun recheck(hash: String) = Unit
@@ -99,6 +100,21 @@ class ClientFinishInOrderPortTest {
             assertEquals(LocalFileBatchOutcome.STALE_REVIEW, port.apply(hash, rec, changes))
             assertTrue(fake.writes.isEmpty())
         }
+    }
+
+    @Test fun matchingPrioritiesOnChangedReadbackDoNotClearTheJournal() = runBlocking {
+        val fake = Fake(episodes()).apply {
+            afterWrite = { files -> files.map { if (it.index == 0) it.copy(path = "renamed/" + it.path) else it } }
+        }
+        var saved: FinishInOrderRecord? = null
+        val step = FinishInOrderRunner(ClientFinishInOrderPort(ops(fake), fake.levels) { _, r ->
+            saved = r
+            true
+        }).step(hash, record(fake))
+        assertTrue(step is FinishInOrderRunner.Step.Suspended)
+        assertEquals(1, fake.writes.size)
+        assertEquals(ClientFilePriority.HIGH, fake.files.single { it.index == 1 }.priority)
+        assertTrue(requireNotNull(saved).pending.isNotEmpty())
     }
 
     @Test fun anUnconfirmedWriteIsUncertainAndTheRunnerNeverReplaysIt() = runBlocking {

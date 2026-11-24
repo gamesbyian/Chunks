@@ -121,9 +121,8 @@ internal class ClientOperations(
         files?.let { ClientFileLayout.match(it, source.preview, paths) }
             ?: return ClientOperationOutcome.Pending(hash, added.observed,
                 "Added stopped; its file list did not match the review, so no file choices were applied and it was not started")
-        val applied = setFilePrioritiesChecked(hash, reviewed.mapValues { (_, choice) -> choice.priority }) {
-            ClientFileLayout.match(it, source.preview, paths) != null
-        }
+        val applied = setFilePrioritiesChecked(hash, reviewed.mapValues { (_, choice) -> choice.priority },
+            layoutValid = { ClientFileLayout.match(it, source.preview, paths) != null })
         if (applied !is ClientOperationOutcome.Verified) return when (applied) {
             is ClientOperationOutcome.Uncertain -> applied
             else -> ClientOperationOutcome.Pending(hash, added.observed,
@@ -266,10 +265,14 @@ internal class ClientOperations(
      * LOW, for example), so readback compares like with like.
      */
     suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>): ClientOperationOutcome =
-        setFilePrioritiesChecked(hash, priorities) { true }
+        setFilePrioritiesChecked(hash, priorities, layoutValid = { true })
 
-    private suspend fun setFilePrioritiesChecked(hash: String, priorities: Map<Int, ClientFilePriority>,
-        layoutValid: (List<ClientFile>) -> Boolean): ClientOperationOutcome {
+    internal suspend fun setFilePrioritiesChecked(
+        hash: String,
+        priorities: Map<Int, ClientFilePriority>,
+        layoutValid: (List<ClientFile>) -> Boolean,
+        precondition: (List<ClientFile>) -> Boolean = { true }
+    ): ClientOperationOutcome {
         val exact = ClientHashes.requireHash(hash)
         if (priorities.isEmpty()) return ClientOperationOutcome.Refused(exact, "No file priorities requested")
         val info = try { session() } catch (e: CancellationException) { throw e }
@@ -280,7 +283,8 @@ internal class ClientOperations(
         val before = try { client.files(exact) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(exact, "Could not read the file list first") }
         val known = before.map { it.index }.toSet()
-        if (known.size != before.size || !known.containsAll(requested.keys) || !layoutValid(before))
+        if (known.size != before.size || !known.containsAll(requested.keys) ||
+            !layoutValid(before) || !precondition(before))
             return ClientOperationOutcome.Refused(exact, "File list changed; refresh first")
         write(exact) { client.setFilePriorities(exact, requested) }?.let { return it }
         repeat(readbackAttempts) { attempt ->
