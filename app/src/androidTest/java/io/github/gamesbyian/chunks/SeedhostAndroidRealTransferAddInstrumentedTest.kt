@@ -196,7 +196,10 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                         onBack = {}, onComplete = {},
                         onMutationStarted = { true }, onMutationSettled = {},
                         initialTorrent = preparedFile,
-                        onInitialTorrentConsumed = { preparedFile = null },
+                        claimInitialTorrent = {
+                            preparedFile = null
+                            true
+                        },
                         finishInOrderScope = null, environmentLabel = "Approved development Seedhost"
                     )
                 }

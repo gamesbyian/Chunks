@@ -13,6 +13,12 @@ internal sealed interface ExternalIntakeDelivery {
     class Create(val request: SharedCreateDocument.Request) : ExternalIntakeDelivery
 }
 
+/** One retained source event. Its bytes and original-document authority travel together. */
+internal class PreparedRemoteTorrent(bytes: ByteArray, val reviewed: PendingLocalAdd?) {
+    val bytes = bytes.copyOf()
+    val originalDocument get() = reviewed?.originalDocument
+}
+
 internal class LocalAddAttemptOwner : ViewModel() {
     val session = LocalAddAttemptSession()
     // Retain private Add drafts through configuration changes in RAM only.
@@ -31,8 +37,8 @@ internal class LocalAddAttemptOwner : ViewModel() {
     val routingPersonChoiceFor = mutableStateOf<String?>(null)
     val artworkExpanded = mutableStateOf(false)
     val sharedTorrentError = mutableStateOf<String?>(null)
-    val serverHandoffTorrent = mutableStateOf<ByteArray?>(null)
-    val serverHandoffDocument = mutableStateOf<Uri?>(null)
+    var serverHandoff by mutableStateOf<PreparedRemoteTorrent?>(null)
+        private set
     val remoteSessions = RemoteAddSessions()
     // One Transmission/qBittorrent/Deluge Add attempt; RAM only, never persisted.
     val protocolAttempt = ProtocolAddAttempt()
@@ -92,9 +98,37 @@ internal class LocalAddAttemptOwner : ViewModel() {
         remoteSessions.clearPendingSourceSelection()
         sourceDraft.value = ""
         if (reviewed == null) reviewedTorrent.value = null
-        serverHandoffTorrent.value = bytes.copyOf()
-        serverHandoffDocument.value = reviewed?.originalDocument
+        serverHandoff = PreparedRemoteTorrent(bytes, reviewed)
         return true
+    }
+
+    /** Redirect the current review as a whole, with no new document grant or Add authority. */
+    fun prepareCurrentReviewForRemote() {
+        val reviewed = reviewedTorrent.value ?: return
+        if (serverHandoff?.reviewed !== reviewed && reviewed.stillMatchesReviewedSource(reviewed.bytes)) {
+            serverHandoff = PreparedRemoteTorrent(reviewed.bytes, reviewed)
+        }
+    }
+
+    fun claimServerHandoff(expected: PreparedRemoteTorrent?): Boolean {
+        if (expected == null || serverHandoff !== expected) return false
+        clearServerHandoff()
+        return expected.reviewed === reviewedTorrent.value
+    }
+
+    fun clearServerHandoff() { serverHandoff = null }
+
+    fun adoptSharedDocument(reviewed: PendingLocalAdd, forAuthenticatedRemote: Boolean) {
+        reviewedTorrent.value = reviewed
+        serverHandoff = if (forAuthenticatedRemote) PreparedRemoteTorrent(reviewed.bytes, reviewed) else null
+        sourceDraft.value = ""
+        remoteSessions.clearPendingSourceSelection()
+    }
+
+    fun retireCompletedRemoteReview(completed: PendingLocalAdd?) {
+        if (completed == null) return
+        if (reviewedTorrent.value === completed) reviewedTorrent.value = null
+        if (serverHandoff?.reviewed === completed) clearServerHandoff()
     }
 
     fun hasDocumentReview(): Boolean =

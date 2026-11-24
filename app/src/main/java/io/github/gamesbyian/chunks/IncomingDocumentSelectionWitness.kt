@@ -46,12 +46,3 @@ internal class IncomingDocumentSelectionWitness(
             (!currentRemoteSession.useFile && currentRemoteSession.selectedBytes == null)
     }
 }
-
-/** Retire only the reviewed Local twin of an acknowledged remote document.
- * Complete bytes matter: tracker/passkey changes do not change the v1 hash.
- * Never clear a newer source that was chosen while the old result was visible.
- */
-internal fun completedRemoteReviewMatchesLocal(
-    acknowledgedBytes: ByteArray?,
-    local: PendingLocalAdd?
-): Boolean = acknowledgedBytes != null && local?.bytes?.contentEquals(acknowledgedBytes) == true

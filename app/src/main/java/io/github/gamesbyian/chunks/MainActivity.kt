@@ -548,10 +548,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     var localSearchPrefill by remember { mutableStateOf<String?>(null) }
     // A local transfer's exported .torrent waiting for the server Add review.
     // Process memory only; consumed by that review, never auto-submitted.
-    var serverHandoffTorrent by retainedAddOwner.serverHandoffTorrent
-    // The person's own Android document behind those bytes, if any. The remote
-    // review binds it to the exact byte digest, so a stale value cannot attach.
-    var serverHandoffDocument by retainedAddOwner.serverHandoffDocument
+    fun serverHandoff() = retainedAddOwner.serverHandoff
     // Account-scoped recovery outlives Add's composition, including privacy gates
     // and reconnects. Process memory only; Activity/process restoration is separate.
     val remoteAddSessions = retainedAddOwner.remoteSessions
@@ -581,9 +578,8 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             val bytes = requireNotNull(remoteReview.selectedBytes)
             // Preserve an Android document's original URI/handling authority
             // when this is already the very same reviewed source.
-            localReviewedTorrent.value = localReviewedTorrent.value?.takeIf {
-                it.stillMatchesReviewedSource(bytes)
-            } ?: PendingLocalAdd(requireNotNull(remoteReview.selectedTorrent), bytes.copyOf())
+            localReviewedTorrent.value = remoteReview.selectedLocalReview()
+                ?: PendingLocalAdd(requireNotNull(remoteReview.selectedTorrent), bytes.copyOf())
             magnet = ""
             remoteReview.textAtFileSelection = ""
         }
@@ -602,14 +598,13 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             remoteReview.selectedBytes != null && remoteReview.textAtFileSelection == magnet
         if (MagnetDraftCheck.inspect(magnet) is MagnetDraftCheck.Valid &&
             !remoteReview.alreadyAttempted && !fileChosenOverCurrentText) {
-            serverHandoffTorrent = null
+            retainedAddOwner.clearServerHandoff()
             localReviewedTorrent.value = null
             remoteReview.preferMagnet()
         }
         if (magnet.isBlank() && !remoteReview.alreadyAttempted &&
             localReviewedTorrent.value != null) {
-            serverHandoffTorrent = requireNotNull(localReviewedTorrent.value).bytes.copyOf()
-            serverHandoffDocument = localReviewedTorrent.value?.originalDocument
+            retainedAddOwner.prepareCurrentReviewForRemote()
         } else if (magnet.isNotBlank() && !fileChosenOverCurrentText) {
             remoteReview.preferMagnet()
         }
@@ -743,7 +738,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             activeLocalAddAttempt.finishReviewedAttempt()) {
             // The finished source is one shared document: clear both of its halves.
             localReviewedTorrent.value = null
-            serverHandoffTorrent = null
+            retainedAddOwner.clearServerHandoff()
         }
         val remoteDraft = aliasScope.takeIf { it.isNotBlank() }?.let { remoteAddSessions.forAccount(it) }
         if (addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) &&
@@ -754,13 +749,13 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             canCloseRemoteAddReview(remoteDraft.coordinator.phase, remoteDraft.verifiedHash,
                 remoteDraft.uncertain)) {
             val oldSource = remoteDraft.attemptSource
-            val oldDocument = remoteDraft.selectedBytes
+            val oldDocument = remoteDraft.selectedLocalReview()
             val currentDocument = localReviewedTorrent.value
-            val sameDraft = magnet == oldSource && serverHandoffTorrent == null &&
-                (currentDocument == null || completedRemoteReviewMatchesLocal(oldDocument, currentDocument))
+            val sameDraft = magnet == oldSource && serverHandoff() == null &&
+                (currentDocument == null || currentDocument === oldDocument)
             if (remoteDraft.beginNextDraft() && sameDraft) {
                 magnet = ""
-                localReviewedTorrent.value = null
+                retainedAddOwner.retireCompletedRemoteReview(oldDocument)
                 addArtworkChoices.onServer(aliasScope).value = true
             }
         }
@@ -790,7 +785,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
         // before the new .torrent metainfo is visible on the Add form.
         return sharedTorrentReading ||
             (magnet.isNotBlank() && magnet != incomingText) || localReviewedTorrent.value != null ||
-            serverHandoffTorrent != null ||
+            serverHandoff() != null ||
             (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
             activeLocalAddAttempt.attemptedTicket != null ||
             remoteDraft?.alreadyAttempted == true ||
@@ -882,7 +877,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
         val witness = IncomingDocumentSelectionWitness(
             text = magnet,
             localDocument = localReviewedTorrent.value,
-            remoteHandoff = serverHandoffTorrent,
+            remoteHandoff = serverHandoff()?.bytes,
             remoteSession = aliasScope.takeIf { it.isNotBlank() }
                 ?.let(remoteAddSessions::forAccount)
         )
@@ -895,15 +890,13 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             val currentRemoteDraft = aliasScope.takeIf { it.isNotBlank() }
                 ?.let(remoteAddSessions::forAccount)
             if (incomingDocumentRead == document && witness.canApply(
-                    magnet, localReviewedTorrent.value, serverHandoffTorrent,
+                    magnet, localReviewedTorrent.value, serverHandoff()?.bytes,
                     currentRemoteDraft)) {
-                localReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes, document)
-                serverHandoffTorrent = if (addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) && server != null &&
-                    RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
-                    reviewed.bytes.copyOf() else null
-                serverHandoffDocument = document.takeIf { serverHandoffTorrent != null }
-                magnet = ""
-                remoteAddSessions.clearPendingSourceSelection()
+                retainedAddOwner.adoptSharedDocument(
+                    PendingLocalAdd(reviewed.preview, reviewed.bytes, document),
+                    forAuthenticatedRemote = addDestination == UniversalAddRouteTarget.RTorrent(aliasScope) &&
+                        server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null
+                )
             } else if (incomingDocumentRead == document) {
                 sharedTorrentError = "The draft changed while reading the shared document. Your newer source was kept."
             }
@@ -1133,7 +1126,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
         .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
     // A retained file is evidence only while it is the active source.
     // rTorrent can explicitly reselect its reviewed file over the same text.
-    val preparingRemoteSource = addTargetIsAuthenticated && serverHandoffTorrent != null
+    val preparingRemoteSource = addTargetIsAuthenticated && serverHandoff() != null
     val routingSource = when {
         preparingRemoteSource -> null
         addTargetIsAuthenticated -> remoteAddSessions.forAccount(aliasScope).let { review ->
@@ -1235,7 +1228,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                     // User-authorized replacement, not an automatic Android
                     // handoff. Keep the chosen target, Place and Start.
                     localReviewedTorrent.value = null
-                    serverHandoffTorrent = null
+                    retainedAddOwner.clearServerHandoff()
                     magnet = incomingText
                     remoteAddSessions.selectMagnet(aliasScope)
                 }
@@ -1501,8 +1494,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                 if (aliasScope.isBlank() || stale) emptyList()
                 else RemoteObservedAddPlaces.from(transfers)
             }
-            val initialRemoteBytes = serverHandoffTorrent
-            val initialRemoteDocument = serverHandoffDocument
+            val initialRemoteHandoff = serverHandoff()
             fun currentRemoteDraft() = server === connectedRemote && aliasScope == exactScope &&
                 addDestination == UniversalAddRouteTarget.RTorrent(exactScope) && section == Section.ADD_CHOOSE
             VerifiedAddScreen(
@@ -1516,38 +1508,22 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                 attemptScope = retainedAddOwner.addAttemptScope,
                 sharedAttemptController = retainedAddOwner.attempts,
                 observedPlaces = observedPlaces,
-                initialTorrent = initialRemoteBytes,
-                initialTorrentDocument = initialRemoteDocument,
-                onInitialTorrentConsumed = {
-                    if (currentRemoteDraft() && serverHandoffTorrent === initialRemoteBytes &&
-                        serverHandoffDocument == initialRemoteDocument) {
-                        serverHandoffTorrent = null
-                        serverHandoffDocument = null
-                    }
+                initialTorrent = initialRemoteHandoff?.bytes,
+                initialTorrentDocument = initialRemoteHandoff?.originalDocument,
+                claimInitialTorrent = {
+                    currentRemoteDraft() && retainedAddOwner.claimServerHandoff(initialRemoteHandoff)
                 },
-                onNextDraftStarted = { oldDocument ->
-                    // The remote session has just released a completed
-                    // attempt. Retire only its exact shared Local twin:
-                    // a newer Android document, even with the same
-                    // v1 hash, retains its own review authority.
-                    if (completedRemoteReviewMatchesLocal(oldDocument, localReviewedTorrent.value))
-                        localReviewedTorrent.value = null
-                    if (oldDocument != null &&
-                        serverHandoffTorrent?.contentEquals(oldDocument) == true) {
-                        serverHandoffTorrent = null
-                        serverHandoffDocument = null
-                    }
-                },
+                onNextDraftStarted = retainedAddOwner::retireCompletedRemoteReview,
                 // The newest explicit server-form .torrent replaces any older local
                 // review, so a target switch can never resurrect the superseded file.
-                onTorrentAdopted = { preview, bytes, document ->
+                onTorrentAdopted = { preview, bytes, document, fromHandoff ->
                     if (currentRemoteDraft() &&
-                        (serverHandoffTorrent == null || serverHandoffTorrent === initialRemoteBytes)) {
-                        val retained = localReviewedTorrent.value
-                        if (retained?.originalDocument != document ||
-                            retained?.stillMatchesReviewedSource(bytes) != true) {
-                            localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
-                        }
+                        (serverHandoff() == null || serverHandoff() === initialRemoteHandoff)) {
+                        val reviewed = initialRemoteHandoff?.reviewed?.takeIf {
+                            fromHandoff && localReviewedTorrent.value === it && it.stillMatchesReviewedSource(bytes)
+                        } ?: PendingLocalAdd(preview, bytes.copyOf(), document)
+                        localReviewedTorrent.value = reviewed
+                        addSession.associatedLocalReview = reviewed
                     }
                 },
                 finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },

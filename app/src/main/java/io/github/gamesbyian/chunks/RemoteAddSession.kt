@@ -16,6 +16,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     var destination by mutableStateOf(initialDestination)
     internal var selectedTorrent by mutableStateOf<TorrentMetainfoPreview?>(null)
     internal var selectedBytes by mutableStateOf<ByteArray?>(null)
+    internal var associatedLocalReview: PendingLocalAdd? = null
     internal var textAtFileSelection: String? = null
     internal var useFile by mutableStateOf(false)
     internal var fromLocal by mutableStateOf(false)
@@ -69,6 +70,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     )
 
     internal fun bindOriginalDocument(document: android.net.Uri?, bytes: ByteArray?) {
+        associatedLocalReview = null
         originalDocument = document?.takeIf { bytes != null }
         originalDocumentSha256 = if (originalDocument != null) sha256(requireNotNull(bytes)) else null
     }
@@ -79,6 +81,10 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         val digest = originalDocumentSha256 ?: return null
         if (bytes == null || !java.security.MessageDigest.isEqual(digest, sha256(bytes))) return null
         return document
+    }
+
+    internal fun selectedLocalReview(): PendingLocalAdd? = selectedBytes?.takeIf { useFile }?.let { bytes ->
+        associatedLocalReview?.takeIf { it.stillMatchesReviewedSource(bytes) }
     }
 
     private fun sha256(bytes: ByteArray) = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
@@ -128,6 +134,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         }
         selectedTorrent = null
         selectedBytes = null
+        associatedLocalReview = null
         textAtFileSelection = null
         useFile = false
         fromLocal = false

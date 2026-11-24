@@ -40,7 +40,11 @@ class ServerHandoffReviewInstrumentedTest {
                     onMagnet = {}, onDestination = {}, onBack = {}, onComplete = {},
                     onMutationStarted = { mutations++; true }, onMutationSettled = {},
                     initialTorrent = pending,
-                    onInitialTorrentConsumed = { consumed++; pending = null }
+                    claimInitialTorrent = {
+                        consumed++
+                        pending = null
+                        true
+                    }
                 )
             }
         }
