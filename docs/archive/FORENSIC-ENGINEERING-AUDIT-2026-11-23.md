@@ -44,7 +44,7 @@ The execution environment could not resolve github.com for a git clone; authenti
 | Shared Kotlin test helper | 1 | 8,609 |
 | Debug Kotlin | 2 | 10,642 |
 | Production non-Kotlin resources/config | 32 | 1,085,146 |
-| docs | 1,080 | 21,010,493 |
+| docs | 1,080 | 21,010,117 |
 | assets | 182 | 37,884,011 |
 | tools | 206 | 1,201,887 |
 | tests (repository Python/etc.) | 73 | 449,916 |
@@ -308,3 +308,35 @@ A second audit pass should run on a full pinned checkout (GitHub-hosted job if r
 **Essential complexity vs debt:** 4.06 MB production Kotlin includes broad real product complexity, but avoidable complexity is concentrated in ownership/duplication rather than readily deleted files. A defensible essential/debt ratio requires whole-reference and behavior audit; no percentage established.
 
 **Can Chunks finish on current foundations?** Yes, with a targeted corrective tranche. Resolve confirmed adapter and evidence defects before extending affected writes; consolidate the cross-client runtime boundaries before broad feature expansion. Continue independent native reliability, storage acceptance and release proof in parallel. The architecture is viable and the safeguards are worth preserving. This is a substantive initial forensic checkpoint, not the exhaustive certification requested; completion requires the remaining evidence in section 9.
+
+
+## 11. Supplemental targeted inspection: HTTPS intake, native resume and publication
+
+These findings were added in the same audit session, against the same audited SHA. The register now contains FE-01 through FE-20. Source inspection only; no independent execution.
+
+### FE-19 — Public HTTPS intake checks DNS before connection, not the connected peer
+
+- **Classification:** confirmed security control gap; exploitability and practical impact unverified. **Severity:** high conditional; **confidence:** high in the source discrepancy, lower in real-world exploitability. **Priority:** investigate and close before expanding external URL intake.
+- **Evidence:** `app/src/main/java/io/github/gamesbyian/chunks/TorrentLinkImport.kt:154–253`, especially lines 175–192: all resolved addresses are screened before the URL connection is opened. The default resolver and URLConnection connection are separate operations; the checked address is not bound to the actual connection. In contrast, `media/artwork/UserImageUrlPolicy.kt:1–120` (relative to the same Kotlin source root) explicitly checks every address and sets restrictsPeers; `media/MediaHttp.kt:65–220` implements an actual connected-peer check for direct TLS and acknowledges the proxy limitation. HTTPS intake already rejects unsafe addresses, downgrade, and credentials, bounds response size and redirect count, and applies socket timeouts. Those protections are worthwhile.
+- **Root cause:** two separately evolved public-URL fetch paths enforce related but different network trust boundaries. Pre-resolution validation alone cannot guarantee the actual connection target when resolution changes. TLS hostname validation remains an independent barrier; this does not establish arbitrary internal access, successful exploitation, or data disclosure.
+- **Remediation:** reuse or extract the smallest public-address and peer-validation policy that fits both paths, with explicit proxy semantics and preservation of TLS hostname verification. Do not impose this policy on explicitly configured private remote clients. Review the existing socket factory before reusing it; don't assume every overload and proxy case is equally safe. Consider an end-to-end time budget as well as the existing per-operation timeouts.
+- **Benefit:** consistent network trust boundary and less duplicate security logic. **Effort:** 0.5–1.5 engineer-days, excluding installed acceptance. **Regression risk:** medium (signed URLs, TLS, legitimate redirects, proxy behavior). **Dependencies:** none on architecture consolidation; coordinate intake changes with current source-read work.
+- **Verification:** controlled transport/resolution fixtures with public, private, mixed, changing and redirected addresses, actual peer mismatch, legitimate HTTPS redirects, signed URL intake, certificate verification, proxy policy and cancellation. Prove no HTTP request is dispatched to a disallowed target; preserve existing negative cases. No probing arbitrary systems.
+
+### FE-20 — SQLite resume payloads are retained and copied as a complete collection
+
+- **Classification:** confirmed allocation/retention pattern; suspected scalability and startup cost, not demonstrated OOM or latency regression. **Severity:** medium; **confidence:** high in the allocation path. **Priority:** measure in the native performance lane.
+- **Evidence:** `app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt:93–199` loads saved payload BLOBs into a map and uses a 16 MiB cursor window; lines 200–275 show `restorable()` copying every saved byte array, `current()` copying a selected payload, and commit copying a new payload. The per-record 16 MiB limit is not an aggregate memory bound. The retained and returned arrays alone can transiently occupy roughly twice the aggregate payload size, ignoring SQLite, JNI, collection and parser overhead. Actual payload sizes and overlapping lifetimes have not been measured.
+- **Root cause:** synchronous in-memory resume snapshot authority layered over persistent storage, with defensive copies to avoid mutation and ambiguous ownership.
+- **Remediation:** first collect aggregate resume bytes, job count, process RSS/PSS and Java heap peaks, restore duration and repeated-save overhead. If material, separate compact metadata/phase/revision indexes from payload retrieval and introduce bounded sequential restore with explicit ownership. Avoid speculative caching or wholesale database migration. Preserve revision checks and fail-closed uncertain transactions. Evaluate unchanged writes separately: they still enter a transaction and allocate a record copy before skipping the write.
+- **Benefit:** bounded startup memory and potentially less copy churn. **Effort:** 1–3 engineer-days after profiling, excluding migration/recovery proof. **Regression risk:** medium-high; this is native recovery authority. **Dependencies:** coordinated with FE-09 native inventory/runtime profiling; no dependency on UI extraction.
+- **Verification:** real native save/restore with increasing representative inventories, byte-equivalent restoration, stopped-state preservation, failed and interrupted commits, authority marker recovery, removed-transfer non-resurrection, JVM and installed Android memory measurements. Report measured improvement separately from correctness proof.
+
+### Existing complexity that further inspection justifies preserving
+
+- `engine/LocalResumeStore.kt:7–28` explicitly selects SQLite on Android and the legacy event store on desktop; `engine/LocalResumeDatabase.kt:93–199` also uses the legacy reader for migration. Legacy event storage therefore is **not a deletion candidate merely because Android now uses SQLite**. The exclusive authority marker, transaction and revision checks, non-destructive corruption handling and EXTRA synchronous DELETE-journal setting have specific persistence safety purposes. Do not replace them with conventional defaults for aesthetic reasons.
+- `storage/OwnedMediaStoreDocumentPublication.kt:154–238` uses uniquely named pending rows, fsynced exclusive intent evidence, exact returned URI and row metadata checks, bounded writes, independent digest verification before and after publication, and retains uncertain objects rather than deleting them. That complexity earns its place. Whether adjacent publication implementations can share more machinery remains open.
+- `snapshots/SnapshotRemoteBatchStoppedRestore.kt:150–232` maintains a frozen exact roster, one mutation lease, sequential verified stopped additions and post-item readback; it stops if the roster unexpectedly changes and settles the lease on exit. Multiple full roster reads may scale with batch size times inventory size, but they serve actual safety invariants. Benchmark before replacing them with narrower evidence.
+- `OriginalSourceRetirement.kt:31–100` separates verified Add from an explicitly approved original-document removal; `SnapshotArchiveV1.kt` bounds archive and entry size/count; `rpc/XmlRpcCodec.kt` enforces structural limits and rejects DTD/entity input. These are examples of useful safety mechanisms, not evidence that all callers and failure paths are qualified.
+
+**Roadmap amendment:** FE-19 joins the early correctness/security tranche and can be investigated independently of FE-01/02. FE-20 belongs to the measured performance tranche alongside FE-09/11. The supplemental source reads extend the inspected storage, resume, snapshot and transport surfaces, but do not establish complete reachability or runtime coverage. No corrective code changes were made.
