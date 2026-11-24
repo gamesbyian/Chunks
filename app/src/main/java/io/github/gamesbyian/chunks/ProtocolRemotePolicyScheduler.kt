@@ -14,6 +14,7 @@ internal suspend fun tickProtocolRemotePolicies(
     profileId: String,
     policies: FinishInOrderStore.ScheduledPolicies,
     ownerCurrent: () -> Boolean,
+    receipts: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
     operations: () -> ClientOperations
 ) = withContext(Dispatchers.IO + RemotePolicyWriteFence(ownerCurrent)) {
     val scope = FinishInOrderScopes.protocol(profileId)
@@ -29,7 +30,7 @@ internal suspend fun tickProtocolRemotePolicies(
     val inventory = if (session != null) ops.client.torrents() else null
     if (smartSeeding && ownerCurrent()) {
         val step = RemoteSeeding.tickProtocol(context, profileId, ops, inventory = inventory,
-            ownerCurrent = ownerCurrent)
+            ownerCurrent = ownerCurrent, receipts = receipts)
         // A cap or Stop may have changed the client since this observation.
         if (step == RemoteSeeding.Tick.STOP_ATTEMPTED) return@withContext
     }
@@ -40,6 +41,9 @@ internal suspend fun tickProtocolRemotePolicies(
         val record = store.get(transfer.hash) ?: continue
         if (policies.unattributed) store.rememberOwner(transfer.hash)
         if (transfer.runState.started != true || !record.isScheduled()) continue
-        stepClientFinishInOrder(ops, session.filePriorities, store, transfer.hash, ownerCurrent)
+        val lease = receipts.reservePolicy(profileId, transfer.hash, ProtocolOperationKind.FINISH_IN_ORDER) ?: continue
+        lease.use {
+            stepClientFinishInOrder(ops, session.filePriorities, store, transfer.hash, ownerCurrent)
+        }
     }
 }

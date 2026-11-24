@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -297,6 +298,29 @@ class ProtocolClientOperationsPanelTest {
         rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.RECONCILED_PRESENT }
         rule.onNodeWithText("Commands are paused until a read-only check.").assertDoesNotExist()
         assertEquals("Read-only reconciliation and navigation never repeat the write", 1, fake.writes)
+    }
+
+    @Test fun policyLeaseTemporarilyDisablesManualCommandsWithoutOfferingReconciliation() {
+        val owner = ProtocolOperationReceiptOwner()
+        val fake = Fake()
+        val lease = requireNotNull(owner.reservePolicy("profile-a", hash, ProtocolOperationKind.SMART_SEEDING))
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "profile-a",
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
+                    sourceGeneration = "g1", receiptOwner = owner
+                )
+            }
+        }
+        rule.onNodeWithText("Smart Seeding is checking this transfer.").assertExists()
+        rule.onNodeWithText("Check this transfer without changing it").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        rule.runOnIdle { lease.close() }
+        rule.onNodeWithText("Smart Seeding is checking this transfer.").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsEnabled().performClick()
+        rule.waitUntil(5_000) { fake.writes == 1 }
     }
 
     @Test fun removeKeepsFilesUnlessExplicitlyChosen() {

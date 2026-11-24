@@ -39,6 +39,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         /** True only after the engine confirms the transfer is paused. */
         fun pause(infoHash: String): Boolean
         fun mayMutate(): Boolean = true
+        fun withPolicyAccess(infoHash: String, work: () -> Unit) = work()
     }
 
     data class Assignment(
@@ -87,7 +88,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 if (!store.put(facts.infoHash, assignment)) continue
             }
             val policy = assignment.policy ?: continue
-            enforce(facts.infoHash, policy, assignment)
+            engine.withPolicyAccess(facts.infoHash) { enforce(facts.infoHash, policy, assignment) }
         }
     }
 

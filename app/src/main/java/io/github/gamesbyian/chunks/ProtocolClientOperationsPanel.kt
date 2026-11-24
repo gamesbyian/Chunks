@@ -38,6 +38,7 @@ import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientOperationWriteBoundary
+import io.github.gamesbyian.chunks.rpc.RemotePolicyWriteFence
 import io.github.gamesbyian.chunks.rpc.ClientRefusedException
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
@@ -66,6 +67,8 @@ private data class VerifiedMoveCopy(
     val transfer: ClientJobTransfer,
     val receipt: ClientJobTransfer.CopyResult.Copied
 )
+
+private data class FinishInOrderAction(val lease: AutoCloseable, val ownerCurrent: () -> Boolean)
 
 /** Plain-language, credential-free outcome text shared by every protocol. */
 internal object ProtocolOperationText {
@@ -474,6 +477,9 @@ internal fun ProtocolClientOperationsPanel(
             if (levelsNow != null && ClientCapability.FILE_PRIORITIES in caps &&
                 shown.none { it.completedBytes == null }) {
                 val asLocal = remember(shown) { shown.map(ClientFinishInOrderPort::asPlannerFile) }
+                val action = remember(operations, receiptOwner) {
+                    java.util.concurrent.atomic.AtomicReference<FinishInOrderAction?>()
+                }
                 ServerFinishInOrderPanel(
                     hash = hash, scope = FinishInOrderScopes.protocol(sourceClientId), asLocal = asLocal,
                     stale = !current || busy || latched,
@@ -484,9 +490,40 @@ internal fun ProtocolClientOperationsPanel(
                         "It moves on while Chunks is open and connected to this client.",
                     isActive = { index -> shown.firstOrNull { it.index == index }?.priority == ClientFilePriority.HIGH },
                     twoBands = ClientFilePriority.LOW !in levelsNow,
-                    step = { store -> stepClientFinishInOrder(operations, levelsNow, store, hash) },
-                    onMutationStarted = { if (busy || latched || !current) false else { busy = true; true } },
-                    onSettled = { busy = false; files = null; onChanged() })
+                    step = { store ->
+                        action.get()?.let { active ->
+                            withContext(RemotePolicyWriteFence(active.ownerCurrent)) {
+                                stepClientFinishInOrder(operations, levelsNow, store, hash, active.ownerCurrent)
+                            }
+                        }
+                    },
+                    onMutationStarted = {
+                        if (busy || latched || !current || !isOwnerCurrent()) false
+                        else {
+                            val lease = receiptOwner.reservePolicy(sourceClientId, hash, ProtocolOperationKind.FINISH_IN_ORDER)
+                            if (lease == null) false
+                            else {
+                                val policyEpoch = TransferPrivacyPolicyStore.revision
+                                val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+                                val credentialEpoch = RemoteCredentialLock.capture()
+                                action.set(FinishInOrderAction(lease) {
+                                    currentOwner === operations && isOwnerCurrent() &&
+                                        RemoteCredentialLock.current(credentialEpoch) &&
+                                        policyEpoch == TransferPrivacyPolicyStore.revision &&
+                                        lifecycleEpoch == TransferPrivacyRuntime.lifecycleRevision
+                                })
+                                busy = true
+                                true
+                            }
+                        }
+                    },
+                    mutationCurrent = { action.get()?.ownerCurrent?.invoke() == true },
+                    onSettled = {
+                        action.getAndSet(null)?.lease?.close()
+                        busy = false
+                        files = null
+                        onChanged()
+                    })
             }
         }
         if (!moveOnly && relocating) {
@@ -548,12 +585,14 @@ internal fun ProtocolClientOperationsPanel(
                     .testTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM)
             ) { Text(if (deleteData) "Remove and delete files" else "Remove, keep files") }
         }
-        (notice ?: retained?.description())?.let {
+        val operationStatus = if (retained?.phase == ProtocolOperationReceiptOwner.Phase.POLICY_RUNNING)
+            retained.description() else notice ?: retained?.description()
+        operationStatus?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     .testTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS))
         }
-        if (retained?.blocksWrites == true) {
+        if (retained?.blocksWrites == true && retained.phase != ProtocolOperationReceiptOwner.Phase.POLICY_RUNNING) {
             Text("Commands are paused until a read-only check.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
             if (retained.canReconcile) OutlinedButton(onClick = ::reconcile,

@@ -313,3 +313,6 @@ Evidence: JVM tests for the preview helper, metainfo tracker/private parsing and
 
 
 Periodic connected-client rules require the current authenticated connection, foreground lifecycle and account privacy access. If that authority changes during a tick, the old tick cannot send another mutation. An interrupted Stop retains its existing durable attempt marker. A typed client with both policy types active shares one inventory observation. A Smart Seeding write ends that observation's use for Finish in Order.
+
+
+On Transmission, qBittorrent and Deluge, Smart Seeding and Finish in Order share the same account-and-transfer command lease as Details. An in-flight or unresolved Details command defers automatic enforcement for that transfer. The same infohash on another account has its own lease. A deferred Stop is not recorded as attempted. Disabling Smart Seeding also revokes future dispatch from a tick already in progress.
