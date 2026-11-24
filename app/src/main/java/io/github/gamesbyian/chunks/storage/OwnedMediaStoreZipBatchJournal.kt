@@ -13,7 +13,7 @@ import java.nio.file.StandardOpenOption
 import java.util.UUID
 
 /**
- * App-private, fsynced read-only recovery manifest for 2–8 ZIP members.
+ * App-private, fsynced read-only recovery manifest for 2–8 independently published flat files.
  * This log is NEVER provider write/delete/retry authority. A crash after an
  * exact-row publication but before the corresponding batch ROW record leaves
  * the batch UNCERTAIN, not falsely complete. Per-file own-row logs remain.
@@ -21,20 +21,24 @@ import java.util.UUID
 internal class OwnedMediaStoreZipBatchJournal private constructor(
     val id: String,
     private val count: Int,
+    private val kind: Kind,
     private val log: ExclusiveFsyncJournal
 ) : Closeable {
+    /** Preserve the original ZIP journal bytes and storage location. */
+    enum class Kind(val version: String, val directory: String, val label: String) {
+        ZIP("CHUNKS_ZIP_BATCH1", "owned-mediastore-zip-batches", "ZIP"),
+        LIBRARY("CHUNKS_LIBRARY_BATCH1", "owned-mediastore-library-batches", "library copy")
+    }
     companion object {
-        private const val VERSION = "CHUNKS_ZIP_BATCH1"
-        private const val DIRECTORY = "owned-mediastore-zip-batches"
         private const val MAX_HISTORY = 512
         private val ID = Regex("[0-9a-f]{32}")
         private val NAME =
             Regex("[A-Za-z0-9][A-Za-z0-9._() -]{0,155}\\.(json|chunksnap|torrent|txt|bin)")
 
-        fun begin(context: Context, names: List<String>): OwnedMediaStoreZipBatchJournal {
+        fun begin(context: Context, names: List<String>, kind: Kind = Kind.ZIP): OwnedMediaStoreZipBatchJournal {
             require(names.size in 2..8 && names.all { NAME.matches(it) } &&
                 names.distinct().size == names.size)
-            val dir = root(context)
+            val dir = root(context, kind)
             try { Files.createDirectory(dir) }
             catch (_: FileAlreadyExistsException) { }
             check(Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS))
@@ -45,9 +49,9 @@ internal class OwnedMediaStoreZipBatchJournal private constructor(
                 val log = try { ExclusiveFsyncJournal.create(dir, id) }
                     catch (_: FileAlreadyExistsException) { return@repeat }
                 try {
-                    log.append(VERSION + "\tINTENT\t" + id + "\t" + names.size +
+                    log.append(kind.version + "\tINTENT\t" + id + "\t" + names.size +
                         "\t" + names.joinToString("|"))
-                    return OwnedMediaStoreZipBatchJournal(id, names.size, log)
+                    return OwnedMediaStoreZipBatchJournal(id, names.size, kind, log)
                 } catch (error: Exception) {
                     log.close()
                     throw IOException("Unable to save batch intent", error)
@@ -56,13 +60,13 @@ internal class OwnedMediaStoreZipBatchJournal private constructor(
             throw IOException("Unable to create private batch journal")
         }
 
-        private fun root(context: Context) = context.filesDir.toPath().resolve(DIRECTORY)
+        private fun root(context: Context, kind: Kind) = context.filesDir.toPath().resolve(kind.directory)
         data class Snapshot(val verified: Int, val expected: Int, val terminal: String?)
 
-        private fun parse(id: String, lines: List<String>?): Snapshot? {
+        private fun parse(id: String, lines: List<String>?, kind: Kind): Snapshot? {
             if (!ID.matches(id) || lines.isNullOrEmpty()) return null
             val first = lines.first().split('\t')
-            if (first.size != 5 || first[0] != VERSION ||
+            if (first.size != 5 || first[0] != kind.version ||
                 first[1] != "INTENT" || first[2] != id) return null
             val count = first[3].toIntOrNull()?.takeIf { it in 2..8 } ?: return null
             val names = first[4].split('|')
@@ -73,7 +77,7 @@ internal class OwnedMediaStoreZipBatchJournal private constructor(
             for (line in lines.drop(1)) {
                 if (terminal != null) return null
                 val parts = line.split('\t')
-                if (parts.firstOrNull() != VERSION) return null
+                if (parts.firstOrNull() != kind.version) return null
                 when {
                     parts.size == 5 && parts[1] == "ROW" -> {
                         if (parts[2].toIntOrNull() != verified ||
@@ -106,13 +110,13 @@ internal class OwnedMediaStoreZipBatchJournal private constructor(
          * The completed operation may later be deliberately changed by a
          * user; never reinterpret that as an interrupted Save.
          */
-        fun unfinishedDescriptions(context: Context): List<String> {
-            val dir = root(context)
+        fun unfinishedDescriptions(context: Context, kind: Kind = Kind.ZIP): List<String> {
+            val dir = root(context, kind)
             if (!Files.exists(dir, LinkOption.NOFOLLOW_LINKS)) return emptyList()
             if (!Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS))
-                return listOf("Earlier ZIP batch records cannot be checked safely.")
+                return listOf("Earlier ${kind.label} batch records cannot be checked safely.")
             val files = dir.toFile().listFiles()
-                ?: return listOf("Earlier ZIP batch records cannot be checked safely.")
+                ?: return listOf("Earlier ${kind.label} batch records cannot be checked safely.")
             val excess = files.size > MAX_HISTORY ||
                 files.any { !it.name.endsWith(".log") ||
                     !ID.matches(it.name.removeSuffix(".log")) }
@@ -120,22 +124,22 @@ internal class OwnedMediaStoreZipBatchJournal private constructor(
                 .filter { it.name.endsWith(".log") && ID.matches(it.name.removeSuffix(".log")) }
                 .sortedBy { it.name }.take(MAX_HISTORY).mapNotNull { f ->
                     val state = parse(f.name.removeSuffix(".log"),
-                        ExclusiveFsyncJournal.readCompleteLines(f.toPath()))
-                        ?: return@mapNotNull "An earlier ZIP batch record needs manual review."
+                        ExclusiveFsyncJournal.readCompleteLines(f.toPath()), kind)
+                        ?: return@mapNotNull "An earlier ${kind.label} batch record needs manual review."
                     when (state.terminal) {
                         "END" -> null
-                        "STOP" -> "An earlier ZIP batch was stopped after " +
+                        "STOP" -> "An earlier ${kind.label} batch was stopped after " +
                             state.verified + " of " + state.expected +
                             " verified new files. Earlier copies were preserved."
-                        "ISSUE" -> "A ZIP batch needs review after " +
+                        "ISSUE" -> "A ${kind.label} batch needs review after " +
                             state.verified + " of " + state.expected +
                             " confirmed files; another row may be pending."
-                        else -> "An interrupted ZIP batch needs review after " +
+                        else -> "An interrupted ${kind.label} batch needs review after " +
                             state.verified + " of " + state.expected +
                             " confirmed files. No automatic action was taken."
                     }
                 }.toMutableList()
-            if (excess) descriptions += "Some ZIP batch records could not be inspected safely."
+            if (excess) descriptions += "Some ${kind.label} batch records could not be inspected safely."
             return descriptions
         }
     }
@@ -145,17 +149,17 @@ internal class OwnedMediaStoreZipBatchJournal private constructor(
         receipt: OwnedMediaStoreDocumentPublication.Receipt
     ) {
         require(index in 0 until count && ID.matches(receipt.operationId))
-        log.append(VERSION + "\tROW\t" + index + "\t" +
+        log.append(kind.version + "\tROW\t" + index + "\t" +
             receipt.operationId + "\t" + receipt.uri)
     }
     @Synchronized fun stopped(index: Int) {
         require(index in 0 until count)
-        log.append(VERSION + "\tSTOP\t" + index)
+        log.append(kind.version + "\tSTOP\t" + index)
     }
     @Synchronized fun uncertain(index: Int) {
         require(index in 0 until count)
-        log.append(VERSION + "\tISSUE\t" + index)
+        log.append(kind.version + "\tISSUE\t" + index)
     }
-    @Synchronized fun finished() = log.append(VERSION + "\tEND")
+    @Synchronized fun finished() = log.append(kind.version + "\tEND")
     override fun close() = log.close()
 }
