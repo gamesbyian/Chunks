@@ -98,6 +98,14 @@ class LocalTorrentClientTest {
         assertTrue(d.client.torrents().isEmpty())
     }
 
+    @Test fun retiredLocalEngineCannotProveAbsence() = runBlocking {
+        val d = device()
+        val hash = "ab".repeat(20)
+        assertNull(d.client.torrent(hash))
+        d.engine.close()
+        assertTrue(runCatching { d.client.torrent(hash) }.exceptionOrNull() is java.io.IOException)
+    }
+
     @Test fun stoppedAddLifecyclePrioritiesRecheckExportAndRemoveKeepingFiles() = runBlocking {
         val d = device()
         val p = payload("lifecycle")

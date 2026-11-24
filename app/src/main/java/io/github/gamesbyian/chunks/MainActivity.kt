@@ -1976,7 +1976,8 @@ internal fun ChunksApp(
                             },
                             ownerSession = remote),
                         authenticatedSession = remote,
-                        snapshotRevision = snapshotRevision)
+                        snapshotRevision = snapshotRevision,
+                        refresh = { if (server === remote) refresh() })
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,

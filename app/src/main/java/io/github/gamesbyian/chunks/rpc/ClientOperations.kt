@@ -224,12 +224,32 @@ internal class ClientOperations(
     suspend fun remove(hash: String, deleteData: Boolean): ClientOperationOutcome =
         removeChecked(hash, deleteData) { client.remove(hash, deleteData) }
 
-    suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome =
-        removeChecked(hash, deleteData = false) { client.removeJob(hash, beforeWrite) }
+    suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome {
+        val context = currentCoroutineContext()
+        var dispatched = false
+        val outcome = removeChecked(hash, deleteData = false, dispatchInAdapter = true) {
+            client.removeJob(hash) {
+                context.ensureActive()
+                context[RemoteWriteOwnerFence]?.ensureCurrent()
+                beforeWrite()
+                // A protocol challenge can require a second checked dispatch
+                // after the first request was explicitly rejected.
+                if (!dispatched) {
+                    context[ClientOperationWriteBoundary]?.beforeWrite()
+                    dispatched = true
+                }
+            }
+        }
+        return if (!dispatched && outcome is ClientOperationOutcome.Uncertain)
+            ClientOperationOutcome.Refused(outcome.hash, "Could not verify the source before removing its job")
+        else outcome
+    }
 
-    private suspend fun removeChecked(hash: String, deleteData: Boolean, send: suspend () -> Unit): ClientOperationOutcome {
+    private suspend fun removeChecked(
+        hash: String, deleteData: Boolean, dispatchInAdapter: Boolean = false, send: suspend () -> Unit
+    ): ClientOperationOutcome {
         val result = mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
-            send) { observed -> if (observed == null) null else "Still registered" }
+            send, dispatchInAdapter = dispatchInAdapter) { observed -> if (observed == null) null else "Still registered" }
         // Registration absence proves job removal, not filesystem cleanup.
         // Local's adapter independently verifies the exact payload before a
         // normal return. An ordinary remote ACK has no such authority.
@@ -321,6 +341,7 @@ internal class ClientOperations(
         capability: ClientCapability,
         send: suspend () -> Unit,
         expectedDirectory: String? = null,
+        dispatchInAdapter: Boolean = false,
         unmet: (ClientTorrent?) -> String?
     ): ClientOperationOutcome {
         val exact = ClientHashes.requireHash(hash)
@@ -335,16 +356,18 @@ internal class ClientOperations(
                 !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))
                 return ClientOperationOutcome.Refused(exact, "Transfer is no longer in the reviewed folder")
         }
-        write(exact) { send() }?.let { return it }
+        write(exact, dispatchInAdapter, send)?.let { return it }
         return readback(exact, unmet)
     }
 
     /** One write; returns a terminal outcome on failure, null when acknowledged. */
-    private suspend fun write(hash: String, send: suspend () -> Unit): ClientOperationOutcome? = try {
+    private suspend fun write(
+        hash: String, dispatchInAdapter: Boolean = false, send: suspend () -> Unit
+    ): ClientOperationOutcome? = try {
         val context = currentCoroutineContext()
         context.ensureActive()
         RemoteWriteOwnerFence.check()
-        context[ClientOperationWriteBoundary]?.beforeWrite()
+        if (!dispatchInAdapter) context[ClientOperationWriteBoundary]?.beforeWrite()
         send()
         null
     } catch (e: CancellationException) {

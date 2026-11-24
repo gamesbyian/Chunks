@@ -43,6 +43,7 @@ class ProtocolClientOperationsPanelTest {
         var writes = 0
         var lose = false
         var afterStartWrite: suspend () -> Unit = {}
+        var afterRemoveWrite: suspend () -> Unit = {}
         var dir = "/d"
         var movedData: Boolean? = null
         var sessions = 0
@@ -69,7 +70,10 @@ class ProtocolClientOperationsPanelTest {
             write { state = if (started) ClientRunState.DOWNLOADING else ClientRunState.STOPPED }
             afterStartWrite()
         }
-        override suspend fun remove(hash: String, deleteData: Boolean) = write { present = false }
+        override suspend fun remove(hash: String, deleteData: Boolean) {
+            write { present = false }
+            afterRemoveWrite()
+        }
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = write {}
         override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) =
             write { dir = directory; movedData = moveData }
@@ -114,7 +118,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 if (shown) ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Source", sourceClientId = "copy-source",
-                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    observedStarted = false, current = true,
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(destination), sourceGeneration = "g1", receiptOwner = receipts
                 )
@@ -150,7 +154,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = "ab".repeat(32), clientLabel = "This device", sourceClientId = "local",
-                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    observedStarted = false, current = true, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("destination", "Destination") { ClientOperations(target, 3, 1) }),
                     moveOnly = true
@@ -171,7 +175,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
-                    current = true, inventoryWitness = 1L,
+                    current = true, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge") { ClientOperations(target, 3, 1) })
                 )
@@ -200,7 +204,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Source", sourceClientId = "source",
-                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    observedStarted = false, current = true, sourceGeneration = "fixture-generation",
                     createOperations = sourceOperations, onChanged = {},
                     moveConnections = mapOf("t" to targetRevision),
                     moveTargets = listOfNotNull(ProtocolMoveTarget("t", "Target", connectionWitness = targetRevision) {
@@ -238,7 +242,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
-                    current = true, inventoryWitness = 1L,
+                    current = true, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("t", "Box Deluge", targetScope) { ClientOperations(target, 3, 1) }),
                     sourceAliasScope = sourceScope
@@ -265,7 +269,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rtorrent-account",
-                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    observedStarted = false, current = true, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other-deluge", "Deluge") {
                         ClientOperations(destination, 3, 1)
@@ -287,12 +291,54 @@ class ProtocolClientOperationsPanelTest {
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).assertDoesNotExist()
     }
 
+    @Test fun moveOnlyRetirementSurvivesNavigationAndChecksAnAbsentSourceWithoutReplay() {
+        val owner = ProtocolOperationReceiptOwner()
+        val source = Fake().apply { afterRemoveWrite = { kotlinx.coroutines.awaitCancellation() } }
+        val destination = Target()
+        val sourceOperations = { ClientOperations(source, 3, 1) }
+        val targets = listOf(ProtocolMoveTarget("target", "Deluge") { ClientOperations(destination, 3, 1) })
+        var shown by mutableStateOf(true)
+        var generation by mutableStateOf("rt-1")
+        var current by mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                if (shown) ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "rTorrent", sourceClientId = "rtorrent-account",
+                    sourceGeneration = generation, observedStarted = false, current = current,
+                    canReconcile = true, createOperations = sourceOperations, onChanged = {},
+                    moveTargets = targets, moveOnly = true, receiptOwner = owner
+                )
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".target").performClick()
+        val finish = rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE)
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).fetchSemanticsNodes().size == 1
+        }
+        finish.performClick()
+        rule.waitUntil(5_000) { source.writes == 1 }
+        rule.runOnIdle { shown = false }
+        val key = ProtocolOperationReceiptOwner.Key("rtorrent-account", hash)
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.UNKNOWN }
+        rule.runOnIdle {
+            generation = "rt-2"
+            current = false
+            shown = true
+        }
+        finish.assertDoesNotExist()
+        rule.onNodeWithText("Check this transfer without changing it").performClick()
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.RECONCILED_ABSENT }
+        assertEquals(1, source.writes)
+        assertEquals(1, destination.adds)
+    }
+
     private fun render(fake: Fake, current: Boolean = true) {
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
-                    current = current, inventoryWitness = 1L,
+                    current = current, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(fake, 3, 1) },
                     onChanged = {}
                 )
@@ -316,7 +362,7 @@ class ProtocolClientOperationsPanelTest {
         render(fake)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Commands are paused until the list refreshes.").assertExists()
+        rule.onNodeWithText("Commands are paused until a read-only check.").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
         assertEquals(1, fake.writes)
     }
@@ -332,7 +378,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 if (show) ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = profile,
-                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    observedStarted = false, current = true,
                     createOperations = factory, onChanged = {},
                     sourceGeneration = generation, receiptOwner = owner
                 )
@@ -426,7 +472,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
-                    current = true, inventoryWitness = 1L,
+                    current = true, sourceGeneration = "fixture-generation",
                     createOperations = { created.incrementAndGet(); ClientOperations(source, 3, 1) },
                     onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("local", "This device") { ClientOperations(Fake(), 3, 1) }),
@@ -449,7 +495,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
-                    current = true, inventoryWitness = 1L,
+                    current = true, sourceGeneration = "fixture-generation",
                     createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
                         ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
@@ -481,7 +527,7 @@ class ProtocolClientOperationsPanelTest {
                 val selected = destination
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Source", sourceClientId = "source", observedStarted = false,
-                    current = true, inventoryWitness = 1L,
+                    current = true, sourceGeneration = "fixture-generation",
                     createOperations = sourceOperations, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("same-id", "Destination",
                         connectionWitness = selected) { ClientOperations(selected, 3, 1) }),
@@ -517,7 +563,7 @@ class ProtocolClientOperationsPanelTest {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rt", observedStarted = false,
-                    current = true, inventoryWitness = 1L,
+                    current = true, sourceGeneration = "fixture-generation",
                     createOperations = sourceOperations, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other", "Other") { ClientOperations(Fake(), 3, 1) },
                         ProtocolMoveTarget("de", "Seedbox Deluge") { ClientOperations(destination, 3, 1) }),
