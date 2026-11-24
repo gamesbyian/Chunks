@@ -18,7 +18,6 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt"
       - "tools/installed_protocol_client.sh"
-      - ".github/workflows/installed-protocol-client.yml"
       - "tools/verify_installed_protocol_lanes.py"
       - "tests/test_installed_protocol_lanes.py"
       # The installed script runs this foreign-UID task test before clients.
