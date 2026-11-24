@@ -2,6 +2,23 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-24 UTC — Android intake and Local runtime ownership accepted
+
+[#2060](https://github.com/gamesbyian/Chunks/pull/2060) merged at `d5c2fdea25abc37047f41335b6ff43ac5867eafd`, tree-identical to qualified `e7da82e4c3cf247ad72f4cf38c0a287b818685b5`. #2059/#2063/#2064 are verified ancestors. [Foundation 45499638004](https://github.com/gamesbyian/Chunks/actions/runs/45499638004) passed 3,013 executed, 108 skips; all three repeated-intake regressions passed. [Installed Universal Add 45499637852](https://github.com/gamesbyian/Chunks/actions/runs/45499637852) passed all lanes and aggregate including foreign-task recovery and Local process-death no replay. [Native Add attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45499637927/attempts/1) was red solely at ClipboardUriIntakeInstrumentedTest line 111; [attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45499637927/attempts/2) reused immutable APK pair artifact 14970293293. Verifier job 138831838298 selected shard 0 attempt 1 (208 executed/23 skipped) and shard 1 attempt 2 (227 executed/30 skipped), total 435 executed/53 skipped/0 failed, 25 real PNGs. Root cause of prior red remains unproved.
+
+Other exact-head successes: [R8 45499637967](https://github.com/gamesbyian/Chunks/actions/runs/45499637967), [real rTorrent 45499637839](https://github.com/gamesbyian/Chunks/actions/runs/45499637839), [Combined 45499637847](https://github.com/gamesbyian/Chunks/actions/runs/45499637847), [remote deletion 45499638014](https://github.com/gamesbyian/Chunks/actions/runs/45499638014), [API29 Downloads 45499637930](https://github.com/gamesbyian/Chunks/actions/runs/45499637930), [native delete Linux/API29/API35 45499637917](https://github.com/gamesbyian/Chunks/actions/runs/45499637917), [docs 45499637982](https://github.com/gamesbyian/Chunks/actions/runs/45499637982). Owner-deferred atlas skipped, not accepted. No physical/TalkBack or release claim. #2063 draft suppression had zero native jobs; ready campaign retained all probes.
+
+The #2064 collector emitted all expected numeric samples on the green foundation. Medians in ms:
+
+| Rows | Name sort | Grouped speed unchanged | Grouped speed 1% update | Media search | Quiet policy |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 0.122 | 0.085 | 0.104 | 0.088 | 0.971 |
+| 1,000 | 1.756 | 1.395 | 1.351 | 0.776 | 5.123 |
+| 10,000 | 12.144 | 3.911 | 3.849 | 3.979 | 25.978 |
+| 50,000 | 54.384 | 11.574 | 12.639 | 11.372 | 47.490 |
+
+50k name range 41.587–142.619 ms, versus earlier median 113.403 ms. Policy retained one inventory and zero extra facts per enabled tick. Advisory synthetic host timings only; no comparison proves a speedup without matched workload and controls. #2065 is a draft candidate with distinct-name and Unicode controls; still needs exact-head measurement, heap/device evidence and appropriate qualification.
+
 ## 2026-11-24 UTC — Exact artifact diagnosis and catalog measurement recovery
 
 #2060 head `9f7ff1c56d7f241fb3608ebd685e71a6885ec8b4` passed [R8](https://github.com/gamesbyian/Chunks/actions/runs/45495651676), [native Add](https://github.com/gamesbyian/Chunks/actions/runs/45495651497), [real rTorrent/HTTPS](https://github.com/gamesbyian/Chunks/actions/runs/45495651359), [Combined](https://github.com/gamesbyian/Chunks/actions/runs/45495651373), [remote delete](https://github.com/gamesbyian/Chunks/actions/runs/45495651502), [native delete Linux/API29/API35](https://github.com/gamesbyian/Chunks/actions/runs/45495653423), [docs](https://github.com/gamesbyian/Chunks/actions/runs/45495651717), and [API29 attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45495651574/attempts/2). API29 attempt 1 was a pre-install Maven HTTP403; retain it. Atlas deferred.
