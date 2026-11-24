@@ -1,5 +1,7 @@
 # Engineering delivery protocol: learn from the Chunks PR/issue archive
 
+**Forensic follow-through:** Use [R0 dispositions](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) for the audit. Prioritize source-confirmed contract violations; distinguish hypotheses and measurements, reproduce at cheapest meaningful layer, then prove actual user journey. Refactors must remove demonstrated duplication/ownership or measured cost without another authority. Deletion requires reachability including manifest, JNI, serialization/reflection, upgrade and tooling. No numerical debt target or rewrite. Resolve issue/PR overlap first; measure before/after and preserve safety receipts.
+
 **Authority:** operational practice under [AGENTS](../AGENTS.md), the [documentation standard](DOCUMENTATION-STANDARD.md), [CI policy](CI-POLICY.md), [requirements-rationality audit](REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31.md), and the **one active** [work queue](WORK-QUEUE.md). This is **not another queue, product contract, or permission to disable a defect safeguard**. Current facts come from live main/issues/PRs, not this dated review.
 
 ## Consolidate release blockers by user outcome before dispatch

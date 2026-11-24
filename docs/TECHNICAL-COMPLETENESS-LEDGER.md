@@ -1,5 +1,7 @@
 # Chunks technical completeness ledger
 
+> **Forensic evidence boundary (2026-11-23):** [FE-01–20 audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) records source-confirmed gaps and conditional/unmeasured candidates; [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) owns disposition. #2025 exact remote observation/cancellation, #2026 truthful removal/retained uncertainty, #2027 source peer validation are **open, not accepted**. Prior five-client Add, storage, snapshot, seeding and hosted receipts remain valid only within actual exercised scope/source. Requalify affected boundaries; keep physical/protected/release tiers separate. No capability acceptance change from docs.
+
 > **Hosted acceptance · 2026-11-24 UTC:** [#2013](https://github.com/gamesbyian/Chunks/pull/2013) verified the exact stopped remote second-Add artwork exclusion with a disposable authenticated rTorrent account and live TVmaze across a fresh process and reconnect. [#2014](https://github.com/gamesbyian/Chunks/pull/2014) verified continued foreground-service transfer during a sustained emulator deep-idle window using an independent real seeder. [#2015](https://github.com/gamesbyian/Chunks/pull/2015) confines protected Android acceptance to redacted stage receipts and installed byte identity. Physical providers and TalkBack, VPN and OEM endurance, protected mutation permissions and signed-release acceptance remain open. [Exact hosted receipts](QUALITY-LEDGER.md)
 
 
