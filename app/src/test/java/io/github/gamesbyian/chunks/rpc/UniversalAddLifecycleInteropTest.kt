@@ -113,13 +113,33 @@ class UniversalAddLifecycleInteropTest {
 
     private suspend fun removeWithData(client: TorrentClient, fx: Fixture, folder: String) {
         val ops = ClientOperations(client, readbackAttempts = 40, readbackDelayMillis = 500)
-        var removed = ops.remove(fx.result.infoHashV1, deleteData = true)
-        // A client without Remove + data gets a session-only remove; the test
-        // then deletes only its own disposable fixture folder below.
-        if (removed is ClientOperationOutcome.Refused) removed = ops.remove(fx.result.infoHashV1, deleteData = false)
-        stage("cleanup=" + removed.javaClass.simpleName)
-        assertTrue("cleanup: $removed", removed is ClientOperationOutcome.Verified)
-        File(folder).deleteRecursively()
+        val hash = fx.result.infoHashV1
+        val root = File(folder)
+        val files = fx.files.mapKeys { (name, _) -> File(root, "${fx.name}/$name") }
+        val canary = File(root, "unrelated-cleanup-canary").apply { writeText("keep this fixture") }
+        val canDelete = ClientCapability.REMOVE_WITH_DATA in ops.session().capabilities
+        val removed = ops.remove(hash, deleteData = canDelete)
+        if (canDelete) {
+            assertTrue("Remote registration is absent with payload deletion unverified: $removed",
+                removed is ClientOperationOutcome.Pending && removed.registrationAbsent)
+            // The disposable runner can inspect the real daemon filesystem
+            // independently. The application result must remain conservative.
+            for (attempt in 0 until 40) {
+                if (files.keys.none { it.exists() }) break
+                delay(500)
+            }
+            assertTrue("Daemon left fixture payload behind", files.keys.none { it.exists() })
+            stage("cleanup=registration_absent_payload_independently_deleted")
+        } else {
+            assertTrue("Session cleanup: $removed", removed is ClientOperationOutcome.Verified)
+            for ((file, bytes) in files) {
+                assertTrue("Session cleanup changed fixture bytes", file.isFile && file.readBytes().contentEquals(bytes))
+            }
+            stage("cleanup=registration_absent_payload_independently_retained")
+        }
+        assertEquals("The exact job is independently absent", null, client.torrent(hash))
+        assertEquals("Unrelated fixture must survive", "keep this fixture", canary.readText())
+        assertTrue("Could not remove the runner's fixture directory after observation", root.deleteRecursively())
     }
 
     /**
