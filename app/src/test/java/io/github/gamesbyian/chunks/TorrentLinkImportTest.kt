@@ -42,9 +42,9 @@ class TorrentLinkImportTest {
                 opened += url.toString()
                 val connection = (routes[url.toString()] ?: error("unexpected $url"))(url)
                 try {
-                    val status = connection.responseCode
+                    val code = connection.responseCode
                     object : TorrentLinkHop {
-                        override val status = status
+                        override val status = code
                         override val contentLength get() = connection.contentLengthLong
                         override fun header(name: String) = connection.getHeaderField(name)
                         override fun body() = connection.inputStream

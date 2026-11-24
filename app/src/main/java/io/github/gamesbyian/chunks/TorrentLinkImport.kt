@@ -180,25 +180,27 @@ internal class TorrentLinkFetcher(
             if (!addresses.all(TorrentLinkAddressPolicy::allowed)) return TorrentLinkResult.Refused(TorrentLinkResult.LOCAL_NETWORK)
             try {
                 transport.get(uri, addresses, timeoutMs).use { response ->
-                when (response.status) {
-                    in 300..399 -> {
-                        val location = response.header("Location")
-                            ?: return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
-                        uri = try { uri.resolve(location.trim()) } catch (_: Exception) {
-                            return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
+                    when (response.status) {
+                        in 300..399 -> {
+                            val location = response.header("Location")
+                                ?: return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
+                            uri = try { uri.resolve(location.trim()) } catch (_: Exception) {
+                                return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
+                            }
+                            return@use
                         }
-                        return@use
+                        401, 403 -> return TorrentLinkResult.Refused(TorrentLinkResult.REFUSED)
+                        404, 410 -> return TorrentLinkResult.Refused(TorrentLinkResult.NOT_FOUND)
+                        429, in 500..599 -> return TorrentLinkResult.Refused(TorrentLinkResult.BUSY)
+                        200 -> return read(response, start.display)
+                        else -> return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
                     }
-                    401, 403 -> return TorrentLinkResult.Refused(TorrentLinkResult.REFUSED)
-                    404, 410 -> return TorrentLinkResult.Refused(TorrentLinkResult.NOT_FOUND)
-                    429, in 500..599 -> return TorrentLinkResult.Refused(TorrentLinkResult.BUSY)
-                    200 -> return read(response, start.display)
-                    else -> return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
-                }
                 }
             } catch (refused: TorrentLinkTransportRefusal) {
                 return TorrentLinkResult.Refused(refused.reason)
             } catch (_: SocketTimeoutException) {
+                return TorrentLinkResult.Refused(TorrentLinkResult.TIMEOUT)
+            } catch (_: java.io.InterruptedIOException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.TIMEOUT)
             } catch (_: UnknownHostException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.NO_HOST)
