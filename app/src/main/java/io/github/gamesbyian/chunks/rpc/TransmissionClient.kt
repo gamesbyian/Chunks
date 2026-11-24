@@ -55,9 +55,7 @@ internal class TransmissionClient(
 
     override suspend fun torrent(hash: String): ClientTorrent? {
         val exact = ClientHashes.requireHash(hash)
-        val rows = get(listOf(exact)).filter { it.optString("hashString").equals(exact, true) }
-        if (rows.size > 1) throw IOException("Ambiguous Transmission identity")
-        return rows.singleOrNull()?.let(::torrentOf)
+        return exactProtocolRow(get(listOf(exact)), exact) { it.optString("hashString") }?.let(::torrentOf)
     }
 
     override suspend fun files(hash: String): List<ClientFile> {
@@ -66,8 +64,7 @@ internal class TransmissionClient(
             .put("ids", JSONArray().put(exact))
             .put("fields", JSONArray(listOf("hashString", "files", "fileStats"))), mutating = false)
         val rows = args.optJSONArray("torrents") ?: throw IOException("Transmission file list unavailable")
-        val row = (0 until rows.length()).map { rows.getJSONObject(it) }
-            .singleOrNull { it.optString("hashString").equals(exact, true) }
+        val row = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hashString") }
             ?: throw IOException("Transmission transfer not found")
         val files = row.optJSONArray("files") ?: throw IOException("Transmission file list unavailable")
         val stats = row.optJSONArray("fileStats") ?: throw IOException("Transmission file list unavailable")
@@ -153,8 +150,7 @@ internal class TransmissionClient(
             val rows = call("torrent-get", JSONObject().put("fields", JSONArray(fields + "hashString"))
                 .put("ids", JSONArray().put(exact)), mutating = false).optJSONArray("torrents")
                 ?: throw IOException("Transmission seeding facts unavailable")
-            if (rows.length() > 1) throw IOException("Ambiguous Transmission identity")
-            return rows.optJSONObject(0)?.takeIf { it.optString("hashString").equals(exact, ignoreCase = true) }
+            return exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hashString") }
         }
         val r = row(listOf("uploadedEver", "downloadedEver", "secondsSeeding", "status", "leftUntilDone", "isPrivate"))
             ?: return null

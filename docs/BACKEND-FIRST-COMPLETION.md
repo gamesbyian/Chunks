@@ -1,5 +1,7 @@
 # Backend-first functional completion mandate
 
+**2026-11-23:** Owner-authorized [forensic findings](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) are part of technical completion; follow [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration). Proven safety gaps outrank discretionary features; measure before optimizing, extract actual ownership, preserve existing proof tiers and continue independent unblocked work. No rewrite or atlas campaign.
+
 **Owner decision: 2026-11-16. Governs discretionary task selection and release-phase sequencing.** Read alongside [WORK-QUEUE](WORK-QUEUE.md), [COMPLETION-ROADMAP](COMPLETION-ROADMAP.md), [SPEC-COVERAGE](SPEC-COVERAGE.md), and [AGENTS.md](../AGENTS.md). This document changes prioritization, not existing product requirements or past evidence. Later explicit owner requests supersede it for their specific scope.
 
 ## Objective

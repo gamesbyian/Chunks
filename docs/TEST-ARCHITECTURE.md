@@ -1,5 +1,7 @@
 # Chunks test architecture
 
+**Adapter conformance and mutation-lifetime evidence (FE-01–05/08/16):** A fake TorrentClient validates orchestration, not transport identity, completeness, cancellation or file layout. Exercise actual parser/request seams with wrong/mixed/duplicate/malformed rows, legitimate absence, incomplete rTorrent views, cancellation, duplicate file indices and valid paths; assert no downstream write or false confirmation. Include navigation/lock/reconnect and same-hash profiles after dispatch, plus independent real-daemon positives. #9/#2025/#2026 remain open.
+
 **Use this file as instructions.** It says what a test must assert, what it must not be coupled to, and how to change a test when the product deliberately changes. Run-level results belong in [QUALITY-LEDGER](QUALITY-LEDGER.md); CI selection and acceptance in [CI-POLICY](CI-POLICY.md); the audit that produced this standard and its history in [the 2026-11-11 audit](archive/TEST-ARCHITECTURE-AUDIT-2026-11-11.md).
 
 **Principle:** a test enforces an enduring product requirement ([PRODUCT](PRODUCT.md), [UX](UX.md), [SECURITY](SECURITY.md)). It is coupled to a literal label, screen count, layout position or screenshot filename **only when that presentation detail is itself the requirement**. A redesign that keeps every requirement must not break a behavioral test; a change that drops a requirement must break something loudly.

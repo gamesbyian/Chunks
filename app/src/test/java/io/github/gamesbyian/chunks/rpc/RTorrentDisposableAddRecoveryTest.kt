@@ -66,6 +66,9 @@ class RTorrentDisposableAddRecoveryTest {
             val observed = complete.single { it.hash.equals(hash, true) }
             assertEquals(name, observed.name)
             assertFalse(observed.started)
+            val adapter = RTorrentClientAdapter(remote)
+            assertEquals(hash.lowercase(), adapter.torrent(hash)?.hash)
+            assertTrue(adapter.torrents().any { it.hash.equals(hash, true) })
             // A filtered Transfers view must not manufacture a "missing"
             // snapshot restore candidate. The verified default view, not
             // visible main rows, provides the comparison inventory.
@@ -88,12 +91,19 @@ class RTorrentDisposableAddRecoveryTest {
                 runBlocking { remote.listCompleteSessionTransfers() }
             }
             assertEquals(name, remote.lookupName(hash))
+            assertThrows(IllegalStateException::class.java) {
+                runBlocking { adapter.torrent(hash) }
+            }
+            assertThrows(IllegalStateException::class.java) {
+                runBlocking { adapter.torrents() }
+            }
         } finally {
             remote.call("view.set_visible", listOf(hash, "default"))
             remote.call("view.set_visible", listOf(hash, "main"))
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
                 remote.eraseFromSession(hash, name, parent.toString()))
         }
+        assertNull(RTorrentClientAdapter(remote).torrent(hash))
     }
 
     @Test fun unavailableStorageIsTruthfulAndTheSessionCanRecoverAfterExplicitRepair() = runBlocking {

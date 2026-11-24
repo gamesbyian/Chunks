@@ -1,5 +1,7 @@
 # Smart Seeding Rules and Seeding Groups
 
+**Forensic policy-runtime follow-through (FE-10; #415/#567):** Bind remote policy observation/execution to authenticated connection generation, not profile ID alone; re-evaluate on replacement/reconnect. Inactive/inapplicable policies must not trigger unnecessary rule-specific reads. Measure request counts before changing cadence; retain coherent arbitration of Smart Seeding and Finish in Order, independent readback, no repeated uncertain writes and real backend proof. Pending investigation, not evidence of a wrong-account write.
+
 > **Authority:** binding feature-level product/interaction contract for ratio, duration and upload speed policy. [PRODUCT](PRODUCT.md) owns the user promise; [UX](UX.md) owns common screen behavior; [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) owns scope. This is a planned feature, not proof of implementation.
 
 ## Environment colour in rule scope presentation

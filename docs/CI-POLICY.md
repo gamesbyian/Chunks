@@ -1,5 +1,7 @@
 # Chunks CI policy: executable test selection and evidence
 
+**Measured CI follow-through (FE-14, #10):** Compare phase timings, critical path AND aggregate runner minutes for comparable workloads: build, AVD preparation, journeys, daemon startup, uploads and waits. Reuse immutable exact-source APK/build/fixture preparation with digest/provenance while preserving each isolated observation and negative. Native-delete build-once is already integrated; inspect live results before further optimization. No unmeasured trigger pruning, timeout extension, failure suppression or acceptance borrowing.
+
 **Use this file as instructions, not a CI diary.** Historical measurements, PRs, cost analyses and failed attempts are preserved in [CI-POLICY-HISTORY-2026-11-09.md](CI-POLICY-HISTORY-2026-11-09.md). Run-level results belong in [QUALITY-LEDGER](QUALITY-LEDGER.md). Required receipt schema and classification live in [CI-EVIDENCE-AND-RUNTIME-CONTRACT](CI-EVIDENCE-AND-RUNTIME-CONTRACT.md).
 
 ## Batched exact-source validation (mandatory)

@@ -171,14 +171,18 @@ class LocalDetailsOperationsTest {
 
     @Test fun aCompleteJobOffersTheVerifiedLibraryCopy() {
         show(FakePort(status))
-        rule.waitUntil(5_000) { runCatching { rule.onNodeWithText("Copy a finished file").assertExists() }.isSuccess }
+        rule.waitUntil(5_000) { runCatching { rule.onNodeWithText("Copy finished files").assertExists() }.isSuccess }
+        rule.onNodeWithText("Copy single file to Downloads").assertExists()
+        rule.onNodeWithText("Copy multiple files to Downloads").assertExists()
     }
 
     @Test fun anIncompleteJobGetsNoLibraryCopy() {
         show(FakePort(status.copy(progressPpm = 400_000)))
         rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertExists() }.isSuccess }
         rule.waitForIdle()
-        rule.onNodeWithText("Copy a finished file").assertDoesNotExist()
+        rule.onNodeWithText("Copy finished files").assertDoesNotExist()
+        rule.onNodeWithText("Copy single file to Downloads").assertDoesNotExist()
+        rule.onNodeWithText("Copy multiple files to Downloads").assertDoesNotExist()
     }
 
     @Test fun trackerHealthIsStatedWithoutUrls() {

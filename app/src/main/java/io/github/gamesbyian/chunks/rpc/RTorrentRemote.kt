@@ -376,6 +376,22 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return transfers
     }
 
+    /**
+     * Exact shared-client observation. A main-view miss is not an absent job.
+     * Two independent exact unknown-hash replies can establish absence without
+     * requesting the entire inventory. A known job hidden from main requires
+     * the existing complete-session view; any disagreement stays inconclusive.
+     */
+    internal suspend fun readClientTransfer(hash: String): RemoteTransfer? {
+        val exact = ClientHashes.requireHash(hash)
+        if (confirmedAbsentExactHash(exact)) return null
+        val row = listTransfers("main").singleOrNull { it.hash.equals(exact, true) }
+            ?: listCompleteSessionTransfers().singleOrNull { it.hash.equals(exact, true) }
+            ?: error("Known rTorrent transfer is missing from session observation")
+        check(sessionContainsExactHash(exact)) { "rTorrent identity changed during observation" }
+        return row
+    }
+
     /** Only server-owned view names, never XML-RPC command fragments. */
     suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }

@@ -1,5 +1,7 @@
 # Universal Add: interchangeable clients, one user experience
 
+**Forensic ownership follow-through (FE-06/07/18; #1844):** Shared submission and continuation already exist; trace and converge remaining draft preparation, screen fallback and attempt lifetime ownership without another coordinator. Preserve exact client/account generation, explicit source/Place/Start and read-only post-write uncertainty; no automatic replay or secret-bearing persistence after process death. Coordinate active account-fence work #2019 and preserve five-client/physical proof.
+
 **Owner decision:** 2026-11-16, binding. **Status:** implementation in progress. This is the canonical cross-client Add behavior contract and supersedes any implication in older per-engine notes that local Add and remote Add may use different user journeys. Refer to [Add destination and outcome](ADD-DESTINATION-AND-OUTCOME.md) for the compact layout, [source intake](../ADD-SOURCE-INTAKE.md) for Android entry points, [architecture](../ARCHITECTURE.md) for engine adapters, and [real-transfer acceptance](../REAL-TRANSFER-ACCEPTANCE.md) for evidence.
 
 ## Principle and boundaries
