@@ -21,6 +21,23 @@ Atlas intentionally skipped. No waiver for foundation red. #2068 merged at `03ea
 
 Revised-head runs started: [foundation 45509308063](https://github.com/gamesbyian/Chunks/actions/runs/45509308063), [five-client 45509308067](https://github.com/gamesbyian/Chunks/actions/runs/45509308067), [native Add 45509308051](https://github.com/gamesbyian/Chunks/actions/runs/45509308051), [real rTorrent 45509308211](https://github.com/gamesbyian/Chunks/actions/runs/45509308211), [Combined 45509308216](https://github.com/gamesbyian/Chunks/actions/runs/45509308216), [R8 45509308057](https://github.com/gamesbyian/Chunks/actions/runs/45509308057), [remote Remove/data 45509308157](https://github.com/gamesbyian/Chunks/actions/runs/45509308157), [API29 Downloads 45509308055](https://github.com/gamesbyian/Chunks/actions/runs/45509308055). Atlas [45509308158](https://github.com/gamesbyian/Chunks/actions/runs/45509308158) skipped. Re-fetch actual final status and receipt counts before acceptance. Physical #1786 remains open.
 
+### Revised-head retries and retained receipts
+
+The tested merge of `ad1b8b65` was `5d6c009e75ac0f0f71d21d49273070e20b1007aa`, with the same tree as the PR head. [Foundation attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45509308063/attempts/1) compiled and ran 3,017 cases with 108 skips and one failure. `CombinedTransfersScreenTest.oldAccountBatchConfirmationCannotBeReusedForSameHashOnAnotherAccount` timed out in the lazy-control reveal helper at line 62. [Failure digest 14975391194](https://github.com/gamesbyian/Chunks/actions/runs/45509308063/artifacts/14975391194). [Attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45509308063/attempts/2) passed at unchanged source. The cause of the first failure remains unverified.
+
+[Native Add attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/attempts/1) passed shard 1. Shard 0 reported 207 passes, one failure and 23 skips. `InstalledMediaArtworkInstrumentedTest.installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff` timed out at line 211 waiting for the Connections acknowledgment, before the artwork assertions. [Shard 0 receipt 14975254576](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/artifacts/14975254576). [Targeted attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/attempts/2) reuses the source-bound [APK pair 14973948737](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/artifacts/14973948737). The revised head passed the [five-client aggregate](https://github.com/gamesbyian/Chunks/actions/runs/45509308067), isolated Local/foreign-document, Transmission/rTorrent and qBittorrent/Deluge lanes, real rTorrent magnet, Combined, R8, remote deletion and API29 Downloads.
+
+### Hosted build-phase comparison (FE-14)
+
+Durations below come from GitHub Actions attempt 1 step timestamps for the explicit Gradle APK build in each workflow. They exclude SDK setup, queueing, uploads, emulator time and retries.
+
+| Candidate | Native Add | Installed five-client | Two-server Combined | Sum of three build steps |
+| --- | ---: | ---: | ---: | ---: |
+| #2060 `e7da82e4` | 227 s | 257 s | 176 s | 660 s |
+| #2067 `ad1b8b65` | 231 s | 193 s | 230 s | 654 s |
+
+The #2067 native, five-client and Combined workflows started from the same tested merge. Their installed debug APK digests differ. The first attempts consumed 1,401, 1,401 and 582 job-seconds respectively, with elapsed times of 898, 820 and 582 seconds from first job start to last job completion. A shared-build pilot needs one immutable APK pair with separately verified installed bytes, existing journey isolation and comparable elapsed and aggregate runner-time receipts. No optimization or timing reduction has been qualified.
+
 ## 2026-11-24 UTC — Query-local name normalization accepted (FE-11)
 
 [#2065](https://github.com/gamesbyian/Chunks/pull/2065) merged at `908d905caed9cb370b77e20f1be0fa5a1d82d514`, with no tree difference from tested head `b4c66168edecdf66471405076f69e931eac417df`. [Foundation 45503963623](https://github.com/gamesbyian/Chunks/actions/runs/45503963623) passed 3,123 reported cases; exact [native Add 45503963746](https://github.com/gamesbyian/Chunks/actions/runs/45503963746) passed both shards on attempt 1 (435 executed, 53 skips, 0 failures, 25 real PNGs). [Combined 45503963486](https://github.com/gamesbyian/Chunks/actions/runs/45503963486), [R8 45503963949](https://github.com/gamesbyian/Chunks/actions/runs/45503963949) and [docs 45503860594](https://github.com/gamesbyian/Chunks/actions/runs/45503860594) passed. Draft skip witnesses retained. Combined workflow now selects the production catalog and ordering model paths and does not select the synthetic benchmark-only path.
