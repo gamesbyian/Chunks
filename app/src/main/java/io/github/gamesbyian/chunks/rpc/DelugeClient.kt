@@ -336,6 +336,7 @@ internal class DelugeClient(
                 val id = nextId++
                 val body = JSONObject().put("method", method).put("params", params).put("id", id)
                     .toString().toByteArray(Charsets.UTF_8)
+                if (mutating) RemotePolicyWriteFence.check()
                 beforeWrite()
                 val response = try {
                     wire.exchange(DelugeReadOnlyRpc.Request(endpoint, body, session))
