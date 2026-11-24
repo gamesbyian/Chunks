@@ -50,14 +50,9 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  targeted-android-jni-probe:
-    # Exactly one opt-in JNI test per Android version, not the broad native suite.
+  build-native-delete-apks:
     runs-on: ubuntu-latest
-    timeout-minutes: 24
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [29, 35]
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -75,6 +70,45 @@ jobs:
           fi
       - name: Compile isolated Android app and test APK
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Freeze one exact Android APK pair
+        run: |
+          mkdir -p "$RUNNER_TEMP/native-delete-apks"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/native-delete-apks/app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/native-delete-apks/test.apk"
+          git rev-parse HEAD > "$RUNNER_TEMP/native-delete-apks/source-sha"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/native-delete-apks/source-tree"
+          (cd "$RUNNER_TEMP/native-delete-apks" && sha256sum app.apk test.apk > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-native-delete-apks
+          path: ${{ runner.temp }}/native-delete-apks/
+          retention-days: 7
+          if-no-files-found: error
+
+  targeted-android-jni-probe:
+    needs: build-native-delete-apks
+    # Exactly one opt-in JNI test per Android version, not the broad native suite.
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chunks-native-delete-apks
+          path: ${{ runner.temp }}/native-delete-apks
+      - name: Verify shared APK pair and exact source
+        run: |
+          test "$(cat "$RUNNER_TEMP/native-delete-apks/source-sha")" = "$GITHUB_SHA"
+          test "$(cat "$RUNNER_TEMP/native-delete-apks/source-sha")" = "$(git rev-parse HEAD)"
+          test "$(cat "$RUNNER_TEMP/native-delete-apks/source-tree")" = "$(git rev-parse HEAD^{tree})"
+          (cd "$RUNNER_TEMP/native-delete-apks" && sha256sum -c SHA256SUMS)
+          mkdir -p app/build/outputs/apk/{debug,androidTest/debug}
+          cp "$RUNNER_TEMP/native-delete-apks/app.apk" app/build/outputs/apk/debug/app-debug.apk
+          cp "$RUNNER_TEMP/native-delete-apks/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
       - name: Reclaim unrelated runner toolchains and authorize KVM
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
