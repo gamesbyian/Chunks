@@ -3062,6 +3062,9 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                                 // document to archive or remove, even if the bytes coincide
                                 // with an earlier Android document.
                                 if (prepareRemoteTorrent(document)) selectAuthenticatedAddTarget()
+                                else android.widget.Toast.makeText(context,
+                                    "Finish the current Add review before preparing another source.",
+                                    android.widget.Toast.LENGTH_LONG).show()
                             },
                             onPrepareMagnet = { link ->
                                 prepareRemoteMagnet(link)

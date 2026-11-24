@@ -82,8 +82,13 @@ internal class LocalAddAttemptOwner : ViewModel() {
      * Refuse a stale reviewed-source callback before changing any draft.
      */
     fun stageRemoteTorrentHandoff(bytes: ByteArray, reviewed: PendingLocalAdd?): Boolean {
+        // Do not discard a source that a retained Local attempt or its original
+        // document handling still owns. Finish that review explicitly first.
+        if ((session.attemptedTicket != null && reviewedTorrent.value != null) ||
+            session.originalDocument.deleting || session.originalDocument.deletion != null) return false
         if (reviewed != null &&
-            (reviewedTorrent.value !== reviewed || !reviewed.stillMatchesReviewedSource(bytes))) return false
+            (reviewedTorrent.value !== reviewed || !reviewed.stillMatchesReviewedSource(bytes) ||
+                !reviewed.stillMatchesReviewedSource(reviewed.bytes))) return false
         remoteSessions.clearPendingSourceSelection()
         sourceDraft.value = ""
         if (reviewed == null) reviewedTorrent.value = null

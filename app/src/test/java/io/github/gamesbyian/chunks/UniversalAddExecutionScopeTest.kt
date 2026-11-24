@@ -56,7 +56,7 @@ class UniversalAddExecutionScopeTest {
     @Test fun remotePreparedTorrentBindsOnlyTheExplicitCurrentReviewedDocument() {
         val owner = LocalAddAttemptOwner()
         fun torrent(name: String): ByteArray =
-            ("d4:infod6:lengthi5e4:name" + name.length + ":" + name +
+            ("d8:announce32:https://tracker.example/announce4:infod6:lengthi5e4:name" + name.length + ":" + name +
                 "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
         val bytes = torrent("First")
         val otherBytes = torrent("Other")

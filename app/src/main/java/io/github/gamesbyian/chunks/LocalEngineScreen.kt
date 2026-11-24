@@ -1570,6 +1570,7 @@ internal fun LocalEngineScreen(
                                 // The parent only enables this action for an authenticated,
                                 // independently privacy-gated remote target.
                                 if (onPrepareRemoteTorrent(original, add)) pending = null
+                                else message = "The current Add review changed or is still in progress. Review again."
                             }
                         )
                     }
@@ -2564,7 +2565,10 @@ internal fun LocalEngineScreen(
                             }
                             val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
                             when {
-                                document != null -> onPrepareRemoteTorrent(document, null)
+                                document != null -> {
+                                    if (!onPrepareRemoteTorrent(document, null))
+                                        message = "Finish the current Add review before preparing another source."
+                                }
                                 prepared != null -> send(prepared)
                                 else -> message = "This torrent has no supported v1 identity to hand off."
                             }
