@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from ci_catalog_measurement import (
-    CASES, CATALOG_CLASS, CATALOG_TEST, POLICY_CLASS, POLICY_TEST, SIZES, receipt,
+    CASES, CATALOG_CLASS, CATALOG_TEST, DISTINCT_TEST, POLICY_CLASS, POLICY_TEST, SIZES, receipt,
 )
 
 
@@ -47,6 +47,27 @@ class CatalogMeasurementTest(unittest.TestCase):
         self.assertEqual(0, result["policy"][0]["extra_facts_per_tick"])
         self.assertNotIn("secret", json.dumps(result))
         self.assertNotIn("password", json.dumps(result))
+
+    def test_distinct_name_comparison_requires_named_pass_and_complete_matrix(self):
+        lines = [f"CHUNKS_DISTINCT_NAME_SORT: jobs={size} "
+                 "old_flatten_sort_median_us=20 candidate_query_median_us=10"
+                 for size in SIZES]
+        self.report(CATALOG_CLASS, DISTINCT_TEST, lines + ["private source token"])
+        measured = receipt(self.directory)["distinct_name_sort"]
+        self.assertEqual(4, len(measured))
+        self.assertEqual(20, measured[0]["old_flatten_sort_median_us"])
+        self.assertEqual(10, measured[0]["candidate_query_median_us"])
+        self.assertNotIn("private", json.dumps(measured))
+        for bad in (lines[:-1], lines + lines[:1],
+                    lines[:-1] + [lines[-1] + " secret"],
+                    lines[:-1] + [lines[-1].replace("=10", "=1234567890")]):
+            self.report(CATALOG_CLASS, DISTINCT_TEST, bad)
+            self.assertIsNone(receipt(self.directory)["distinct_name_sort"])
+        for outcome in ("failure", "error", "skipped"):
+            self.report(CATALOG_CLASS, DISTINCT_TEST, lines, outcome)
+            self.assertIsNone(receipt(self.directory)["distinct_name_sort"])
+        self.report(CATALOG_CLASS, CATALOG_TEST, lines)
+        self.assertIsNone(receipt(self.directory)["distinct_name_sort"])
 
     def test_incomplete_duplicate_or_malformed_samples_are_unavailable(self):
         good = self.catalog_lines()
