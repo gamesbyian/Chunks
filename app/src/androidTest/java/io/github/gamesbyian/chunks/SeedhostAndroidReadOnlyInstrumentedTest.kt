@@ -1,13 +1,8 @@
 package io.github.gamesbyian.chunks
 
-import android.content.ContentValues
-import android.os.Environment
 import android.os.Bundle
-import android.provider.MediaStore
 import android.util.Base64
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
-import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasTestTag
@@ -22,7 +17,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
@@ -30,6 +24,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteDirectoryLookup
 import java.net.URI
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
@@ -61,7 +56,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
     private fun checkpoint(stage: String) {
         require(stage in setOf(
             "arguments", "ground-truth", "launch-failed", "form-missing", "form-open", "form-input-failed", "form", "connect-visible", "connect", "verified",
-            "connections", "transfers", "inventory", "inventory-mismatch", "first-capture",
+            "connections", "transfers", "inventory", "inventory-mismatch", "folder-readback", "folder-picker",
             "add-open", "add-preview", "add-return",
             "connect-error", "connect-busy", "connect-login-form", "connect-no-visible-state",
             "connect-identity-unverified", "connect-auth-rejected", "connect-tls-failed",
@@ -71,24 +66,6 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_stage", stage) }
         )
-    }
-
-    private fun captureConnectedQueue(name: String) {
-        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
-            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ChunksAddAtlas")
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-        val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
-        resolver.openOutputStream(uri).use { stream ->
-            check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, requireNotNull(stream)))
-        }
-        check(resolver.update(uri, ContentValues().apply {
-            put(MediaStore.Images.Media.IS_PENDING, 0)
-        }, null, null) == 1)
     }
 
     private fun textVisible(text: String) =
@@ -229,7 +206,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
         }
         checkpoint("transfers")
-        // No screenshot is permitted while the credentials field is onscreen.
+        // Keep credentials out of the connected screen.
         rule.onNodeWithText("Password").assertDoesNotExist()
         // The canonical summary counts the exact signed-in scope. The primary is a
         // live seedbox, so accept the independent count read before or after.
@@ -247,8 +224,6 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             throw AssertionError("Installed count did not match the independent read-only count")
         }
         checkpoint("inventory")
-        captureConnectedQueue("seedhost-android-queue-live")
-        checkpoint("first-capture")
 
         // Additional READ-ONLY Add review on the same account: no source is
         // supplied, so the single Add action must stay unusable while the
@@ -266,7 +241,42 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         rule.onNodeWithText("Custom server folder (optional)").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
-        captureConnectedQueue("seedhost-android-add-readonly-live")
+        val readback = runBlocking {
+            val remote = RTorrentRemote(RemoteCredentials(url, requireNotNull(user), requireNotNull(password)))
+            remote.version()
+            remote.browseDirectories("")
+        }
+        check(readback is RemoteDirectoryLookup.Ready && readback.page.folders.isNotEmpty()) {
+            "Independent protected folder read did not return a usable root"
+        }
+        val placeField = hasText("Custom server folder (optional)") and androidx.compose.ui.test.hasSetTextAction()
+        fun placesAreUnchanged() {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(placeField)
+            val selected = rule.onNode(placeField).fetchSemanticsNode()
+                .config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text
+            check(selected.isEmpty()) { "Browsing changed the empty Place override" }
+        }
+        checkpoint("folder-readback")
+        placesAreUnchanged()
+        LazyComposeActions.activateOnce(rule, hasText("Change") and androidx.compose.ui.test.hasClickAction())
+        rule.waitUntil(35_000) { textVisible("Save to · Wood") }
+        val rootCrumb = hasContentDescription("Open breadcrumb Root")
+        rule.waitUntil(35_000) {
+            rule.onAllNodes(rootCrumb).fetchSemanticsNodes().size == 1 ||
+                rule.onAllNodes(hasContentDescription("Current folder Root")).fetchSemanticsNodes().size == 1
+        }
+        if (rule.onAllNodes(rootCrumb).fetchSemanticsNodes().size == 1)
+            LazyComposeActions.activateOnce(rule, rootCrumb)
+        rule.waitUntil(35_000) {
+            rule.onAllNodesWithText(readback.page.path).fetchSemanticsNodes().size == 1 &&
+                readback.page.folders.any { folder ->
+                    rule.onAllNodes(hasContentDescription("Open folder " + folder))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+        }
+        checkpoint("folder-picker")
+        LazyComposeActions.activateOnce(rule, hasText("Cancel") and androidx.compose.ui.test.hasClickAction())
+        placesAreUnchanged()
         checkpoint("add-preview")
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitUntil(30_000) {

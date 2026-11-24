@@ -72,11 +72,11 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/seedhost_android_readonly.sh
-      - name: Keep connected-screen PNGs only
+      - name: Keep the allowlisted read-only receipt only
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: chunks-seedhost-android-readonly
-          path: ${{ runner.temp }}/chunks-seedhost-android/*.png
+          path: ${{ runner.temp }}/chunks-seedhost-android/*.txt
           retention-days: 7
           if-no-files-found: error
