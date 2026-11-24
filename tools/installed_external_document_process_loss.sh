@@ -56,6 +56,35 @@ app_pid() {
   [[ "$value" =~ ^[0-9]{1,7}$ ]] || return 1
   printf '%s\n' "$value"
 }
+has_saved_task_state() {
+  timeout 10s adb shell dumpsys activity -a activities > "$scratch/saved-task.txt" 2>/dev/null || return 1
+  python3 - "$scratch/saved-task.txt" "$pkg" "$1" <<'PY'
+import re, sys
+from pathlib import Path
+
+lines = Path(sys.argv[1]).read_text(errors="replace").splitlines()
+component = re.escape(sys.argv[2] + "/.MainActivity")
+task = re.escape(sys.argv[3])
+header = re.compile(rf"^([ \t]*)\* Hist\s+#\d+: ActivityRecord\{{[^}}]*{component} t{task}\b")
+records = []
+for index, line in enumerate(lines):
+    if not (match := header.search(line)):
+        continue
+    prefix = match.group(1) + "  "
+    details = []
+    for detail in lines[index + 1:]:
+        if not detail.startswith(prefix):
+            break
+        details.append(detail.strip())
+    records.append(details)
+if len(records) != 1:
+    sys.exit(1)
+details = records[0]
+has_state = any(line.startswith("mHaveState=true ") for line in details)
+stopped = any(re.match(r"state=STOPPED\b.*\bfinishing=false\b", line) for line in details)
+sys.exit(0 if has_state and stopped else 1)
+PY
+}
 # The raw UI XML stays in a private temporary directory, never in CI logs.
 # Some UiAutomator errors leave an old dump on-device even with exit status 0.
 # Clear it before each request and require nodes from the exact app package.
@@ -260,9 +289,11 @@ for line in Path(sys.argv[1]).read_text(errors="replace").splitlines():
     tag, value = hit.groups()
     if target.search(value) or (tag == "wm_task_removed" and value.split(",", 1)[0].strip() == task):
         events[tag] += 1
+        if tag == "wm_finish_activity" and "proc died without state saved" in value:
+            events["no_saved_state_reason"] += 1
 print(",".join(f"{tag}={events[tag]}" for tag in (
     "am_proc_start", "am_proc_died", "am_kill", "am_crash",
-    "wm_finish_activity", "wm_resume_activity", "wm_task_removed")))
+    "wm_finish_activity", "wm_resume_activity", "wm_task_removed", "no_saved_state_reason")))
 PY_EVENTS
 )"
   fi
@@ -287,8 +318,14 @@ echo "CHUNKS_DOCUMENT_TASK: foreign-provider-original-review"
 # Home/stop then real SIGKILL from the exact app's debug UID, OUTSIDE target
 # instrumentation. Never use am force-stop, which removes saved task state.
 adb shell input keyevent KEYCODE_HOME || { fail "could not background app"; exit 1; }
-sleep 2
-[[ "$(task_id)" == "$old_task" ]] || { fail "task missing before process kill"; exit 1; }
+saved=false
+for attempt in {1..15}; do
+  if has_saved_task_state "$old_task"; then saved=true; break; fi
+  sleep 0.5
+done
+[[ "$saved" == true ]] || { fail "Android did not confirm stopped state for the original task"; exit 1; }
+[[ "$(app_pid)" == "$old_pid" ]] || { fail "original app process changed before the controlled kill"; exit 1; }
+echo "CHUNKS_DOCUMENT_TASK: android-saved-stopped-state-before-kill"
 timeout 15s adb shell run-as "$pkg" /system/bin/kill -9 "$old_pid" >/dev/null 2>&1 ||
   { fail "exact UID process kill was refused"; exit 1; }
 live=""
