@@ -3,6 +3,11 @@
 # qBittorrent and Deluge daemons (one emulator boot, app data cleared per client).
 set -euo pipefail
 # Bound every Android instrumentation phase independently; timeouts are failures.
+lane="${1:?required installed protocol lane}"
+case "$lane" in
+  transmission-rtorrent|qbittorrent-deluge|local-document) ;;
+  *) echo "::error::Unknown installed protocol lane"; exit 1 ;;
+esac
 out="$RUNNER_TEMP/interop/evidence"
 mkdir -p "$out"
 source_sha="$(git rev-parse HEAD)"
@@ -36,11 +41,18 @@ start_proxy() {
   echo "::error::Disposable Add fault relay failed to start for $kind"
   return 1
 }
-start_proxy transmission 19191
-start_proxy qbittorrent 18180
-start_proxy deluge 18212
-start_proxy rtorrent 18190
-for port in 19091 18080 18112 18090 19191 18180 18212 18190; do
+case "$lane" in
+  transmission-rtorrent)
+    start_proxy transmission 19191
+    start_proxy rtorrent 18190
+    ports=(19091 18090 19191 18190) ;;
+  qbittorrent-deluge)
+    start_proxy qbittorrent 18180
+    start_proxy deluge 18212
+    ports=(18080 18112 18180 18212) ;;
+  local-document) ports=() ;;
+esac
+for port in "${ports[@]}"; do
   adb reverse tcp:$port tcp:$port >/dev/null
 done
 b64() { printf '%s' "$1" | base64 -w 0; }
@@ -122,16 +134,6 @@ run_pair() {
   return "$result"
 }
 failed=0
-# Run the independently instrumented client/fault journeys first. A flaky
-# foreign-document task/foreground failure is a strict failing acceptance
-# result, but must not prevent real client proofs from executing on this AVD.
-# The host-driven process-loss test clears the app's disposable data itself.
-run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
-run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
-# Deluge authenticates with a password only; a blank shell extra is swallowed by
-# adb shell, shifting every following am instrument argument out of position.
-# Send a non-empty unused username placeholder (ignored by the Deluge adapter).
-run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1
 rtorrent_test=io.github.gamesbyian.chunks.RTorrentInstalledAddResponseFaultTest
 run_rtorrent_faults() {
   local phase_started=$SECONDS
@@ -193,8 +195,6 @@ run_rtorrent_death() {
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
-run_rtorrent_faults || failed=1
-run_rtorrent_death || failed=1
 run_local_add_death() {
   local phase_started=$SECONDS
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey started"
@@ -228,13 +228,26 @@ run_local_add_death() {
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL unresolved metadata observation did not replay on process restart" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
-run_local_add_death || failed=1
-
-# AndroidJUnitRunner cannot safely kill its own app and retain the task.
-# Run the independent foreign-UID host proof last, after every client has had
-# its chance to execute. This is NOT optional and a failure still makes the
-# entire five-client workflow red. Preserve its own separate failure receipt.
-bash tools/installed_external_document_process_loss.sh || failed=1
+# Independent runners own their own emulator and daemon state. The foreign
+# document is deliberately first on a fresh AVD, without earlier instrumentation.
+case "$lane" in
+  transmission-rtorrent)
+    run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
+    run_rtorrent_faults || failed=1
+    run_rtorrent_death || failed=1 ;;
+  qbittorrent-deluge)
+    run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
+    # Deluge ignores username; nonempty placeholder preserves adb argument positions.
+    run_pair DELUGE http://127.0.0.1:18112/json http://127.0.0.1:18212/json unused deluge || failed=1 ;;
+  local-document)
+    bash tools/installed_external_document_process_loss.sh || failed=1
+    run_local_add_death || failed=1 ;;
+esac
+if [[ "$failed" == 0 ]]; then
+  printf '%s\n' "$lane" > "$out/passed-lane"
+  printf '%s\n' "$source_sha" > "$out/source-sha"
+  printf '%s\n' "$source_tree" > "$out/source-tree"
+fi
 
 adb logcat -d -t 3000 > "$out/logcat.txt" 2>&1 || true
 exit $failed

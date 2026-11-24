@@ -59,9 +59,8 @@ internal class QBittorrentClient(
             val file = runCatching { ClientAddSource.TorrentFile(exported) }.getOrNull()
             if (file?.infoHash == exact) return file
         }
-        val rows = try { JSONArray(request("GET", "torrents/info?hashes=$exact")) } catch (_: Exception) { return null }
-        val row = (0 until rows.length()).map { rows.getJSONObject(it) }
-            .singleOrNull { it.optString("hash").equals(exact, true) } ?: return null
+        val rows = optionalRead { JSONArray(request("GET", "torrents/info?hashes=$exact")) } ?: return null
+        val row = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hash") } ?: return null
         val magnet = row.optString("magnet_uri").takeIf { it.startsWith("magnet:?") } ?: return null
         return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
     }
@@ -70,14 +69,14 @@ internal class QBittorrentClient(
 
     override suspend fun torrent(hash: String): ClientTorrent? {
         val exact = ClientHashes.requireHash(hash)
-        val rows = info(exact).filter { it.hash == exact }
-        if (rows.size > 1) throw IOException("Ambiguous qBittorrent identity")
-        return rows.singleOrNull()
+        return exactProtocolRow(info(exact), exact) { it.hash }
     }
 
     override suspend fun files(hash: String): List<ClientFile> {
         val exact = ClientHashes.requireHash(hash)
-        val rows = try { JSONArray(request("GET", "torrents/files?hash=$exact")) } catch (e: IOException) {
+        val rows = try { JSONArray(request("GET", "torrents/files?hash=$exact")) } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
             throw e
         } catch (_: Exception) { throw IOException("Invalid qBittorrent file list") }
         return (0 until rows.length()).map { i ->
@@ -205,20 +204,21 @@ internal class QBittorrentClient(
 
     override suspend fun seedingFacts(hash: String): ClientSeedingFacts? {
         val exact = ClientHashes.requireHash(hash)
-        val rows = try { JSONArray(request("GET", "torrents/info?hashes=$exact")) } catch (_: Exception) {
+        val rows = try { JSONArray(request("GET", "torrents/info?hashes=$exact")) } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
             throw IOException("Invalid qBittorrent seeding facts")
         }
-        if (rows.length() > 1) throw IOException("Ambiguous qBittorrent identity")
-        val r = rows.optJSONObject(0)?.takeIf { it.optString("hash").equals(exact, ignoreCase = true) } ?: return null
+        val r = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hash") } ?: return null
         // The private flag: in torrents/info on newer Web APIs, else torrents/properties.
         val private: Boolean? = when {
             r.has("private") -> r.optBoolean("private")
-            else -> runCatching { JSONObject(request("GET", "torrents/properties?hash=$exact")) }.getOrNull()
+            else -> optionalRead { JSONObject(request("GET", "torrents/properties?hash=$exact")) }
                 ?.let { p -> if (p.has("is_private")) p.optBoolean("is_private") else null }
         }
-        val trackers = if (private == false) runCatching {
+        val trackers = if (private == false) optionalRead {
             JSONArray(request("GET", "torrents/trackers?hash=$exact"))
-        }.getOrNull()?.let { a ->
+        }?.let { a ->
             // DHT/PeX/LSD pseudo-rows are not announce URLs.
             (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("url") }
                 .filter { it.contains("://") }
@@ -228,6 +228,15 @@ internal class QBittorrentClient(
         return ClientSeedingFacts(exact, count("uploaded"), count("downloaded"), count("seeding_time"),
             seeding = if (state.isBlank()) null else state in setOf("uploading", "stalledUP", "forcedUP"),
             isPrivate = private, publicTrackerUrls = trackers)
+    }
+
+    // Optional reads may be unavailable, but cancellation must remain cancellation.
+    private suspend fun <T> optionalRead(block: suspend () -> T): T? = try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        null
     }
 
     private suspend fun info(hash: String?): List<ClientTorrent> {

@@ -1437,11 +1437,20 @@ internal fun ChunksApp(
     }
     val protocolAddContent: (@Composable () -> Unit)? = if (protocolAddProfile == null) null else {
         val profile = protocolAddProfile
+        val savedOwner = savedProtocolProfiles.firstOrNull { it.id == profile.id }
         val content: @Composable () -> Unit = {
             ProtocolAddScreen(
                 profileId = profile.id,
                 clientLabel = profile.label,
                 createOperations = requireNotNull(profile.operations),
+                isSourceOwnerCurrent = {
+                    section == Section.ADD_CHOOSE &&
+                        addDestination == UniversalAddRouteTarget.Protocol(profile.id) &&
+                        savedProtocolProfiles.firstOrNull { it.id == profile.id }.let { current ->
+                            if (savedOwner != null) current == savedOwner
+                            else current == null && transientReadOnlyProfile === profile
+                        }
+                },
                 destinationPicker = addDestinationPicker,
                 sourceDraft = addSourceDraft,
                 reviewedTorrent = localReviewedTorrent,
@@ -1604,6 +1613,7 @@ internal fun ChunksApp(
             VerifiedAddScreen(
                 remote = connectedRemote, magnet = magnet, destination = addSession.destination,
                 session = addSession,
+                isSourceOwnerCurrent = ::currentRemoteDraft,
                 // Configuration-retained owner, never a disposable
                 // Composable/Activity scope: rotating the device or
                 // returning to Transfers cannot cancel a sent Add.

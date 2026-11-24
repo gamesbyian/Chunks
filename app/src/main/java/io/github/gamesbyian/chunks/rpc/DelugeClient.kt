@@ -81,9 +81,7 @@ internal class DelugeClient(
 
     override suspend fun torrent(hash: String): ClientTorrent? {
         val exact = ClientHashes.requireHash(hash)
-        val rows = status(JSONObject().put("id", JSONArray().put(exact))).filter { it.hash == exact }
-        if (rows.size > 1) throw IOException("Ambiguous Deluge identity")
-        return rows.singleOrNull()
+        return exactProtocolRow(status(JSONObject().put("id", JSONArray().put(exact))), exact) { it.hash }
     }
 
     override suspend fun files(hash: String): List<ClientFile> {
@@ -239,8 +237,7 @@ internal class DelugeClient(
             val result = call("core.get_torrents_status",
                 JSONArray().put(JSONObject().put("id", JSONArray().put(exact))).put(JSONArray(keys))) as? JSONObject
                 ?: throw IOException("Deluge seeding facts unavailable")
-            if (result.length() > 1) throw IOException("Ambiguous Deluge identity")
-            return result.keys().asSequence().firstOrNull { it.equals(exact, ignoreCase = true) }?.let(result::getJSONObject)
+            return exactProtocolRow(result.keys().asSequence().toList(), exact) { it }?.let(result::getJSONObject)
         }
         val r = row(listOf("total_uploaded", "all_time_download", "seeding_time", "state", "is_finished", "private"))
             ?: return null

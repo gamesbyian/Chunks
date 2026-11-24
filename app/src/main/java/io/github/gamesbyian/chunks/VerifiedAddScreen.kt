@@ -145,6 +145,8 @@ internal fun VerifiedAddScreen(
      * ONE reviewed document, so another Add target reviews the same newest file.
      */
     onTorrentAdopted: (TorrentMetainfoPreview, ByteArray, android.net.Uri?) -> Unit = { _, _, _ -> },
+    /** Live Add route and exact authenticated transport that own this form. */
+    isSourceOwnerCurrent: () -> Boolean = { true },
     /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
     fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
         withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
@@ -317,7 +319,7 @@ internal fun VerifiedAddScreen(
     val originalDeletable = originalPolicy?.deletable == true
     LaunchedEffect(initialTorrent, alreadyAttempted) {
         val document = initialTorrent ?: return@LaunchedEffect
-        if (submitting || alreadyAttempted) return@LaunchedEffect
+        if (!isSourceOwnerCurrent() || submitting || alreadyAttempted) return@LaunchedEffect
         onInitialTorrentConsumed()
         try {
             val bytes = document.copyOf()
@@ -336,10 +338,16 @@ internal fun VerifiedAddScreen(
         }
     }
 
+    var documentSelection by remember {
+        mutableStateOf<Pair<RemoteAddSourceReadWitness, () -> Boolean>?>(null)
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null && !choosing && !submitting && !alreadyAttempted) {
+        val (sourceWitness, ownerIsCurrent) = documentSelection ?: return@rememberLauncherForActivityResult
+        documentSelection = null
+        if (uri != null && ownerIsCurrent() && !choosing && !submitting && !alreadyAttempted &&
+            !latestExternalSourceReading.value &&
+            sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
             choosing = true
-            val sourceWitness = RemoteAddSourceReadWitness(currentSource.value, selectedBytes, useFile)
             // Preserve an existing reviewed .torrent until the replacement
             // has been fully read and validated. An invalid provider document
             // must not erase the user's working Add draft.
@@ -347,6 +355,7 @@ internal fun VerifiedAddScreen(
             awaitingConfirmation = false
             scope.launch {
                 try {
+                    if (!ownerIsCurrent()) return@launch
                     val result = withContext(Dispatchers.IO) {
                         // Share one fail-closed content:// reader with Android
                         // VIEW/SEND. The previous picker loop could spin forever
@@ -355,7 +364,8 @@ internal fun VerifiedAddScreen(
                             context.contentResolver, uri)
                         reviewed.preview to reviewed.bytes
                     }
-                    if (alreadyAttempted || submitting ||
+                    if (!ownerIsCurrent()) return@launch
+                    if (alreadyAttempted || submitting || latestExternalSourceReading.value ||
                         !sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
                         fileError = "The source changed while opening the .torrent. Your newer choice was kept."
                         return@launch
@@ -375,8 +385,8 @@ internal fun VerifiedAddScreen(
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
-                    if (!alreadyAttempted && !submitting &&
-                        sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                    if (ownerIsCurrent() && !alreadyAttempted && !submitting &&
+                        !latestExternalSourceReading.value && sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
                         fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
                             if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
                     }
@@ -514,7 +524,12 @@ internal fun VerifiedAddScreen(
                     }
                 },
                 enabled = !submitting && !choosing && !alreadyAttempted,
-                onOpenTorrent = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
+                onOpenTorrent = open@{
+                    if (!isSourceOwnerCurrent()) return@open
+                    documentSelection =
+                        RemoteAddSourceReadWitness(currentSource.value, selectedBytes, useFile) to isSourceOwnerCurrent
+                    picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*"))
+                },
                 readingTorrent = choosing,
                 linkFetching = linkFetching,
                 onFetchLink = fetch@{ link ->
@@ -524,6 +539,7 @@ internal fun VerifiedAddScreen(
                     // any network access rather than binding it to new text.
                     val sourceWitness = RemoteAddSourceReadWitness(
                         link.uri.toString(), selectedBytes, useFile)
+                    if (!isSourceOwnerCurrent()) return@fetch
                     if (latestExternalSourceReading.value ||
                         !sourceWitness.stillSelected(
                             currentSource.value.trim(), selectedBytes, useFile)) {
@@ -533,8 +549,10 @@ internal fun VerifiedAddScreen(
                     linkFetching = true
                     scope.launch {
                         try {
+                            if (!isSourceOwnerCurrent()) return@launch
                             when (val result = fetchTorrentLink(link)) {
                                 is TorrentLinkResult.Fetched -> {
+                                    if (!isSourceOwnerCurrent()) return@launch
                                     if (alreadyAttempted || submitting || choosing ||
                                         latestExternalSourceReading.value ||
                                         !sourceWitness.stillSelected(
@@ -560,7 +578,7 @@ internal fun VerifiedAddScreen(
                                 is TorrentLinkResult.Refused -> {
                                     // A refused old URL must not pollute a newer
                                     // explicitly selected source with its error.
-                                    if (!alreadyAttempted && !submitting && !choosing &&
+                                    if (isSourceOwnerCurrent() && !alreadyAttempted && !submitting && !choosing &&
                                         !latestExternalSourceReading.value &&
                                         sourceWitness.stillSelected(
                                             currentSource.value.trim(), selectedBytes, useFile))

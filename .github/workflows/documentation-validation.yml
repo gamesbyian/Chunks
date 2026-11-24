@@ -22,6 +22,8 @@ on:
       - '.github/workflows/chunks-font-visual-stress.yml'
       - '.github/workflows/seedhost-magnet-readonly-forensics.yml'
       - '.github/workflows/installed-protocol-client.yml'
+      - 'tools/verify_installed_protocol_lanes.py'
+      - 'tests/test_installed_protocol_lanes.py'
       - '.github/workflows/real-client-interop.yml'
       - '.github/workflows/seedhost-android-readonly.yml'
       - '.github/workflows/seedhost-byte-window-readonly.yml'
@@ -163,6 +165,8 @@ on:
       - '.github/workflows/chunks-font-visual-stress.yml'
       - '.github/workflows/seedhost-magnet-readonly-forensics.yml'
       - '.github/workflows/installed-protocol-client.yml'
+      - 'tools/verify_installed_protocol_lanes.py'
+      - 'tests/test_installed_protocol_lanes.py'
       - '.github/workflows/real-client-interop.yml'
       - '.github/workflows/seedhost-android-readonly.yml'
       - '.github/workflows/seedhost-byte-window-readonly.yml'
@@ -351,7 +355,9 @@ jobs:
           bash -n tools/installed_external_document_process_loss.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_external_document_first_view_contract.py
       - name: Check bounded installed remote and storage instrumentation commands
-        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_remote_instrumentation_deadlines.py
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_remote_instrumentation_deadlines.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_protocol_lanes.py
       - name: Validate installed real-source magnet reporting without secrets or emulator
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
       - name: Verify protected Seedhost dispatch gates offline

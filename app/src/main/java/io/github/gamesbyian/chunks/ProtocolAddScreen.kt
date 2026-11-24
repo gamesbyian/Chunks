@@ -198,6 +198,8 @@ internal fun ProtocolAddScreen(
     /** The shared Add draft's optional Chunks display name (the destination picker edits it). */
     aliasState: MutableState<String>? = null,
     externalSourceReading: Boolean = false,
+    /** Live Add route and exact credential revision that owns this form. */
+    isSourceOwnerCurrent: () -> Boolean = { true },
     /**
      * Saves a Chunks-only display name for a verified NEW exact registration under this
      * exact profile's alias scope; never overwrites an existing name, never calls the client.
@@ -222,9 +224,10 @@ internal fun ProtocolAddScreen(
     var readingTorrent by remember { mutableStateOf(false) }
     var linkFetching by remember { mutableStateOf(false) }
     var documentSelection by remember(profileId) { mutableStateOf<ProtocolAddSourceSelection?>(null) }
-    fun sourceSelection() = ProtocolAddSourceSelection(sourceDraft.value, reviewedTorrent.value)
+    fun sourceSelection() =
+        ProtocolAddSourceSelection(sourceDraft.value, reviewedTorrent.value, isSourceOwnerCurrent)
     fun stillSelected(witness: ProtocolAddSourceSelection): Boolean =
-        !attempt.busy && !currentExternalRead.value &&
+        witness.isOwnerCurrent() && !attempt.busy && !currentExternalRead.value &&
             witness.text == sourceDraft.value && witness.torrent === reviewedTorrent.value
 
 
@@ -324,7 +327,8 @@ internal fun ProtocolAddScreen(
                 if (MagnetDraftCheck.inspect(value.trim()) is MagnetDraftCheck.Valid) reviewedTorrent.value = null
             },
             enabled = !attempt.busy && !unresolved && !linkFetching && !externalSourceReading,
-            onOpenTorrent = {
+            onOpenTorrent = open@{
+                if (!isSourceOwnerCurrent()) return@open
                 documentSelection = sourceSelection()
                 picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*"))
             },
@@ -337,6 +341,7 @@ internal fun ProtocolAddScreen(
                 linkFetching = true
                 sourceScope.launch {
                     try {
+                        if (!stillSelected(witness)) return@launch
                         when (val result = fetchTorrentLink(link)) {
                             is TorrentLinkResult.Fetched -> if (stillSelected(witness)) {
                                 // Downloaded and validated on this device; a fetched link has no
@@ -344,7 +349,9 @@ internal fun ProtocolAddScreen(
                                 reviewedTorrent.value = PendingLocalAdd(result.preview, result.bytes)
                                 sourceDraft.value = ""
                                 fileError = null
-                            } else fileError = "The draft changed while fetching. The current source was kept."
+                            } else if (witness.isOwnerCurrent()) {
+                                fileError = "The draft changed while fetching. The current source was kept."
+                            }
                             is TorrentLinkResult.Refused -> if (stillSelected(witness))
                                 fileError = result.message
                         }
@@ -603,7 +610,11 @@ internal fun ProtocolAddScreen(
     )
 }
 
-private class ProtocolAddSourceSelection(val text: String, val torrent: PendingLocalAdd?)
+private class ProtocolAddSourceSelection(
+    val text: String,
+    val torrent: PendingLocalAdd?,
+    val isOwnerCurrent: () -> Boolean
+)
 
 private fun intentEnvironment(profileId: String) = io.github.gamesbyian.chunks.model.EnvironmentId(profileId)
 
