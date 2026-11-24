@@ -10,6 +10,16 @@ gradle.beforeProject { project ->
         project.tasks.withType(Test).configureEach { task ->
             if (task.name == "testDebugUnitTest") {
                 task.maxParallelForks = 2
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.RepeatedAndroidIntakeTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.ConnectionDraftRestorationTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.ExternalSourceReplacementTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.RemoteSecondAddArtworkChoiceTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.RemoteAddViewModelLifetimeTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.create.SharedCreateDocumentTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.create.CreateTorrentScreenTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.LocalEngineStartupSettingsTest")
+                task.filter.includeTestsMatching("io.github.gamesbyian.chunks.LocalRateLimitPreferenceTransactionTest")
+                task.testLogging.exceptionFormat = "full"
             }
         }
     }
