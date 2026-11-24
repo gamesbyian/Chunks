@@ -6,7 +6,6 @@ import java.net.URLEncoder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 /** A read-only view of the actual directories returned by this exact ruTorrent tenant. */
 internal data class RemoteDirectoryPage(val path: String, val folders: List<String>)
@@ -65,8 +64,8 @@ internal object RuTorrentDirectoryListing {
         if (body.length !in 2..150_000) return RemoteDirectoryLookup.Unavailable(
             RemoteDirectoryLookup.Reason.INVALID_RESPONSE)
         return try {
-            val json = JSONObject(body)
-            val path = canonical(json.getString(if (legacy) "basedir" else "path"))
+            val json = ExactRpcJson.objectBody(body)
+            val path = (json.opt(if (legacy) "basedir" else "path") as? String)?.let(::canonical)
                 ?: return RemoteDirectoryLookup.Unavailable(RemoteDirectoryLookup.Reason.INVALID_RESPONSE)
             if (requestedPath.isNotBlank() && canonical(requestedPath) != path)
                 return RemoteDirectoryLookup.Unavailable(RemoteDirectoryLookup.Reason.OUTSIDE_SCOPE)
