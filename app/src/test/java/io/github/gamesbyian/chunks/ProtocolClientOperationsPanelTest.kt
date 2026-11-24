@@ -320,9 +320,13 @@ class ProtocolClientOperationsPanelTest {
         }
         finish.performClick()
         rule.waitUntil(5_000) { source.writes == 1 }
-        rule.runOnIdle { shown = false }
         val key = ProtocolOperationReceiptOwner.Key("rtorrent-account", hash)
-        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.UNKNOWN }
+        rule.runOnIdle {
+            assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+            shown = false
+        }
+        rule.waitForIdle()
+        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, owner.receipt(key)?.phase)
         rule.runOnIdle {
             generation = "rt-2"
             current = false
