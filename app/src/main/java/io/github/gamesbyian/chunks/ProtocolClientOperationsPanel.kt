@@ -476,7 +476,12 @@ internal fun ProtocolClientOperationsPanel(
             }
             val changed = draft.filter { (index, value) -> shown.firstOrNull { it.index == index }?.priority != value }
             Button(
-                onClick = { run("File priorities", ProtocolOperationKind.FILE_PRIORITIES) { operations.setFilePriorities(hash, changed) }; files = null },
+                onClick = {
+                    run("File priorities", ProtocolOperationKind.FILE_PRIORITIES) {
+                        operations.setReviewedFilePriorities(hash, shown, changed)
+                    }
+                    files = null
+                },
                 enabled = enabled && changed.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Apply ${changed.size} priority change" + if (changed.size == 1) "" else "s") }

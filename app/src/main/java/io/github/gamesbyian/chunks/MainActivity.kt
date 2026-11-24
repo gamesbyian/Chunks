@@ -114,10 +114,19 @@ import io.github.gamesbyian.chunks.snapshots.applyRemoteSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.gamesbyian.chunks.privacy.LocalTransferPrivacyGate
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyGate
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
+import io.github.gamesbyian.chunks.rpc.RemotePolicyWriteFence
+import io.github.gamesbyian.chunks.seeding.RemoteSeeding
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -1731,36 +1740,73 @@ internal fun ChunksApp(
         // Child routes must not each own competing bottom navigation bars.
         Box(Modifier.weight(1f)) {
 
-        // Finish in Order on rTorrent advances whenever this server is connected, whichever screen
-        // is showing (canonical Transfers/Details and Connections included): at most one guarded
-        // step per policy every 30 s, under the same mutation gate as every other server change.
+        val policyLifecycle = LocalLifecycleOwner.current.lifecycle
+        fun policiesMayRun() = policyLifecycle.currentStateFlow.value.isAtLeast(Lifecycle.State.STARTED) &&
+            credentialChanges.isSettled()
+
+        // The authenticated rTorrent owner shares the manual mutation gate.
         LaunchedEffect(server, aliasScope) {
             val connectedRemote = server ?: return@LaunchedEffect
-            val remotePrivacyScope = RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
-            val store = FinishInOrderStore(context, aliasScope)
+            val expectedScope = aliasScope
+            val privacyScope = RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(expectedScope)
+                ?: return@LaunchedEffect
+            val privacyStore = TransferPrivacyPolicyStore(context)
+            val store = FinishInOrderStore(context, expectedScope)
+            val parentJob = currentCoroutineContext()[Job]
             while (true) {
-                kotlinx.coroutines.delay(30_000L)
-                if (remotePrivacyScope == null) continue
-                for (transfer in transfers.filter { it.started }) {
-                    val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
-                    if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
-                    if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
-                    // Only a positively Idle step is known to have sent
-                    // no remote priority write. It must not consume the
-                    // readback latch and block every later lifecycle action.
-                    var confirmedNoWrite = false
+                delay(30_000L)
+                if (!policiesMayRun()) continue
+                val generation = RemoteCredentialLock.capture()
+                val lifecycle = TransferPrivacyRuntime.lifecycleRevision
+                val privacy = TransferPrivacyPolicyStore.revision
+                val privacySession = TransferPrivacyRuntime.session
+                if (!withContext(Dispatchers.IO) { privacyStore.loadInto(privacySession, privacyScope) }) continue
+                val ownerCurrent: () -> Boolean = {
+                    parentJob?.isActive == true && policiesMayRun() && connectJob?.isActive != true &&
+                        RemoteCredentialLock.current(generation) &&
+                        lifecycle == TransferPrivacyRuntime.lifecycleRevision &&
+                        privacy == TransferPrivacyPolicyStore.revision &&
+                        privacySession.mayAct(privacyScope) &&
+                        server === connectedRemote && aliasScope == expectedScope
+                }
+                if (!ownerCurrent() || loading || stale) continue
+                val seedingEnabled = withContext(Dispatchers.IO) { RemoteSeeding.enabledFor(context, connectedRemote) }
+                if (seedingEnabled && ownerCurrent() && !loading && !stale && mutationGate.tryStart()) {
+                    var tick: RemoteSeeding.Tick? = null
                     try {
-                        val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
-                            catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                            catch (_: Exception) { null }
-                        confirmedNoWrite = step is FinishInOrderRunner.Step.Idle
+                        tick = withContext(Dispatchers.IO) {
+                            RemoteSeeding.tick(context, connectedRemote, ownerCurrent = ownerCurrent)
+                        }
+                    } catch (cancel: CancellationException) {
+                        if (parentJob?.isActive != true || ownerCurrent()) throw cancel
                     } finally {
-                        if (confirmedNoWrite) {
+                        if (tick == RemoteSeeding.Tick.NO_WRITE || tick == RemoteSeeding.Tick.NOT_RUN)
                             mutationGate.abandonKnownNoWrite()
-                        } else {
-                            // Null/fault/cancellation may follow an applied
-                            // priority write: retain the gate until a fresh
-                            // read, without blindly dispatching another RPC.
+                        else {
+                            mutationGate.settled()
+                            if (server === connectedRemote) { stale = true; refresh() }
+                        }
+                    }
+                }
+                val activeTransfers = transfers.filter { it.started }
+                for (transfer in activeTransfers) {
+                    val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
+                    if (!record.isScheduled()) continue
+                    if (!ownerCurrent() || loading || stale || !mutationGate.tryStart()) break
+                    var noWrite = false
+                    try {
+                        val step = withContext(Dispatchers.IO + RemotePolicyWriteFence(ownerCurrent)) {
+                            store.rememberOwner(transfer.hash)
+                            stepRemoteFinishInOrder(connectedRemote, store, transfer.hash, ownerCurrent)
+                        }
+                        noWrite = step is FinishInOrderRunner.Step.Idle
+                    } catch (cancel: CancellationException) {
+                        if (parentJob?.isActive != true || ownerCurrent()) throw cancel
+                    } catch (_: Exception) {
+                        // A partial write retains the readback fence.
+                    } finally {
+                        if (noWrite) mutationGate.abandonKnownNoWrite()
+                        else {
                             mutationGate.settled()
                             if (server === connectedRemote) { stale = true; refresh() }
                         }
@@ -1768,66 +1814,55 @@ internal fun ChunksApp(
                 }
             }
         }
-        // Remote Smart Seeding (opt-in per exact server, default off): while this server is
-        // connected, every 30 s evaluate its rules against rTorrent's own counters under the
-        // same mutation gate as every other server change. A sent Stop is journaled before the
-        // call, never retried, and is followed by a fresh read. Nothing runs when disabled.
-        LaunchedEffect(server, aliasScope) {
-            val connectedRemote = server ?: return@LaunchedEffect
-            while (true) {
-                kotlinx.coroutines.delay(30_000L)
-                val enabled = withContext(Dispatchers.IO) {
-                    io.github.gamesbyian.chunks.seeding.RemoteSeeding.enabledFor(context, connectedRemote)
-                }
-                if (!enabled) continue
-                if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) continue
-                var tick: io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick? = null
-                try {
-                    tick = withContext(Dispatchers.IO) {
-                        io.github.gamesbyian.chunks.seeding.RemoteSeeding.tick(context, connectedRemote)
-                    }
-                } finally {
-                    if (tick == io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick.NO_WRITE ||
-                        tick == io.github.gamesbyian.chunks.seeding.RemoteSeeding.Tick.NOT_RUN) {
-                        mutationGate.abandonKnownNoWrite()
-                    } else {
-                        // A Stop was sent, or cancellation may have followed one: keep the
-                        // readback latch until a fresh read, never another blind write.
-                        mutationGate.settled()
-                        if (server === connectedRemote) { stale = true; refresh() }
-                    }
-                }
-            }
-        }
-        // Finish in Order on Transmission/qBittorrent/Deluge advances the same way: every
-        // 30 s, at most one journaled, verified step per enabled policy of a started
-        // transfer, serialized with every other policy edit. One client instance per
-        // profile, so a periodic step never forces a fresh login.
-        LaunchedEffect(combinedProtocolProfiles.map { it.id }) {
+        // A typed policy session is reusable only for the exact roster and
+        // authentication generation that admitted it.
+        LaunchedEffect(savedProtocolProfiles, transientReadOnlyProfile) {
+            val expectedSaved = savedProtocolProfiles.associateBy { it.id }
+            val expectedTransient = transientReadOnlyProfile
             val clients = mutableMapOf<String, io.github.gamesbyian.chunks.rpc.ClientOperations>()
+            val privacyStore = TransferPrivacyPolicyStore(context)
+            var clientGeneration = RemoteCredentialLock.capture()
+            val job = currentCoroutineContext()[Job]
             while (true) {
-                kotlinx.coroutines.delay(30_000L)
+                delay(30_000L)
+                if (!policiesMayRun() || combinedProtocolProfiles.isEmpty()) continue
+                val generation = RemoteCredentialLock.capture()
+                if (generation != clientGeneration) {
+                    clients.clear()
+                    clientGeneration = generation
+                }
+                val policies = withContext(Dispatchers.IO) { FinishInOrderStore.scheduledPolicies(context) }
                 for (profile in combinedProtocolProfiles) {
                     val factory = profile.operations ?: continue
-                    val ops = clients.getOrPut(profile.id) { factory() }
+                    val privacyScope = CombinedReadOnlyProtocolAdmission.privacyScope(profile) ?: continue
+                    val lifecycle = TransferPrivacyRuntime.lifecycleRevision
+                    val privacy = TransferPrivacyPolicyStore.revision
+                    val privacySession = TransferPrivacyRuntime.session
+                    if (!withContext(Dispatchers.IO) { privacyStore.loadInto(privacySession, privacyScope) }) continue
+                    val expected = expectedSaved[profile.id]
+                    val ownerCurrent: () -> Boolean = {
+                        job?.isActive == true && policiesMayRun() && readOnlyConnectJob?.isActive != true &&
+                            RemoteCredentialLock.current(generation) &&
+                            lifecycle == TransferPrivacyRuntime.lifecycleRevision &&
+                            privacy == TransferPrivacyPolicyStore.revision &&
+                            privacySession.mayAct(privacyScope) &&
+                            savedProtocolProfiles.firstOrNull { it.id == profile.id }.let { current ->
+                                if (expected != null) current == expected &&
+                                    profile.verifiedAtMillis == expected.lastVerifiedAtMillis
+                                else current == null && profile === expectedTransient &&
+                                    transientReadOnlyProfile === expectedTransient
+                            }
+                    }
                     try {
-                        // Opt-in Smart Seeding for this exact profile (default off), serialized
-                        // with its Finish in Order steps; a Stop is journaled first, never retried.
-                        withContext(Dispatchers.IO) {
-                            io.github.gamesbyian.chunks.seeding.RemoteSeeding.tickProtocol(context, profile.id, ops)
+                        tickProtocolRemotePolicies(context, profile.id, policies, ownerCurrent) {
+                            clients.getOrPut(profile.id) { factory() }
                         }
-                        val session = ops.session()
-                        if (io.github.gamesbyian.chunks.rpc.ClientCapability.FILE_PRIORITIES !in session.capabilities) continue
-                        val store = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile.id))
-                        for (transfer in ops.client.torrents().filter { it.runState.started == true }) {
-                            val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
-                            if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
-                            stepClientFinishInOrder(ops, session.filePriorities, store, transfer.hash)
-                        }
-                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        throw cancel
+                    } catch (cancel: CancellationException) {
+                        // An invalidated owner ends this profile's work. A cancelled
+                        // parent still owns the loop's termination.
+                        if (job?.isActive != true || ownerCurrent()) throw cancel
                     } catch (_: Exception) {
-                        // Unreachable or refused: nothing is retried; the next tick reads afresh.
+                        // Unreachable or refused: no immediate retry.
                     }
                 }
             }

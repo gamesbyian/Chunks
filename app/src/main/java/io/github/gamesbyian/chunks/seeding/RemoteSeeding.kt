@@ -2,8 +2,10 @@ package io.github.gamesbyian.chunks.seeding
 
 import android.content.Context
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemotePolicyWriteFence
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -30,8 +32,10 @@ internal class RTorrentSeedingPort(
     private val remote: RTorrentRemote,
     /** True on the activation tick: every current transfer predates it and stays unmanaged. */
     private val activationBaseline: Boolean,
+    private val ownerCurrent: () -> Boolean = { true },
     private val nowMs: () -> Long = System::currentTimeMillis
 ) : StopTrackingPort {
+    override fun mayMutate() = ownerCurrent()
     override val supportsPerTransferUploadCap: Boolean get() = false
 
     override fun transfers(): List<SeedingController.Facts> = runBlocking {
@@ -64,7 +68,10 @@ internal class RTorrentSeedingPort(
 
     override fun pause(infoHash: String): Boolean {
         stopAttempted = true
-        return runBlocking { remote.setStarted(infoHash, desiredStarted = false) == LifecycleOutcome.Verified(false) }
+        return runBlocking(RemotePolicyWriteFence(ownerCurrent)) {
+            if (!ownerCurrent()) return@runBlocking false
+            remote.setStarted(infoHash, desiredStarted = false) == LifecycleOutcome.Verified(false)
+        }
     }
 }
 
@@ -85,8 +92,12 @@ internal interface StopTrackingPort : SeedingController.EnginePort {
 internal class ProtocolSeedingPort(
     private val operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
     private val activationBaseline: Boolean,
+    private val inventory: List<ClientTorrent>? = null,
+    private val ownerCurrent: () -> Boolean = { true },
     private val nowMs: () -> Long = System::currentTimeMillis
 ) : StopTrackingPort {
+    override fun mayMutate() = ownerCurrent()
+
     // The client's own per-transfer cap step, read once per tick; null = no per-transfer cap.
     private val capStep: Long? by lazy {
         runBlocking { try { operations.client.uploadCapStepBytes() } catch (_: Exception) { null } }
@@ -99,7 +110,8 @@ internal class ProtocolSeedingPort(
 
     override fun transfers(): List<SeedingController.Facts> = runBlocking {
         val at = if (activationBaseline) 0L else nowMs()
-        operations.client.torrents().map { SeedingController.Facts(it.hash.lowercase(), at, null, null) }
+        if (!ownerCurrent()) return@runBlocking emptyList()
+        (inventory ?: operations.client.torrents()).map { SeedingController.Facts(it.hash.lowercase(), at, null, null) }
     }
 
     override fun details(facts: SeedingController.Facts): SeedingController.Facts = runBlocking {
@@ -130,7 +142,8 @@ internal class ProtocolSeedingPort(
         val bytes = bytesPerSecond ?: return false
         if (!uploadCapRepresentable(bytes)) return false
         stopAttempted = true
-        return runBlocking {
+        return runBlocking(RemotePolicyWriteFence(ownerCurrent)) {
+            if (!ownerCurrent()) return@runBlocking false
             try { operations.client.setUploadCapBytesPerSecond(infoHash, bytes) }
             catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
             catch (_: Exception) { return@runBlocking false }
@@ -140,7 +153,8 @@ internal class ProtocolSeedingPort(
 
     override fun pause(infoHash: String): Boolean {
         stopAttempted = true
-        return runBlocking {
+        return runBlocking(RemotePolicyWriteFence(ownerCurrent)) {
+            if (!ownerCurrent()) return@runBlocking false
             operations.setStarted(infoHash, false) is io.github.gamesbyian.chunks.rpc.ClientOperationOutcome.Verified
         }
     }
@@ -181,9 +195,14 @@ internal object RemoteSeeding {
         environmentOf(remote)?.let { EnforcementSwitch(context).enabled(it) } == true
 
     /** One controller step for [remote]. Blocking; call off main, holding the server's mutation gate. */
-    fun tick(context: Context, remote: RTorrentRemote, nowMs: Long = System.currentTimeMillis()): Tick {
+    fun tick(
+        context: Context,
+        remote: RTorrentRemote,
+        nowMs: Long = System.currentTimeMillis(),
+        ownerCurrent: () -> Boolean = { true }
+    ): Tick {
         val environment = environmentOf(remote) ?: return Tick.NOT_RUN
-        return run(context, environment, nowMs) { baseline -> RTorrentSeedingPort(remote, baseline) { nowMs } }
+        return run(context, environment, nowMs) { baseline -> RTorrentSeedingPort(remote, baseline, ownerCurrent) { nowMs } }
     }
 
     /** The seeding-rule environment ID of a Transmission/qBittorrent/Deluge profile. */
@@ -193,9 +212,11 @@ internal object RemoteSeeding {
     fun tickProtocol(
         context: Context, profileId: String,
         operations: io.github.gamesbyian.chunks.rpc.ClientOperations,
-        nowMs: Long = System.currentTimeMillis()
+        nowMs: Long = System.currentTimeMillis(),
+        inventory: List<ClientTorrent>? = null,
+        ownerCurrent: () -> Boolean = { true }
     ): Tick = run(context, protocolEnvironment(profileId), nowMs) { baseline ->
-        ProtocolSeedingPort(operations, baseline) { nowMs }
+        ProtocolSeedingPort(operations, baseline, inventory, ownerCurrent) { nowMs }
     }
 
     private fun run(context: Context, environment: String, nowMs: Long,

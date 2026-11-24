@@ -46,6 +46,16 @@ internal interface TorrentClient {
         remove(hash, deleteData = false)
     }
     suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>)
+
+    /**
+     * An adapter that takes another file snapshot to build its write must
+     * apply the caller's check to that snapshot before constructing a command.
+     */
+    suspend fun setFilePriorities(
+        hash: String,
+        priorities: Map<Int, ClientFilePriority>,
+        validateSnapshot: (List<ClientFile>) -> Boolean
+    ) = setFilePriorities(hash, priorities)
     suspend fun setLocation(hash: String, directory: String, moveData: Boolean)
     suspend fun recheck(hash: String)
 

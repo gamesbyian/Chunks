@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.rpc
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -20,7 +21,8 @@ class ExactProtocolReadTest {
 
     private class Fixture(val client: TorrentClient, val writes: () -> Int)
 
-    private fun fixture(kind: TorrentClientKind, replies: List<List<String>>, cancelPath: String? = null): Fixture {
+    private fun fixture(kind: TorrentClientKind, replies: List<List<String>>, cancelPath: String? = null,
+        beforeReply: (String) -> Unit = {}): Fixture {
         var writes = 0
         val queue = ArrayDeque(replies)
         fun rows(field: String): String = JSONArray(queue.removeFirst().map {
@@ -32,10 +34,11 @@ class ExactProtocolReadTest {
                 RemoteCredentials("http://127.0.0.1/transmission/rpc", "fixture", "password"),
                 TransmissionReadOnlyRpc.Wire { req ->
                     val method = JSONObject(req.body.toString(Charsets.UTF_8)).getString("method")
+                    beforeReply(method)
                     val args = when (method) {
                         "session-get" -> """{"version":"4.0","download-dir":"/data"}"""
                         "torrent-get" -> """{"torrents":${rows("hashString")}}"""
-                        "torrent-add", "torrent-remove" -> { writes++; "{}" }
+                        "torrent-add", "torrent-remove", "torrent-stop" -> { writes++; "{}" }
                         else -> error("Unexpected method $method")
                     }
                     TransmissionReadOnlyRpc.Response(200, emptyMap(), """{"result":"success","arguments":$args}""")
@@ -44,6 +47,7 @@ class ExactProtocolReadTest {
                 RemoteCredentials("http://127.0.0.1/", "fixture", "password"),
                 QBittorrentReadOnlyRpc.Wire { req ->
                     val method = req.url.path.substringAfter("/api/v2/")
+                    beforeReply(method)
                     if (method == cancelPath) throw CancellationException("wire cancelled")
                     when (method) {
                         "auth/login" -> QBittorrentReadOnlyRpc.Response(200, "Ok.",
@@ -53,7 +57,7 @@ class ExactProtocolReadTest {
                         "app/defaultSavePath" -> QBittorrentReadOnlyRpc.Response(200, "/data")
                         "torrents/info" -> QBittorrentReadOnlyRpc.Response(200, rows("hash"))
                         "torrents/export" -> QBittorrentReadOnlyRpc.Response(404, "")
-                        "torrents/add", "torrents/delete" -> { writes++; QBittorrentReadOnlyRpc.Response(200, "Ok.") }
+                        "torrents/add", "torrents/delete", "torrents/stop" -> { writes++; QBittorrentReadOnlyRpc.Response(200, "Ok.") }
                         else -> error("Unexpected method $method")
                     }
                 })
@@ -63,6 +67,7 @@ class ExactProtocolReadTest {
                     val call = JSONObject(req.body.toString(Charsets.UTF_8))
                     val id = call.getInt("id")
                     val method = call.getString("method")
+                    beforeReply(method)
                     val result = when (method) {
                         "auth.login", "web.connected" -> "true"
                         "web.get_hosts" -> """[["fixture-host","127.0.0.1",58846,"fixture"]]"""
@@ -73,7 +78,7 @@ class ExactProtocolReadTest {
                             queue.removeFirst().forEach { put(it, JSONObject().put("name", "fixture")
                                 .put("state", "Paused").put("save_path", "/data")) }
                         }.toString()
-                        "core.add_torrent_magnet", "core.remove_torrent" -> { writes++; "true" }
+                        "core.add_torrent_magnet", "core.remove_torrent", "core.pause_torrent" -> { writes++; "true" }
                         else -> error("Unexpected method $method")
                     }
                     DelugeReadOnlyRpc.Response(200, """{"id":$id,"error":null,"result":$result}""",
@@ -86,6 +91,24 @@ class ExactProtocolReadTest {
 
     private val kinds = listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.QBITTORRENT, TorrentClientKind.DELUGE)
     private val invalid = listOf(listOf(other), listOf(hash, other), listOf(hash, hash.uppercase()), listOf("bad"))
+
+    @Test fun retiredPolicyOwnerCannotSendMutationsAfterAuthentication() = runBlocking {
+        for (kind in kinds) {
+            var current = true
+            val f = fixture(kind, emptyList(), beforeReply = { method ->
+                if (method in setOf("session-get", "auth/login", "auth.login")) current = false
+            })
+            withContext(RemotePolicyWriteFence { current }) {
+                f.client.session()
+                assertFalse("Fixture retired the owner during $kind authentication", current)
+                try {
+                    f.client.setStarted(hash, false)
+                    fail("$kind accepted a revoked policy dispatch")
+                } catch (_: CancellationException) { }
+            }
+            assertEquals("zero mutation requests for $kind", 0, f.writes())
+        }
+    }
 
     @Test fun emptyAndCaseInsensitiveExactPositiveRemainDistinct() = runBlocking {
         for (kind in kinds) {
