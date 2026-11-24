@@ -17,6 +17,24 @@
 
 **Exit:** one conflict-free, scoped implementation candidate with exact-source checks and explicitly tracked red/untested gates. The historical Day 1 docs review (#1891) is already merged; do not reopen its branch or create another parallel queue.
 
+### R0 forensic follow-through (owner authorized 2026-11-23)
+
+[Source-pinned audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md), baseline `bf5d5bf3`; #687 tracks both audits. The following are executable dispositions, not additional queues. Revalidate current source, distinguish confirmed gaps, conditional risks and measurement-required hypotheses.
+
+| Order / findings | Work and issue | Exit evidence |
+| --- | --- | --- |
+| Immediate FE-01/02/03 | #2025: exact protocol reads, complete rTorrent observation, cancellation | Wrong/mixed/duplicate/malformed rows never become absence; filtered inventory cannot prove absence; actual cancellation propagates; no write or false Remove success; real-client positive. |
+| Immediate FE-19 | #2027: HTTPS source peer validation; coordinate #1436/#1786 | Actual allowed peer on each hop; controlled mismatch refused; TLS, explicit fetch and no replay preserved. |
+| Immediate, depends on exact observation FE-04/05 | #2026: truthful deletion and app-owned exact-profile/generation/hash uncertainty | Separate registration, ACK/queue, independently verified data absence, inconclusive; navigation/lock/reconnect and cancellation after dispatch, same-hash profiles; no replay. |
+| Next FE-08/16 | #2025/#7/#9: exact file layout/index matching, shared adapter conformance | Real backend path conventions, reject ambiguity/duplicate indices; wire negatives, real positives; fake-only tests insufficient. |
+| Next FE-10 | #415/#567: gate inactive policy reads, generation-safe policy arbitration | Measure requests, no inactive policy traffic, no stale account operation; preserve Smart Seeding/Finish in Order. |
+| Parallel FE-14/15 | #10/#687: phase-level CI cost, current architecture and canonical docs | Critical path AND runner minutes, immutable APK receipts, preserve negatives. Native-delete build-once already merged; measure before more changes. |
+| After correctness FE-06/07 | #1844/#567: cohesive runtime/connection/intake/policy ownership, Add preparation/lifetime convergence | Trace authority; remove obsolete delegation only with reachability proof; no second coordinator or wrapper churn; five-client/Android proof. Coordinate #2019. |
+| Measure first FE-09/11/20 | #567/#5/#9: polling, catalog/media scale, resume BLOB copies | Foreground/background reads, heap/latency, realistic 100/1k/10k/50k catalogs as relevant; preserve bounded single-flight, Stop lane, transaction and independent readback. |
+| Bounded later FE-12/13/17/18 | #5/#1/#10/#1844: engine seams, credential stores, release size, process-death uncertainty | Extract only risk-reducing seams; upgrade/manifest/JNI/reflection reachability; actual APK/R8/ABI evidence; no secret-bearing persistence or auto replay. |
+
+Record confirmed/conditional/measurement-required dispositions and source-exact receipts. A finding may close as disproven, already resolved, or measured immaterial with rationale. No arbitrary LOC target, rewrite or speculative dependency deletion. Preserve owned publication intent journal and snapshot frozen-roster/lease safety. Continue independent unblocked R1/R3/R5 and physical acceptance; atlas stays deferred.
+
 ## R1. Source-first Add and exact-client daily operation
 
 1. **Finish the remaining release-tier Universal Add acceptance.** [#1941](https://github.com/gamesbyian/Chunks/pull/1941) merged one exact-client route with retained intake and shared continuation; [#1942](https://github.com/gamesbyian/Chunks/pull/1942) subsequently passed **eight source-exact software/installed gates** and merged checked live-client Smart Routing suggestions, strict no-write destination selection and a counted fake-HTTP second-Add consent negative. All five installed clients have real-runner Add/fault receipts, including hidden rTorrent inventory, write-boundary and Local process death, delayed replies and refused stale defaults. **Next:** qualify in-flight authenticated target changes and finish assembled and physical acceptance. Remote second-Add artwork consent now passed on cold authenticated reconnect with real disposable rTorrent and TVmaze [#2013](https://github.com/gamesbyian/Chunks/pull/2013). Preserve the scoped #2002 emulator handoff result and verify owner Pixel external providers, grants and TalkBack under #1786. Emulator/JVM successes do not close these physical tiers. [#1844](https://github.com/gamesbyian/Chunks/issues/1844) · [Evidence](QUALITY-LEDGER.md)

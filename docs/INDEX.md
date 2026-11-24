@@ -1,4 +1,4 @@
-> **Owner-requested visual audit plan:** [Visual specimen atlas](VISUAL-SPECIMEN-ATLAS-PLAN.md) specifies a reproducible, source-derived 10–20-image Compose screenshot set, including phone-width tall scrolling captures, component coverage, fixtures and provenance. This is a plan, not captured evidence or a second work queue.
+> **Deferred owner-requested visual audit plan (future only):** [Visual specimen atlas](VISUAL-SPECIMEN-ATLAS-PLAN.md) specifies a reproducible, source-derived 10–20-image Compose screenshot set, including phone-width tall scrolling captures, component coverage, fixtures and provenance. This is a plan, not captured evidence or a second work queue.
 
 > **Current owner priority (2026-11-16):** [Backend-first functional completion mandate](BACKEND-FIRST-COMPLETION.md) and [living technical capability ledger](TECHNICAL-COMPLETENESS-LEDGER.md). For broad autonomous dispatches, technical implementation/integration/real-world verification precede elective UI reorganization and polish, while safety, usability necessary to test and owner-reproduced bugs remain immediate. Preserve all approved screen designs for final coordination.
 
@@ -20,6 +20,8 @@
 
 **Owner-approved Add/environment polish (2026-11-13):** [Add destination and outcome UX](design/ADD-DESTINATION-AND-OUTCOME.md) binds compact Local/named-connection Add chips, short-name-only status, one in-place operation outcome, matched transfer stripe/label/dot colours and contextual rather than permanent remote folder explanations. Integrate with existing R1 UX work; implementation and installed acceptance remain pending.
 # Chunks documentation index
+
+> **Forensic follow-through (2026-11-23):** [Source-pinned audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) (historical evidence), [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) (active dispositions), #687 (tracking index). Domain contracts remain normative; atlas is future scope only.
 
 **Approved Transfers redesign (2026-11-13):** [Compact list-first Transfers UI contract](design/TRANSFERS-COMPACT-LIST-FIRST.md) binds screen hierarchy, conditional All/individual count chips, search/filter/sort/batch compactness, above-list live summary, removal of bottom dashboard and placement of environment colours under Connections/Options. Design approved; implementation and Pixel acceptance remain pending. The ranked work is integrated into [WORK-QUEUE](WORK-QUEUE.md), not a separate backlog.
 
