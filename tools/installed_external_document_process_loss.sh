@@ -57,23 +57,31 @@ app_pid() {
   printf '%s\n' "$value"
 }
 # The raw UI XML stays in a private temporary directory, never in CI logs.
+# Some UiAutomator errors leave an old dump on-device even with exit status 0.
+# Clear it before each request and require nodes from the exact app package.
 screen_contains() {
-  timeout 12s adb shell uiautomator dump /sdcard/chunks-process-task.xml > "$scratch/dump-status.txt" 2>&1 || return 1
-  timeout 12s adb shell cat /sdcard/chunks-process-task.xml > "$scratch/window.xml" 2>/dev/null || return 1
-  python3 - "$scratch/window.xml" "$1" <<'PY'
+  local capture='f=/sdcard/chunks-process-task.xml; rm -f "$f" && uiautomator dump "$f" >/dev/null && cat "$f"'
+  timeout 15s adb shell "$capture" > "$scratch/window.xml" 2>/dev/null || return 1
+  python3 - "$scratch/window.xml" "$pkg" "$1" "${2:-}" <<'PY'
 import sys, xml.etree.ElementTree as ET
 try:
     root = ET.parse(sys.argv[1]).getroot()
-    if any(sys.argv[2] in n.attrib.get(attr, "")
-           for n in root.iter() for attr in ("text", "content-desc")): sys.exit(0)
-except ET.ParseError:
+    values = [node.get(attr, "") for node in root.iter("node")
+              if node.get("package") == sys.argv[2] for attr in ("text", "content-desc")]
+    if sys.argv[4] and any(sys.argv[4] in value for value in values):
+        sys.exit(2)
+    if any(sys.argv[3] in value for value in values):
+        sys.exit(0)
+except (OSError, ET.ParseError):
     pass
 sys.exit(1)
 PY
 }
 await_text() {
+  local status
   for attempt in {1..20}; do
-    if screen_contains "$1"; then return 0; fi
+    if screen_contains "$@"; then return 0; else status=$?; fi
+    if [[ "$status" == 2 ]]; then return 2; fi
     sleep 0.7
   done
   return 1
@@ -304,10 +312,16 @@ new_task="$(task_id)" || { fail "restored task identity unavailable"; exit 1; }
 new_pid="$(app_pid)" || { fail "restored app process identity unavailable"; exit 1; }
 if [[ "$new_task" != "$old_task" ]]; then fail "task changed during restoration"; exit 1; fi
 if [[ "$new_pid" == "$old_pid" ]]; then fail "app process did not change"; exit 1; fi
-if screen_contains "$source_name"; then
-  fail "old reviewed source replayed without fresh grant"; exit 1
+if await_text "$notice" "$source_name"; then
+  echo "CHUNKS_DOCUMENT_TASK: same-task-new-process-no-source-replay"
+else
+  replay_status=$?
+  if [[ "$replay_status" == 2 ]]; then
+    fail "old reviewed source replayed without fresh grant"; exit 1
+  fi
+  diagnose_missing_interrupted_notice
+  fail "no fresh app UI proved the notice without the previous review"; exit 1
 fi
-echo "CHUNKS_DOCUMENT_TASK: same-task-new-process-no-source-replay"
 
 # The explicit second VIEW is the only route to reacquire a foreign URI grant.
 open_source "--ez fixture_keep_task true" ||
