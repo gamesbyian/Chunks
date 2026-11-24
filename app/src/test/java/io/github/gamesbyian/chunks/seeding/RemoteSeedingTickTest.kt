@@ -23,6 +23,7 @@ import io.github.gamesbyian.chunks.rpc.TorrentClientKind
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -122,6 +123,7 @@ class RemoteSeedingTickTest {
         var stops = 0
         var fileReads = 0
         var afterFacts: () -> Unit = {}
+        var afterInventory: () -> Unit = {}
         override suspend fun session(): ClientSessionInfo {
             sessions++
             return ClientSessionInfo(kind, "4.6", "/dl", ClientCapability.entries.toSet())
@@ -129,7 +131,7 @@ class RemoteSeedingTickTest {
         override suspend fun torrents(): List<ClientTorrent> {
             reads++
             inventories++
-            return jobs.keys.mapNotNull { torrent(it) }
+            return jobs.keys.mapNotNull { torrent(it) }.also { afterInventory() }
         }
         override suspend fun torrent(hash: String) = jobs[hash]?.let {
             ClientTorrent(hash, hash, if (it) ClientRunState.SEEDING else ClientRunState.STOPPED, 1, 1, 0, 0, "/dl")
@@ -153,13 +155,71 @@ class RemoteSeedingTickTest {
     private val old = "a".repeat(40)
     private val new = "b".repeat(40)
 
+    @Test fun failedOrRetiredFirstInventoryCannotActivatePoliciesForExistingJobs() {
+        val profile = "cannot-activate-from-retired-inventory"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val store = PreferencesAssignmentStore(context, environment)
+        val client = FakeClient().apply {
+            jobs[old] = true
+            facts[old] = ClientSeedingFacts(old, 2_000, 1_000, 10, true, false, emptyList())
+        }
+        val operations = ClientOperations(client, 2, 1)
+        val rules = SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to SeedingPolicy(ratioGoal = BigDecimal.ONE)))
+        assertTrue(SeedingRuleStore(context).save(rules))
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        client.afterInventory = { throw java.io.IOException("first inventory failed") }
+        assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, operations, nowMs = 1_000))
+        assertNull(store.epoch())
+        var current = true
+        client.afterInventory = { current = false }
+        assertEquals(RemoteSeeding.Tick.NOT_RUN, RemoteSeeding.tickProtocol(context, profile, operations,
+            nowMs = 2_000, ownerCurrent = { current }))
+        assertNull(store.epoch())
+        assertNull(store.get(old))
+        assertEquals(0, client.stops)
+
+        client.afterInventory = {}
+        assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, operations, nowMs = 3_000))
+        assertEquals(3_000L, store.epoch())
+        assertNotNull(store.get(old))
+        assertNull(store.get(old)?.policy)
+        assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, operations, nowMs = 4_000))
+        assertEquals(0, client.stops)
+    }
+
+    @Test fun previouslyActivatedAccountRetainsSavedPolicyAndUnresolvedJournalBytes() {
+        val profile = "baseline-upgrade"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val store = PreferencesAssignmentStore(context, environment)
+        val client = FakeClient().apply { jobs[old] = true; jobs[new] = true }
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        assertTrue(store.setEpoch(1_000))
+        val journal = SeedingController.Assignment(SeedingPolicy(ratioGoal = BigDecimal.ONE),
+            SeedingResolution.Source.DEFAULT, null, stopAttemptedReason = "ratio", note = "Unresolved")
+        assertTrue(store.put(old, journal))
+        val prefs = context.getSharedPreferences("chunks_seeding_assignments_" +
+            PreferencesAssignmentStore.digest(environment), android.content.Context.MODE_PRIVATE)
+        val unchanged = prefs.getString("a:$old", null)
+        assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile,
+            ClientOperations(client, 2, 1), nowMs = 2_000))
+        assertTrue(store.remoteBaselineComplete())
+        assertEquals(1_000L, store.epoch())
+        assertEquals(unchanged, prefs.getString("a:$old", null))
+        assertEquals(journal, store.get(old))
+        assertNotNull(store.get(new))
+        assertNull(store.get(new)?.policy)
+        assertEquals(1, client.inventories)
+        assertEquals(0, client.stops)
+    }
+
     @Test fun knownKeepSeedingAndTerminalPoliciesDoNotReadPerJobCounters() {
         val client = FakeClient()
         val profile = "steady-policy-catalog"
         val environment = RemoteSeeding.protocolEnvironment(profile)
         val store = PreferencesAssignmentStore(context, environment)
         assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
-        assertTrue(store.setEpoch(1_000))
+        assertTrue(store.establishRemoteBaseline(1_000, emptyList()) { true })
         val keepSeeding = SeedingController.Assignment(SeedingPolicy(), SeedingResolution.Source.DEFAULT, null)
         val ratio = keepSeeding.copy(policy = SeedingPolicy(ratioGoal = BigDecimal.ONE))
         val interrupted = ratio.copy(stopAttemptedReason = "ratio", note = "An unresolved earlier Stop")
