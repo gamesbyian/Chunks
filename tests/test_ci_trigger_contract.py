@@ -194,7 +194,12 @@ class AndroidCiTriggerContract(unittest.TestCase):
     def test_https_journey_covers_fetcher_and_local_production_caller(self):
         source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
         paths = pull_request_paths(source)
-        for name in ("TorrentLinkImport.kt", "LocalEngineScreen.kt"):
+        for name in ("TorrentLinkImport.kt", "LocalEngineScreen.kt", "LocalEngineHolder.kt", "LocalDownloadPlaces.kt"):
+            self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
+
+    def test_local_startup_and_place_owners_select_shared_downloads_proof(self):
+        paths = pull_request_paths((ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text())
+        for name in ("LocalEngineScreen.kt", "LocalEngineHolder.kt", "LocalDownloadPlaces.kt"):
             self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
 
     def test_peer_preparation_progress_routes_to_cheap_and_installed_owners(self):
