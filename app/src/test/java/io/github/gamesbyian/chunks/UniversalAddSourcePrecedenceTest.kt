@@ -372,4 +372,20 @@ class UniversalAddSourcePrecedenceTest {
         assertNoWriteRpc()
     }
 
+    @Test fun reselectingLocalCannotRestoreAnInactiveServerFileOverANewerLocalReview() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        pickTorrentThroughAndroidPicker(torrent("older-server.mkv"), "older-server.mkv")
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        pickTorrentThroughAndroidPicker(torrent("newer-local.mkv"), "newer-local.mkv")
+        val owner = androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
+        val newer = requireNotNull(owner.reviewedTorrent.value)
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        waitForText("newer-local.mkv")
+        assertSame(newer, owner.reviewedTorrent.value)
+        assertNoWriteRpc()
+    }
+
 }

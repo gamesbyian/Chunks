@@ -566,7 +566,9 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     // Place and Start remain parent-owned when Add changes its target in place.
     // Switching never authorizes or starts an engine operation.
     fun selectLocalAddTarget() {
-        val remoteReview = aliasScope.takeIf { it.isNotBlank() }
+        val remoteReview = aliasScope.takeIf {
+            it.isNotBlank() && addDestination == UniversalAddRouteTarget.RTorrent(it) && serverHandoff() == null
+        }
             ?.let { remoteAddSessions.forAccount(it) }
         // The explicit remote file choice may supersede text that remains in
         // its source field. Transfer that chosen file, not the inactive text,
