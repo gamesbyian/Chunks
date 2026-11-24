@@ -132,16 +132,16 @@ internal class QBittorrentClient(
 
         // The structured response can name the registered torrent. Missing,
         // pending, or conflicting evidence cannot be upgraded by inventory.
-        val result = try { JSONObject(reply) } catch (_: Exception) { null }
+        val result = try { ExactRpcJson.objectBody(reply) } catch (_: IOException) { null }
         val added = result?.optJSONArray("added_torrent_ids")
-        val pending = result?.opt("pending_count")
-        val successes = result?.opt("success_count")
-        val failures = result?.opt("failure_count")
-        if (pending == 0 && successes == 0 && failures == 1 && added?.length() == 0) {
+        val pending = result?.let { exactWireInteger(it.opt("pending_count")) }
+        val successes = result?.let { exactWireInteger(it.opt("success_count")) }
+        val failures = result?.let { exactWireInteger(it.opt("failure_count")) }
+        if (pending == 0L && successes == 0L && failures == 1L && added?.length() == 0) {
             throw ClientRefusedException("qBittorrent declined the Add (duplicate or invalid)")
         }
-        if (pending == 0 && successes == 1 && failures == 0 && added?.length() == 1 &&
-            added.optString(0).equals(request.source.infoHash, ignoreCase = true)) return
+        if (pending == 0L && successes == 1L && failures == 0L && added?.length() == 1 &&
+            (added.opt(0) as? String).equals(request.source.infoHash, ignoreCase = true)) return
         throw ClientWriteUncertainException("qBittorrent did not identify the Add result")
     }
 

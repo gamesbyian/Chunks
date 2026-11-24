@@ -119,8 +119,8 @@ internal class DelugeClient(
             is ClientAddSource.Magnet -> call("core.add_torrent_magnet",
                 JSONArray().put(source.uri).put(options), mutating = true)
         }
+        if (result == null) throw ClientRefusedException("Deluge declined the Add (duplicate or invalid)")
         val added = (result as? String)?.lowercase()
-            ?: throw ClientRefusedException("Deluge declined the Add (duplicate or invalid)")
         if (added != request.source.infoHash) throw ClientWriteUncertainException("Deluge registered a different identity")
     }
 
@@ -353,19 +353,25 @@ internal class DelugeClient(
                 }
                 val exactRead = method == "core.get_torrent_status" ||
                     (method == "core.get_torrents_status" && params.optJSONObject(0)?.has("id") == true)
+                val exactAdd = method == "core.add_torrent_file" || method == "core.add_torrent_magnet"
                 val json = try {
-                    if (exactRead) ExactRpcJson.objectBody(response.body) else JSONObject(response.body)
+                    if (exactRead || exactAdd) ExactRpcJson.objectBody(response.body) else JSONObject(response.body)
                 } catch (_: Exception) {
                     if (mutating) throw ClientWriteUncertainException("Invalid Deluge reply")
                     throw IOException("Malformed Deluge JSON-RPC reply")
                 }
                 val reply = json.opt("id")
-                val replyId = if (exactRead) reply as? Long else (reply as? Number)?.toInt()?.toLong()
+                val replyId = if (exactRead || exactAdd) exactWireInteger(reply) else (reply as? Number)?.toInt()?.toLong()
                 if (replyId != id.toLong()) {
                     if (mutating) throw ClientWriteUncertainException("Mismatched Deluge reply")
                     throw IOException("Mismatched Deluge reply")
                 }
                 val error = json.opt("error")
+                val result = json.opt("result")
+                if (exactAdd && (if (error is JSONObject) result != null && result != JSONObject.NULL
+                    else (error != null && error != JSONObject.NULL) || result == null)) {
+                    throw ClientWriteUncertainException("Deluge did not identify the Add result")
+                }
                 if (error is JSONObject) {
                     if (error.optInt("code") == 1 && !relogged) {
                         // Web session not authenticated: rejected before dispatch.
@@ -376,7 +382,7 @@ internal class DelugeClient(
                     throw ClientRefusedException("Deluge refused: " +
                         error.optString("message").lineSequence().firstOrNull().orEmpty().take(120))
                 }
-                return@withContext json.opt("result").takeUnless { it == JSONObject.NULL }
+                return@withContext result.takeUnless { it == JSONObject.NULL }
             }
             @Suppress("UNREACHABLE_CODE") null
         }
