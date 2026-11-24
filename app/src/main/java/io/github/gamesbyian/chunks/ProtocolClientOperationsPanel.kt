@@ -38,6 +38,8 @@ import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 import io.github.gamesbyian.chunks.rpc.ClientOperationWriteBoundary
 import io.github.gamesbyian.chunks.rpc.ClientRefusedException
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion
 import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
 import io.github.gamesbyian.chunks.rpc.ClientOperations
@@ -131,7 +133,7 @@ internal fun ProtocolClientOperationsPanel(
     var sessionError by remember(operations) { mutableStateOf<String?>(null) }
     var busy by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     var notice by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<String?>(null) }
-    // Uncertain latch: cleared only by a newer accepted inventory.
+    // Legacy Copy/Move-only latch; explicit typed-client commands use the process-owned receipt.
     var uncertainAt by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<Any?>(null) }
     val copyLatched = uncertainAt != null && uncertainAt == inventoryWitness
     val latched = copyLatched || retained?.blocksWrites == true
@@ -217,6 +219,8 @@ internal fun ProtocolClientOperationsPanel(
             notice = "A previous request needs checking before another command."
             return
         }
+        val policyEpoch = TransferPrivacyPolicyStore.revision
+        val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
         busy = true
         notice = "$action…"
         // Start the structured body before returning from the click, so even
@@ -226,7 +230,10 @@ internal fun ProtocolClientOperationsPanel(
                 val outcome = try {
                     if (ticket == null) block()
                     else withContext(ClientOperationWriteBoundary {
-                        if (currentOwner !== operations || !receiptOwner.possibleWrite(ticket))
+                        if (currentOwner !== operations ||
+                            policyEpoch != TransferPrivacyPolicyStore.revision ||
+                            lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision ||
+                            !receiptOwner.possibleWrite(ticket))
                             throw ClientRefusedException("The selected connection changed; nothing was written")
                     }) { block() }
                 } catch (cancel: CancellationException) { throw cancel }
@@ -247,11 +254,15 @@ internal fun ProtocolClientOperationsPanel(
     fun reconcile() {
         val receipt = retained ?: return
         if (busy || !canReconcile || !receipt.canReconcile) return
+        val policyEpoch = TransferPrivacyPolicyStore.revision
+        val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
         busy = true
         scope.launch {
             try {
                 val row = operations.client.torrent(hash)
-                if (currentReadOwner !== operations) return@launch
+                if (currentReadOwner !== operations ||
+                    policyEpoch != TransferPrivacyPolicyStore.revision ||
+                    lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision) return@launch
                 if (row != null && !row.hash.equals(hash, ignoreCase = true))
                     throw java.io.IOException("Wrong transfer identity")
                 if (receiptOwner.reconcile(receipt.ticket, row != null)) {

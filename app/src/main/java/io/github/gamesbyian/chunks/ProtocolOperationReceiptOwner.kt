@@ -75,7 +75,8 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
     @Synchronized fun complete(ticket: Ticket, outcome: ClientOperationOutcome) {
         val current = entries[ticket.key] ?: return
         if (current.ticket !== ticket || current.canReconcile || !current.blocksWrites) return
-        val phase = when (outcome) {
+        val phase = if (!outcome.hash.equals(ticket.key.hash, ignoreCase = true)) Phase.UNKNOWN
+        else when (outcome) {
             is ClientOperationOutcome.Verified, is ClientOperationOutcome.Refused -> null
             is ClientOperationOutcome.Uncertain -> Phase.UNKNOWN
             is ClientOperationOutcome.Pending ->

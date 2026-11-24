@@ -76,6 +76,26 @@ class ClientOperationsTest {
         assertTrue(ops(fake).setStarted(hash, true) is ClientOperationOutcome.Refused)
     }
 
+    @Test fun writeBoundaryRunsAfterExactPreflightAndCanRefuseBeforeAdapterEntry() = runBlocking {
+        val fake = Fake(torrent(ClientRunState.STOPPED))
+        var checks = 0
+        val outcome = kotlinx.coroutines.withContext(ClientOperationWriteBoundary {
+            checks++
+            assertEquals(1, fake.reads)
+            throw ClientRefusedException("Connection changed")
+        }) { ops(fake).setStarted(hash, true) }
+        assertTrue(outcome is ClientOperationOutcome.Refused)
+        assertEquals(1, checks)
+        assertEquals(0, fake.writes)
+        val absent = Fake(null)
+        val refused = kotlinx.coroutines.withContext(ClientOperationWriteBoundary { checks++ }) {
+            ops(absent).setStarted(hash, true)
+        }
+        assertTrue(refused is ClientOperationOutcome.Refused)
+        assertEquals(1, checks)
+        assertEquals(0, absent.writes)
+    }
+
     @Test fun absentTargetSendsNoWrite() = runBlocking {
         val fake = Fake(null)
         assertTrue(ops(fake).remove(hash, deleteData = true) is ClientOperationOutcome.Refused)
