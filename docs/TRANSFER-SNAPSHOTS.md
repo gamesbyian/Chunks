@@ -152,6 +152,45 @@ details. Large snapshots are bounded to 512 metainfo records per check.
 This candidate requires dedicated real installed exact-account and native
 acceptance before being called complete.
 
+## Proposed explicit stopped rTorrent group restore (#2009, unaccepted)
+
+This is distinct from the accepted **read-only** previous-restore group
+inspection. A user can explicitly review 2–32 missing, original v1 torrent
+definitions (at most 24 MiB of verified original metainfo) in one verified
+snapshot, on one exact authenticated rTorrent account. The user reviews the
+actual current default folder or an explicitly browsed nondefault folder,
+account and original identities, then approves a **separate confirmation**
+that sends one stopped Add per original. The original torrent metainfo may
+contain private tracker URLs/passkeys; it stays in process memory until
+submission and is never printed in CI evidence.
+
+**Before the first Add**, all originals and current server capabilities,
+whole-session roster, exact Place and **every per-item durable restore
+journal** must pass independently. A later item in an in-flight,
+acknowledgement-unverified, already-verified, refused or differently reviewed
+journal state blocks the *entire group* before item one can be submitted.
+Initializing a missing journal creates only a Chunks-private REVIEW record,
+not permission to submit or retry. The same preflight is repeated after
+confirmation. Every submitted item is then delegated to the accepted
+single-item stopped rTorrent Add journal and exact stopped/hash/name/Place
+readback. Before item N+1, an independently fresh **complete** session must
+contain precisely the previously approved original jobs. Any changed
+account, Place, roster, unavailable authentication, cancellation, lost
+acknowledgement or postcondition uncertainty stops all remaining items
+without automatic replay or rollback. A partial report must distinguish
+verified jobs from unsubmitted items. No Start, payload data transfer,
+historical path remapping or cross-account mutation is reachable.
+
+The backend and explicit confirmation UI are a **draft candidate**, not a
+completed feature. Real disposable two-server installed testing must prove
+consent, exact folder, two stopped jobs with independent readbacks, no remote
+write from cancellation, a later unresolved journal blocking all earlier
+writes, unchanged other account, and complete partial/unknown reporting.
+Android foundation/JVM, full native Add and R8 must also pass on the exact
+reviewed source. The owner Pixel external-provider and protected Seedhost
+limits remain separate. Do not classify #2009 as accepted without those
+receipts.
+
 ## Current implementation checkpoint (2026-11-17)
 
 Chunks now supports more than the original inventory-only 2026 prototype, but this remains a **partial** snapshot feature. The current local engine can opt-in to export actual verified v1 torrent metainfo into bounded, checksummed `.chunksnap` archives. A user can select an archive in the read-only comparison flow, see already-present/missing identities, prepare a missing original torrent for manual Add, explicitly restore one stopped Local definition, or confirm a bounded group of verified missing originals as stopped at one newly reviewed Local destination (merged #1840). The restoration journal records an Add intent before submission; an unverified native reply is not permission to issue another Add. **No payload files are transferred.**

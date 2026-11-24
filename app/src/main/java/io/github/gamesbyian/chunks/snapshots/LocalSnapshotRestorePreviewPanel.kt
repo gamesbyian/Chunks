@@ -142,6 +142,7 @@ internal fun SnapshotRestorePreviewPanel(
     onApplyRemotePriorities: ((SnapshotRestorePreviewV1.Entry,
         SnapshotRemotePriorityComparison, Long, (String) -> Unit) -> Unit)? = null,
     remoteDefinitionRestore: SnapshotRemoteDefinitionRestore? = null,
+    remoteBatchStoppedRestore: SnapshotRemoteBatchStoppedRestore? = null,
     remoteDefinitionActionScope: CoroutineScope? = null,
     remoteDefinitionAccountLabel: String? = null,
     /** Only the currently authenticated exact account supplies browse capability. */
@@ -177,6 +178,11 @@ internal fun SnapshotRestorePreviewPanel(
     }
     var remoteDefinitionBusy by remember { mutableStateOf(false) }
     var remoteDefinitionNotice by remember { mutableStateOf<String?>(null) }
+    var remoteBatchDraft by remember(remoteBatchStoppedRestore) {
+        mutableStateOf<SnapshotRemoteBatchStoppedRestore.Draft?>(null)
+    }
+    var remoteBatchBusy by remember(remoteBatchStoppedRestore) { mutableStateOf(false) }
+    var remoteBatchNotice by remember(remoteBatchStoppedRestore) { mutableStateOf<String?>(null) }
     var remotePreviousReport by remember(remoteDefinitionRestore) {
         mutableStateOf<SnapshotRemoteDefinitionRestore.PreviousReport?>(null)
     }
@@ -204,6 +210,9 @@ internal fun SnapshotRestorePreviewPanel(
         confirmRemotePriorities = false
         remoteDefinitionReview = null
         remotePreviousReport = null
+        // A changed comparison revokes an unconfirmed bulk review, but not a
+        // series already separately confirmed and executing on its own lease.
+        if (!remoteBatchBusy) remoteBatchDraft = null
         if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
@@ -277,13 +286,15 @@ internal fun SnapshotRestorePreviewPanel(
                     manualNotice = null
                     remoteDefinitionReview = null
                     remoteDefinitionNotice = null
+                    remoteBatchDraft = null
+                    remoteBatchNotice = null
                     remotePreviousReport = null
                     error = null
                     search = ""
                     chosenDecision = null
                     pageIndex = 0
                 },
-                enabled = !reading,
+                enabled = !reading && !remoteBatchBusy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
                 Text(if (expanded) "Close ${target.noun} restore comparison"
@@ -324,11 +335,14 @@ internal fun SnapshotRestorePreviewPanel(
                         verifiedSource = null
                         comparedHashes = null
                         manualNotice = null
+                        remoteDefinitionReview = null
+                        remoteBatchDraft = null
+                        remoteBatchNotice = null
                         error = null
                         remotePreviousReport = null
                         open.launch(arrayOf("*/*"))
                     },
-                    enabled = targetReady && !reading && !remoteDefinitionBusy,
+                    enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) {
                     Text(if (reading) "Inspecting snapshot…"
@@ -342,6 +356,9 @@ internal fun SnapshotRestorePreviewPanel(
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 }
                 remoteDefinitionNotice?.let {
+                    Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                remoteBatchNotice?.let {
                     Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 }
                 remotePreviousReport?.let { previous ->
@@ -390,16 +407,18 @@ internal fun SnapshotRestorePreviewPanel(
                         style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { chooseRemotePlace = true },
-                            enabled = !remoteDefinitionBusy && !reading,
+                            enabled = !remoteDefinitionBusy && !remoteBatchBusy && !reading,
                             modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Choose restore folder")
                         }
                         if (remoteSelectedPlace != null) OutlinedButton(onClick = {
                             remoteSelectedPlace = null
                             remoteDefinitionReview = null
+                            remoteBatchDraft = null
+                            remoteBatchNotice = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
-                        }, enabled = !remoteDefinitionBusy && !reading,
+                        }, enabled = !remoteDefinitionBusy && !remoteBatchBusy && !reading,
                             modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Use server default")
                         }
@@ -411,11 +430,64 @@ internal fun SnapshotRestorePreviewPanel(
                         onChoose = { selected ->
                             remoteSelectedPlace = selected
                             remoteDefinitionReview = null
+                            remoteBatchDraft = null
+                            remoteBatchNotice = null
                             remotePreviousReport = null
                             remoteDefinitionNotice = null
                             chooseRemotePlace = false
                         },
                         onDismiss = { chooseRemotePlace = false }
+                    )
+                }
+                val bulkReview = remoteBatchDraft
+                if (bulkReview != null && remoteBatchStoppedRestore != null &&
+                    remoteDefinitionAccountLabel != null) {
+                    RemoteSnapshotBatchStoppedConfirmation(
+                        draft = bulkReview,
+                        accountLabel = remoteDefinitionAccountLabel,
+                        onCancel = { remoteBatchDraft = null },
+                        onConfirm = {
+                            remoteBatchDraft = null
+                            if (!remoteBatchBusy && latestReady &&
+                                latestHashes == comparedHashes &&
+                                latestGeneration == comparedGeneration) {
+                                remoteBatchBusy = true
+                                remoteBatchNotice =
+                                    "Checking all restore journals before stopped server Adds…"
+                                scope.launch {
+                                    try {
+                                        val report = remoteBatchStoppedRestore.execute(
+                                            bulkReview, confirmed = true)
+                                        remoteBatchNotice = if (report.complete) {
+                                            "${report.verified}/${report.total} stopped server " +
+                                                "definitions independently verified. No Start or " +
+                                                "payload copy. Refresh the comparison to review " +
+                                                "saved priorities."
+                                        } else {
+                                            "${report.verified}/${report.total} definitions " +
+                                                "verified before the group stopped" +
+                                                (report.stoppedAtHash?.let {
+                                                    " at infohash " + it.take(12)
+                                                } ?: "") + ". Reason: " +
+                                                (report.stop?.name ?: "unknown") +
+                                                ". No automatic retry or rollback. Check previous " +
+                                                "server restores before considering another Add."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        remoteBatchNotice =
+                                            "The group outcome could not be verified. No automatic " +
+                                                "retry. Check previous server restores."
+                                    } finally {
+                                        remoteBatchBusy = false
+                                    }
+                                }
+                            } else {
+                                remoteBatchNotice = "The server comparison changed. " +
+                                    "No group submission was authorized."
+                            }
+                        }
                     )
                 }
                 val definitionReview = remoteDefinitionReview
@@ -538,6 +610,71 @@ internal fun SnapshotRestorePreviewPanel(
                     val batchReady = preview.entries.filter {
                         it.decision == SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
                     }
+                    val remoteMissingOriginals = batchReady.filter { candidate ->
+                        verifiedSource?.manifest?.items?.any { original ->
+                            original.infoHashV1 == candidate.infoHashV1 &&
+                                original.recovery == SnapshotManifestV1.Recovery.METAINFO
+                        } == true
+                    }
+                    if (remoteBatchStoppedRestore != null &&
+                        remoteDefinitionAccountLabel != null &&
+                        remoteMissingOriginals.size in 2..32) {
+                        OutlinedButton(
+                            onClick = {
+                                val source = verifiedSource
+                                val frozen = comparedHashes
+                                val generation = comparedGeneration
+                                val selected = remoteSelectedPlace
+                                if (!remoteBatchBusy && !remoteDefinitionBusy &&
+                                    source != null && frozen != null &&
+                                    latestReady && latestHashes == frozen &&
+                                    latestGeneration == generation) {
+                                    remoteBatchDraft = null
+                                    remoteBatchBusy = true
+                                    remoteBatchNotice = "Preflighting every original, " +
+                                        "the server roster and all previous Add journals…"
+                                    scope.launch {
+                                        try {
+                                            val draft = remoteBatchStoppedRestore.prepare(
+                                                source,
+                                                remoteMissingOriginals.map { it.infoHashV1 },
+                                                frozen, selectedPlace = selected)
+                                            if (verifiedSource === source && result === preview &&
+                                                latestReady && latestHashes == frozen &&
+                                                latestGeneration == generation &&
+                                                remoteSelectedPlace == selected) {
+                                                remoteBatchDraft = draft
+                                                remoteBatchNotice = if (draft == null)
+                                                    "Could not verify every original, journal, " +
+                                                        "exact account and chosen folder. " +
+                                                        "No server Add was sent."
+                                                else null
+                                            }
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            remoteBatchNotice =
+                                                "Stopped batch review failed safely. " +
+                                                    "No server Add was sent."
+                                        } finally {
+                                            remoteBatchBusy = false
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = targetReady && !reading && !remoteBatchBusy &&
+                                !remoteDefinitionBusy,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        ) {
+                            Text("Review ${remoteMissingOriginals.size} stopped server restores")
+                        }
+                    } else if (remoteBatchStoppedRestore != null &&
+                        remoteMissingOriginals.size > 32) {
+                        Text("Stopped server group restore is limited to 32 verified " +
+                            "definitions per confirmation. Restore individual originals " +
+                            "or compare a smaller snapshot.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                     if (onReviewBatchRestore != null && batchReady.size >= 2) {
                         OutlinedButton(
                             onClick = {
@@ -652,7 +789,7 @@ internal fun SnapshotRestorePreviewPanel(
                                     }
                                 }
                             },
-                            enabled = targetReady && !reading && !remoteDefinitionBusy,
+                            enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Check ${previousCandidates.size} previous server restores (read-only)") }
                     }
@@ -917,7 +1054,7 @@ internal fun SnapshotRestorePreviewPanel(
                                                 }
                                             }
                                         },
-                                        enabled = targetReady && !reading && !remoteDefinitionBusy,
+                                        enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                     ) {
                                         Text(if (recoveryOnly) "Check previous server restore"
