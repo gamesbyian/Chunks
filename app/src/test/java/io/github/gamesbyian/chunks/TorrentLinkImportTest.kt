@@ -37,7 +37,24 @@ class TorrentLinkImportTest {
         dns: Map<String, List<InetAddress>> = emptyMap(), max: Int = TorrentLinkFetcher.MAX_BYTES) =
         TorrentLinkFetcher(
             resolve = { host -> dns[host] ?: listOf(publicIp) },
-            open = { url -> opened += url.toString(); (routes[url.toString()] ?: error("unexpected $url"))(url) },
+            transport = TorrentLinkTransport { uri, _, _ ->
+                val url = uri.toURL()
+                opened += url.toString()
+                val connection = (routes[url.toString()] ?: error("unexpected $url"))(url)
+                try {
+                    val code = connection.responseCode
+                    object : TorrentLinkHop {
+                        override val status = code
+                        override val contentLength get() = connection.contentLengthLong
+                        override fun header(name: String) = connection.getHeaderField(name)
+                        override fun body() = connection.inputStream
+                        override fun close() = connection.disconnect()
+                    }
+                } catch (error: Exception) {
+                    connection.disconnect()
+                    throw error
+                }
+            },
             maxBytes = max)
 
     private fun link(text: String) = TorrentLinkCheck.inspect(text) as TorrentLinkCheck.Fetchable
@@ -180,7 +197,7 @@ class TorrentLinkImportTest {
             with { FakeConnection(it, 200, body = "  <!doctype html><title>Login</title>".toByteArray()) })
         assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.NOT_TORRENT),
             with { FakeConnection(it, 200, body = "d3:fooi1ee".toByteArray()) })
-        val noDns = TorrentLinkFetcher(resolve = { throw UnknownHostException() }, open = { error("no") }).fetch(link(url))
+        val noDns = TorrentLinkFetcher(resolve = { throw UnknownHostException() }, transport = TorrentLinkTransport { _, _, _ -> error("no") }).fetch(link(url))
         assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.NO_HOST), noDns)
     }
 

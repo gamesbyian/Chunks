@@ -30,3 +30,9 @@
 -keep class androidx.savedstate.** { *; }
 -keep class androidx.annotation.** { *; }
 -keep class androidx.collection.** { *; }
+
+# Only QA: the separately compiled controlled HTTPS instrumentation can install
+# its local counted source transport. The release source set has no override.
+-keep class io.github.gamesbyian.chunks.DebugTorrentLinkTransportOverride { *; }
+-keep interface io.github.gamesbyian.chunks.TorrentLinkTransport { *; }
+-keep interface io.github.gamesbyian.chunks.TorrentLinkHop { *; }

@@ -121,6 +121,8 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // Bounded public torrent HTTPS only: pin validated DNS and guard the actual TCP endpoint.
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
     // Local engine: Arvid Norberg libtorrent via libtorrent4j (not rTorrent's libTorrent).
     val libtorrent4j = "2.1.0-39"
     implementation("org.libtorrent4j:libtorrent4j:$libtorrent4j")
