@@ -1954,7 +1954,7 @@ internal fun ChunksApp(
                 protocolOwnerCurrent = run {
                     val expectedSaved = savedProtocolProfiles.associateBy { it.id }
                     val expectedTransient = transientReadOnlyProfile
-                    { candidate: CombinedReadOnlyProtocolProfile ->
+                    val checkOwner: (CombinedReadOnlyProtocolProfile) -> Boolean = { candidate ->
                         section == Section.COMBINED &&
                             savedProtocolProfiles.firstOrNull { it.id == candidate.id }.let { current ->
                                 val expected = expectedSaved[candidate.id]
@@ -1964,6 +1964,7 @@ internal fun ChunksApp(
                                     transientReadOnlyProfile === expectedTransient
                             }
                     }
+                    checkOwner
                 },
                 onOpenLocal = { localFromCombined = true; section = Section.LOCAL },
                 // Opening the local device inventory is non-mutating. Only the explicit
