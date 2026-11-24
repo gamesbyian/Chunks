@@ -4,8 +4,10 @@ import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import java.io.IOException
 import java.net.URI
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -19,8 +21,7 @@ import org.json.JSONObject
  * connects only the selected, registered, online host.
  *
  * Pre-execution failures (web session "Not authenticated", code 1) allow one
- * re-login. A daemon error result is a definite refusal; a lost reply on a
- * mutator is uncertain.
+ * re-login. Errors after possible daemon dispatch leave a mutation uncertain.
  */
 internal class DelugeClient(
     credentials: RemoteCredentials,
@@ -33,7 +34,7 @@ internal class DelugeClient(
     private var cookie: String? = null
     private var daemonMethods: Set<String>? = null
     private var daemonVersion: String? = null
-    private var nextId = 10
+    private val nextId = AtomicInteger(10)
 
     init {
         require(daemonHostId.matches(Regex("[A-Za-z0-9._:-]{1,128}"))) { "Explicit Deluge daemon ID required" }
@@ -149,7 +150,11 @@ internal class DelugeClient(
         connect()
         val removed = call("core.remove_torrent", JSONArray().put(ClientHashes.requireHash(hash)).put(deleteData),
             mutating = true, beforeWrite = beforeWrite)
-        if (removed == false) throw ClientRefusedException("Deluge declined the removal")
+        when (removed) {
+            true -> Unit
+            false -> throw ClientRefusedException("Deluge declined the removal")
+            else -> throw ClientWriteUncertainException("Deluge did not identify the removal result")
+        }
     }
 
     override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) =
@@ -335,8 +340,10 @@ internal class DelugeClient(
         withContext(Dispatchers.IO) {
             var relogged = false
             while (true) {
+                coroutineContext.ensureActive()
                 val session = cookie ?: login().also { cookie = it }
-                val id = nextId++
+                coroutineContext.ensureActive()
+                val id = nextId.getAndIncrement()
                 val body = JSONObject().put("method", method).put("params", params).put("id", id)
                     .toString().toByteArray(Charsets.UTF_8)
                 if (mutating) RemoteWriteOwnerFence.check()
@@ -351,38 +358,46 @@ internal class DelugeClient(
                     if (mutating && response.status >= 500) throw ClientWriteUncertainException("Deluge server error")
                     throw ClientRefusedException("Deluge HTTP ${response.status}")
                 }
-                val exactRead = method == "core.get_torrent_status" ||
-                    (method == "core.get_torrents_status" && params.optJSONObject(0)?.has("id") == true)
-                val exactAdd = method == "core.add_torrent_file" || method == "core.add_torrent_magnet"
+                val fullInventory = method == "core.get_torrents_status" &&
+                    params.optJSONObject(0)?.has("id") != true
                 val json = try {
-                    if (exactRead || exactAdd) ExactRpcJson.objectBody(response.body) else JSONObject(response.body)
+                    // Keep the existing inventory capacity. An error envelope still
+                    // needs strict parsing before it can authorize an auth retry.
+                    if (fullInventory) JSONObject(response.body).let {
+                        if (it.isNull("error")) it else ExactRpcJson.objectBody(response.body)
+                    } else ExactRpcJson.objectBody(response.body)
                 } catch (_: Exception) {
                     if (mutating) throw ClientWriteUncertainException("Invalid Deluge reply")
                     throw IOException("Malformed Deluge JSON-RPC reply")
                 }
                 val reply = json.opt("id")
-                val replyId = if (exactRead || exactAdd) exactWireInteger(reply) else (reply as? Number)?.toInt()?.toLong()
-                if (replyId != id.toLong()) {
+                if (exactWireInteger(reply) != id.toLong()) {
                     if (mutating) throw ClientWriteUncertainException("Mismatched Deluge reply")
                     throw IOException("Mismatched Deluge reply")
                 }
-                val error = json.opt("error")
-                val result = json.opt("result")
-                if (exactAdd && (if (error is JSONObject) result != null && result != JSONObject.NULL
-                    else (error != null && error != JSONObject.NULL) || result == null)) {
-                    throw ClientWriteUncertainException("Deluge did not identify the Add result")
+                val error = json.opt("error").takeUnless { it === JSONObject.NULL }
+                val result = json.opt("result").takeUnless { it === JSONObject.NULL }
+                if (!json.has("result") || (error != null && (error !is JSONObject || result != null))) {
+                    if (mutating) throw ClientWriteUncertainException("Ambiguous Deluge reply")
+                    throw IOException("Ambiguous Deluge JSON-RPC reply")
                 }
                 if (error is JSONObject) {
-                    if (error.optInt("code") == 1 && !relogged) {
+                    val code = exactWireInteger(error.opt("code"))
+                    val message = error.opt("message") as? String
+                    val authRejected = code == 1L && message == "Not authenticated"
+                    if (authRejected && !relogged) {
                         // Web session not authenticated: rejected before dispatch.
                         cookie = null
                         relogged = true
                         continue
                     }
-                    throw ClientRefusedException("Deluge refused: " +
-                        error.optString("message").lineSequence().firstOrNull().orEmpty().take(120))
+                    val refusedBeforeDispatch = authRejected || (code == 2L && message == "Unknown method")
+                    if (mutating && !refusedBeforeDispatch) {
+                        throw ClientWriteUncertainException("Deluge reported an error after possible dispatch")
+                    }
+                    throw ClientRefusedException("Deluge refused this request")
                 }
-                return@withContext result.takeUnless { it == JSONObject.NULL }
+                return@withContext result
             }
             @Suppress("UNREACHABLE_CODE") null
         }
@@ -395,7 +410,10 @@ internal class DelugeClient(
             catch (e: CancellationException) { throw e } catch (_: Exception) {
                 throw IOException("Deluge connection failed")
             }
-        val ok = response.status == 200 && try { JSONObject(response.body).opt("result") == true } catch (_: Exception) { false }
+        val ok = response.status == 200 && try {
+            val reply = ExactRpcJson.objectBody(response.body)
+            exactWireInteger(reply.opt("id")) == 1L && reply.isNull("error") && reply.opt("result") == true
+        } catch (_: IOException) { false }
         if (!ok) throw ClientRefusedException("Deluge Web UI login refused")
         val sid = response.header("Set-Cookie").mapNotNull { v ->
             v.substringBefore(';').trim().takeIf { it.startsWith("_session_id=") }?.removePrefix("_session_id=")

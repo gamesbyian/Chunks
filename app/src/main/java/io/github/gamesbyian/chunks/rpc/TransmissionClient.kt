@@ -6,6 +6,7 @@ import java.net.URI
 import java.util.Base64
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -43,10 +44,11 @@ internal class TransmissionClient(
         val exact = ClientHashes.requireHash(hash)
         val rows = call("torrent-get", JSONObject().put("ids", JSONArray().put(exact))
             .put("fields", JSONArray(listOf("hashString", "magnetLink"))), mutating = false)
-            .optJSONArray("torrents") ?: return null
-        val row = (0 until rows.length()).map { rows.getJSONObject(it) }
-            .singleOrNull { it.optString("hashString").equals(exact, true) } ?: return null
-        val magnet = row.optString("magnetLink").takeIf { it.startsWith("magnet:?") } ?: return null
+            .optJSONArray("torrents") ?: throw IOException("Transmission source unavailable")
+        val row = exactProtocolRow((0 until rows.length()).map {
+            rows.optJSONObject(it) ?: throw IOException("Invalid Transmission source row")
+        }, exact) { it.optString("hashString") } ?: return null
+        val magnet = (row.opt("magnetLink") as? String)?.takeIf { it.startsWith("magnet:?") } ?: return null
         // Transmission's own magnet carries this job's trackers and name.
         return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
     }
@@ -219,12 +221,12 @@ internal class TransmissionClient(
         val total = row.optLong("totalSize", -1).takeIf { it >= 0 }
         val left = row.optLong("leftUntilDone", -1).takeIf { it >= 0 }
         val metadataDone = row.optDouble("metadataPercentComplete", 1.0) >= 1.0
-        val state = when (row.optInt("status", -1)) {
-            0 -> ClientRunState.STOPPED
-            1, 2 -> ClientRunState.CHECKING
-            3, 5 -> ClientRunState.QUEUED
-            4 -> if (metadataDone) ClientRunState.DOWNLOADING else ClientRunState.METADATA
-            6 -> ClientRunState.SEEDING
+        val state = when (exactWireInteger(row.opt("status"))) {
+            0L -> ClientRunState.STOPPED
+            1L, 2L -> ClientRunState.CHECKING
+            3L, 5L -> ClientRunState.QUEUED
+            4L -> if (metadataDone) ClientRunState.DOWNLOADING else ClientRunState.METADATA
+            6L -> ClientRunState.SEEDING
             else -> ClientRunState.UNKNOWN
         }
         return ClientTorrent(
@@ -253,6 +255,7 @@ internal class TransmissionClient(
             var answeredAuth = false
             var answeredSession = false
             while (true) {
+                coroutineContext.ensureActive()
                 if (mutating) RemoteWriteOwnerFence.check()
                 beforeWrite()
                 val response = try {
@@ -283,22 +286,23 @@ internal class TransmissionClient(
                         answeredAuth = true
                     }
                     in 200..299 -> {
-                        val exactAdd = method == "torrent-add"
                         val root = try {
-                            if (exactAdd || (method == "torrent-get" && args.has("ids")))
+                            if (mutating || (method == "torrent-get" && args.has("ids")))
                                 ExactRpcJson.objectBody(response.body)
                             else JSONObject(response.body)
                         } catch (_: Exception) {
                             if (mutating) throw ClientWriteUncertainException("Invalid Transmission reply")
                             throw IOException("Invalid Transmission RPC response")
                         }
-                        val result = if (exactAdd) (root.opt("result") as? String)?.takeIf { it.isNotBlank() }
-                            ?: throw ClientWriteUncertainException("Transmission did not identify the Add result")
-                            else root.optString("result")
+                        val result = (root.opt("result") as? String)?.takeIf { it.isNotBlank() }
+                        if (result == null) {
+                            if (mutating) throw ClientWriteUncertainException("Invalid Transmission reply")
+                            throw IOException("Invalid Transmission RPC response")
+                        }
                         if (result != "success") {
                             // The server parsed and executed the request and
                             // reported a definite refusal (e.g. invalid metainfo).
-                            throw ClientRefusedException("Transmission refused: " + result.take(120))
+                            throw ClientRefusedException("Transmission refused this request")
                         }
                         return@withContext root.optJSONObject("arguments") ?: JSONObject()
                     }

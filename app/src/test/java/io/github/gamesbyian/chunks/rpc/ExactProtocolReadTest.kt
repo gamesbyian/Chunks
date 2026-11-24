@@ -28,12 +28,14 @@ class ExactProtocolReadTest {
         duplicateWireKeys: Boolean = false,
         fileWire: String? = null,
         addWire: ((Int) -> String)? = null,
+        removeWire: ((id: Int, attempt: Int) -> String)? = null,
+        transmissionStatus: Any = 0,
         beforeReply: (String) -> Unit = {}
     ): Fixture {
         var writes = 0
         val queue = ArrayDeque(replies)
         fun rows(field: String): String = JSONArray(queue.removeFirst().map {
-            JSONObject().put(field, it).put("name", "fixture").put("status", 0)
+            JSONObject().put(field, it).put("name", "fixture").put("status", transmissionStatus)
                 .put("state", "pausedDL").put("save_path", "/data").put("downloadDir", "/data")
         }).toString()
         val client = when (kind) {
@@ -55,7 +57,13 @@ class ExactProtocolReadTest {
                                 return@Wire TransmissionReadOnlyRpc.Response(200, emptyMap(), addWire(0))
                             "{}"
                         }
-                        "torrent-remove", "torrent-stop" -> { writes++; "{}" }
+                        "torrent-remove" -> {
+                            writes++
+                            if (removeWire != null) return@Wire TransmissionReadOnlyRpc.Response(
+                                200, emptyMap(), removeWire(0, writes))
+                            "{}"
+                        }
+                        "torrent-stop" -> { writes++; "{}" }
                         else -> error("Unexpected method $method")
                     }
                     TransmissionReadOnlyRpc.Response(200, emptyMap(), """{"result":"success","arguments":$args}""")
@@ -110,7 +118,12 @@ class ExactProtocolReadTest {
                             if (addWire != null) return@Wire DelugeReadOnlyRpc.Response(200, addWire(id))
                             "true"
                         }
-                        "core.remove_torrent", "core.pause_torrent" -> { writes++; "true" }
+                        "core.remove_torrent" -> {
+                            writes++
+                            if (removeWire != null) return@Wire DelugeReadOnlyRpc.Response(200, removeWire(id, writes))
+                            "true"
+                        }
+                        "core.pause_torrent" -> { writes++; "true" }
                         else -> error("Unexpected method $method")
                     }
                     DelugeReadOnlyRpc.Response(200, """{"id":$id,"error":null,"result":$result}""",
@@ -263,6 +276,71 @@ class ExactProtocolReadTest {
             val f = fixture(kind, listOf(listOf(hash), listOf(other)))
             val result = ClientOperations(f.client, readbackAttempts = 1).remove(hash, false)
             assertTrue("$kind $result", result is ClientOperationOutcome.Uncertain)
+            assertEquals(1, f.writes())
+        }
+    }
+
+    @Test fun malformedRemovalRepliesStayUncertainWithoutASecondWriteOrReadback() = runBlocking {
+        val deluge = TorrentClientKind.DELUGE
+        val transmission = TorrentClientKind.TRANSMISSION
+        val bad: List<Pair<TorrentClientKind, (Int, Int) -> String>> = listOf(
+            deluge to { id, _ -> """{"id":$id,"error":{"code":"1","message":"Not authenticated"},"result":null}""" },
+            deluge to { id, _ -> """{"id":$id,"error":{"code":1.5,"message":"Not authenticated"},"result":null}""" },
+            deluge to { id, _ -> """{"id":$id,"error":{"code":1,"message":"Not authenticated"},"result":true}""" },
+            deluge to { id, _ -> """{"id":$id,"error":{"code":4,"code":1,"message":"Not authenticated"},"result":null}""" },
+            deluge to { id, _ -> """{"id":$id.25,"error":null,"result":true}""" },
+            deluge to { id, _ -> """{"id":$id,"error":{"code":4,"message":"Daemon error"},"result":null}""" },
+            deluge to { id, _ -> """{"id":$id,"error":null,"result":"true"}""" },
+            transmission to { _, _ -> """{"result":"failure","result":"success","arguments":{}}""" },
+            transmission to { _, _ -> """{"result":null,"arguments":{}}""" }
+        )
+        for ((kind, wire) in bad) {
+            var exactReads = 0
+            val f = fixture(kind, listOf(listOf(hash), emptyList()), removeWire = wire, beforeReply = {
+                if (it == "torrent-get" || it == "core.get_torrents_status") exactReads++
+            })
+            val outcome = ClientOperations(f.client, readbackAttempts = 1).remove(hash, deleteData = true)
+            assertTrue("$kind $outcome", outcome is ClientOperationOutcome.Uncertain)
+            assertEquals(1, f.writes())
+            assertEquals(1, exactReads)
+        }
+    }
+
+    @Test fun delugeOnlyRetriesADocumentedPreDispatchRejectionAndHonorsCancellation() = runBlocking {
+        for (cancelLogin in listOf(false, true)) {
+            var logins = 0
+            val f = fixture(TorrentClientKind.DELUGE, listOf(listOf(hash), emptyList()),
+                removeWire = { id, attempt ->
+                    if (attempt == 1) """{"id":$id,"error":{"code":1,"message":"Not authenticated"},"result":null}"""
+                    else """{"id":$id,"error":null,"result":true}"""
+                }, beforeReply = { method ->
+                    if (method == "auth.login" && ++logins == 2 && cancelLogin) {
+                        throw CancellationException("cancelled during reauthentication")
+                    }
+                })
+            val ops = ClientOperations(f.client, readbackAttempts = 1)
+            if (cancelLogin) {
+                try {
+                    ops.remove(hash, deleteData = false)
+                    fail("Cancellation was converted into an operation result")
+                } catch (_: CancellationException) { }
+                assertEquals(1, f.writes())
+            } else {
+                assertTrue(ops.remove(hash, deleteData = false) is ClientOperationOutcome.Verified)
+                assertEquals(2, f.writes())
+            }
+            assertEquals(2, logins)
+        }
+    }
+
+    @Test fun malformedTransmissionStatusCannotProveStoppedAdd() = runBlocking {
+        for (wireStatus in listOf("0", 0.5, 4_294_967_296L)) {
+            val f = fixture(TorrentClientKind.TRANSMISSION, listOf(emptyList(), listOf(hash)),
+                transmissionStatus = wireStatus, addWire = {
+                    """{"result":"success","arguments":{"torrent-added":{"hashString":"$hash"}}}"""
+                })
+            val outcome = ClientOperations(f.client, readbackAttempts = 1, stoppedSettleReads = 0).add(request)
+            assertTrue("Malformed status $wireStatus became successful readback", outcome is ClientOperationOutcome.Pending)
             assertEquals(1, f.writes())
         }
     }
