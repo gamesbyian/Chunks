@@ -243,10 +243,12 @@ class ShardedNativeAddTests(unittest.TestCase):
         expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
             "RemoteOriginalTorrentHandlingInstalledInstrumentedTest" + "\\0" +
             "archiveThenSeparatelyRemoveOriginalAfterVerifiedNewRemoteAdd").encode()).hexdigest())
-        # Disposable rTorrent + public TVmaze; manual one-shot workflow only.
-        expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
-            "InstalledRemotePublicMediaInstrumentedTest" + "\\0" +
-            "remoteInventoryGetsAutomaticArtworkWithoutIdentify").encode()).hexdigest())
+        # Both exact rTorrent and public TVmaze phases run only in the
+        # explicitly authorized disposable server workflow.
+        expected.update(hashlib.sha256(("io.github.gamesbyian.chunks."
+            "InstalledRemotePublicMediaInstrumentedTest" + "\\0" + name).encode()).hexdigest()
+            for name in ("remoteInventoryGetsAutomaticArtworkWithoutIdentify",
+                         "coldReconnectKeepsRemoteOptOutWhileAnotherLookupWorks"))
         # Protected manual existing-transfer Stop/Start on the primary Seedhost.
         expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
             "SeedhostExistingTransferStopStartInstrumentedTest" + "\\0" +
