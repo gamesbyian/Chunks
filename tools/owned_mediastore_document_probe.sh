@@ -72,8 +72,8 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-[[ "$(grep -Fxc 'OK (16 tests)' "$out" || true)" == 1 ]] || {
-  echo 'CHUNKS_OWNED_DOCS: exact sixteen tests not confirmed' >&2
+[[ "$(grep -Fxc 'OK (19 tests)' "$out" || true)" == 1 ]] || {
+  echo 'CHUNKS_OWNED_DOCS: exact nineteen tests not confirmed' >&2
   exit 1
 }
 if [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' "$out" || true)" != 1 ]] ||
@@ -97,7 +97,10 @@ for case_name in \
   userCancellationAfterFirstPublishedFileRetainsItsBytesAndSkipsNext \
   nestedUnknownAndTooManyMembersFailWithoutPublishingAnything \
   failureInsideSecondNewRowKeepsFirstAndLeavesExactPendingForReview \
-  tornAndFifoSubstitutedPrivateBatchJournalNeverClaimsCompletion; do
+  tornAndFifoSubstitutedPrivateBatchJournalNeverClaimsCompletion \
+  seedingFlatBatchCopiesThroughUiAndPreservesOriginalsAndExistingCanary \
+  cancelledFlatBatchKeepsFirstVerifiedCopyAndReportsUnpublishedRemainder \
+  nestedOrUnsupportedBatchRefusesBeforeAnyProviderRowOrBatchIntent; do
   # Android emits test=name at both start (status 1) and completion (status 0).
   # One genuinely executed test therefore has exactly TWO named statuses.
   [[ "$(grep -Fxc "INSTRUMENTATION_STATUS: test=$case_name" "$out" || true)" == 2 ]] || {
