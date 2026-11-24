@@ -3,6 +3,7 @@
 # inventory. Public TVmaze/CDN HTTP only; never PR/push, never an owner host.
 set -euo pipefail
 test "${GITHUB_EVENT_NAME:-}" = workflow_dispatch
+test "$(git rev-parse HEAD)" = "${GITHUB_SHA:?}"
 test "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" = 1
 receipt="$RUNNER_TEMP/chunks-remote-media/receipt.json"
 out="$RUNNER_TEMP/chunks-remote-media/evidence"
@@ -14,6 +15,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
 adb shell pm path "$pkg" | head -1 | sed 's/^package://' | tr -d '\r' > "$out/installed-path.txt"
 adb pull "$(cat "$out/installed-path.txt")" "$out/installed.apk" >/dev/null
+cmp app/build/outputs/apk/debug/app-debug.apk "$out/installed.apk"
 sha256sum "$out/installed.apk" | tee "$out/installed-apk.sha256"
 stat -c '%s bytes' "$out/installed.apk" | tee -a "$out/installed-apk.sha256"
 rm -f "$out/installed.apk"
@@ -22,23 +24,27 @@ adb reverse tcp:18082 tcp:18082 >/dev/null
 b64() { printf '%s' "$1" | base64 -w 0; }
 field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$receipt" "$1"; }
 adb logcat -c
-set +e
-adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.InstalledRemotePublicMediaInstrumentedTest \
-  -e chunks_remote_media authorized \
-  -e chunks_remote_media_url_b64 "$(b64 http://127.0.0.1:18082/RPC2)" \
-  -e chunks_remote_media_name_b64 "$(b64 "$(field name)")" \
-  -e chunks_remote_media_hash_b64 "$(b64 "$(field hash)")" \
-  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
-  > "$out/instrumentation.txt" 2>&1
-status=$?
-set -e
-adb logcat -d -v raw -s ChunksRemoteMedia:I > "$out/WITNESS.txt" || true
-adb pull "/sdcard/Android/data/$pkg/files/remote-media-evidence/." "$out/" >/dev/null 2>&1 || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation.txt"; then
-  tail -80 "$out/instrumentation.txt"
-  echo "::error::Installed remote automatic artwork proof failed or skipped"
-  exit 1
-fi
+run_phase() {
+  local method="$1" status=0
+  timeout 720s adb shell am instrument -w -r \
+    -e class "io.github.gamesbyian.chunks.InstalledRemotePublicMediaInstrumentedTest#$method" \
+    -e chunks_remote_media authorized \
+    -e chunks_remote_media_url_b64 "$(b64 http://127.0.0.1:18082/RPC2)" \
+    -e chunks_remote_media_name_b64 "$(b64 "$(field name)")" \
+    -e chunks_remote_media_hash_b64 "$(b64 "$(field hash)")" \
+    io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
+    > "$out/$method.txt" 2>&1 || status=$?
+  adb logcat -d -v raw -s ChunksRemoteMedia:I > "$out/WITNESS.txt"
+  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/$method.txt"; then
+    tail -60 "$out/$method.txt"
+    echo "::error::Installed remote artwork phase failed or skipped: $method"
+    exit 1
+  fi
+}
+run_phase remoteInventoryGetsAutomaticArtworkWithoutIdentify
 grep -q 'CHUNKS_REMOTE_PUBLIC_MEDIA automatic=true' "$out/WITNESS.txt"
+adb pull "/sdcard/Android/data/$pkg/files/remote-media-evidence/." "$out/" >/dev/null
+adb shell am force-stop "$pkg"
+run_phase coldReconnectKeepsRemoteOptOutWhileAnotherLookupWorks
+grep -q 'CHUNKS_REMOTE_PUBLIC_MEDIA reconnect=true exact_exclusion=true provider_positive=true excluded_selections=0' "$out/WITNESS.txt"
 echo "CHUNKS_REMOTE_PUBLIC_MEDIA: passed" | tee -a "$GITHUB_STEP_SUMMARY"

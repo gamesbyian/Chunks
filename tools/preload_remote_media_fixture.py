@@ -25,7 +25,7 @@ def main():
     parser.add_argument("--receipt", required=True)
     args = parser.parse_args()
     meta, infohash = torrent(NAME, b"remote-media:" + args.run.encode() * 128)
-    load(args.url, meta, infohash, args.dir)
+    load(args.url, meta, infohash, args.dir, user="chunks", password="chunks-media")
     with open(args.receipt, "w") as out:
         json.dump({"name": NAME, "hash": infohash}, out)
     print("CHUNKS_REMOTE_MEDIA_FIXTURE: staged stopped hash=%s" % infohash)
