@@ -156,8 +156,32 @@ class RepeatedAndroidIntakeTest {
     }
 
     private fun submitEnabled() {
-        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+        // A fresh post-command inventory can still be loading when a new
+        // source review appears. Wait for the actual enabled contract.
+        rule.waitUntil(30_000) {
+            runCatching { list().performScrollToNode(submit) }
+            val nodes = rule.onAllNodes(submit).fetchSemanticsNodes()
+            nodes.size == 1 && androidx.compose.ui.semantics.SemanticsProperties.Disabled !in nodes.single().config
+        }
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
+    }
+
+    private fun awaitExactRegistration(hash: String) {
+        try {
+            rule.waitUntil(30_000) { server.jobs.containsKey(hash) }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            val state = rule.runOnIdle {
+                val target = owner.addDestination.value
+                val session = (target as? UniversalAddRouteTarget.RTorrent)?.let {
+                    owner.remoteSessions.existingForAccount(it.accountScope)
+                }
+                "targetRemote=${target is UniversalAddRouteTarget.RTorrent} " +
+                    "ticket=${session?.attemptTicket != null} phase=${session?.coordinator?.phase} " +
+                    "submitting=${session?.submitting} loads=${server.loads().size}"
+            }
+            throw AssertionError("Explicit Add did not register the expected fixture: $state", failure)
+        }
     }
 
     @Test fun secondOpenWithDuringFirstProviderReadDoesNotSilentlyReplaceIt() {
@@ -206,7 +230,7 @@ class RepeatedAndroidIntakeTest {
         val first = openWith("first-torrent.mkv")
         waitForText("first-torrent.mkv")
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
         waitForText("Verified: added")
         assertTrue(server.jobs.containsKey(first))
 
@@ -217,8 +241,8 @@ class RepeatedAndroidIntakeTest {
             rule.onAllNodesWithText("Use new source").fetchSemanticsNodes().isEmpty())
         // The defect: the finished attempt hid the new source and the Add action.
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-        rule.waitUntil(30_000) { server.jobs.containsKey(second) }
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        awaitExactRegistration(second)
         waitForText("Verified: added")
         assertEquals("Exactly one load per explicit Add, never a replay of the first",
             2, server.loads().size)
@@ -239,7 +263,7 @@ class RepeatedAndroidIntakeTest {
         waitForText("settling-first.mkv")
         submitEnabled()
         rule.mainClock.autoAdvance = false
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
         // Deliver the second handoff before the first attempt can settle.
         val bytes = torrent("settling-second.mkv")
         val uri = Uri.parse("content://chunks.test.documents/settling-second.mkv.torrent")
@@ -248,12 +272,12 @@ class RepeatedAndroidIntakeTest {
             Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
         rule.runOnUiThread { owner.offerAdd(ExternalAddSource.TorrentDocument(accepted)) }
         rule.mainClock.autoAdvance = true
-        rule.waitUntil(30_000) { server.jobs.containsKey(first) }
+        awaitExactRegistration(first)
         waitForText("settling-second.mkv")
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
         val second = TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase()
-        rule.waitUntil(30_000) { server.jobs.containsKey(second) }
+        awaitExactRegistration(second)
         assertEquals("Exactly one load per explicit Add", 2, server.loads().size)
     }
 
@@ -270,8 +294,8 @@ class RepeatedAndroidIntakeTest {
         rule.onNodeWithText("Use new source").performScrollTo().performClick()
         waitForText("draft-b.mkv")
         submitEnabled()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-        rule.waitUntil(30_000) { server.jobs.containsKey(replacement) }
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        awaitExactRegistration(replacement)
         assertEquals("Only the explicitly chosen replacement is submitted", setOf(replacement), server.jobs.keys)
     }
 

@@ -86,6 +86,8 @@ internal fun VerifiedAddScreen(
     onComplete: () -> Unit,
     onMutationStarted: () -> Boolean,
     onMutationSettled: () -> Unit,
+    /** Parent's fresh inventory and write-admission readiness; rechecked atomically on click. */
+    mutationReady: Boolean = true,
     recentPlaces: List<String> = emptyList(),
     /** The person's saved default Add folder for this exact account, if any. */
     savedDefaultPlace: String? = null,
@@ -890,8 +892,12 @@ internal fun VerifiedAddScreen(
         },
         submit = if (alreadyAttempted) null else UniversalAddAction(
             enabled = plan != null && !submitting && !choosing && !externalSourceReading &&
-                !noFileChosen && validUniversalAddAlias(addAliasState?.value.orEmpty()),
-            unavailableReason = addGuidance.takeIf { plan == null },
+                !noFileChosen && mutationReady && validUniversalAddAlias(addAliasState?.value.orEmpty()),
+            unavailableReason = when {
+                plan == null -> addGuidance
+                !mutationReady -> "Waiting for a fresh confirmed server transfer list."
+                else -> null
+            },
             onSubmit = addClick@{
                 if (externalSourceReading) return@addClick
                 val plan = plan ?: return@addClick

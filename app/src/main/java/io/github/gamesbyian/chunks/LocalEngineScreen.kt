@@ -1483,6 +1483,18 @@ internal fun LocalEngineScreen(
                 }
             }
             val hasMagnetDraft = magnet.isNotEmpty() && !isLink
+            // Expose the actual admission prerequisite, not raw source, path or engine detail.
+            val magnetUnavailable = when {
+                busy -> "A local operation is in progress."
+                sourceReading -> "Waiting for source review."
+                !addInventoryReady -> "Waiting for a fresh confirmed local transfer list."
+                dhtSaving || placeSaving -> "Waiting for local settings to settle."
+                proposedAddDestination == null -> "Choose a verified local download location."
+                magnetCheck !is MagnetDraftCheck.Valid -> "Review a valid magnet."
+                !validUniversalAddAlias(addAliasState?.value.orEmpty()) -> "Review the display name."
+                localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
+                else -> null
+            }
             val disabledReason = when {
                 localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
                 isLink -> "Get the .torrent from this link first (Get torrent from link above)."
@@ -1722,10 +1734,8 @@ internal fun LocalEngineScreen(
                         })
                 },
                 submit = when {
-                    hasMagnetDraft -> UniversalAddAction(!busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
-                        magnetCheck is MagnetDraftCheck.Valid &&
-                        validUniversalAddAlias(addAliasState?.value.orEmpty()) &&
-                        localAddAttemptSession?.attemptedTicket == null, onSubmit = addMagnet)
+                    hasMagnetDraft -> UniversalAddAction(magnetUnavailable == null,
+                        onSubmit = addMagnet, unavailableReason = magnetUnavailable)
                     add != null && magnet.isBlank() -> UniversalAddAction(canAddTorrent, onSubmit = addTorrent)
                     else -> UniversalAddAction(false, onSubmit = {}, unavailableReason = disabledReason)
                 },

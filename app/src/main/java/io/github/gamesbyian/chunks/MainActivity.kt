@@ -1469,9 +1469,13 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
         val privacyScope = RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(exactScope)
             ?: return@remoteAdd
         RemoteTransferPrivacyGate(scope = privacyScope, onBack = ::returnFromAdd, controlsInContent = true) {
+            fun canBeginRemoteAdd(): Boolean =
+                server === connectedRemote && aliasScope == exactScope &&
+                    section == Section.ADD_CHOOSE &&
+                    addDestination == UniversalAddRouteTarget.RTorrent(exactScope) &&
+                    !loading && !stale && mutationGate.canStart
             val beginRemoteMutation: () -> Boolean = {
-                if (server === connectedRemote && aliasScope == exactScope &&
-                    !loading && !stale && mutationGate.tryStart()) {
+                if (canBeginRemoteAdd() && mutationGate.tryStart()) {
                     stale = true
                     true
                 } else false
@@ -1583,6 +1587,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                 },
                 onMutationStarted = beginRemoteMutation,
                 onMutationSettled = settledRemoteMutation,
+                mutationReady = canBeginRemoteAdd(),
                 recentPlaces = recentPlaces,
                 savedDefaultPlace = remember(aliasScope, recentPlaceRevision) {
                     if (aliasScope.isBlank()) null
