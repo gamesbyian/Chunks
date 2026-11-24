@@ -2,6 +2,25 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-24 UTC — Prepared remote source provenance candidate (not accepted)
+
+[#2067](https://github.com/gamesbyian/Chunks/pull/2067) distinguishes a current reviewed Local source from transfer exports and archive entries at the retained Add owner. Exports must not inherit an earlier document URI or be replaced by an unrelated retained review. Candidate rejects stale identity/changed bytes and unfinished Local document handling before replacing the draft. Original head `3ba80337e37948b91d1e0457149d23336302578e`:
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| Foundation | [45506543670](https://github.com/gamesbyian/Chunks/actions/runs/45506543670) | RED: compileDebugUnitTestKotlin; LocalDocumentReplacementTest.kt:108 old one-argument Unit callback vs two-argument Boolean. Zero executed cases. |
+| Native Add | [45506543631](https://github.com/gamesbyian/Chunks/actions/runs/45506543631) | Green; both shards first attempt, 435 executed, 53 skipped, zero failed, 25 PNG |
+| Installed five-client | [45506543664](https://github.com/gamesbyian/Chunks/actions/runs/45506543664) | Green |
+| Real rTorrent | [45506543833](https://github.com/gamesbyian/Chunks/actions/runs/45506543833) | Green |
+| Real Combined | [45506543609](https://github.com/gamesbyian/Chunks/actions/runs/45506543609) | Green |
+| R8 | [45506543576](https://github.com/gamesbyian/Chunks/actions/runs/45506543576) | Green |
+| Remote Remove/data | [45506543672](https://github.com/gamesbyian/Chunks/actions/runs/45506543672) | Green |
+| API29 Downloads | [45506543968](https://github.com/gamesbyian/Chunks/actions/runs/45506543968) | Green |
+
+Atlas intentionally skipped. No waiver for foundation red. #2068 merged at `03ea1293da78d18b1c1e526c6cd10d3e6bfed14c` with exact docs head `40b6684f` and [45506462354](https://github.com/gamesbyian/Chunks/actions/runs/45506462354) green; tree verified. New candidate `ad1b8b65be1d857c388a0bd4d39fcfd141b38409` integrates that docs main without changing the earlier production files; repairs test harness callback and strengthens exact review reference/URI, HTTPS no-original and refused-handoff preservation assertions. No original tests removed.
+
+Revised-head runs started: [foundation 45509308063](https://github.com/gamesbyian/Chunks/actions/runs/45509308063), [five-client 45509308067](https://github.com/gamesbyian/Chunks/actions/runs/45509308067), [native Add 45509308051](https://github.com/gamesbyian/Chunks/actions/runs/45509308051), [real rTorrent 45509308211](https://github.com/gamesbyian/Chunks/actions/runs/45509308211), [Combined 45509308216](https://github.com/gamesbyian/Chunks/actions/runs/45509308216), [R8 45509308057](https://github.com/gamesbyian/Chunks/actions/runs/45509308057), [remote Remove/data 45509308157](https://github.com/gamesbyian/Chunks/actions/runs/45509308157), [API29 Downloads 45509308055](https://github.com/gamesbyian/Chunks/actions/runs/45509308055). Atlas [45509308158](https://github.com/gamesbyian/Chunks/actions/runs/45509308158) skipped. Re-fetch actual final status and receipt counts before acceptance. Physical #1786 remains open.
+
 ## 2026-11-24 UTC — Query-local name normalization accepted (FE-11)
 
 [#2065](https://github.com/gamesbyian/Chunks/pull/2065) merged at `908d905caed9cb370b77e20f1be0fa5a1d82d514`, with no tree difference from tested head `b4c66168edecdf66471405076f69e931eac417df`. [Foundation 45503963623](https://github.com/gamesbyian/Chunks/actions/runs/45503963623) passed 3,123 reported cases; exact [native Add 45503963746](https://github.com/gamesbyian/Chunks/actions/runs/45503963746) passed both shards on attempt 1 (435 executed, 53 skips, 0 failures, 25 real PNGs). [Combined 45503963486](https://github.com/gamesbyian/Chunks/actions/runs/45503963486), [R8 45503963949](https://github.com/gamesbyian/Chunks/actions/runs/45503963949) and [docs 45503860594](https://github.com/gamesbyian/Chunks/actions/runs/45503860594) passed. Draft skip witnesses retained. Combined workflow now selects the production catalog and ordering model paths and does not select the synthetic benchmark-only path.
