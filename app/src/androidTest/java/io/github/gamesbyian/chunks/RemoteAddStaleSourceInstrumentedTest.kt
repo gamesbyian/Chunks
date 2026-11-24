@@ -122,7 +122,7 @@ class RemoteAddStaleSourceInstrumentedTest {
                     onBack = {}, onComplete = {},
                     onMutationStarted = { writes++; false },
                     onMutationSettled = {},
-                    onTorrentAdopted = { _, _, _ -> adopted++ },
+                    onTorrentAdopted = { _, _, _, _ -> adopted++ },
                     isSourceOwnerCurrent = { owner === renderedOwner },
                     fetchTorrentLink = {
                         if (renderedOwner === original) {

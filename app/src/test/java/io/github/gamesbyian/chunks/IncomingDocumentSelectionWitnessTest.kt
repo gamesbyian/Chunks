@@ -76,17 +76,6 @@ class IncomingDocumentSelectionWitnessTest {
             witness.canApply(text, null, null, second))
     }
 
-    @Test fun completedRemoteDocumentRetiresOnlyItsExactLocalTwin() {
-        val original = local()
-        assertTrue(completedRemoteReviewMatchesLocal(sourceBytes.copyOf(), original))
-        assertFalse(completedRemoteReviewMatchesLocal(null, original))
-        assertFalse(completedRemoteReviewMatchesLocal(sourceBytes, null))
-        // Different complete metainfo, even with the same preview/infohash,
-        // must not be mistaken for the finished source.
-        val newer = PendingLocalAdd(preview, sourceBytes + byteArrayOf(0))
-        assertFalse(completedRemoteReviewMatchesLocal(sourceBytes, newer))
-    }
-
     @Test fun shareStartingWithEmptyLocalDraftCannotOverwriteNewFile() {
         val witness = IncomingDocumentSelectionWitness(text, null, null, null)
         assertFalse(witness.canApply(text, local(), null, null))

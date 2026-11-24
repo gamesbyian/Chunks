@@ -112,7 +112,11 @@ class RemoteAddSessionContinuityTest {
                 onMagnet = { source.value = it },
                 onDestination = { session.destination = it }, onBack = { showing.value = false }, onComplete = {},
                 onMutationStarted = { error("Review/navigation must not authorize Add") }, onMutationSettled = {},
-                initialTorrent = incoming.value, onInitialTorrentConsumed = { incoming.value = null; consumed++ },
+                initialTorrent = incoming.value, claimInitialTorrent = {
+                    incoming.value = null
+                    consumed++
+                    true
+                },
                 finishInOrderScope = account, addStartState = start, addArtworkState = artwork, session = session)
         } } }
         reveal("Add transfer")
@@ -210,7 +214,11 @@ class RemoteAddSessionContinuityTest {
                     onMagnet = { source.value = it }, onDestination = { session.destination = it },
                     onBack = { showing.value = false }, onComplete = {}, onVerifiedAdd = { verified++ },
                     onMutationStarted = { attempts++; true }, onMutationSettled = { settled++ },
-                    initialTorrent = incoming.value, onInitialTorrentConsumed = { incoming.value = null; consumed++ },
+                    initialTorrent = incoming.value, claimInitialTorrent = {
+                        incoming.value = null
+                        consumed++
+                        true
+                    },
                     finishInOrderScope = account, addStartState = start, addArtworkState = artwork, session = session)
             } } }
             // Only discovery can repeat; the attached submit action is invoked once.
