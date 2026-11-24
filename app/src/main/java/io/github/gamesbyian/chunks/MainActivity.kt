@@ -625,11 +625,8 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
      * Universal Add holds one source, and a stale valid magnet would otherwise make
      * [selectAuthenticatedAddTarget] discard the document the user just picked.
      */
-    fun prepareRemoteTorrent(document: ByteArray) {
-        remoteAddSessions.clearPendingSourceSelection()
-        magnet = ""
-        serverHandoffTorrent = document
-    }
+    fun prepareRemoteTorrent(document: ByteArray, reviewed: PendingLocalAdd? = null): Boolean =
+        retainedAddOwner.stageRemoteTorrentHandoff(document, reviewed)
     var aliasRevision by remember { mutableStateOf(0) }
     // Purely derive the configured identities during composition. SharedPreferences
     // writes must happen after composition, off the main thread, and only when
@@ -1455,10 +1452,13 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                     if (connectedRemote == null) section = Section.TRANSFERS
                     else selectAuthenticatedAddTarget()
                 },
-                onPrepareRemoteTorrent = { document ->
-                    prepareRemoteTorrent(document)
-                    if (connectedRemote == null) section = Section.TRANSFERS
-                    else selectAuthenticatedAddTarget()
+                onPrepareRemoteTorrent = { document, reviewed ->
+                    val staged = prepareRemoteTorrent(document, reviewed)
+                    if (staged) {
+                        if (connectedRemote == null) section = Section.TRANSFERS
+                        else selectAuthenticatedAddTarget()
+                    }
+                    staged
                 }
             )
         }
@@ -3061,10 +3061,10 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                                 // This archive entry is a new source with no standalone
                                 // document to archive or remove, even if the bytes coincide
                                 // with an earlier Android document.
-                                localReviewedTorrent.value = null
-                                serverHandoffDocument = null
-                                prepareRemoteTorrent(document)
-                                selectAuthenticatedAddTarget()
+                                if (prepareRemoteTorrent(document)) selectAuthenticatedAddTarget()
+                                else android.widget.Toast.makeText(context,
+                                    "Finish the current Add review before preparing another source.",
+                                    android.widget.Toast.LENGTH_LONG).show()
                             },
                             onPrepareMagnet = { link ->
                                 prepareRemoteMagnet(link)
