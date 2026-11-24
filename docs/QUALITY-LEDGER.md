@@ -2,6 +2,21 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-24 UTC — Query-local name normalization accepted (FE-11)
+
+[#2065](https://github.com/gamesbyian/Chunks/pull/2065) merged at `908d905caed9cb370b77e20f1be0fa5a1d82d514`, with no tree difference from tested head `b4c66168edecdf66471405076f69e931eac417df`. [Foundation 45503963623](https://github.com/gamesbyian/Chunks/actions/runs/45503963623) passed 3,123 reported cases; exact [native Add 45503963746](https://github.com/gamesbyian/Chunks/actions/runs/45503963746) passed both shards on attempt 1 (435 executed, 53 skips, 0 failures, 25 real PNGs). [Combined 45503963486](https://github.com/gamesbyian/Chunks/actions/runs/45503963486), [R8 45503963949](https://github.com/gamesbyian/Chunks/actions/runs/45503963949) and [docs 45503860594](https://github.com/gamesbyian/Chunks/actions/runs/45503860594) passed. Draft skip witnesses retained. Combined workflow now selects the production catalog and ordering model paths and does not select the synthetic benchmark-only path.
+
+The bounded numeric receipt from foundation job 138834201505 compares the prior flatten/sort reference with the full candidate query on distinct Unicode names, alternating five samples and requiring exactly equal ordered output:
+
+| Rows | Prior flatten/sort median (ms) | Candidate query median (ms) |
+| ---: | ---: | ---: |
+| 100 | 2.933 | 0.692 |
+| 1,000 | 9.338 | 3.441 |
+| 10,000 | 41.819 | 14.984 |
+| 50,000 | 214.996 | 79.028 |
+
+This paired synthetic result supports the CPU optimization at all sampled sizes. The original repeated-name case at 50k was 74.287 ms (range 73.290–109.174 ms) versus prior hosts 54.384 and 113.403 ms; no cross-run gain inferred. Query-local normalization retains an extra map proportional to distinct spellings, no persistent cache. Device heap, allocation/GC and Compose frame costs remain unmeasured; no network or polling change. #2067 is a separate unqualified preparation provenance candidate.
+
 ## 2026-11-24 UTC — Android intake and Local runtime ownership accepted
 
 [#2060](https://github.com/gamesbyian/Chunks/pull/2060) merged at `d5c2fdea25abc37047f41335b6ff43ac5867eafd`, tree-identical to qualified `e7da82e4c3cf247ad72f4cf38c0a287b818685b5`. #2059/#2063/#2064 are verified ancestors. [Foundation 45499638004](https://github.com/gamesbyian/Chunks/actions/runs/45499638004) passed 3,013 executed, 108 skips; all three repeated-intake regressions passed. [Installed Universal Add 45499637852](https://github.com/gamesbyian/Chunks/actions/runs/45499637852) passed all lanes and aggregate including foreign-task recovery and Local process-death no replay. [Native Add attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45499637927/attempts/1) was red solely at ClipboardUriIntakeInstrumentedTest line 111; [attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45499637927/attempts/2) reused immutable APK pair artifact 14970293293. Verifier job 138831838298 selected shard 0 attempt 1 (208 executed/23 skipped) and shard 1 attempt 2 (227 executed/30 skipped), total 435 executed/53 skipped/0 failed, 25 real PNGs. Root cause of prior red remains unproved.
