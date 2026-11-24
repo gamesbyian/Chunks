@@ -7,7 +7,7 @@ import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
 internal enum class ProtocolOperationKind(val label: String) {
     START("Start"), STOP("Stop"), RECHECK("Recheck"), FILE_PRIORITIES("File priorities"),
     SET_LOCATION("Change folder"), MOVE_FILES("Move files"), REMOVE("Remove"),
-    REMOVE_DATA("Remove and delete files"), RETIRE_SOURCE("Finish move")
+    REMOVE_DATA("Remove and delete files"), COPY_TARGET("Copy job"), RETIRE_SOURCE("Finish move")
 }
 
 /**

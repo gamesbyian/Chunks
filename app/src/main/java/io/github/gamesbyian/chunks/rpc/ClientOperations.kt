@@ -343,7 +343,7 @@ internal class ClientOperations(
     private suspend fun write(hash: String, send: suspend () -> Unit): ClientOperationOutcome? = try {
         val context = currentCoroutineContext()
         context.ensureActive()
-        RemotePolicyWriteFence.check()
+        RemoteWriteOwnerFence.check()
         context[ClientOperationWriteBoundary]?.beforeWrite()
         send()
         null

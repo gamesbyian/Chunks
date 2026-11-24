@@ -37,7 +37,9 @@ import io.github.gamesbyian.chunks.rpc.ClientFilePriority
 import io.github.gamesbyian.chunks.rpc.ClientFinishInOrderPort
 import io.github.gamesbyian.chunks.rpc.ClientJobTransfer
 import io.github.gamesbyian.chunks.rpc.ClientOperationOutcome
+import io.github.gamesbyian.chunks.rpc.ClientHashes
 import io.github.gamesbyian.chunks.rpc.ClientOperationWriteBoundary
+import io.github.gamesbyian.chunks.rpc.RemoteWriteOwnerFence
 import io.github.gamesbyian.chunks.rpc.ClientRefusedException
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
@@ -58,6 +60,7 @@ internal data class ProtocolMoveTarget(
     val aliasScope: String? = null,
     /** Stable for the current authenticated connection, even across a label change. */
     val connectionWitness: Any = id,
+    val ownerCurrent: () -> Boolean = { true },
     val createOperations: () -> ClientOperations
 )
 
@@ -297,6 +300,41 @@ internal fun ProtocolClientOperationsPanel(
         }
     }
 
+    fun captureCopyOwner(target: ProtocolMoveTarget): () -> Boolean {
+        val policyEpoch = TransferPrivacyPolicyStore.revision
+        val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
+        val credentialEpoch = RemoteCredentialLock.capture()
+        return {
+            scope.coroutineContext[kotlinx.coroutines.Job]?.isActive == true &&
+                currentOwner === operations && isOwnerCurrent() && target.ownerCurrent() &&
+                currentConnections[target.id] == target.connectionWitness &&
+                RemoteCredentialLock.current(credentialEpoch) &&
+                policyEpoch == TransferPrivacyPolicyStore.revision &&
+                lifecycleEpoch == TransferPrivacyRuntime.lifecycleRevision
+        }
+    }
+
+    fun reconcileCopyTarget(target: ProtocolMoveTarget, receipt: ProtocolOperationReceiptOwner.Receipt) {
+        val ownerCurrent = captureCopyOwner(target)
+        if (busy || !receipt.canReconcile || !ownerCurrent()) return
+        busy = true
+        scope.launch {
+            try {
+                val row = target.createOperations().client.torrent(hash)
+                if (!ownerCurrent()) return@launch
+                if (row != null && !row.hash.equals(hash, ignoreCase = true))
+                    throw java.io.IOException("Wrong transfer identity")
+                if (receiptOwner.reconcile(receipt.ticket, row != null)) onChanged()
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                notice = "Could not check the destination job. Its previous Copy result remains unresolved."
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     val caps = session?.capabilities.orEmpty()
     val enabled = current && !busy && !latched && session != null
     Column(verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -377,60 +415,105 @@ internal fun ProtocolClientOperationsPanel(
                         modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION))
                 }
             }
+            val copyHash = runCatching { ClientHashes.requireHash(hash) }.getOrNull()
+            if (copyHash == null) {
+                Text("Copying this job requires a v1 transfer identity.", style = MaterialTheme.typography.bodySmall)
+            }
             moveTargets.sortedByDescending { it.id == routingSuggestion?.first }.forEach { target ->
+                val targetKey = copyHash?.let { ProtocolOperationReceiptOwner.Key(target.id, it) }
+                val targetReceipt = targetKey?.let(receiptOwner::receipt)
                 OutlinedButton(onClick = {
-                    if (busy || latched) return@OutlinedButton
+                    val key = targetKey ?: return@OutlinedButton
+                    val ownerCurrent = captureCopyOwner(target)
+                    if (busy || latched || !ownerCurrent()) return@OutlinedButton
+                    val generation = RemoteCredentialLock.capture().toString()
+                    val ticket = receiptOwner.begin(key, generation, ProtocolOperationKind.COPY_TARGET)
+                        ?: return@OutlinedButton
+                    inFlightReceipt.set(ticket)
                     busy = true
                     copied = null
                     notice = "Copying job to ${target.label}…"
-                    scope.launch {
-                        val transfer = try {
-                            val dst = target.createOperations()
-                            ClientJobTransfer(
-                                operations, operations.client, dst, dst.client,
-                                sourceClientId = sourceClientId, targetClientId = target.id
-                            )
-                        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
-                        val result = try {
-                            transfer?.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true)
-                        } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
-                        when (result) {
-                            is ClientJobTransfer.CopyResult.Copied -> {
-                                copied = VerifiedMoveCopy(target, requireNotNull(transfer), result)
-                                notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
-                                // The Chunks name follows the confirmed copy, never overwriting a
-                                // name the target already has. Nothing is sent to either client.
-                                val from = sourceAliasScope
-                                val to = target.aliasScope
-                                if (from != null && to != null) {
-                                    val carried = withContext(Dispatchers.IO) {
-                                        runCatching { TransferAliasStore(context).carryVerifiedMoveAlias(from, to, hash) }
-                                            .getOrDefault(TransferAliasStore.MoveAliasCarry.FAILED)
+                    scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                        try {
+                            val transfer = try {
+                                val dst = target.createOperations()
+                                ClientJobTransfer(operations, operations.client, dst, dst.client,
+                                    sourceClientId = sourceClientId, targetClientId = target.id)
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                null
+                            }
+                            val result = try {
+                                if (transfer == null) {
+                                    ClientJobTransfer.CopyResult.Refused(hash, "Could not open the destination")
+                                } else withContext(
+                                    RemoteWriteOwnerFence(ownerCurrent) + ClientOperationWriteBoundary {
+                                        if (!ownerCurrent() || !receiptOwner.possibleWrite(ticket))
+                                            throw ClientRefusedException("The selected connection changed")
                                     }
-                                    if (carried == TransferAliasStore.MoveAliasCarry.FAILED)
-                                        notice = notice + " Its Chunks display name was not copied."
+                                ) {
+                                    transfer.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true,
+                                        stillAuthorized = ownerCurrent)
                                 }
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                ClientJobTransfer.CopyResult.NotCopied(hash,
+                                    ClientOperationOutcome.Uncertain(hash, "The destination result could not be confirmed"))
                             }
-                            is ClientJobTransfer.CopyResult.NotCopied -> {
-                                notice = ProtocolOperationText.describe("Copy to ${target.label}", result.outcome, target.label)
-                                if (result.outcome is ClientOperationOutcome.Uncertain) uncertainAt = inventoryWitness
+                            val outcome = when (result) {
+                                is ClientJobTransfer.CopyResult.Copied -> ClientOperationOutcome.Verified(hash, null)
+                                is ClientJobTransfer.CopyResult.NotCopied -> result.outcome
+                                is ClientJobTransfer.CopyResult.Refused -> ClientOperationOutcome.Refused(hash, result.reason)
                             }
-                            is ClientJobTransfer.CopyResult.Refused ->
-                                notice = "Copy to ${target.label}: not changed. ${result.reason}."
-                            null -> notice = "Copy to ${target.label}: could not reach both clients. Nothing was changed."
+                            receiptOwner.complete(ticket, outcome)
+                            when (result) {
+                                is ClientJobTransfer.CopyResult.Copied -> {
+                                    copied = VerifiedMoveCopy(target, requireNotNull(transfer), result)
+                                    notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
+                                    // Carry the device-local name only for the still-current pair.
+                                    val from = sourceAliasScope
+                                    val to = target.aliasScope
+                                    if (from != null && to != null) {
+                                        val carried = withContext(Dispatchers.IO) {
+                                            if (!ownerCurrent()) return@withContext TransferAliasStore.MoveAliasCarry.FAILED
+                                            runCatching { TransferAliasStore(context).carryVerifiedMoveAlias(from, to, hash) }
+                                                .getOrDefault(TransferAliasStore.MoveAliasCarry.FAILED)
+                                        }
+                                        if (carried == TransferAliasStore.MoveAliasCarry.FAILED)
+                                            notice = notice + " Its Chunks display name was not copied."
+                                    }
+                                }
+                                else -> notice = ProtocolOperationText.describe("Copy to ${target.label}", outcome, target.label)
+                            }
+                            if (ownerCurrent()) onChanged()
+                        } catch (cancel: CancellationException) {
+                            receiptOwner.cancel(ticket)
+                            throw cancel
+                        } finally {
+                            inFlightReceipt.compareAndSet(ticket, null)
+                            busy = false
                         }
-                        busy = false
-                        onChanged()
                     }
-                }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .testTag(ChunksSemantics.PROTOCOL_MOVE + "." + target.id)) {
+                }, enabled = enabled && targetKey != null && targetReceipt?.blocksWrites != true,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .testTag(ChunksSemantics.PROTOCOL_MOVE + "." + target.id)) {
                     Text("Copy job to ${target.label}")
+                }
+                if (targetReceipt != null) {
+                    Text(targetReceipt.description(), style = MaterialTheme.typography.bodySmall)
+                    if (targetReceipt.canReconcile) OutlinedButton(
+                        onClick = { reconcileCopyTarget(target, targetReceipt) },
+                        enabled = current && !busy,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Check job on ${target.label}") }
                 }
             }
             if (finishableCopy != null) Button(onClick = {
                 run("Remove from $clientLabel after moving to ${finishableCopy.target.label}", ProtocolOperationKind.RETIRE_SOURCE) {
                     finishableCopy.transfer.retireSource(hash, finishableCopy.receipt) {
-                        currentOwner === operations &&
+                        currentOwner === operations && isOwnerCurrent() && finishableCopy.target.ownerCurrent() &&
                             currentConnections[finishableCopy.target.id] == finishableCopy.target.connectionWitness
                     }
                 }

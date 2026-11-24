@@ -1245,7 +1245,8 @@ internal fun CombinedTransfersScreen(
             it.operations != null && it.environment in protocolAllowed
         }.distinctBy { it.id }.map {
             ProtocolMoveTarget(it.id, it.label, aliasScopes[it.environment],
-                connectionWitness = it.identityWitness, createOperations = requireNotNull(it.operations))
+                connectionWitness = it.identityWitness, ownerCurrent = { protocolOwnerCurrent(it) },
+                createOperations = requireNotNull(it.operations))
         }
         val moveConnections = (protocolMoveTargets + listOfNotNull(localMoveConnection, rtorrentMoveConnection))
             .associate { it.id to it.connectionWitness }

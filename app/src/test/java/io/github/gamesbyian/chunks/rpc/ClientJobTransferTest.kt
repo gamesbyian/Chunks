@@ -20,6 +20,7 @@ class ClientJobTransferTest {
         var removes = 0
         var removedData: Boolean? = null
         var onTorrentRead: () -> Unit = {}
+        var onAdd: () -> Unit = {}
         override suspend fun session() = ClientSessionInfo(kind, "1", "/d", caps)
         override suspend fun torrents() = jobs.map { t(it) }
         private fun t(h: String) = ClientTorrent(h, "n", ClientRunState.STOPPED, 1, 0, 0, 0, "/d")
@@ -28,7 +29,11 @@ class ClientJobTransferTest {
             return if (hash in jobs) t(hash) else null
         }
         override suspend fun files(hash: String) = emptyList<ClientFile>()
-        override suspend fun add(request: ClientAddRequest) { adds++; jobs += request.source.infoHash }
+        override suspend fun add(request: ClientAddRequest) {
+            adds++
+            jobs += request.source.infoHash
+            onAdd()
+        }
         override suspend fun setStarted(hash: String, started: Boolean) = Unit
         override suspend fun remove(hash: String, deleteData: Boolean) { removes++; removedData = deleteData; jobs -= hash }
         override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = Unit
@@ -75,6 +80,30 @@ class ClientJobTransferTest {
         assertEquals(0, source.removes)
         assertEquals(setOf(hash), source.jobs)
         assertEquals(setOf(hash), target.jobs)
+    }
+
+    @Test fun changingTargetDuringCopyPreflightPreventsAdd() = runBlocking {
+        val source = Fake("source", mutableSetOf(hash))
+        val target = Fake("target")
+        var current = true
+        target.onTorrentRead = { current = false }
+        val result = transfer(source, target).copy(hash, null, false) { current }
+        assertTrue(result is ClientJobTransfer.CopyResult.NotCopied && result.outcome is ClientOperationOutcome.Refused)
+        assertEquals(0, target.adds)
+        assertEquals(setOf(hash), source.jobs)
+    }
+
+    @Test fun changingTargetAfterRegistrationNeverAuthorizesRetirement() = runBlocking {
+        val source = Fake("source", mutableSetOf(hash))
+        val target = Fake("target")
+        var current = true
+        target.onAdd = { current = false }
+        val move = transfer(source, target)
+        val result = move.copy(hash, null, false) { current }
+        assertTrue(result is ClientJobTransfer.CopyResult.NotCopied && result.outcome is ClientOperationOutcome.Pending)
+        assertTrue(move.retireSource(hash, ClientJobTransfer.CopyResult.Copied(hash, false)) is ClientOperationOutcome.Refused)
+        assertEquals(1, target.adds)
+        assertEquals(setOf(hash), source.jobs)
     }
 
     @Test fun absentSourceOrUnfaithfulExportWritesNothing() = runBlocking {
