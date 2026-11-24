@@ -69,11 +69,26 @@ def failure_class(check: dict, config: dict) -> str:
 
 def evaluate(checks: list[dict], gates: list[str], config: dict, waivers: dict[str, str],
              draft: bool = False) -> dict:
-    by_name: dict[str, dict] = {}
-    # One commit can carry several check runs with one name (a draft run that skipped the
-    # job, then the ready run, or a rerun). The newest run (highest id) is the evidence.
-    for check in sorted(checks, key=lambda c: c.get("id", 0)):
-        by_name[check["name"]] = check
+    grouped: dict[str, list[dict]] = {}
+    for check in checks:
+        grouped.setdefault(check["name"], []).append(check)
+    by_name = {}
+    for name, candidates in grouped.items():
+        # A late-reported job from an older draft can have a higher check ID
+        # than the ready run. Order Actions workflows first, then attempts
+        # within the same workflow. Preserve every newer negative or pending result.
+        workflows = [
+            re.fullmatch(r"https://github\.com/[^/]+/[^/]+/actions/runs/([0-9]+)/job/[0-9]+",
+                         check.get("details_url") or "")
+            for check in candidates
+        ]
+        if all(workflows):
+            _, by_name[name] = max(
+                zip(workflows, candidates),
+                key=lambda pair: (int(pair[0][1]), pair[1].get("id", 0)),
+            )
+        else:
+            by_name[name] = max(candidates, key=lambda check: check.get("id", 0))
     rows, blockers = [], []
     for gate in gates:
         if gate in waivers:
