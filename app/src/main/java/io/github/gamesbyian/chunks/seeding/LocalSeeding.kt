@@ -26,6 +26,9 @@ class PreferencesAssignmentStore(
         else "chunks_seeding_assignments_" + digest(environment), Context.MODE_PRIVATE)
 
     companion object {
+        private const val REMOTE_BASELINE = "remote_baseline_complete_v1"
+        private val remoteActivationLock = Any()
+        private val v1Hash = Regex("[0-9a-f]{40}")
         /** A stable, non-reversible file/key name for an environment ID (no endpoint or user in storage names). */
         internal fun digest(environment: String): String =
             java.security.MessageDigest.getInstance("SHA-256").digest(environment.toByteArray())
@@ -47,6 +50,34 @@ class PreferencesAssignmentStore(
             if (prefs.contains("epoch")) false
             else prefs.edit().putLong("epoch", ms).commit()
         } catch (_: RuntimeException) { false }
+    }
+
+    internal fun remoteBaselineComplete(): Boolean = try {
+        prefs.getBoolean(REMOTE_BASELINE, false) && epoch() != null
+    } catch (_: RuntimeException) { false }
+
+    /**
+     * Preserve every occupied assignment, including unreadable records and
+     * unresolved Stop markers. Publish the exact baseline and epoch together.
+     */
+    internal fun establishRemoteBaseline(ms: Long, roster: List<String>, ownerCurrent: () -> Boolean): Boolean {
+        if (ms < 0L || !ownerCurrent() || roster.any { !v1Hash.matches(it) } ||
+            roster.toSet().size != roster.size) return false
+        return synchronized(remoteActivationLock) {
+            try {
+                if (prefs.contains(REMOTE_BASELINE) || !ownerCurrent()) return@synchronized false
+                val now = epoch()
+                if (now == null && prefs.contains("epoch")) return@synchronized false
+                val transaction = prefs.edit().putBoolean(REMOTE_BASELINE, true)
+                if (now == null) transaction.putLong("epoch", ms)
+                val unmanaged = encode(SeedingController.Assignment(null, null, null))
+                for (hash in roster) {
+                    val key = "a:$hash"
+                    if (!prefs.contains(key)) transaction.putString(key, unmanaged)
+                }
+                ownerCurrent() && transaction.commit()
+            } catch (_: RuntimeException) { false }
+        }
     }
 
     override fun get(infoHash: String): SeedingController.Assignment? {
@@ -77,7 +108,11 @@ class PreferencesAssignmentStore(
     )
 
     override fun put(infoHash: String, assignment: SeedingController.Assignment) = try {
-        val o = JSONObject()
+        prefs.edit().putString("a:" + infoHash.lowercase(), encode(assignment)).commit()
+    } catch (_: RuntimeException) { false }
+
+    private fun encode(assignment: SeedingController.Assignment): String =
+        JSONObject()
             .put("policy", assignment.policy?.let { SeedingRuleStore.policy(it) } ?: JSONObject.NULL)
             .put("source", assignment.source?.name ?: JSONObject.NULL)
             .put("ruleId", assignment.ruleId ?: JSONObject.NULL)
@@ -85,8 +120,7 @@ class PreferencesAssignmentStore(
             .put("stopped", assignment.stoppedByRule ?: JSONObject.NULL)
             .put("note", assignment.note ?: JSONObject.NULL)
             .put("stopAttempt", assignment.stopAttemptedReason ?: JSONObject.NULL)
-        prefs.edit().putString("a:" + infoHash.lowercase(), o.toString()).commit()
-    } catch (_: RuntimeException) { false }
+            .toString()
 }
 
 /** One controller step for the local device, from the foreground service poll. Unreadable rules mean no change. */
