@@ -75,6 +75,28 @@ internal class LocalAddAttemptOwner : ViewModel() {
     // write and read-only recheck: Local, rTorrent and the protocol clients.
     val attempts = UniversalAddAttemptController { viewModelScope }
 
+    /**
+     * Stage exactly one explicitly chosen remote review source. Only the current
+     * reviewed Android document may carry original-document handling authority;
+     * a transfer export or archive entry has none, even for byte-identical metainfo.
+     * Refuse a stale reviewed-source callback before changing any draft.
+     */
+    fun stageRemoteTorrentHandoff(bytes: ByteArray, reviewed: PendingLocalAdd?): Boolean {
+        // Do not discard a source that a retained Local attempt or its original
+        // document handling still owns. Finish that review explicitly first.
+        if ((session.attemptedTicket != null && reviewedTorrent.value != null) ||
+            session.originalDocument.deleting || session.originalDocument.deletion != null) return false
+        if (reviewed != null &&
+            (reviewedTorrent.value !== reviewed || !reviewed.stillMatchesReviewedSource(bytes) ||
+                !reviewed.stillMatchesReviewedSource(reviewed.bytes))) return false
+        remoteSessions.clearPendingSourceSelection()
+        sourceDraft.value = ""
+        if (reviewed == null) reviewedTorrent.value = null
+        serverHandoffTorrent.value = bytes.copyOf()
+        serverHandoffDocument.value = reviewed?.originalDocument
+        return true
+    }
+
     fun hasDocumentReview(): Boolean =
         (incomingDelivery as? ExternalIntakeDelivery.Add)?.source is ExternalAddSource.TorrentDocument ||
             pendingSharedDocument.value != null ||

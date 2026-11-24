@@ -49,6 +49,8 @@ class LocalDocumentReplacementTest {
     private val draft = mutableStateOf<PendingLocalAdd?>(null)
     private val consumed = CopyOnWriteArrayList<Uri>()
     private val prepared = AtomicReference<ByteArray?>()
+    private val preparedReview = AtomicReference<PendingLocalAdd?>()
+    private var acceptHandoff = true
     private var fetchLink: (TorrentLinkCheck.Fetchable) -> TorrentLinkResult =
         { TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE) }
     private fun uri(name: String) = Uri.parse("content://$authority/$name")
@@ -105,7 +107,11 @@ class LocalDocumentReplacementTest {
         if (shown.value) LocalEngineScreen(pane = LocalPane.ADD,
             onBack = {}, initialTorrentUri = source.value,
             pendingAddState = draft,
-            canReviewOnConnectedServer = true, onPrepareRemoteTorrent = { prepared.set(it) },
+            canReviewOnConnectedServer = true, onPrepareRemoteTorrent = { bytes, review ->
+                prepared.set(bytes)
+                preparedReview.set(review)
+                acceptHandoff
+            },
             onAcknowledgedAdd = { error("Source review must never authorize engine Add") },
             fetchTorrentDocument = { fetchLink(it) },
             onTorrentConsumed = { uri -> consumed += uri; if (source.value == uri) source.value = null })
@@ -135,8 +141,11 @@ class LocalDocumentReplacementTest {
         waitFor("The shared file was unavailable")
         rule.onNodeWithText("kept.txt", substring = true).performScrollTo().assertExists()
         assertArrayEquals(metainfo("kept.txt"), draft.value?.bytes)
+        val current = draft.value
         handoff()
         assertArrayEquals(metainfo("kept.txt"), prepared.get())
+        assertSame(current, preparedReview.get())
+        assertEquals(uri("first"), preparedReview.get()?.originalDocument)
     }
 
     @Test fun cancelledOldShareReadDoesNotConsumeTheNewerSource() {
@@ -165,6 +174,19 @@ class LocalDocumentReplacementTest {
         waitFor("next.txt")
         handoff()
         assertArrayEquals(metainfo("next.txt"), prepared.get())
+    }
+
+    @Test fun refusedRemoteHandoffKeepsTheExactLocalReview() {
+        source.value = uri("first")
+        acceptHandoff = false
+        show()
+        waitFor("kept.txt")
+        val current = draft.value
+        handoff()
+        assertSame(current, preparedReview.get())
+        assertSame(current, draft.value)
+        assertEquals(uri("first"), draft.value?.originalDocument)
+        rule.onNodeWithText("Review .torrent on connected server").assertExists()
     }
 
     @Test fun refusedFirstSourceNeverCreatesAReview() {
@@ -262,8 +284,11 @@ class LocalDocumentReplacementTest {
         requestHttpsReplacement("https://example.org/next.torrent?private=token")
         waitFor("Torrent from example.org")
         assertArrayEquals(replacement, draft.value?.bytes)
+        val current = draft.value
         handoff()
         assertArrayEquals(replacement, prepared.get())
+        assertSame(current, preparedReview.get())
+        assertNull(preparedReview.get()?.originalDocument)
     }
 
     /** Source file handling applies only to the user's own document, never to fetched bytes. */

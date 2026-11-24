@@ -247,8 +247,9 @@ internal fun LocalEngineScreen(
     returnFocusTool: String? = null,
     onReturnFocusConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
-    /** Receives a verified exported .torrent for the server's Add review. */
-    onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null,
+    /** Explicit remote review: a current reviewed source carries its provenance;
+     * a transfer export passes null and cannot inherit an Android document. */
+    onPrepareRemoteTorrent: ((ByteArray, PendingLocalAdd?) -> Boolean)? = null,
     /**
      * Navigation-only state owned by the caller so that leaving for All
      * environments, Seeding rules or a server and returning keeps the list
@@ -1568,8 +1569,8 @@ internal fun LocalEngineScreen(
                                 if (sourceReadJob != null || pending !== add) return@prepare
                                 // The parent only enables this action for an authenticated,
                                 // independently privacy-gated remote target.
-                                onPrepareRemoteTorrent(original)
-                                pending = null
+                                if (onPrepareRemoteTorrent(original, add)) pending = null
+                                else message = "The current Add review changed or is still in progress. Review again."
                             }
                         )
                     }
@@ -2564,7 +2565,10 @@ internal fun LocalEngineScreen(
                             }
                             val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
                             when {
-                                document != null -> onPrepareRemoteTorrent(document)
+                                document != null -> {
+                                    if (!onPrepareRemoteTorrent(document, null))
+                                        message = "Finish the current Add review before preparing another source."
+                                }
                                 prepared != null -> send(prepared)
                                 else -> message = "This torrent has no supported v1 identity to hand off."
                             }
