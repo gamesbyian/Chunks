@@ -246,4 +246,160 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
             root.deleteRecursively()
         }
     }
+
+    private val batchKind = io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal.Kind.LIBRARY
+    private fun batchWarnings() =
+        io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context, batchKind)
+
+    private fun ownRows(marker: String, includePending: Boolean): Set<android.net.Uri> {
+        val downloads = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val cols = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.IS_PENDING)
+        val cursor = if (android.os.Build.VERSION.SDK_INT == 29) {
+            resolver.query(MediaStore.setIncludePending(downloads), cols, null, null, null)
+        } else {
+            val args = android.os.Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+            }
+            resolver.query(downloads, cols, args, null)
+        }
+        return requireNotNull(cursor).use { rows ->
+            buildSet {
+                while (rows.moveToNext()) {
+                    if (rows.getString(1)?.contains(marker) == true &&
+                        rows.getString(2) == context.packageName &&
+                        (includePending || rows.getInt(3) == 0)) {
+                        add(android.content.ContentUris.withAppendedId(downloads, rows.getLong(0)))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun withCompletedBatch(
+        marker: String,
+        paths: List<String>,
+        block: (LocalTorrentEngine, io.github.gamesbyian.chunks.engine.LocalTransferStatus,
+            File, Map<String, ByteArray>) -> Unit
+    ) {
+        val root = File(context.filesDir, marker).apply { assertTrue(mkdir()) }
+        var engine: LocalTorrentEngine? = null
+        try {
+            val source = File(root, "Source").apply { assertTrue(mkdir()) }
+            val payload = paths.associateWith { name ->
+                ByteArray(51_000 + name.length).also { Random(name.hashCode().toLong()).nextBytes(it) }
+            }
+            payload.forEach { (name, bytes) ->
+                File(source, name).apply { parentFile?.mkdirs(); writeBytes(bytes) }
+            }
+            val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024).generate().entry().bencode()
+            val local = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0"))
+            engine = local
+            local.start()
+            val added = (local.addStopped(torrent, root) as LocalAddResult.AddedStopped).status
+            local.resume(added.infoHash)
+            val deadline = System.nanoTime() + 30_000_000_000L
+            while (local.status(added.infoHash)?.state != LocalTransferState.SEEDING) {
+                if (System.nanoTime() > deadline) fail("Native batch fixture did not enter verified seeding")
+                Thread.sleep(100)
+            }
+            val status = requireNotNull(local.status(added.infoHash))
+            block(local, status, source, payload)
+            payload.forEach { (name, bytes) -> assertArrayEquals(bytes, File(source, name).readBytes()) }
+            assertEquals(LocalTransferState.SEEDING, local.status(status.infoHash)?.state)
+        } finally {
+            engine?.close()
+            root.deleteRecursively() // private test fixture only
+        }
+    }
+
+    @Test fun seedingFlatBatchCopiesThroughUiAndPreservesOriginalsAndExistingCanary() {
+        val marker = "librarybatch" + java.lang.Long.toHexString(System.nanoTime())
+        val names = listOf("a" + marker + ".bin", "b" + marker + ".txt")
+        withCompletedBatch(marker, names) { engine, status, _, payload ->
+            val downloads = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            val canary = requireNotNull(resolver.insert(downloads, ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, names.first())
+                put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Chunks Exports/")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }))
+            val foreign = "existing user's bytes".toByteArray()
+            val result = AtomicReference<LocalMultiLibraryMediaStoreCopy.Result?>()
+            try {
+                requireNotNull(resolver.openOutputStream(canary, "w")).use { it.write(foreign) }
+                assertEquals(1, resolver.update(canary, ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }, null, null))
+                val before = ownRows(marker, includePending = true)
+                val warningsBefore = batchWarnings()
+                compose.setContent {
+                    MaterialTheme {
+                        LocalLibraryCopyPanel(status, engineProvider = { engine },
+                            onBatchResult = { result.set(it) })
+                    }
+                }
+                compose.onNodeWithText("Copy multiple files to Downloads").performClick()
+                compose.waitUntil(90_000) { result.get() != null }
+                val response = requireNotNull(result.get())
+                assertEquals(response.message, LocalMultiLibraryMediaStoreCopy.State.COPIED, response.state)
+                assertEquals(0, response.remaining)
+                assertEquals(names.toSet(), response.published.map { it.originalName }.toSet())
+                assertEquals(2, response.published.map { it.uri }.distinct().size)
+                response.published.forEach { row ->
+                    assertNotEquals(canary, row.uri)
+                    assertArrayEquals(requireNotNull(payload[row.originalName]),
+                        requireNotNull(resolver.openInputStream(row.uri)).use { it.readBytes() })
+                }
+                assertEquals(before + response.published.map { it.uri }, ownRows(marker, includePending = true))
+                assertArrayEquals(foreign, requireNotNull(resolver.openInputStream(canary)).use { it.readBytes() })
+                assertEquals(warningsBefore, batchWarnings())
+                compose.onNodeWithText("Created 2 distinct verified Downloads copies", substring = true).assertExists()
+            } finally {
+                result.get()?.published.orEmpty().forEach { assertEquals(1, resolver.delete(it.uri, null, null)) }
+                assertEquals(1, resolver.delete(canary, null, null))
+            }
+        }
+    }
+
+    @Test fun cancelledFlatBatchKeepsFirstVerifiedCopyAndReportsUnpublishedRemainder() {
+        val marker = "librarycancel" + java.lang.Long.toHexString(System.nanoTime())
+        val names = listOf("a" + marker + ".bin", "b" + marker + ".json")
+        withCompletedBatch(marker, names) { engine, status, _, payload ->
+            val before = ownRows(marker, includePending = true)
+            val warningsBefore = batchWarnings().size
+            // Cancel only after the real provider has published a new row;
+            // don't rely on the number of preflight/pinned-read callbacks.
+            val result = LocalMultiLibraryMediaStoreCopy.copyNew(context, engine, status.infoHash) {
+                (ownRows(marker, includePending = false) - before).isNotEmpty()
+            }
+            try {
+                assertEquals(result.message, LocalMultiLibraryMediaStoreCopy.State.PARTIAL, result.state)
+                assertEquals(1, result.remaining)
+                val row = result.published.single()
+                assertEquals(before + row.uri, ownRows(marker, includePending = true))
+                assertArrayEquals(requireNotNull(payload[row.originalName]),
+                    requireNotNull(resolver.openInputStream(row.uri)).use { it.readBytes() })
+                val warnings = batchWarnings()
+                assertEquals(warningsBefore + 1, warnings.size)
+                assertTrue(warnings.any { it.contains("library copy batch was stopped after 1 of 2") })
+            } finally {
+                result.published.forEach { assertEquals(1, resolver.delete(it.uri, null, null)) }
+            }
+        }
+    }
+
+    @Test fun nestedOrUnsupportedBatchRefusesBeforeAnyProviderRowOrBatchIntent() {
+        val marker = "libraryrefused" + java.lang.Long.toHexString(System.nanoTime())
+        withCompletedBatch(marker, listOf("a" + marker + ".bin", "nested/b" + marker + ".txt")) {
+                engine, status, _, _ ->
+            val before = ownRows(marker, includePending = true)
+            val warningsBefore = batchWarnings()
+            val result = LocalMultiLibraryMediaStoreCopy.copyNew(context, engine, status.infoHash)
+            assertEquals(result.message, LocalMultiLibraryMediaStoreCopy.State.BLOCKED, result.state)
+            assertTrue(result.published.isEmpty())
+            assertEquals(before, ownRows(marker, includePending = true))
+            assertEquals(warningsBefore, batchWarnings())
+        }
+    }
 }

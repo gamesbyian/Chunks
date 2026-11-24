@@ -72,7 +72,8 @@ internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<Libr
 internal fun LocalLibraryCopyPanel(
     transfer: LocalTransferStatus,
     engineProvider: () -> LocalTorrentEngine? = { LocalEngineHolder.current() },
-    onResult: ((LocalSingleLibraryMediaStoreCopy.Result) -> Unit)? = null
+    onResult: ((LocalSingleLibraryMediaStoreCopy.Result) -> Unit)? = null,
+    onBatchResult: ((LocalMultiLibraryMediaStoreCopy.Result) -> Unit)? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -82,13 +83,16 @@ internal fun LocalLibraryCopyPanel(
     var outcome by androidx.compose.runtime.remember(transfer.infoHash) {
         androidx.compose.runtime.mutableStateOf<LocalSingleLibraryMediaStoreCopy.Result?>(null)
     }
+    var batchOutcome by androidx.compose.runtime.remember(transfer.infoHash) {
+        androidx.compose.runtime.mutableStateOf<LocalMultiLibraryMediaStoreCopy.Result?>(null)
+    }
     androidx.compose.material3.Card {
         androidx.compose.foundation.layout.Column(
             androidx.compose.ui.Modifier.padding(16.dp),
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
         ) {
-            Text("Copy a finished file", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-            Text("Save one completed, flat .txt, .json, .bin, .torrent or .chunksnap file (up to 8 MiB) as a NEW Downloads/Chunks Exports document. The original keeps seeding. Multi-file folders, larger files, other types, selected SAF destinations and Replace are not available yet.")
+            Text("Copy finished files", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+            Text("Save completed wanted flat .txt, .json, .bin, .torrent or .chunksnap files as NEW documents in Downloads/Chunks Exports (one file up to 8 MiB, or 2–8 files up to 16 MiB total). Originals keep seeding. Nested folders, larger files, other types, selected SAF destinations and Replace are not available.")
             androidx.compose.material3.Button(
                 onClick = {
                     busy = true
@@ -111,9 +115,44 @@ internal fun LocalLibraryCopyPanel(
                         busy = false
                     }
                 },
-                enabled = !busy && outcome == null,
+                enabled = !busy && outcome == null && batchOutcome == null,
                 modifier = androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(if (busy) "Checking completed file…" else "Copy single file to Downloads") }
+            androidx.compose.material3.Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            val engine = engineProvider()
+                            if (engine == null) LocalMultiLibraryMediaStoreCopy.Result(
+                                LocalMultiLibraryMediaStoreCopy.State.BLOCKED,
+                                "The local transfer engine is unavailable; no copy was attempted.")
+                            else try {
+                                LocalMultiLibraryMediaStoreCopy.copyNew(context, engine, transfer.infoHash)
+                            } catch (_: Exception) {
+                                LocalMultiLibraryMediaStoreCopy.Result(
+                                    LocalMultiLibraryMediaStoreCopy.State.NEEDS_ATTENTION,
+                                    "The batch result is uncertain. Review saved operation records; no automatic cleanup or retry occurred.")
+                            }
+                        }
+                        batchOutcome = result
+                        onBatchResult?.invoke(result)
+                        busy = false
+                    }
+                },
+                enabled = !busy && outcome == null && batchOutcome == null,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) { Text(if (busy) "Checking completed files…" else "Copy multiple files to Downloads") }
+            Text("Multiple-file copies are independent: if a later file fails, earlier verified copies remain and an uncertain file needs review.")
+            batchOutcome?.let { result ->
+                Text(result.message + " Verified files: " + result.published.size +
+                    ". Not confirmed: " + result.remaining + ".",
+                    color = if (result.state == LocalMultiLibraryMediaStoreCopy.State.COPIED)
+                        androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    else androidx.compose.material3.MaterialTheme.colorScheme.error,
+                    modifier = androidx.compose.ui.Modifier.padding(top = 4.dp))
+                result.published.forEach { Text("Created: " + it.publishedName) }
+            }
             outcome?.let { result ->
                 Text(result.message + (result.publishedName?.let { " Name: " + it } ?: ""),
                     color = if (result.state == LocalSingleLibraryMediaStoreCopy.State.COPIED)

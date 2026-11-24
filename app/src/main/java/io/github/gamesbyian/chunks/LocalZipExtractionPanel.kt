@@ -263,7 +263,13 @@ internal fun LocalZipInterruptedExtractions() {
             } catch (_: Exception) {
                 listOf("An earlier ZIP batch record could not be checked safely.")
             }
-            legacy to (pending + batches)
+            val libraryBatches = try {
+                io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(
+                    context, io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal.Kind.LIBRARY)
+            } catch (_: Exception) {
+                listOf("An earlier library copy batch record could not be checked safely.")
+            }
+            legacy to (pending + batches + libraryBatches)
         }
         results = state.first
         downloads = state.second

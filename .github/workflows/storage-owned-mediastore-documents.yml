@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalSingleLibraryMediaStoreCopy.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalMultiLibraryMediaStoreCopy.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalLibraryCopy.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalSingleLibraryMediaStoreCopyInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalMultiZipMediaStoreExport.kt"

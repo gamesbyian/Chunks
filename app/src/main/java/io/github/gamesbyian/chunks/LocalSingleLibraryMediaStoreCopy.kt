@@ -23,7 +23,7 @@ import java.security.MessageDigest
  */
 internal object LocalSingleLibraryMediaStoreCopy {
     const val MAX_BYTES = 8 * 1024 * 1024
-    private val supportedName =
+    internal val supportedName =
         Regex("[A-Za-z0-9][A-Za-z0-9._() -]{0,155}\\.(json|chunksnap|torrent|txt|bin)")
 
     enum class State { COPIED, BLOCKED, NEEDS_ATTENTION }
@@ -126,7 +126,7 @@ internal object LocalSingleLibraryMediaStoreCopy {
         }
     }
 
-    private fun readAndRecheck(
+    internal fun readAndRecheck(
         sourceRoot: File,
         file: File,
         expectedLength: Long,
