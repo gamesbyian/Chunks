@@ -9,22 +9,20 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.IOException
-import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.SocketTimeoutException
 import java.net.URI
-import java.net.URL
 import java.net.UnknownHostException
 import java.util.Locale
 
 /**
  * A typed or pasted torrent web link, before anything is fetched
  * ([ADD-SOURCE-INTAKE]). Only HTTPS is fetched: every hop's host is resolved
- * and refused if it names this device or a private network, and HTTPS hostname
- * verification then stops a DNS answer from silently switching to a local
- * device (it cannot present a certificate for the public name). A plain-HTTP
+ * and refused if it names this device or a private network. The production
+ * transport pins those answers before connecting, independently guards the
+ * socket endpoint, and retains normal TLS hostname and certificate checks. A plain-HTTP
  * link is refused with a way forward instead of fetched unverified.
  */
 internal sealed class TorrentLinkCheck {
@@ -129,6 +127,7 @@ internal sealed class TorrentLinkResult {
 
     companion object {
         const val LOCAL_NETWORK = "This link points to this device or a private network. Chunks only fetches torrent links from public HTTPS sites."
+        const val PROXY = "Chunks cannot verify the destination behind this network proxy. Open the link in your browser, then share the downloaded .torrent with Chunks."
         const val NO_HOST = "This link's site could not be found. Check the link or your connection. Nothing was added."
         const val TIMEOUT = "The site did not answer in time. Nothing was added; you can try again."
         const val OFFLINE = "The torrent could not be downloaded. Check your connection and try again. Nothing was added."
@@ -153,7 +152,7 @@ internal sealed class TorrentLinkResult {
  */
 internal class TorrentLinkFetcher(
     private val resolve: (String) -> List<InetAddress> = { InetAddress.getAllByName(it).toList() },
-    private val open: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+    private val transport: TorrentLinkTransport = PinnedTorrentLinkTransport(),
     private val maxBytes: Int = MAX_BYTES,
     private val maxRedirects: Int = 5,
     private val timeoutMs: Int = 15_000
@@ -172,57 +171,49 @@ internal class TorrentLinkFetcher(
                 TorrentLinkCheck.NotALink -> return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
             }
             val host = hop.uri.host ?: return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
-            val addresses = try { resolve(host) } catch (_: UnknownHostException) {
+            val addresses = try { resolve(host).toList() } catch (_: UnknownHostException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.NO_HOST)
             } catch (_: SecurityException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE)
             }
             if (addresses.isEmpty()) return TorrentLinkResult.Refused(TorrentLinkResult.NO_HOST)
             if (!addresses.all(TorrentLinkAddressPolicy::allowed)) return TorrentLinkResult.Refused(TorrentLinkResult.LOCAL_NETWORK)
-            val connection = try { open(uri.toURL()) } catch (_: Exception) {
-                return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
-            }
             try {
-                connection.instanceFollowRedirects = false
-                connection.useCaches = false
-                connection.connectTimeout = timeoutMs
-                connection.readTimeout = timeoutMs
-                connection.setRequestProperty("Accept", "application/x-bittorrent, application/octet-stream;q=0.9, */*;q=0.1")
-                connection.setRequestProperty("User-Agent", "Chunks")
-                val code = connection.responseCode
-                when (code) {
+                transport.get(uri, addresses, timeoutMs).use { response ->
+                when (response.status) {
                     in 300..399 -> {
-                        val location = connection.getHeaderField("Location")
+                        val location = response.header("Location")
                             ?: return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
                         uri = try { uri.resolve(location.trim()) } catch (_: Exception) {
                             return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
                         }
-                        return@repeat
+                        return@use
                     }
                     401, 403 -> return TorrentLinkResult.Refused(TorrentLinkResult.REFUSED)
                     404, 410 -> return TorrentLinkResult.Refused(TorrentLinkResult.NOT_FOUND)
                     429, in 500..599 -> return TorrentLinkResult.Refused(TorrentLinkResult.BUSY)
-                    200 -> return read(connection, start.display)
+                    200 -> return read(response, start.display)
                     else -> return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
                 }
+                }
+            } catch (refused: TorrentLinkTransportRefusal) {
+                return TorrentLinkResult.Refused(refused.reason)
             } catch (_: SocketTimeoutException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.TIMEOUT)
             } catch (_: UnknownHostException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.NO_HOST)
             } catch (_: IOException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE)
-            } finally {
-                connection.disconnect()
             }
         }
         return TorrentLinkResult.Refused(TorrentLinkResult.TOO_MANY_REDIRECTS)
     }
 
-    private fun read(connection: HttpURLConnection, display: String): TorrentLinkResult {
-        val declared = connection.contentLengthLong
+    private fun read(response: TorrentLinkHop, display: String): TorrentLinkResult {
+        val declared = response.contentLength
         if (declared > maxBytes) return TorrentLinkResult.Refused(TorrentLinkResult.TOO_LARGE)
         val out = java.io.ByteArrayOutputStream()
-        connection.inputStream.use { input ->
+        response.body().use { input ->
             val buffer = ByteArray(16 * 1024)
             var emptyReads = 0
             while (true) {
