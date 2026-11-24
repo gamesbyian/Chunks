@@ -110,6 +110,8 @@ on:
       - 'tests/test_pr_acceptance_report.py'
       - 'tools/apt_install_retry.sh'
       - 'tests/test_apt_install_retry.py'
+      - 'tools/install_android35_image_retry.sh'
+      - 'tests/test_ci_android35_image_retry.py'
       - 'docs/TEST-ARCHITECTURE.md'
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
@@ -249,6 +251,8 @@ on:
       - 'tests/test_pr_acceptance_report.py'
       - 'tools/apt_install_retry.sh'
       - 'tests/test_apt_install_retry.py'
+      - 'tools/install_android35_image_retry.sh'
+      - 'tests/test_ci_android35_image_retry.py'
       - 'docs/TEST-ARCHITECTURE.md'
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
@@ -368,6 +372,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_pr_acceptance_report.py
           bash -n tools/apt_install_retry.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apt_install_retry.py
+          bash -n tools/install_android35_image_retry.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_android35_image_retry.py
       - name: Respect owner-authorized torrent fixture policy without live tracker access
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_owner_torrent_fixture_policy.py
       - name: Guard documentation dispatch parity and existing path targets
