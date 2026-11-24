@@ -10,9 +10,6 @@ import org.junit.Test
  * Report timings without machine-dependent pass thresholds; enforce data/identity semantics.
  */
 class UnifiedTransferCatalogPerformanceTest {
-    private fun envIndexFor(environment: EnvironmentId, environments: List<EnvironmentId>) =
-        environments.indexOf(environment).toLong()
-
     @Test fun measuresMixedClientCatalogQueriesAndOnePercentUpdates() {
         for (size in listOf(100, 1_000, 10_000, 50_000)) {
             val environments = (0 until 5).map { EnvironmentId("fixture-$it") }
@@ -37,20 +34,23 @@ class UnifiedTransferCatalogPerformanceTest {
                 direction = UnifiedSortDirection.DESCENDING,
                 groupByEnvironment = true, environmentOrder = environments.reversed())
             val searchQuery = UnifiedTransferQuery(search = "Unique confirmed media")
+            // Exact client/hash membership; precompute lookup as the screen does.
+            val changedKeys = sources.flatMapIndexed { envIndex, source ->
+                source.transfers.filter {
+                    (it.key.infoHash.toLong(16) * environments.size + envIndex) % 100L == 0L
+                }.map { it.key }
+            }.toSet()
+            val expectedMatches = size / 100
+            assertEquals(expectedMatches, changedKeys.size)
+            val titles = changedKeys.associateWith { "Unique confirmed media" }
+            val changedRate = 1_000_000L // deliberately outside the baseline domain
             val changed = sources.map { source ->
                 source.copy(observedAtEpochMillis = 101L,
                     transfers = source.transfers.map { row ->
-                        // Exactly one percent at each requested scale; same key and names.
-                        if ((row.key.infoHash.toLong(16) * 5L + envIndexFor(row.key.environment, environments)) % 100L == 0L)
-                            row.copy(downloadBytesPerSecond = 9000L)
+                        if (row.key in changedKeys) row.copy(downloadBytesPerSecond = changedRate)
                         else row
                     })
             }
-            val expectedMatches = sources.sumOf { source ->
-                source.transfers.count { (it.key.infoHash.toLong(16) * 5L + envIndexFor(it.key.environment, environments)) % 100L == 0L }
-            }
-            fun mediaTitle(key: UnifiedTransferKey): String? =
-                "Unique confirmed media".takeIf { (key.infoHash.toLong(16) * 5L + envIndexFor(key.environment, environments)) % 100L == 0L }
 
             fun sample(label: String, operation: () -> UnifiedTransferQueryResult,
                        verify: (UnifiedTransferQueryResult) -> Unit) {
@@ -77,7 +77,7 @@ class UnifiedTransferCatalogPerformanceTest {
                         (environment == 0 && a.key.infoHash < b.key.infoHash)))
                 })
             }
-            sample("grouped_speed_updated", { UnifiedTransferCatalog.query(changed, groupedQuery) }) { result ->
+            fun verifyGrouped(result: UnifiedTransferQueryResult, updated: Boolean) {
                 assertEquals(size, result.transfers.size)
                 assertEquals(environments.reversed(), result.groups.map { it.source.environment })
                 assertTrue(result.groups.all { group ->
@@ -87,19 +87,27 @@ class UnifiedTransferCatalogPerformanceTest {
                         av != null && (bv == null || av >= bv) || av == null && bv == null
                     }
                 })
-                assertEquals(expectedMatches, result.transfers.count { it.downloadBytesPerSecond == 9000L })
+                val changedRows = result.transfers.filter { it.downloadBytesPerSecond == changedRate }
+                assertEquals(if (updated) changedKeys else emptySet<UnifiedTransferKey>(),
+                    changedRows.map { it.key }.toSet())
+            }
+            sample("grouped_speed_unchanged", { UnifiedTransferCatalog.query(sources, groupedQuery) }) {
+                verifyGrouped(it, updated = false)
+            }
+            sample("grouped_speed_updated", { UnifiedTransferCatalog.query(changed, groupedQuery) }) {
+                verifyGrouped(it, updated = true)
             }
             var titleCalls = 0
             sample("media_search", {
                 titleCalls = 0
                 UnifiedTransferCatalog.query(sources, searchQuery) { key ->
                     titleCalls++
-                    mediaTitle(key)
+                    titles[key]
                 }
             }) { result ->
                 assertEquals(size, titleCalls)
                 assertEquals(expectedMatches, result.transfers.size)
-                assertTrue(result.transfers.all { mediaTitle(it.key) != null })
+                assertEquals(changedKeys, result.transfers.map { it.key }.toSet())
             }
         }
     }
