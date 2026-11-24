@@ -142,6 +142,35 @@ class RemoteSeedingTickTest {
     private val old = "a".repeat(40)
     private val new = "b".repeat(40)
 
+    @Test fun knownKeepSeedingAndTerminalPoliciesDoNotReadPerJobCounters() {
+        val client = FakeClient()
+        val profile = "steady-policy-catalog"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val store = PreferencesAssignmentStore(context, environment)
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        assertTrue(store.setEpoch(1_000))
+        val keepSeeding = SeedingController.Assignment(SeedingPolicy(), SeedingResolution.Source.DEFAULT, null)
+        val ratio = keepSeeding.copy(policy = SeedingPolicy(ratioGoal = BigDecimal.ONE))
+        val interrupted = ratio.copy(stopAttemptedReason = "ratio", note = "An unresolved earlier Stop")
+        repeat(100) { index ->
+            val hash = index.toString(16).padStart(40, '0')
+            client.jobs[hash] = true
+            client.facts[hash] = ClientSeedingFacts(hash, 2_000, 1_000, 10, true, false, emptyList())
+            assertTrue(store.put(hash, if (index == 0) interrupted else keepSeeding))
+        }
+        client.jobs[new] = true
+        client.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 10, true, false, emptyList())
+        assertTrue(store.put(new, ratio))
+
+        val tick = RemoteSeeding.tickProtocol(context, profile, ClientOperations(client, 2, 1), nowMs = 2_000)
+        assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED, tick)
+        assertEquals(1, client.inventories)
+        assertEquals("One catalog read and only the actionable ratio observation", 2, client.reads)
+        assertEquals(1, client.stops)
+        assertEquals(interrupted, store.get("0".repeat(40)))
+        assertTrue(store.get(new)?.stoppedByRule != null)
+    }
+
     @Test fun offReadsNothingAndOnStopsOnlyANewJobOnceWithAPersistedJournal() {
         val client = FakeClient().apply {
             jobs[old] = true

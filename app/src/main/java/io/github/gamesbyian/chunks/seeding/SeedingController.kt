@@ -88,11 +88,14 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 if (!store.put(facts.infoHash, assignment)) continue
             }
             val policy = assignment.policy ?: continue
-            engine.withPolicyAccess(facts.infoHash) { enforce(facts.infoHash, policy, assignment) }
+            val mayStop = !policy.seedsForever && assignment.stoppedByRule == null &&
+                assignment.stopAttemptedReason == null
+            if (policy.uploadLimit == null && !mayStop) continue
+            engine.withPolicyAccess(facts.infoHash) { enforce(facts.infoHash, policy, assignment, mayStop) }
         }
     }
 
-    private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment) {
+    private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment, mayStop: Boolean) {
         if (!engine.mayMutate()) return
         // No cap in a policy means "do not manage this setting", not an
         // instruction to erase an independently configured per-job cap.
@@ -149,7 +152,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         // A verified stop or an uncertain earlier attempt is terminal for
         // automatic enforcement. Observing an unpaused torrent later is not
         // authority to replay Pause: the owner may have resumed it.
-        if (assignment.stoppedByRule != null || assignment.stopAttemptedReason != null) return
+        if (!mayStop) return
         // An inaccessible per-torrent native counter must never abort the
         // service-wide poll or authorize an unverified automatic Pause.
         val observation = runCatching { engine.observe(hash) }.getOrNull() ?: return

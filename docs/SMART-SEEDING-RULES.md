@@ -316,3 +316,5 @@ Periodic connected-client rules require the current authenticated connection, fo
 
 
 On Transmission, qBittorrent and Deluge, Smart Seeding and Finish in Order share the same account-and-transfer command lease as Details. An in-flight or unresolved Details command defers automatic enforcement for that transfer. The same infohash on another account has its own lease. A deferred Stop is not recorded as attempted. Disabling Smart Seeding also revokes future dispatch from a tick already in progress.
+
+A saved policy with no upload cap and no possible automatic Stop needs no per-transfer counter read after assignment. This includes keep-seeding rules and transfers with a confirmed or unresolved automatic Stop. The saved assignment and any pending Stop marker stay in place. Upload cap enforcement still requires independent readback.
