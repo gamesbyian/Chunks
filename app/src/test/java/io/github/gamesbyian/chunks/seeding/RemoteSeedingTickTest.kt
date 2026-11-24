@@ -47,6 +47,47 @@ class RemoteSeedingTickTest {
         listOf(FinishInOrderPlanner.OrderedFile(0, "series/01.mkv", 100L),
             FinishInOrderPlanner.OrderedFile(1, "series/02.mkv", 100L)), 1))
 
+    @Test fun measuresRemoteSeedingActivationAndQuietPollAtCatalogSizes() {
+        fun sample(block: () -> Unit): Long {
+            val start = System.nanoTime()
+            block()
+            return (System.nanoTime() - start) / 1_000
+        }
+        for (size in listOf(100, 1_000, 10_000, 50_000)) {
+            val profile = "disposable-profile-$size"
+            val environment = RemoteSeeding.protocolEnvironment(profile)
+            val toggle = RemoteSeeding.EnforcementSwitch(context)
+            val client = FakeClient()
+            repeat(size) { index -> client.jobs[index.toString(16).padStart(40, '0')] = true }
+            val ops = ClientOperations(client)
+            val disabled = sample {
+                assertEquals(RemoteSeeding.Tick.NOT_RUN, RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 1_000))
+            }
+            assertEquals(0, client.reads)
+            assertTrue(toggle.set(environment, true))
+            val activation = sample {
+                assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000))
+            }
+            assertEquals(1, client.reads)
+            assertTrue(PreferencesAssignmentStore(context, environment).remoteBaselineComplete())
+            repeat(2) {
+                assertEquals(RemoteSeeding.Tick.NO_WRITE, RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000))
+            }
+            val steady = List(5) {
+                sample {
+                    assertEquals(RemoteSeeding.Tick.NO_WRITE,
+                        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 4_000))
+                }
+            }.sorted()
+            assertEquals(8, client.inventories)
+            assertEquals(client.inventories, client.reads)
+            assertEquals(0, client.stops)
+            println("CHUNKS_POLICY_CATALOG: jobs=$size disabled_us=$disabled activation_us=$activation " +
+                "steady_median_us=${steady[2]} steady_range_us=${steady.first()}-${steady.last()} " +
+                "inventory_per_enabled_tick=1 facts_per_tick=0")
+        }
+    }
+
     @Test fun inactiveOrRetiredProfileNeverCreatesASessionAndActivePoliciesShareOneInventory() = runBlocking {
         val profile = "first"
         val other = "other"
