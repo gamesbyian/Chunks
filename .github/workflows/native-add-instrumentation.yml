@@ -50,7 +50,6 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/build.gradle.kts"
       # Changes to the test command or required pinned SDK image must rerun.
-      - ".github/workflows/native-add-instrumentation.yml"
       - "tools/install_android35_image_retry.sh"
       - "tests/test_ci_android35_image_retry.py"
       - "tools/native_add_review.sh"
