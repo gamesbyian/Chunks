@@ -2,7 +2,7 @@
 
 # Chunks evidence and release gate ledger
 
-## 2026-11-24 UTC — Prepared remote source provenance candidate (not accepted)
+## 2026-11-24 UTC — Prepared remote source provenance accepted
 
 [#2067](https://github.com/gamesbyian/Chunks/pull/2067) distinguishes a current reviewed Local source from transfer exports and archive entries at the retained Add owner. Exports must not inherit an earlier document URI or be replaced by an unrelated retained review. Candidate rejects stale identity/changed bytes and unfinished Local document handling before replacing the draft. Original head `3ba80337e37948b91d1e0457149d23336302578e`:
 
@@ -25,7 +25,9 @@ Revised-head runs started: [foundation 45509308063](https://github.com/gamesbyia
 
 The tested merge of `ad1b8b65` was `5d6c009e75ac0f0f71d21d49273070e20b1007aa`, with the same tree as the PR head. [Foundation attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45509308063/attempts/1) compiled and ran 3,017 cases with 108 skips and one failure. `CombinedTransfersScreenTest.oldAccountBatchConfirmationCannotBeReusedForSameHashOnAnotherAccount` timed out in the lazy-control reveal helper at line 62. [Failure digest 14975391194](https://github.com/gamesbyian/Chunks/actions/runs/45509308063/artifacts/14975391194). [Attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45509308063/attempts/2) passed at unchanged source. The cause of the first failure remains unverified.
 
-[Native Add attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/attempts/1) passed shard 1. Shard 0 reported 207 passes, one failure and 23 skips. `InstalledMediaArtworkInstrumentedTest.installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff` timed out at line 211 waiting for the Connections acknowledgment, before the artwork assertions. [Shard 0 receipt 14975254576](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/artifacts/14975254576). [Targeted attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/attempts/2) reuses the source-bound [APK pair 14973948737](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/artifacts/14973948737). The revised head passed the [five-client aggregate](https://github.com/gamesbyian/Chunks/actions/runs/45509308067), isolated Local/foreign-document, Transmission/rTorrent and qBittorrent/Deluge lanes, real rTorrent magnet, Combined, R8, remote deletion and API29 Downloads.
+[Native Add attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/attempts/1) passed shard 1. Shard 0 reported 207 passes, one failure and 23 skips. `InstalledMediaArtworkInstrumentedTest.installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff` timed out at line 211 waiting for the Connections acknowledgment, before the artwork assertions. [Shard 0 receipt 14975254576](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/artifacts/14975254576). [Targeted attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/attempts/2) reuses the source-bound [APK pair 14973948737](https://github.com/gamesbyian/Chunks/actions/runs/45509308051/artifacts/14973948737). The verifier selected shard 0 attempt 2 and shard 1 attempt 1. It recorded 435 executed, zero failures, 53 skips and 25 real PNGs. The revised head passed the [five-client aggregate](https://github.com/gamesbyian/Chunks/actions/runs/45509308067), isolated Local/foreign-document, Transmission/rTorrent and qBittorrent/Deluge lanes, real rTorrent magnet, Combined, R8, remote deletion and API29 Downloads.
+
+#2067 merged as `fec150863692574daed55b34b374db51a7c5c6e0`; its tree `d2e277cf062b33d6e4f19ec7e56a7bb1e69053d3` matches the tested source. The integration-real-peer report passed required applicable gates. Docs were outside the PR paths and the atlas was owner-deferred. Physical provider, protected and release acceptance remain open.
 
 ### Hosted build-phase comparison (FE-14)
 
