@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.media.*
@@ -67,6 +66,16 @@ class InstalledRemotePublicMediaInstrumentedTest {
             saved?.connectFailed(uri, sa, ioe)
         }
     }
+
+    private fun launchChunks() {
+        // The host force-stops the real app before phase B. Do not ask
+        // ActivityScenario to destroy a singleTask activity as a separate oracle.
+        context.startActivity(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    private fun stage(name: String) =
+        android.util.Log.i("ChunksRemoteMedia", "CHUNKS_REMOTE_MEDIA_STAGE $name")
 
     private fun visible(text: String) =
         rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -147,7 +156,9 @@ class InstalledRemotePublicMediaInstrumentedTest {
         ProxySelector.setDefault(network)
         try {
             val add = InstalledUniversalAddJourney(rule)
-            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            run {
+                launchChunks()
+                stage("launched")
                 waitFor("persistent Connections destination") { visible("Connections") }
                 rule.onNodeWithContentDescription("Connections").performClick()
                 rule.openConnectionFormIfNeeded(allowConnected = false)
@@ -172,6 +183,7 @@ class InstalledRemotePublicMediaInstrumentedTest {
                 // Exactly one Connect dispatch.
                 rule.onNode(connect, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
                 waitFor("verified Connect acknowledgment", 90_000) { visible("Connection verified") }
+                stage("authenticated")
                 rule.onNodeWithText("Continue to Connections").performClick()
                 waitFor("connected card") {
                     runCatching { scrollTo("Connected") }
@@ -241,12 +253,15 @@ class InstalledRemotePublicMediaInstrumentedTest {
                     rule.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
                 }
 
-                val first = openSource("Stargate.Atlantis.S01E01.mkv", scenario)
+                stage("baseline-online")
+                val first = openSource("Stargate.Atlantis.S01E01.mkv")
                 add.activate(ChunksSemantics.ADD_TARGET_REMOTE)
                 submitStopped(remote, add, first, optOut = false)
+                stage("first-stopped")
                 add.activate(ChunksSemantics.ADD_ANOTHER)
-                val excluded = openSource("Fringe.S02E07.mkv", scenario)
+                val excluded = openSource("Fringe.S02E07.mkv")
                 submitStopped(remote, add, excluded, optOut = true)
+                stage("second-stopped")
                 val excludedKey = MediaTransferKey.of(UnifiedTransferKey.of(environment, excluded))
                 fun isExcluded(key: MediaTransferKey) =
                     FileMediaAutomationPreferences(File(context.filesDir, "media/automation.json")).isExcluded(key)
@@ -260,6 +275,7 @@ class InstalledRemotePublicMediaInstrumentedTest {
                 rule.waitUntil(60_000) { assignments.get(firstKey)?.match?.ref?.externalId == "206" }
                 assertNoFringeLookup(network)
                 assertNull(assignments.get(excludedKey))
+                stage("phase-a-verified")
                 assertTrue(context.getSharedPreferences("remote-media-qa", 0).edit()
                     .putString("excluded", excluded).putInt("phase-a-pid", android.os.Process.myPid()).commit())
             }
@@ -274,7 +290,7 @@ class InstalledRemotePublicMediaInstrumentedTest {
         android.util.Log.i("ChunksRemoteMedia",
             "CHUNKS_REMOTE_PUBLIC_MEDIA automatic=true provider=tvmaze row_pixels=true sanitized=true job_unchanged=true")
     }
-    private fun openSource(name: String, scenario: ActivityScenario<MainActivity>): String {
+    private fun openSource(name: String): String {
         // The daemon deliberately has DHT disabled. Only an inert loopback tracker is supplied.
         val tracker = "http://127.0.0.1:1/announce"
         val raw = ("d8:announce${tracker.length}:$tracker" +
@@ -282,12 +298,10 @@ class InstalledRemotePublicMediaInstrumentedTest {
             "12:piece lengthi16384e6:pieces20:012345678901234567897:privatei1eee").toByteArray()
         val hash = TorrentMetainfoReader.preview(raw).infoHashV1
         val uri = OwnedDiagnosticExportProvider.publish(context, "remote-${hash.take(12)}.torrent", raw)
-        scenario.onActivity {
-            it.startActivity(Intent(Intent.ACTION_VIEW, uri, context, MainActivity::class.java).apply {
-                setDataAndType(uri, "application/x-bittorrent")
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            })
-        }
+        context.startActivity(Intent(Intent.ACTION_VIEW, uri, context, MainActivity::class.java).apply {
+            setDataAndType(uri, "application/x-bittorrent")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        })
         return hash
     }
 
@@ -369,7 +383,8 @@ class InstalledRemotePublicMediaInstrumentedTest {
         val network = Observer(original)
         ProxySelector.setDefault(network)
         try {
-            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            run {
+                launchChunks()
                 val add = InstalledUniversalAddJourney(rule)
                 waitFor("cold Connections entry") {
                     rule.onAllNodesWithTag(ChunksSemantics.FOOTER_CONNECTIONS).fetchSemanticsNodes().size == 1
@@ -383,7 +398,8 @@ class InstalledRemotePublicMediaInstrumentedTest {
                 assertNull(assignments().get(excludedKey))
                 assertNoFringeLookup(network)
 
-                val control = openSource("Firefly.S01E01.mkv", scenario)
+                stage("reconnected")
+                val control = openSource("Firefly.S01E01.mkv")
                 val remoteTarget = hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE) and !isSelected()
                 if (rule.onAllNodes(remoteTarget).fetchSemanticsNodes().isNotEmpty())
                     LazyComposeActions.activateOnce(rule, remoteTarget)
