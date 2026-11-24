@@ -100,12 +100,13 @@ internal class TransmissionClient(
         }
         request.directory?.let { args.put("download-dir", it) }
         val result = call("torrent-add", args, mutating = true)
-        if (result.has("torrent-duplicate")) throw ClientRefusedException("Already in this client")
-        val added = result.optJSONObject("torrent-added")
-            ?: throw ClientWriteUncertainException("Transmission did not confirm the Add")
-        if (!added.optString("hashString").equals(request.source.infoHash, true)) {
-            throw ClientWriteUncertainException("Transmission registered a different identity")
-        }
+        val added = result.has("torrent-added")
+        val duplicate = result.has("torrent-duplicate")
+        if (added == duplicate) throw ClientWriteUncertainException("Transmission did not identify the Add result")
+        val row = result.optJSONObject(if (added) "torrent-added" else "torrent-duplicate")
+        if (!(row?.opt("hashString") as? String).equals(request.source.infoHash, true))
+            throw ClientWriteUncertainException("Transmission replied with a different or missing transfer identity")
+        if (duplicate) throw ClientRefusedException("Already in this client")
     }
 
     override suspend fun setStarted(hash: String, started: Boolean) {
@@ -282,14 +283,18 @@ internal class TransmissionClient(
                         answeredAuth = true
                     }
                     in 200..299 -> {
+                        val exactAdd = method == "torrent-add"
                         val root = try {
-                            if (method == "torrent-get" && args.has("ids")) ExactRpcJson.objectBody(response.body)
+                            if (exactAdd || (method == "torrent-get" && args.has("ids")))
+                                ExactRpcJson.objectBody(response.body)
                             else JSONObject(response.body)
                         } catch (_: Exception) {
                             if (mutating) throw ClientWriteUncertainException("Invalid Transmission reply")
                             throw IOException("Invalid Transmission RPC response")
                         }
-                        val result = root.optString("result")
+                        val result = if (exactAdd) (root.opt("result") as? String)?.takeIf { it.isNotBlank() }
+                            ?: throw ClientWriteUncertainException("Transmission did not identify the Add result")
+                            else root.optString("result")
                         if (result != "success") {
                             // The server parsed and executed the request and
                             // reported a definite refusal (e.g. invalid metainfo).

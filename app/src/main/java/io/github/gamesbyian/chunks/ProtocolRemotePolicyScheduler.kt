@@ -36,10 +36,10 @@ internal suspend fun tickProtocolRemotePolicies(
     }
     if (session == null || inventory == null) return@withContext
     val store = FinishInOrderStore(context, scope)
+    if (policies.unattributed) store.rememberOwners(inventory.map { it.hash }, ownerCurrent)
     for (transfer in inventory) {
         if (!ownerCurrent()) return@withContext
         val record = store.get(transfer.hash) ?: continue
-        if (policies.unattributed) store.rememberOwner(transfer.hash)
         if (transfer.runState.started != true || !record.isScheduled()) continue
         val lease = receipts.reservePolicy(profileId, transfer.hash, ProtocolOperationKind.FINISH_IN_ORDER) ?: continue
         lease.use {

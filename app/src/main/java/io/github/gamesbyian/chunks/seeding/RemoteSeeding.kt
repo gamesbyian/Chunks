@@ -245,8 +245,15 @@ internal object RemoteSeeding {
         val snapshot = SeedingRuleStore(context).load()
         if (snapshot.unreadable) return Tick.NOT_RUN
         val store = PreferencesAssignmentStore(context, environment)
-        val engine = port(store.epoch() == null, enabled)
+        val needsBaseline = !store.remoteBaselineComplete()
+        val engine = port(needsBaseline, enabled)
         try {
+            if (needsBaseline) {
+                if (!engine.mayMutate()) return Tick.NOT_RUN
+                val roster = engine.transfers().map { it.infoHash }
+                if (!store.establishRemoteBaseline(nowMs, roster, engine::mayMutate)) return Tick.NOT_RUN
+                return Tick.NO_WRITE
+            }
             SeedingController(engine, store)
                 .tick(environment, snapshot.rules, snapshot.defaults[environment] ?: SeedingPolicy(), nowMs)
         } catch (_: Exception) {

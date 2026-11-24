@@ -1670,15 +1670,21 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                         }
                     }
                 }
-                val activeTransfers = transfers.filter { it.started }
+                if (!ownerCurrent() || loading || stale) continue
+                val observedTransfers = transfers
+                val activeTransfers = withContext(Dispatchers.IO) {
+                    val policies = observedTransfers.mapNotNull { transfer ->
+                        store.get(transfer.hash)?.let { transfer to it }
+                    }
+                    store.rememberOwners(policies.map { it.first.hash }) { ownerCurrent() && !loading && !stale }
+                    policies.filter { (transfer, record) -> transfer.started && record.isScheduled() }
+                        .map { it.first }
+                }
                 for (transfer in activeTransfers) {
-                    val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
-                    if (!record.isScheduled()) continue
                     if (!ownerCurrent() || loading || stale || !mutationGate.tryStart()) break
                     var noWrite = false
                     try {
                         val step = withContext(Dispatchers.IO + RemoteWriteOwnerFence(ownerCurrent)) {
-                            store.rememberOwner(transfer.hash)
                             stepRemoteFinishInOrder(connectedRemote, store, transfer.hash, ownerCurrent)
                         }
                         noWrite = step is FinishInOrderRunner.Step.Idle

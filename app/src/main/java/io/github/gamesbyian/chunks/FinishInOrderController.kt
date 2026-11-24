@@ -39,14 +39,22 @@ internal class FinishInOrderStore(
         prefs.contains(key(infoHash)) && save(infoHash, record)
     }
 
-    /**
-     * Use a hash observed on this exact account to attribute an existing v1
-     * key. Never rewrite the policy or its pending journal during discovery.
-     */
-    fun rememberOwner(infoHash: String): Unit = synchronized(policyLock) {
-        val key = key(infoHash)
-        if (prefs.contains(key) && !prefs.contains(ownerKey(key))) {
-            prefs.edit().putString(ownerKey(key), scopeDigest).commit()
+    /** Attribute keys observed on this exact owner without modifying policy or journal bytes. */
+    fun rememberOwners(infoHashes: Collection<String>, ownerCurrent: () -> Boolean = { true }) {
+        if (infoHashes.isEmpty() || !ownerCurrent()) return
+        val observedKeys = infoHashes.filter(hashPattern::matches).map(::key).toSet()
+        synchronized(policyLock) {
+            try {
+                val unattributed = observedKeys.filter { policyKey ->
+                    prefs.contains(policyKey) && !prefs.contains(ownerKey(policyKey))
+                }
+                if (unattributed.isEmpty() || !ownerCurrent()) return
+                val transaction = prefs.edit()
+                unattributed.forEach { transaction.putString(ownerKey(it), scopeDigest) }
+                if (ownerCurrent()) transaction.commit()
+            } catch (_: RuntimeException) {
+                // Discovery is optional. The unmodified policy remains eligible for discovery later.
+            }
         }
     }
 
@@ -102,6 +110,7 @@ internal class FinishInOrderStore(
         private const val DEFAULT_NEW_ADDS = "default_new_adds_v1:"
         private const val POLICY_KEY = "policy_"
         private const val OWNER_KEY = "owner_"
+        private const val HEX = "0123456789abcdef"
         private val digestPattern = Regex("[0-9a-f]{64}")
         private val policyLock = Any()
 
@@ -122,9 +131,13 @@ internal class FinishInOrderStore(
 
         private fun ownerKey(key: String) = OWNER_KEY + key.removePrefix(POLICY_KEY)
 
-        private fun digest(value: String): String =
-            MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        private fun digest(value: String): String {
+            val bytes = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+            return String(CharArray(bytes.size * 2) { index ->
+                val byte = bytes[index / 2].toInt() and 0xff
+                HEX[if (index % 2 == 0) byte ushr 4 else byte and 0xf]
+            })
+        }
     }
 
     private val scopeDigest by lazy { digest(scope) }
@@ -203,8 +216,10 @@ internal object FinishInOrderController {
             .forEach { store.clearAfterMetadata(it) }   // removed before metadata arrived
         val hashes = transfers.map { it.infoHash }
         val now = System.nanoTime() / 1_000_000L
+        val observedPolicies = mutableListOf<String>()
         for (hash in hashes) {
             val record = store.get(hash) ?: continue
+            observedPolicies += hash
             if (!record.isScheduled()) continue
             synchronized(lastStep) {
                 val previous = lastStep[hash]
@@ -223,6 +238,7 @@ internal object FinishInOrderController {
                 }
             } catch (_: Exception) {}
         }
+        store.rememberOwners(observedPolicies) { LocalEngineHolder.current() === engine }
     }
 
     /** An explicit user action (enable/resume) runs one step immediately. */
