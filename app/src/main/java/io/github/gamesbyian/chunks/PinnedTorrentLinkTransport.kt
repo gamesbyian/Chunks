@@ -129,7 +129,7 @@ internal class PinnedTorrentLinkTransport(
  */
 internal class PinnedTorrentSocketFactory(
     addresses: Set<InetAddress>,
-    private val port: Int,
+    private val expectedPort: Int,
     private val beforeConnect: (InetSocketAddress) -> Unit = {}
 ) : SocketFactory() {
     private val pins = addresses.toSet()
@@ -137,7 +137,9 @@ internal class PinnedTorrentSocketFactory(
         override fun connect(endpoint: SocketAddress?, timeout: Int) {
             val target = endpoint as? InetSocketAddress
             val peer = target?.address
-            if (target == null || peer == null || target.port != port ||
+            // Socket.port is zero before connect; compare the frozen route port,
+            // never the inherited Java Socket.getPort() property.
+            if (target == null || peer == null || target.port != expectedPort ||
                 peer !in pins || !TorrentLinkAddressPolicy.allowed(peer))
                 throw TorrentLinkTransportRefusal(TorrentLinkResult.LOCAL_NETWORK)
             beforeConnect(target)

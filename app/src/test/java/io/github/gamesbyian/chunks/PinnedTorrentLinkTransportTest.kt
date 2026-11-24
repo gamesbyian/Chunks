@@ -36,6 +36,21 @@ class PinnedTorrentLinkTransportTest {
         assertEquals(listOf(InetSocketAddress(publicIp, 8443)), attempted)
     }
 
+    @Test fun correctFrozenPortReachesGuardedConnectWhileSocketPortIsStillZero() {
+        val attempted = mutableListOf<InetSocketAddress>()
+        val endpoint = InetSocketAddress(publicIp, 8443)
+        PinnedTorrentSocketFactory(setOf(publicIp), endpoint.port) {
+            attempted += it
+            throw IOException("offline test witness")
+        }.createSocket().use { socket ->
+            assertEquals(0, socket.port)
+            val error = assertThrows(IOException::class.java) { socket.connect(endpoint, 500) }
+            assertEquals("offline test witness", error.message)
+            assertFalse(socket.isConnected)
+        }
+        assertEquals(listOf(endpoint), attempted)
+    }
+
     @Test fun socketRejectsUnresolvedUnpinnedWrongPortAndPrivateEndpointsBeforeConnect() {
         val attempted = mutableListOf<InetSocketAddress>()
         ServerSocket(0, 1, privateIp).use { canary ->
