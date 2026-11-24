@@ -2,6 +2,12 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-24 UTC — Local source review and controlled network recovery
+
+[#2021](https://github.com/gamesbyian/Chunks/pull/2021) merged as `bf5d5bf34fbd00f78351aeedd1ebf58df2dc44f5`, exact tested head `08e4560bfd1aa5485e1102fc42c6e00afa5a0036`. [Native Add 45306881162](https://github.com/gamesbyian/Chunks/actions/runs/45306881162) attempt 1: 427 executed, zero failures, 53 scoped skips; both shards and aggregate verifier passed. The exact selected-document summary plus original URI and reviewed-byte assertions replace an ambiguous substring locator. Signed Share reuses the bounded private-safe HTTPS review diagnostic; all exact request/no-write assertions remain. Keep both original [45305301465 attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45305301465/attempts/1) failures. No shipped source changed; the intermittent signed Share failure cause is not established. Native delete research 45306881019 passed Linux/API29/API35.
+
+[#2020](https://github.com/gamesbyian/Chunks/pull/2020) merged as `5c4699908b43c92389e21873704b767a38177d9b`. [Controlled radio transition 45305566086](https://github.com/gamesbyian/Chunks/actions/runs/45305566086), head `240b02e2db9f7b865b92709f23f63adfbeea4ce2`: validated default Internet lost, controlled peer disconnected, network restored after 30 seconds. Verified bytes held at 4,718,592 during outage with no stop/error; grew to 7,077,888 with one peer within 100 seconds of restoration. Independent seeder verified 67,108,864 bytes and supplied 7,886,180 payload bytes. Radio harness safety and docs passed. Hosted controlled-peer result only; physical Pixel/mobile radio, VPN, OEM and public peer discovery remain open under #569.
+
 ## 2026-11-24 UTC — Hosted Android emulator and protected evidence
 
 [#2011](https://github.com/gamesbyian/Chunks/pull/2011) merged as `c0e6d461c19799a37820a842c9af6132f8f41d26`. The pinned API35 emulator image has a bounded setup retry before Android instrumentation. [Native Add 45295303076](https://github.com/gamesbyian/Chunks/actions/runs/45295303076) executed both shards and aggregate verification on head `028d9572053e2a2ad1dbc5338393f874bede2fc3`: **427 executed, 0 failures, 52 scoped skips**. This validates the installer and installed tests. Preserve the previous system-image truncation reds.
