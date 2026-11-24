@@ -27,6 +27,7 @@ class ExactProtocolReadTest {
         cancelPath: String? = null,
         duplicateWireKeys: Boolean = false,
         fileWire: String? = null,
+        addWire: ((Int) -> String)? = null,
         beforeReply: (String) -> Unit = {}
     ): Fixture {
         var writes = 0
@@ -48,7 +49,13 @@ class ExactProtocolReadTest {
                             else if (duplicateWireKeys)
                             """{"torrents":[{"hashString":"$other"}],"torrents":[]}"""
                             else """{"torrents":${rows("hashString")}}"""
-                        "torrent-add", "torrent-remove", "torrent-stop" -> { writes++; "{}" }
+                        "torrent-add" -> {
+                            writes++
+                            if (addWire != null)
+                                return@Wire TransmissionReadOnlyRpc.Response(200, emptyMap(), addWire(0))
+                            "{}"
+                        }
+                        "torrent-remove", "torrent-stop" -> { writes++; "{}" }
                         else -> error("Unexpected method $method")
                     }
                     TransmissionReadOnlyRpc.Response(200, emptyMap(), """{"result":"success","arguments":$args}""")
@@ -70,7 +77,11 @@ class ExactProtocolReadTest {
                             else rows("hash"))
                         "torrents/export" -> QBittorrentReadOnlyRpc.Response(404, "")
                         "torrents/files" -> QBittorrentReadOnlyRpc.Response(200, requireNotNull(fileWire))
-                        "torrents/add", "torrents/delete", "torrents/stop" -> { writes++; QBittorrentReadOnlyRpc.Response(200, "Ok.") }
+                        "torrents/add" -> {
+                            writes++
+                            QBittorrentReadOnlyRpc.Response(200, addWire?.invoke(0) ?: "Ok.")
+                        }
+                        "torrents/delete", "torrents/stop" -> { writes++; QBittorrentReadOnlyRpc.Response(200, "Ok.") }
                         else -> error("Unexpected method $method")
                     }
                 })
@@ -94,7 +105,12 @@ class ExactProtocolReadTest {
                                 queue.removeFirst().forEach { put(it, JSONObject().put("name", "fixture")
                                     .put("state", "Paused").put("save_path", "/data")) }
                             }.toString()
-                        "core.add_torrent_magnet", "core.remove_torrent", "core.pause_torrent" -> { writes++; "true" }
+                        "core.add_torrent_magnet" -> {
+                            writes++
+                            if (addWire != null) return@Wire DelugeReadOnlyRpc.Response(200, addWire(id))
+                            "true"
+                        }
+                        "core.remove_torrent", "core.pause_torrent" -> { writes++; "true" }
                         else -> error("Unexpected method $method")
                     }
                     DelugeReadOnlyRpc.Response(200, """{"id":$id,"error":null,"result":$result}""",
@@ -107,6 +123,39 @@ class ExactProtocolReadTest {
 
     private val kinds = listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.QBITTORRENT, TorrentClientKind.DELUGE)
     private val invalid = listOf(listOf(other), listOf(hash, other), listOf(hash, hash.uppercase()), listOf("bad"))
+
+    @Test fun ambiguousAddAcknowledgmentRemainsUncertainEvenWhenTheJobWouldBeVisible() = runBlocking {
+        val bad = listOf<Pair<TorrentClientKind, (Int) -> String>>(
+            TorrentClientKind.TRANSMISSION to {
+                """{"result":"success","arguments":{"torrent-added":{"hashString":"$other","hashString":"$hash"}}}"""
+            },
+            TorrentClientKind.TRANSMISSION to {
+                """{"result":"success","arguments":{"torrent-added":{"hashString":"$hash"},"torrent-duplicate":{"hashString":"$other"}}}"""
+            },
+            TorrentClientKind.QBITTORRENT to {
+                """{"success_count":0,"success_count":1,"failure_count":0,"pending_count":0,"added_torrent_ids":["$hash"]}"""
+            },
+            TorrentClientKind.QBITTORRENT to {
+                """{"success_count":1.0,"failure_count":0,"pending_count":0,"added_torrent_ids":["$hash"]}"""
+            },
+            TorrentClientKind.DELUGE to { id ->
+                """{"id":$id,"error":null,"result":"$other","result":"$hash"}"""
+            },
+            TorrentClientKind.DELUGE to { id ->
+                """{"id":$id,"error":{"code":1},"result":"$hash"}"""
+            }
+        )
+        for ((kind, reply) in bad) {
+            var reads = 0
+            val f = fixture(kind, listOf(emptyList(), listOf(hash)), addWire = reply, beforeReply = {
+                if (it in setOf("torrent-get", "torrents/info", "core.get_torrents_status")) reads++
+            })
+            val outcome = ClientOperations(f.client, readbackAttempts = 1, stoppedSettleReads = 0).add(request)
+            assertTrue("$kind upgraded an ambiguous Add acknowledgment", outcome is ClientOperationOutcome.Uncertain)
+            assertEquals(1, f.writes())
+            assertEquals(1, reads)
+        }
+    }
 
     @Test fun exactFileAdaptersRejectMalformedIndexAndPriorityEvidence() = runBlocking {
         val qb = TorrentClientKind.QBITTORRENT

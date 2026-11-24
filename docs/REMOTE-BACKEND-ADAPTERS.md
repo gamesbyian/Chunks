@@ -177,6 +177,8 @@ The typed Details editor freezes the displayed file roster and the old priority 
 
 qBittorrent and Deluge use positional indices only when the entire file response omits explicit indices. When indices are supplied, each must identify a distinct row in the complete roster. The typed adapters require the wire priority and selection fields used by a file edit. Unreadable completion counters stay unknown.
 
+An Add acknowledgment containing duplicate keys, contradictory outcomes or missing identity remains uncertain. Its account retains the one-shot Add receipt. A later explicit exact observation can check registration without another Add.
+
 ## Implementation/evidence status and related artifacts
 
 **Current implementation boundary:** Local Device, rTorrent, Transmission, qBittorrent and Deluge all have app-connected operation paths. The typed remote clients are available from Connections and use saved authenticated profiles, the canonical Combined/Details catalog and the shared Add and control workflows. Exact scoped evidence for installed and disposable clients lives in [QUALITY-LEDGER](QUALITY-LEDGER.md). Continue version-specific conformance and protected-host and handset acceptance through [WORK-QUEUE](WORK-QUEUE.md).
