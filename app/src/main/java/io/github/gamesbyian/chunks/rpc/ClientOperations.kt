@@ -2,6 +2,10 @@ package io.github.gamesbyian.chunks.rpc
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Result of one user-authorized operation on one exact client + hash.
@@ -21,6 +25,18 @@ internal sealed interface ClientOperationOutcome {
     data class Uncertain(override val hash: String, val reason: String) : ClientOperationOutcome
     /** Nothing was written (precondition, capability or definite refusal). */
     data class Refused(override val hash: String, val reason: String) : ClientOperationOutcome
+}
+
+/**
+ * Optional caller-owned mutation lease. Called only after shared preflight,
+ * immediately before entering an adapter write. Adapter-specific additional
+ * checks may still refuse; crossing this boundary means a write is possible,
+ * not that the remote daemon received it.
+ */
+internal class ClientOperationWriteBoundary(private val check: () -> Unit) :
+    AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<ClientOperationWriteBoundary>
+    fun beforeWrite() = check()
 }
 
 /**
@@ -293,6 +309,9 @@ internal class ClientOperations(
 
     /** One write; returns a terminal outcome on failure, null when acknowledged. */
     private suspend fun write(hash: String, send: suspend () -> Unit): ClientOperationOutcome? = try {
+        val context = currentCoroutineContext()
+        context.ensureActive()
+        context[ClientOperationWriteBoundary]?.beforeWrite()
         send()
         null
     } catch (e: CancellationException) {

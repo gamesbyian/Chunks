@@ -1274,7 +1274,9 @@ internal fun CombinedTransfersScreen(
                     suggestedTarget = moveSuggestionFor(protocolTargets),
                     routingMetadataPending = details.observation?.metadataPending,
                     suggestForFiles = { names -> moveSuggestionFor(protocolTargets, names) },
-                    sourceAliasScope = aliasScopes[focusedKey.environment]
+                    sourceAliasScope = aliasScopes[focusedKey.environment],
+                    sourceGeneration = profile.identityWitness,
+                    canReconcile = focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true
                 )
             }
         }
