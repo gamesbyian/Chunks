@@ -17,6 +17,7 @@ case "$*" in
   get-state)
     printf 'device\n'
     [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1 ;;
+  'shell getprop ro.kernel.qemu') printf '%s\n' "${MOCK_QEMU:-0}" ;;
   'shell settings get global wifi_on') cat "$MOCK_DIR/wifi" ;;
   'shell settings get global mobile_data')
     if [[ "${MOCK_UNREADABLE_DATA:-0}" == 1 ]]; then printf 'null\n'
@@ -36,6 +37,9 @@ case "$*" in
     if [[ -e "$MOCK_DIR/net-on" ]]; then
       [[ "${MOCK_NET_NO_WITNESS:-0}" == 1 ]] ||
         printf 'CHUNKS_SWARM_NETFLAP: default_network_baseline_validated=true\nCHUNKS_SWARM_NETFLAP: network_witness_default_internet_lost=true\nCHUNKS_SWARM_NETFLAP: network_witness_default_internet_restored=true\n'
+      if [[ "${MOCK_CONTROLLED_PEER_LOST:-0}" == 1 ]]; then
+        echo 'CHUNKS_SWARM_NETFLAP: controlled_peer_disconnected=true'
+      fi
       if [[ "${MOCK_NET_MISSING_VERIFIED:-0}" != 1 ]]; then
         at_return=5242880; continued=7340032
         [[ "${MOCK_NET_BAD_RETURN:-0}" != 1 ]] || at_return=3000000
@@ -170,3 +174,26 @@ grep -q 'Selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
 [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
 echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, no-op radio commands, ambiguous/unlisted/wireless adb, partial-output device enumeration, zero-exit install failures, false network/wire byte receipts and nonzero instrumentation all passed'
+
+for witnessed in 0 1; do
+  printf '1\n' > "$MOCK_DIR/wifi"; printf '0\n' > "$MOCK_DIR/data"
+  : > "$MOCK_DIR/commands"
+  rm -f "$MOCK_DIR/net-off" "$MOCK_DIR/net-on"
+  status=0
+  env -u ADB_SERIAL -u ANDROID_SERIAL CHUNKS_NETFLAP_CONTROLLED_PEER=1 \
+    MOCK_QEMU=1 MOCK_CONTROLLED_PEER_LOST="$witnessed" \
+    bash "$repo/android_public_swarm_netflap.sh" > "$temp/controlled.log" 2>&1 || status=$?
+  if [[ "$witnessed" == 1 ]]; then
+    [[ "$status" == 0 ]]
+  else
+    [[ "$status" != 0 ]]
+    grep -Fq 'Controlled seeder disconnection was not observed' "$temp/controlled.log"
+  fi
+  [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
+done
+: > "$MOCK_DIR/commands"
+if env -u ADB_SERIAL -u ANDROID_SERIAL CHUNKS_NETFLAP_CONTROLLED_PEER=1 MOCK_QEMU=0 \
+  bash "$repo/android_public_swarm_netflap.sh" > "$temp/physical.log" 2>&1; then
+  echo "Controlled peer mode was accepted outside an emulator" >&2; exit 1
+fi
+[[ ! -s "$MOCK_DIR/commands" ]]

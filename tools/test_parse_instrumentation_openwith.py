@@ -108,6 +108,7 @@ class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
     CLASS = "io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest"
     PHASE_A = "phaseA_submitTwoSourcesAndRefreshInventory"
     PHASE_B = "phaseB_restoredExclusionAndFreshPositiveControl"
+    SIGNED_SHARE = "sharedSignedLinkWaitsForReplacementAndExplicitFetch"
     GOOD = (
         "java.lang.AssertionError: Controlled HTTPS review was not retained: "
         "fixtureSourceRequests=0 ownerHasAnyReviewedTorrent=false "
@@ -127,6 +128,7 @@ class ControlledMediaReviewFailureFingerprintTest(unittest.TestCase):
                   "addFooterVisible=true sourceFieldVisible=true intakeProblem=NO_HOST")
         self.assertEqual(result, safe_media_review_failure(self.status()))
         self.assertEqual(result, safe_media_review_failure(self.status(test=self.PHASE_B)))
+        self.assertEqual(result, safe_media_review_failure(self.status(test=self.SIGNED_SHARE)))
         self.assertEqual(
             result.replace("Requests=0", "Requests=9999"),
             safe_media_review_failure(self.status(
