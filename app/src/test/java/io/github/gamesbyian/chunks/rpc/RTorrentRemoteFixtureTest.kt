@@ -91,6 +91,62 @@ class RTorrentRemoteFixtureTest {
         }
     }
 
+    @Test fun exactClientReadFindsHiddenJobAndRejectsIncompleteSession() = runBlocking {
+        val hash = "a".repeat(40)
+        var filteredDefault = false
+        val row = """<array><data><value><array><data>
+            <value><string>$hash</string></value>
+            <value><string>Hidden fixture</string></value>
+            <value><i8>100</i8></value>
+            <value><i8>70</i8></value>
+            <value><int>0</int></value>
+            <value><string>/data</string></value>
+            <value><i8>0</i8></value>
+            <value><i8>0</i8></value>
+            <value><i8>0</i8></value>
+        </data></array></value></data></array>"""
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.hash</methodName>") ->
+                    Reply(200, result("<string>$hash</string>"))
+                request.contains("<methodName>d.is_multi_file</methodName>") ->
+                    Reply(200, result("<int>0</int>"))
+                request.contains("<methodName>view.size_not_visible</methodName>") ->
+                    Reply(200, result("<int>${if (filteredDefault) 1 else 0}</int>"))
+                request.contains("<methodName>d.multicall2</methodName>") &&
+                    request.contains("<string>main</string>") ->
+                    Reply(200, result("<array><data></data></array>"))
+                request.contains("<methodName>d.multicall2</methodName>") &&
+                    request.contains("<string>default</string>") -> Reply(200, result(row))
+                else -> error("Unexpected RPC in exact-client read fixture")
+            }
+        }.use { fixture ->
+            val client = RTorrentClientAdapter(RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")))
+            assertEquals(hash, client.torrent(hash)?.hash)
+            assertEquals(listOf(hash), client.torrents().map { it.hash })
+            filteredDefault = true
+            assertThrows(IllegalStateException::class.java) { runBlocking { client.torrent(hash) } }
+            assertThrows(IllegalStateException::class.java) { runBlocking { client.torrents() } }
+        }
+    }
+
+    @Test fun exactClientAbsenceRequiresTwoUnknownHashRepliesNotAView() = runBlocking {
+        val hash = "a".repeat(40)
+        Fixture { request, _ ->
+            assertTrue(request.contains("<methodName>d.hash</methodName>"))
+            Reply(200, fault(-501, "Could not find info-hash."))
+        }.use { fixture ->
+            val client = RTorrentClientAdapter(RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")))
+            assertNull(client.torrent(hash))
+            assertEquals(2, fixture.methods.size)
+        }
+        Fixture { _, _ -> Reply(200, result("<string>${"b".repeat(40)}</string>")) }.use { fixture ->
+            val client = RTorrentClientAdapter(RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")))
+            assertThrows(IllegalStateException::class.java) { runBlocking { client.torrent(hash) } }
+            assertEquals(1, fixture.methods.size)
+        }
+    }
+
     @Test fun methodProbeDifferentiatesUnavailableEnumeration() = runBlocking {
         Fixture { request, _ ->
             when {
