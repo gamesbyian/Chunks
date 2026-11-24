@@ -55,6 +55,19 @@ class AcceptanceReportTest(unittest.TestCase):
         newer_failure = dict(check("build-once", "failure"), id=30)
         self.assertEqual(r.FAILED, r.evaluate([fresh, newer_failure], ["build-once"], CONFIG, {})["rows"][0]["state"])
 
+    def test_actions_workflow_order_beats_late_draft_job_id(self):
+        url = "https://github.com/gamesbyian/Chunks/actions/runs/"
+        draft = dict(check("build", "skipped"), id=50, details_url=url + "100/job/50")
+        ready = dict(check("build", "success"), id=40, details_url=url + "110/job/40")
+        self.assertTrue(r.evaluate([draft, ready], ["build"], CONFIG, {})["acceptable"])
+
+        for newer in (
+            dict(check("build", "failure"), id=30, details_url=url + "120/job/30"),
+            dict(check("build", None, "in_progress"), id=41, details_url=url + "110/job/41"),
+        ):
+            with self.subTest(newer=newer):
+                self.assertFalse(r.evaluate([ready, draft, newer], ["build"], CONFIG, {})["acceptable"])
+
     def test_pending_is_not_a_pass(self):
         gates = r.profile_gates(CONFIG, "foundation")
         checks = [check(gates[0]), check(gates[1], None, "in_progress")]
