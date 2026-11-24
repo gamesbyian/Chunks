@@ -26,6 +26,8 @@ class ClientOperationsTest {
 
         override suspend fun session() = ClientSessionInfo(kind, "1", "/d", caps, levels)
         override suspend fun torrents() = listOfNotNull(present)
+        var fileReads = 0
+        var onFiles: (Fake) -> Unit = {}
         var reads = 0
         var onRead: (Fake) -> Unit = {}
         override suspend fun torrent(hash: String): ClientTorrent? {
@@ -34,7 +36,11 @@ class ClientOperationsTest {
             if (failReads) throw IOException("read failed")
             return present?.takeIf { it.hash == hash }
         }
-        override suspend fun files(hash: String) = files
+        override suspend fun files(hash: String): List<ClientFile> {
+            fileReads++
+            onFiles(this)
+            return files
+        }
         private fun write() {
             writes++
             failWrite?.let { throw it }
@@ -338,6 +344,31 @@ class ClientOperationsTest {
         assertTrue("Normal is the default, not a reviewed choice",
             runCatching { ReviewedFilePriority("a", ClientFilePriority.NORMAL) }.isFailure)
         assertTrue(runCatching { ReviewedFilePriority("a", ClientFilePriority.SKIP) }.isFailure)
+    }
+
+    @Test fun layoutChangingBetweenStoppedAddAndPriorityPreflightCannotWriteOrStart() = runBlocking {
+        val (fake, source) = fileChoiceFake()
+        fake.onFiles = { f ->
+            if (f.fileReads >= 2) f.files = f.files.map {
+                if (it.index == 1) it.copy(path = "alien/n/b") else it
+            }
+        }
+        val result = ops(fake).add(ClientAddRequest(source, null, startNow = true,
+            skippedFiles = mapOf(1 to "b")))
+        assertTrue(result is ClientOperationOutcome.Pending)
+        assertEquals("Only the stopped Add was written", 1, fake.writes)
+        assertEquals(ClientRunState.STOPPED, fake.present?.runState)
+    }
+
+    @Test fun duplicateIndexDuringPriorityReadbackCannotConfirmOrStart() = runBlocking {
+        val (fake, source) = fileChoiceFake()
+        fake.onFiles = { f ->
+            if (f.fileReads == 3) f.files = f.files + f.files.last()
+        }
+        val result = ops(fake).add(ClientAddRequest(source, null, startNow = true,
+            skippedFiles = mapOf(1 to "b")))
+        assertTrue(result is ClientOperationOutcome.Pending)
+        assertEquals("Stopped Add and one priorities write, no Start or replay", 2, fake.writes)
     }
 
     @Test fun invalidReviewIsRefusedBeforeAnyRegistration() = runBlocking {
