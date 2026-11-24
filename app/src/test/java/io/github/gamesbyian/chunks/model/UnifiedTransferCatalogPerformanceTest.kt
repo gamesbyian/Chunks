@@ -37,7 +37,7 @@ class UnifiedTransferCatalogPerformanceTest {
             // Exact client/hash membership; precompute lookup as the screen does.
             val changedKeys = sources.flatMapIndexed { envIndex, source ->
                 source.transfers.filter {
-                    (it.key.infoHash.toLong(16) * environments.size + envIndex) % 100L == 0L
+                    (envIndex.toLong() * (size / environments.size) + it.key.infoHash.toLong(16)) % 100L == 0L
                 }.map { it.key }
             }.toSet()
             val expectedMatches = size / 100
