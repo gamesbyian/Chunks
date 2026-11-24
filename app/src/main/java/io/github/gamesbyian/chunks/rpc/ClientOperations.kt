@@ -267,6 +267,18 @@ internal class ClientOperations(
     suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>): ClientOperationOutcome =
         setFilePrioritiesChecked(hash, priorities, layoutValid = { true })
 
+    /** A Details edit remains bound to the roster and touched priorities shown in its review. */
+    suspend fun setReviewedFilePriorities(
+        hash: String, reviewed: List<ClientFile>, priorities: Map<Int, ClientFilePriority>
+    ): ClientOperationOutcome {
+        val expected = reviewed.associateBy { it.index }
+        return setFilePrioritiesChecked(hash, priorities,
+            layoutValid = { ClientFileLayout.sameRoster(reviewed, it) },
+            precondition = { rows ->
+                rows.all { it.index !in priorities || it.priority == expected.getValue(it.index).priority }
+            })
+    }
+
     internal suspend fun setFilePrioritiesChecked(
         hash: String,
         priorities: Map<Int, ClientFilePriority>,
@@ -283,15 +295,19 @@ internal class ClientOperations(
         val before = try { client.files(exact) } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(exact, "Could not read the file list first") }
         val known = before.map { it.index }.toSet()
-        if (known.size != before.size || !known.containsAll(requested.keys) ||
+        if (!ClientFileLayout.sameRoster(before, before) || !known.containsAll(requested.keys) ||
             !layoutValid(before) || !precondition(before))
             return ClientOperationOutcome.Refused(exact, "File list changed; refresh first")
-        write(exact) { client.setFilePriorities(exact, requested) }?.let { return it }
+        write(exact) {
+            client.setFilePriorities(exact, requested) { rows ->
+                ClientFileLayout.sameRoster(before, rows) && layoutValid(rows) && precondition(rows)
+            }
+        }?.let { return it }
         repeat(readbackAttempts) { attempt ->
             if (attempt > 0) delay(readbackDelayMillis)
             val files = try { client.files(exact) } catch (e: CancellationException) { throw e }
                 catch (_: Exception) { null }
-            if (files != null && files.map { it.index }.toSet().size == files.size && layoutValid(files)) {
+            if (files != null && ClientFileLayout.sameRoster(before, files) && layoutValid(files)) {
                 val observed = files.associate { it.index to it.priority }
                 val ok = requested.all { (index, wanted) -> observed[index] == wanted }
                 if (ok) return ClientOperationOutcome.Verified(exact, null)
@@ -393,6 +409,18 @@ internal class ClientOperations(
  * missing payload indices; all observed byte lengths must match.
  */
 internal object ClientFileLayout {
+    fun sameRoster(expected: List<ClientFile>, observed: List<ClientFile>): Boolean {
+        if (expected.size != observed.size) return false
+        val byIndex = expected.associateBy { it.index }
+        if (byIndex.size != expected.size || observed.map { it.index }.toSet().size != observed.size)
+            return false
+        return observed.all { row ->
+            val reviewed = byIndex[row.index]
+            reviewed != null && row.index >= 0 && row.path.isNotBlank() && row.sizeBytes >= 0 &&
+                reviewed.path == row.path && reviewed.sizeBytes == row.sizeBytes
+        }
+    }
+
     private fun declared(preview: TorrentMetainfoPreview): List<TorrentMetainfoFile> =
         preview.files.ifEmpty { listOf(TorrentMetainfoFile(preview.name, preview.sizeBytes, false)) }
 

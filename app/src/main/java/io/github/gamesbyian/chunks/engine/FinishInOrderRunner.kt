@@ -109,8 +109,9 @@ internal class FinishInOrderRunner(private val port: Port) {
             LocalFileBatchOutcome.VERIFIED, LocalFileBatchOutcome.UNCHANGED -> {
                 val done = journaled.copy(pending = emptyList(),
                     lastApplied = journaled.lastApplied + plan.desired)
-                port.save(infoHash, done)
+                val saved = port.save(infoHash, done)
                 port.persistNativeState()
+                if (!saved) return Step.StorageFailed(journaled)
                 syncSequential(infoHash, done)?.let { Step.Suspended(it) } ?: Step.Applied(done, plan)
             }
             // A stale reviewed file or safety-path refusal is an explicit

@@ -42,8 +42,13 @@ internal class RemoteFinishInOrderPort(
         for (change in changes) {
             val file = identity[change.index] ?: return LocalFileBatchOutcome.STALE_REVIEW
             val outcome = try {
-                remote.setFilePriority(infoHash, change.index, file.path, file.sizeBytes,
-                    toRemote(change.expectedPriority), toRemote(change.requestedPriority))
+                remote.setFilePriorityChecked(infoHash, change.index, file.path, file.sizeBytes,
+                    toRemote(change.expectedPriority), toRemote(change.requestedPriority)) { rows ->
+                    identity.values.all { reviewed ->
+                        val current = rows.getOrNull(reviewed.index)
+                        current != null && current.path == reviewed.path && current.sizeBytes == reviewed.sizeBytes
+                    }
+                }
             } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
             catch (_: IllegalArgumentException) {
                 // Refused by the fresh preflight: nothing written for this file.

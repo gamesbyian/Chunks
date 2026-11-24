@@ -74,6 +74,7 @@ class LocalClientInteropTest {
             is ClientOperationOutcome.Refused)
         val listed = client.files(hash)
         assertEquals(2, listed.size)
+        assertReviewedFilePriorityConformance(ops, hash, listed[1].index)
         verified("priorities", ops.setFilePriorities(hash,
             mapOf(listed[0].index to ClientFilePriority.SKIP, listed[1].index to ClientFilePriority.HIGH)))
         verified("priorities_restore", ops.setFilePriorities(hash, listed.associate { it.index to ClientFilePriority.NORMAL }))

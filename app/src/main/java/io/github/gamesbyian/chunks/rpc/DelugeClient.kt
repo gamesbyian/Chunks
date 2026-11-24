@@ -149,12 +149,24 @@ internal class DelugeClient(
         if (removed == false) throw ClientRefusedException("Deluge declined the removal")
     }
 
-    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) {
+    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) =
+        setFilePriorities(hash, priorities) { true }
+
+    override suspend fun setFilePriorities(
+        hash: String,
+        priorities: Map<Int, ClientFilePriority>,
+        validateSnapshot: (List<ClientFile>) -> Boolean
+    ) {
         val exact = ClientHashes.requireHash(hash)
         // Deluge replaces the whole vector; build it from a fresh read.
         val current = files(exact)
+        val positional = current.sortedBy { it.index }
+        if (positional.withIndex().any { (index, row) -> row.index != index } ||
+            priorities.keys.any { it !in positional.indices } || !validateSnapshot(current)) {
+            throw ClientRefusedException("Deluge file list changed; refresh first")
+        }
         val vector = JSONArray()
-        current.sortedBy { it.index }.forEach { file ->
+        positional.forEach { file ->
             vector.put(toDeluge(priorities[file.index] ?: file.priority))
         }
         call("core.set_torrent_options", JSONArray().put(JSONArray().put(exact))

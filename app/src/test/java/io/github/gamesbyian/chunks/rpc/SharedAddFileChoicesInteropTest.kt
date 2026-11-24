@@ -66,10 +66,42 @@ class SharedAddFileChoicesInteropTest {
             assertEquals(if (storesLow) ClientFilePriority.LOW else ClientFilePriority.NORMAL,
                 after.getValue(low.index).priority)
             assertEquals(true, client.torrent(source.infoHash)?.runState?.started)
+            assertReviewedFilePriorityConformance(ops, source.infoHash, low.index)
         } finally {
             // This run's own unique fixture only: its (sparse) files go too where supported.
             val withData = runCatching { ClientCapability.REMOVE_WITH_DATA in ops.session().capabilities }.getOrDefault(false)
             runCatching { ops.remove(source.infoHash, deleteData = withData) }
         }
     }
+}
+
+
+/** Same reviewed Details contract for native libtorrent and all four actual daemons. */
+internal suspend fun assertReviewedFilePriorityConformance(ops: ClientOperations, hash: String, target: Int) {
+    val files = ops.files(hash)
+    val before = files.associate { it.index to it.priority }
+    val selected = files.single { it.index == target }
+    val untouched = files.first { it.index != target }
+    val changed = mapOf(target to ClientFilePriority.HIGH)
+    val invalidReviews = listOf(
+        files + untouched,
+        files.filterNot { it.index == untouched.index },
+        files.map { if (it.index == untouched.index) it.copy(path = "wrong/" + it.path) else it },
+        files.map { if (it.index == untouched.index) it.copy(sizeBytes = it.sizeBytes + 1) else it },
+        files.map { if (it.index == target) it.copy(priority = ClientFilePriority.SKIP) else it }
+    )
+    for (review in invalidReviews) {
+        val blocked = ops.setReviewedFilePriorities(hash, review, changed)
+        assertTrue("Stale reviewed priority mutation was not refused: $blocked",
+            blocked is ClientOperationOutcome.Refused)
+        assertEquals("Refusal must leave the daemon priorities unchanged", before,
+            ops.files(hash).associate { it.index to it.priority })
+    }
+    val applied = ops.setReviewedFilePriorities(hash, files, changed)
+    assertTrue("Exact reviewed edit failed: $applied", applied is ClientOperationOutcome.Verified)
+    val observed = ops.files(hash)
+    assertEquals(before + changed, observed.associate { it.index to it.priority })
+    val restored = ops.setReviewedFilePriorities(hash, observed, mapOf(target to selected.priority))
+    assertTrue("Exact reviewed restore failed: $restored", restored is ClientOperationOutcome.Verified)
+    assertEquals(before, ops.files(hash).associate { it.index to it.priority })
 }
