@@ -138,31 +138,44 @@ await_source_review() {
 # tracker-bearing source content, screenshots or arbitrary logcat excerpts.
 diagnose_missing_source_review() {
   local pid_present=false task_present=false xml_state=missing intake_delivered=false
+  local ui_owner=unknown
   if app_pid >/dev/null 2>&1; then pid_present=true; fi
   if task_id >/dev/null 2>&1; then task_present=true; fi
   if [[ -s "$scratch/window.xml" ]]; then
-    xml_state="$(python3 - "$scratch/window.xml" "$pkg" "$source_name" <<'PY'
+    read -r xml_state ui_owner < <(python3 - "$scratch/window.xml" "$pkg" "$source_name" <<'PY_UI'
 import sys
 from xml.etree import ElementTree as ET
+
+app, source = sys.argv[2:]
 try:
-    root = ET.parse(sys.argv[1]).getroot()
-    app = [n for n in root.iter() if n.attrib.get("package") == sys.argv[2]]
-    visible = any(sys.argv[3] in n.attrib.get(k, "")
-                  for n in app for k in ("text", "content-desc"))
-    print("app-nodes-source-visible" if visible else
-          "app-nodes-no-source" if app else "no-app-nodes")
+    nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
 except (OSError, ET.ParseError):
-    print("invalid-ui-xml")
-PY
-)"
+    print("invalid-ui-xml unknown")
+    raise SystemExit(0)
+
+app_nodes = [node for node in nodes if node.get("package") == app]
+visible = any(source in node.get(field, "") for node in app_nodes for field in ("text", "content-desc"))
+state = "app-nodes-source-visible" if visible else "app-nodes-no-source" if app_nodes else "no-app-nodes"
+packages = {node.get("package", "") for node in nodes} - {"", "android"}
+if app_nodes: owner = "chunks"
+elif app + ".test" in packages: owner = "external-sender"
+elif "com.android.systemui" in packages: owner = "system-ui"
+elif any("inputmethod" in item or "latinime" in item for item in packages): owner = "keyboard"
+elif any("launcher" in item for item in packages): owner = "launcher"
+elif packages: owner = "other"
+else: owner = "unknown"
+print(state, owner)
+PY_UI
+)
   fi
   if timeout 10s adb logcat -d -s ChunksIntake:I 2>/dev/null |
       grep -Fq 'outcome=document'; then intake_delivered=true; fi
   # Keep Android's raw task/window dumps in the ephemeral scratch only.
   # A digest of the actual foreground *category* distinguishes launcher/IME
   # occlusion from Chunks being resumed but not rendering its review.
-  local focused=unknown resumed=unknown
-  timeout 12s adb shell dumpsys window windows > "$scratch/focused-window.txt" 2>/dev/null || true
+  local focused=unknown focused_app=unknown resumed=unknown wakefulness=unknown
+  timeout 12s adb shell dumpsys window displays > "$scratch/focused-window.txt" 2>/dev/null || true
+  timeout 12s adb shell dumpsys power > "$scratch/power.txt" 2>/dev/null || true
   timeout 12s adb shell dumpsys activity activities > "$scratch/resumed-activity.txt" 2>/dev/null || true
   focused="$(python3 - "$scratch/focused-window.txt" <<'PY'
 import re, sys
@@ -173,9 +186,34 @@ item = matches[-1] if matches else ""
 if "io.github.gamesbyian.chunks.test" in item: print("external-sender")
 elif "io.github.gamesbyian.chunks/" in item: print("chunks")
 elif "inputmethod" in item.lower() or "latinime" in item.lower(): print("keyboard")
+elif "com.android.systemui" in item: print("system-ui")
 elif "launcher" in item.lower(): print("launcher")
+elif item.strip() == "null": print("no-focused-window")
 elif item: print("other-window")
 else: print("unknown")
+PY
+)"
+  focused_app="$(python3 - "$scratch/focused-window.txt" "$pkg" <<'PY'
+import re, sys
+from pathlib import Path
+
+values = re.findall(r"mFocusedApp=([^\n]+)", Path(sys.argv[1]).read_text(errors="replace"))
+value = values[-1].strip() if values else ""
+app = sys.argv[2]
+if app + ".test/" in value: print("external-sender")
+elif app + "/" in value: print("chunks")
+elif value == "null": print("no-focused-app")
+elif value: print("other-app")
+else: print("unknown")
+PY
+)"
+  wakefulness="$(python3 - "$scratch/power.txt" <<'PY'
+import re, sys
+from pathlib import Path
+
+value = re.search(r"\bmWakefulness=(Awake|Asleep|Dreaming|Dozing)\b",
+                  Path(sys.argv[1]).read_text(errors="replace"))
+print(value[1].lower() if value else "unknown")
 PY
 )"
   resumed="$(python3 - "$scratch/resumed-activity.txt" <<'PY'
@@ -207,9 +245,9 @@ PY
       done
     fi
   fi
-  printf 'CHUNKS_DOCUMENT_TASK_DIAG: app_process=%s task=%s ui=%s intake=%s foreground=%s resumed=%s after_task_focus=%s\n' \
-    "$pid_present" "$task_present" "$xml_state" "$intake_delivered" \
-    "$focused" "$resumed" "$after_focus" |
+  printf 'CHUNKS_DOCUMENT_TASK_DIAG: app_process=%s task=%s ui=%s ui_owner=%s intake=%s foreground=%s focused_app=%s resumed=%s wakefulness=%s after_task_focus=%s\n' \
+    "$pid_present" "$task_present" "$xml_state" "$ui_owner" "$intake_delivered" \
+    "$focused" "$focused_app" "$resumed" "$wakefulness" "$after_focus" |
     tee "$out/document-preflight-diagnostic.txt"
 }
 # The disposable Chunks user data was already cleared above. Starting a
