@@ -266,6 +266,10 @@ def main():
     print(json.dumps({"phase": digest["phase"], "junit": digest["junit"],
                       "evidence_executed": digest["evidence_executed"],
                       "diagnostic_hint": digest["diagnostic_hint"]}))
+    # Keep bounded sanitized timing accessible from job logs even on green runs.
+    # GitHub step summaries and success-only artifacts are not always accessible
+    # to an integrator; this is advisory, not acceptance or wall-clock evidence.
+    print("CHUNKS_TEST_TIMING: " + json.dumps(digest["timing"], sort_keys=True))
     if rejects_unverified_green(digest, args.status, args.require_executed):
         print("::error::Required JUnit evidence absent, invalid, all-skipped or failed")
         raise SystemExit(1)

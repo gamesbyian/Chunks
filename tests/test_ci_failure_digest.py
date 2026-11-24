@@ -227,6 +227,27 @@ class DigestTests(unittest.TestCase):
                                       check=False, capture_output=True, text=True)
         self.assertEqual(0, actual_green.returncode, actual_green.stdout)
 
+    def test_cli_timing_is_available_in_green_job_logs_without_raw_junit(self):
+        script = Path(__file__).resolve().parents[1] / "tools/ci_failure_digest.py"
+        self.path.write_text(
+            '<testsuite><testcase classname="Slow" name="test" time="12.5"/>'
+            '<testcase classname="secret/path?token=NEVER_ECHO" name="other" time="1.5"/>'
+            '</testsuite>')
+        result = subprocess.run(
+            [sys.executable, str(script), "--suite", "android-jvm",
+             "--output", str(Path(self.tmp.name) / "digest.json"),
+             "--glob", str(self.path), "--status", "success", "--require-executed"],
+            check=False, capture_output=True, text=True)
+        self.assertEqual(0, result.returncode, result.stdout)
+        lines = [line for line in result.stdout.splitlines()
+                 if line.startswith("CHUNKS_TEST_TIMING: ")]
+        self.assertEqual(1, len(lines))
+        timing = json.loads(lines[0].split(": ", 1)[1])
+        self.assertEqual(14.0, timing["total_case_seconds"])
+        self.assertEqual("Slow", timing["slowest_classes"][0]["class"])
+        self.assertNotIn("NEVER_ECHO", result.stdout)
+        self.assertNotIn(str(self.path), result.stdout)
+
     def test_slowest_class_timings_are_bounded_and_never_used_as_pass_proof(self):
         self.path.write_text(
             '<testsuite>'
