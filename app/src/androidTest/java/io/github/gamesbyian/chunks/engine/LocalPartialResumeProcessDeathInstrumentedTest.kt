@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.engine
 
+import android.database.sqlite.SQLiteDatabase
+import android.os.Debug
+import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -43,6 +46,8 @@ class LocalPartialResumeProcessDeathInstrumentedTest {
 
     private fun payload() = ByteArray(2 * 1024 * 1024) { (it * 37 % 251).toByte() }
 
+    private fun liveHeapBytes(): Long = Runtime.getRuntime().let { it.totalMemory() - it.freeMemory() }
+
     @Test fun downloadThenDie() {
         assumeTrue("Owned by installed_partial_resume_death.sh", phase == "download-then-die")
         root.deleteRecursively()
@@ -82,11 +87,18 @@ class LocalPartialResumeProcessDeathInstrumentedTest {
         val (hash, checkpointed, halted, size) = receipt.readText().trim().split(" ").let {
             listOf(it[0], it[1], it[2], it[3])
         }
+        val state = File(root, "state")
         val local = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
-            allowMultipleConnectionsPerIp = true, stateDirectory = File(root, "state")))
+            allowMultipleConnectionsPerIp = true, stateDirectory = state))
         val seeder = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
             allowMultipleConnectionsPerIp = true))
+        val pssBeforeKiB = Debug.getPss()
+        val heapBefore = liveHeapBytes()
+        val startedAt = SystemClock.elapsedRealtimeNanos()
         local.start()
+        val engineStartNanos = SystemClock.elapsedRealtimeNanos() - startedAt
+        val heapAfter = liveHeapBytes()
+        val pssAfterKiB = Debug.getPss()
         seeder.start()
         try {
             assertTrue(local.restoreProblems.toString(), local.restoreProblems.isEmpty())
@@ -96,6 +108,23 @@ class LocalPartialResumeProcessDeathInstrumentedTest {
             assertTrue("Restored ${restored.doneBytes} of $size lost pieces verified before the last checkpoint " +
                 "($checkpointed)", restored.doneBytes >= checkpointed.toLong() - 4L * PIECE)
             assertTrue(restored.doneBytes <= halted.toLong())
+            // Read only the aggregate from actual persisted native state, after
+            // the timed engine open. Never print identities or filesystem paths.
+            val database = File(File(state, LocalResumeDatabase.DIRECTORY), LocalResumeDatabase.DATABASE)
+            SQLiteDatabase.openDatabase(database.path, null,
+                SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS).use { readback ->
+                readback.rawQuery("SELECT COUNT(*), SUM(length(payload)) FROM resumes WHERE phase = 'SAVED'", null)
+                    .use { row ->
+                        check(row.moveToFirst())
+                        val savedRows = row.getInt(0)
+                        val bytes = row.getLong(1)
+                        assertEquals("The real checkpoint stores one native job", 1, savedRows)
+                        assertTrue("The checkpoint must contain a native resume payload", bytes > 0)
+                        android.util.Log.i("ChunksResumeDeath", "CHUNKS_RESUME_DEATH: storage saved_rows=$savedRows " +
+                            "payload_bytes=$bytes engine_start_ns=$engineStartNanos java_heap_before=$heapBefore " +
+                            "java_heap_after=$heapAfter pss_before_kib=$pssBeforeKiB pss_after_kib=$pssAfterKiB")
+                    }
+            }
             android.util.Log.i("ChunksResumeDeath", "CHUNKS_RESUME_DEATH: restored=${restored.doneBytes} " +
                 "checkpointed=$checkpointed halted=$halted size=$size")
 
