@@ -223,6 +223,8 @@ _MEDIA_REVIEW_FAILURE_TESTS = {
      "phaseA_submitTwoSourcesAndRefreshInventory"),
     ("io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest",
      "phaseB_restoredExclusionAndFreshPositiveControl"),
+    ("io.github.gamesbyian.chunks.InstalledSecondAddMediaConsentInstrumentedTest",
+     "sharedSignedLinkWaitsForReplacementAndExplicitFetch"),
 }
 _MEDIA_REVIEW_FINGERPRINT = re.compile(
     r"^java\.lang\.AssertionError: Controlled HTTPS review was not retained: "

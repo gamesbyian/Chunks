@@ -11,6 +11,7 @@ import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -156,15 +157,18 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            // Local Add uses a normal verticalScroll rather than a lazy list.
-            // A require-scroll-to-index probe can never find its details item;
-            // retain the actual validated filename even while storage
-            // availability rechecks on Activity recreation.
+            // The summary identifies the selected document even when the
+            // storage check separately renders its name in Torrent details.
             rule.waitUntil(30_000) {
-                rule.onAllNodesWithText("test.txt", substring = true)
-                    .fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Selected .torrent: test.txt")
+                    .fetchSemanticsNodes().size == 1
             }
-            rule.onNodeWithText("test.txt", substring = true).assertExists()
+            scenario.onActivity {
+                val review = ViewModelProvider(it)[LocalAddAttemptOwner::class.java].reviewedTorrent.value
+                assertTrue("Recreation must retain the exact reviewed bytes",
+                    review?.stillMatchesReviewedSource(bytes) == true)
+                org.junit.Assert.assertEquals(uri, review?.originalDocument)
+            }
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
         }

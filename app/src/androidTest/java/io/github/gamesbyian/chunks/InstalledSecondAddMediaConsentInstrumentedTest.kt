@@ -109,14 +109,7 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
         waitForTag(ChunksSemantics.TRANSFERS_SEARCH)
     }
 
-    private fun reviewAndAdd(
-        scenario: ActivityScenario<MainActivity>,
-        source: String,
-        expectedHash: String,
-        optOut: Boolean
-    ) {
-        LazyComposeActions.replaceText(rule, hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD), "https://example.com/$source.torrent")
-        LazyComposeActions.activateOnce(rule, hasText("Get torrent from link") and hasClickAction())
+    private fun awaitHttpsReview(scenario: ActivityScenario<MainActivity>, source: String, expectedHash: String) {
         try {
             rule.waitUntil(30_000) {
                 var reviewed = false
@@ -179,6 +172,17 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
                 timeout
             )
         }
+    }
+
+    private fun reviewAndAdd(
+        scenario: ActivityScenario<MainActivity>,
+        source: String,
+        expectedHash: String,
+        optOut: Boolean
+    ) {
+        LazyComposeActions.replaceText(rule, hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD), "https://example.com/$source.torrent")
+        LazyComposeActions.activateOnce(rule, hasText("Get torrent from link") and hasClickAction())
+        awaitHttpsReview(scenario, source, expectedHash)
         assertNull("HTTPS review must make no native Add write", LocalEngineHolder.current()?.status(expectedHash))
         add.chooseStopped()
         val disclosure = hasText("Artwork & metadata") and hasClickAction()
@@ -315,14 +319,7 @@ class InstalledSecondAddMediaConsentInstrumentedTest {
             assertNoRequests()
 
             LazyComposeActions.activateOnce(rule, fetch)
-            rule.waitUntil(30_000) {
-                var reviewed = false
-                scenario.onActivity {
-                    val owner = ViewModelProvider(it)[LocalAddAttemptOwner::class.java]
-                    reviewed = owner.reviewedTorrent.value?.preview?.infoHashV1 == expectedHash
-                }
-                reviewed
-            }
+            awaitHttpsReview(scenario, "signed_share", expectedHash)
             assertEquals("The exact signed link was fetched once", 1, count("source_signed_share"))
             assertEquals("The superseded link was never fetched", 0, count("source_first"))
             assertEquals("The receiver saw no other HTTPS requests", 1, JSONObject(fixture("counts")).length())
