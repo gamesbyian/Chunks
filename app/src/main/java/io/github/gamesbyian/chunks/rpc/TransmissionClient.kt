@@ -248,6 +248,7 @@ internal class TransmissionClient(
             var answeredAuth = false
             var answeredSession = false
             while (true) {
+                if (mutating) RemotePolicyWriteFence.check()
                 beforeWrite()
                 val response = try {
                     wire.exchange(TransmissionReadOnlyRpc.Request(endpoint, body, authorization, csrfSession))

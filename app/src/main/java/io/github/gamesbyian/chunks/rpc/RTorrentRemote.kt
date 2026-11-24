@@ -2458,6 +2458,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     // A deadline may expire during blocking auth preflight.
                     // It must revoke dispatch before a destructive body is sent.
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    if (mutation) RemotePolicyWriteFence.check()
                     beforeWrite()
                     connection.outputStream.use { it.write(request) }
                     val status = connection.responseCode

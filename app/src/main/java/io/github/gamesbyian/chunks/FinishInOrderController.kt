@@ -20,22 +20,35 @@ internal class FinishInOrderStore(
     private val scope: String = TransferCollectionStore.LOCAL_ENGINE_SCOPE
 ) {
     private val prefs = context.applicationContext.getSharedPreferences(
-        "chunks_finish_in_order_v1", Context.MODE_PRIVATE)
+        PREFS, Context.MODE_PRIVATE)
     private val hashPattern = Regex("(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})")
 
     fun get(infoHash: String): FinishInOrderRecord? = try {
         prefs.getString(key(infoHash), null)?.let(FinishInOrderRecord::decode)
     } catch (_: RuntimeException) { null }
 
-    @Synchronized
-    fun save(infoHash: String, record: FinishInOrderRecord): Boolean = try {
-        prefs.edit().putString(key(infoHash), record.encode()).commit()
-    } catch (_: RuntimeException) { false }
+    fun save(infoHash: String, record: FinishInOrderRecord): Boolean = synchronized(policyLock) {
+        try {
+            val key = key(infoHash)
+            prefs.edit().putString(key, record.encode()).putString(ownerKey(key), scopeDigest).commit()
+        } catch (_: RuntimeException) { false }
+    }
 
     /** Runner writes never recreate a policy the user has just turned off. */
-    @Synchronized
-    fun update(infoHash: String, record: FinishInOrderRecord): Boolean =
+    fun update(infoHash: String, record: FinishInOrderRecord): Boolean = synchronized(policyLock) {
         prefs.contains(key(infoHash)) && save(infoHash, record)
+    }
+
+    /**
+     * Use a hash observed on this exact account to attribute an existing v1
+     * key. Never rewrite the policy or its pending journal during discovery.
+     */
+    fun rememberOwner(infoHash: String): Unit = synchronized(policyLock) {
+        val key = key(infoHash)
+        if (prefs.contains(key) && !prefs.contains(ownerKey(key))) {
+            prefs.edit().putString(ownerKey(key), scopeDigest).commit()
+        }
+    }
 
     /** Magnet Adds: set up a policy once metadata (the file list) is known. */
     @Synchronized
@@ -55,10 +68,12 @@ internal class FinishInOrderStore(
         prefs.edit().putStringSet(AFTER_METADATA, now.toHashSet()).commit()
     } catch (_: RuntimeException) { false }
 
-    @Synchronized
-    fun remove(infoHash: String): Boolean = try {
-        prefs.edit().remove(key(infoHash)).commit()
-    } catch (_: RuntimeException) { false }
+    fun remove(infoHash: String): Boolean = synchronized(policyLock) {
+        try {
+            val key = key(infoHash)
+            prefs.edit().remove(key).remove(ownerKey(key)).commit()
+        } catch (_: RuntimeException) { false }
+    }
 
     /**
      * Opt-in preference: pre-tick Finish in Order on *new* multi-file Add
@@ -74,20 +89,54 @@ internal class FinishInOrderStore(
         prefs.edit().putBoolean(DEFAULT_NEW_ADDS + scope, enabled).commit()
     } catch (_: RuntimeException) { false }
 
-    private companion object {
-        const val AFTER_METADATA = "after_metadata_v1"
-        const val DEFAULT_NEW_ADDS = "default_new_adds_v1:"
+    internal data class ScheduledPolicies(
+        val unattributed: Boolean,
+        val ownerDigests: Set<String>
+    ) {
+        fun mayHaveWork(scope: String): Boolean = unattributed || digest(scope) in ownerDigests
     }
+
+    companion object {
+        private const val PREFS = "chunks_finish_in_order_v1"
+        private const val AFTER_METADATA = "after_metadata_v1"
+        private const val DEFAULT_NEW_ADDS = "default_new_adds_v1:"
+        private const val POLICY_KEY = "policy_"
+        private const val OWNER_KEY = "owner_"
+        private val digestPattern = Regex("[0-9a-f]{64}")
+        private val policyLock = Any()
+
+        /** One local scan for every connected profile, before starting network work. */
+        fun scheduledPolicies(context: Context): ScheduledPolicies = synchronized(policyLock) {
+            val all = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).all
+            val owners = mutableSetOf<String>()
+            var unattributed = false
+            for ((key, value) in all) {
+                if (!key.startsWith(POLICY_KEY) || !digestPattern.matches(key.removePrefix(POLICY_KEY))) continue
+                val record = (value as? String)?.let(FinishInOrderRecord::decode) ?: continue
+                if (!record.isScheduled()) continue
+                val owner = all[ownerKey(key)] as? String
+                if (owner != null && digestPattern.matches(owner)) owners += owner else unattributed = true
+            }
+            ScheduledPolicies(unattributed, owners.toSet())
+        }
+
+        private fun ownerKey(key: String) = OWNER_KEY + key.removePrefix(POLICY_KEY)
+
+        private fun digest(value: String): String =
+            MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
+    private val scopeDigest by lazy { digest(scope) }
 
     private fun key(infoHash: String): String {
         require(hashPattern.matches(infoHash)) { "Invalid transfer identity" }
-        val identity = scope + "\u0000" +
-            infoHash.uppercase(Locale.ROOT)
-        return "policy_" + MessageDigest.getInstance("SHA-256")
-            .digest(identity.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        return POLICY_KEY + digest(scope + "\u0000" + infoHash.uppercase(Locale.ROOT))
     }
 }
+
+internal fun FinishInOrderRecord.isScheduled() =
+    suspendedReason == null && (!finished || pending.isNotEmpty())
 
 /**
  * Drives every enabled policy from the foreground service's single poll lane
@@ -156,7 +205,7 @@ internal object FinishInOrderController {
         val now = System.nanoTime() / 1_000_000L
         for (hash in hashes) {
             val record = store.get(hash) ?: continue
-            if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
+            if (!record.isScheduled()) continue
             synchronized(lastStep) {
                 val previous = lastStep[hash]
                 if (previous != null && now - previous < MIN_INTERVAL_MS) return@synchronized null
