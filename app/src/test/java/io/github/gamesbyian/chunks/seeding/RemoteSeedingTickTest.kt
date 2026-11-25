@@ -472,6 +472,40 @@ class RemoteSeedingTickTest {
         }
     }
 
+    @Test fun cancelledSmartSeedingDoesNotFallThroughToFinishInOrderInTheSameTick() = runBlocking {
+        val inner = FakeClient()
+        val client = object : TorrentClient by inner {
+            override suspend fun uploadCapStepBytes(): Long = throw CancellationException("cap cancelled")
+        }
+        val ops = ClientOperations(client, 2, 1)
+        val profile = "cancel-before-finish-in-order"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val receipts = ProtocolOperationReceiptOwner()
+        val policy = SeedingPolicy(ratioGoal = BigDecimal.ONE,
+            uploadLimit = RateLimit(128_000, RateLimit.Unit.KB))
+        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to policy))))
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000, receipts = receipts)
+        inner.jobs[new] = true
+        inner.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 60, true, false, emptyList())
+        val orders = FinishInOrderStore(context, FinishInOrderScopes.protocol(profile))
+        val order = orderRecord()
+        assertTrue(orders.save(new, order))
+        var cancelled = false
+        try {
+            tickProtocolRemotePolicies(context, profile, FinishInOrderStore.scheduledPolicies(context),
+                ownerCurrent = { true }, receipts = receipts) { ops }
+        } catch (_: CancellationException) {
+            cancelled = true
+        }
+        assertTrue(cancelled)
+        assertEquals(0, inner.stops)
+        assertEquals(0, inner.fileReads)
+        assertEquals(order, orders.get(new))
+        assertNull(PreferencesAssignmentStore(context, environment).get(new)?.stopAttemptedReason)
+    }
+
     @Test fun cancelledStopRetainsTheDurableAttemptAndNeverReplays() {
         val inner = FakeClient()
         val cancelled = CancellationException("Stop reply cancelled")
