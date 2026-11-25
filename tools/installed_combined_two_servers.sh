@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Disposable-only D1/C1: installed app against two local real rTorrent daemons.
 set -euo pipefail
+source "$(dirname "$0")/instrumentation_result.sh"
 # Bound every Android instrumentation phase independently; timeouts are failures.
 receipt="$RUNNER_TEMP/chunks-combined/receipt.json"
 out="$RUNNER_TEMP/chunks-combined/evidence"
@@ -36,7 +37,7 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
 status=$?
 set -e
 adb pull "/sdcard/Android/data/$pkg/files/disposable-snapshot-review.png"   "$out/snapshot-review.png" >/dev/null 2>&1 || rm -f "$out/snapshot-review.png"
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/snapshot-restore-installed.txt" ||
+if [ "$status" -ne 0 ] || ! instrumentation_passed "$out/snapshot-restore-installed.txt" 1 ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-restore-installed.txt"; then
   tail -80 "$out/snapshot-restore-installed.txt"
   echo "::error::Installed remote snapshot restore did not pass"
@@ -56,7 +57,7 @@ timeout --signal=TERM --kill-after=15s 6m adb shell am instrument -w -r \
 selected_status=$?
 set -e
 if [ "$selected_status" -ne 0 ] ||
-   ! grep -q '^OK (4 tests)' "$out/snapshot-selected-place-installed.txt" ||
+   ! instrumentation_passed "$out/snapshot-selected-place-installed.txt" 4 ||
    grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$out/snapshot-selected-place-installed.txt"; then
   tail -80 "$out/snapshot-selected-place-installed.txt"
   echo "::error::Authenticated selected-place stopped snapshot restore did not pass"
@@ -84,7 +85,7 @@ status=$?
 set -e
 adb logcat -d -t 2000 > "$out/logcat.txt" 2>&1 || true
 grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation.txt" | tee "$out/stages.txt" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation.txt"; then
+if [ "$status" -ne 0 ] || ! instrumentation_passed "$out/instrumentation.txt" 1; then
   tail -80 "$out/instrumentation.txt"
   echo "::error::Installed two-server Combined journey failed"
   exit 1
@@ -105,7 +106,7 @@ timeout --signal=TERM --kill-after=15s 10m adb shell am instrument -w -r \
 status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation-phase2.txt" | tee -a "$out/stages.txt" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation-phase2.txt" ||
+if [ "$status" -ne 0 ] || ! instrumentation_passed "$out/instrumentation-phase2.txt" 1 ||
    ! grep -q 'chunks_stage=process-death-unchanged' "$out/instrumentation-phase2.txt"; then
   tail -80 "$out/instrumentation-phase2.txt"
   echo "::error::Process-death reconnect phase failed"
@@ -123,7 +124,7 @@ timeout --signal=TERM --kill-after=15s 4m adb shell am instrument -w -r \
   > "$out/snapshot-priority-consent.txt" 2>&1
 status=$?
 set -e
-if [ "$status" -ne 0 ] || ! grep -q '^OK (2 tests)' "$out/snapshot-priority-consent.txt"; then
+if [ "$status" -ne 0 ] || ! instrumentation_passed "$out/snapshot-priority-consent.txt" 2; then
   tail -80 "$out/snapshot-priority-consent.txt"
   echo "::error::Installed remote snapshot priority consent regressions failed or were skipped"
   exit 1

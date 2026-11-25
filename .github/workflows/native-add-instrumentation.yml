@@ -59,6 +59,7 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt"
       - "tools/installed_protocol_client.sh"
+      - "tools/instrumentation_result.sh"
       - "tools/verify_installed_protocol_lanes.py"
       - "tests/test_installed_protocol_lanes.py"
       - "tools/installed_external_document_process_loss.sh"

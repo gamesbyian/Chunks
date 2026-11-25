@@ -2,6 +2,7 @@
 # Disposable-only remote L6: installed app -> pinned ruTorrent httprpc/erasedata
 # -> real rTorrent; then the real upstream collector and an independent file witness.
 set -euo pipefail
+source "$(dirname "$0")/instrumentation_result.sh"
 hash="$(cat "$RUNNER_TEMP/chunks-remote-delete-hash.txt")"
 [[ "$hash" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::no staged hash"; exit 1; }
 out="$RUNNER_TEMP/chunks-remote-delete-evidence"
@@ -70,7 +71,7 @@ status=$?
 set -e
 adb logcat -d -t 2000 > "$out/logcat.txt" 2>&1 || true
 grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/instrumentation.txt" | tee "$out/stages.txt" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/instrumentation.txt" ||
+if [ "$status" -ne 0 ] || ! instrumentation_passed "$out/instrumentation.txt" 1 ||
    ! grep -q 'chunks_stage=session-absent' "$out/instrumentation.txt"; then
   tail -80 "$out/instrumentation.txt"
   echo "::error::Installed remote Remove transfer and data journey failed"
@@ -97,7 +98,7 @@ status=$?
 set -e
 adb logcat -d -t 2000 > "$out/original-logcat.txt" 2>&1 || true
 grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/original-instrumentation.txt" | tee "$out/original-stages.txt" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/original-instrumentation.txt" ||
+if [ "$status" -ne 0 ] || ! instrumentation_passed "$out/original-instrumentation.txt" 1 ||
    ! grep -q 'chunks_stage=cleaned-up' "$out/original-instrumentation.txt"; then
   tail -80 "$out/original-instrumentation.txt"
   echo "::error::Installed remote original .torrent Archive/remove journey failed"
