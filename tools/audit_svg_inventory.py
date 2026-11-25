@@ -88,7 +88,10 @@ def produce():
       "unverifiedOpticalEntries":unreviewed,"fontDependentSvgCount":len(text_dependent),
       "fontDependentIds":text_dependent,"openAcceptanceGates":gates,
       "canonicalLauncher":"docs/design/approved/chunks-app-icon-master.svg"}
-    md=["# Chunks SVG inventory quality review","",
+    # Owner notes are part of the generated report so --write preserves them.
+    owner_notes=["","> **Campaign integration note:** [Owner's UX cohesion campaign](../../UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) requires using this existing library across coherent Android screens. Optical comparisons remain useful, but do not delay implementation solely for per-icon owner approval.","","",
+      "> **Owner development approval (2026-11-05):** All existing library assets may be used in development without awaiting individual visual approval. The remaining optical-review tasks are quality-improvement work, **not release or implementation blockers solely for lack of owner sign-off**. Agents can integrate assets and iterate when the owner requests changes. Existing structural, contrast, small-size, native-behaviour and accessibility checks still apply. Do not relabel unverified pixel-fidelity as verified or alter the protected canonical launcher implicitly.",""]
+    md=["# Chunks SVG inventory quality review"]+owner_notes+["",
       "All "+str(inv["totals"]["vectorDraft"])+" first-pass SVGs exist and "+str(inv["totals"]["aliases"])+" aliases resolve. This is not a declaration that every logo, sticker, icon or UI specimen matches its source exactly.","",
       "## Recorded categories","",
       "| Provenance | Entries |","| --- | ---: |"]

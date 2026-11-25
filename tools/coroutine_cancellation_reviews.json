@@ -1,0 +1,602 @@
+[
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt",
+  "kind": "runCatching",
+  "fingerprint": "228be0e4c21b26a302f72922",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "Body is SmartRoutingPolicyStore(context).read(), a plain fun (SharedPreferences/JSON read); no suspension point inside runCatching."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/FinishInOrderController.kt",
+  "kind": "broad-catch",
+  "fingerprint": "06cd9cd1c854cd05879e6e95",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "engine.saveResumeData(2_000L) is a blocking non-suspend fun; cancellation cannot originate in the try."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/FinishInOrderPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "6c6d9195b9b8e26fb3663ac7",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalEngineHolder.current() and LocalTorrentEngine.observeFinishInOrder are plain funs; the surrounding withContext/delay are outside the try."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddExecution.kt",
+  "kind": "runCatching",
+  "fingerprint": "756b59d9c3da1bb76cc0d48b",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "engine.setFilesWantedBatch is a non-suspend internal fun on LocalTorrentEngine."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddExecution.kt",
+  "kind": "runCatching",
+  "fingerprint": "77b5a5cacba19f334495c41e",
+  "count": 3,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "engine is LocalTorrentEngine; engine.files(hash) is a plain fun and reviewedSkips/reviewedPriorities are non-suspend lambdas."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddExecution.kt",
+  "kind": "runCatching",
+  "fingerprint": "edaf6f999ea48c9ddb609c07",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "engine.setFilePriority(hash,file,level) is a non-suspend internal fun on LocalTorrentEngine."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddExecution.kt",
+  "kind": "runCatching",
+  "fingerprint": "f77e1479f5ef9cc8013399fa",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "engine.beginStoppedVerification is a plain fun returning Boolean."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+  "kind": "runCatching",
+  "fingerprint": "1427211fcf924a5ad1a8e80f",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "port.status is non-suspend; runCatching is inside withContext(IO) and wraps only that call."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+  "kind": "runCatching",
+  "fingerprint": "3a58adb5d2f5b09adc9cd504",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalDetailsPort.dhtEnabled is non-suspend (engine.isDhtEnabled())."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+  "kind": "runCatching",
+  "fingerprint": "8e61d622de85351f5ca40b87",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalDetailsPort.status is non-suspend (delegates to LocalTorrentEngine.status); runCatching sits inside withContext."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+  "kind": "runCatching",
+  "fingerprint": "ae65ee50ec146966f877417c",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "engine is a non-suspend () -> LocalDetailsPort? lambda and status is non-suspend."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+  "kind": "runCatching",
+  "fingerprint": "cb261294a0b5202cac90ee16",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalDetailsPort.files is a non-suspend interface method (EngineLocalDetailsPort delegates to LocalTorrentEngine.files); withContext is outside runCatching."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "17f190a8d0169f21395faf32",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalEngineHolder.setDhtPreferred is a plain fun returning Boolean."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "19bf3315b3be5c6a5dd2d616",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalEngineHolder.current(), LocalTorrentEngine.exportTorrentFile and TorrentMetainfoReader.preview are all plain funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "25f47159f1b3d792a2978416",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalCapPreferenceStore.get(folder) is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "480809c6cf62f1e5dc79adc1",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "StatFs(...).availableBytes is a blocking framework call, not suspending."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "8782d4275fb847ea162891e4",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalDownloadPlaces.resolve(context) is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "e8358d37e10f0411e6f75e18",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalDownloadPlaces.forget(context) is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "broad-catch",
+  "fingerprint": "fcdbeee5ecd90220698e6462",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalDownloadPlaces.choices / remember and LocalAddPlacePolicy.identity are plain funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "runCatching",
+  "fingerprint": "123f15a18bab646bc414da20",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "Only target.applyStoppedFilePriorities (non-suspend internal fun) is inside runCatching; the suspending FinishInOrderController.exclusive lock is outside it."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "runCatching",
+  "fingerprint": "be2d1badbf5b6bf7996a0d86",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClipboardMagnetPrefill.setEnabled is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+  "kind": "runCatching",
+  "fingerprint": "f79470c280ad2773322dba98",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalEngineHolder.current()?.status(...) is non-suspend."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalLibraryCopy.kt",
+  "kind": "broad-catch",
+  "fingerprint": "741e4ca11f34c935bf2a249e",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalSingleLibraryMediaStoreCopy.copyNew is a plain blocking fun; engineProvider() is called outside the try."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalLibraryCopy.kt",
+  "kind": "broad-catch",
+  "fingerprint": "ff0ac8a4f466ebbb2250c098",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalMultiLibraryMediaStoreCopy.copyNew is a plain blocking fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalNativeAddObserver.kt",
+  "kind": "broad-catch",
+  "fingerprint": "57a93cfdeb7e7086d6544227",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "The try runs on a plain Executor thread (executor.execute { ... }) calling the non-suspend list: () -> List<...>? lambda; it is not even in coroutine context."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalStoragePanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "0c0d4d1363757e2bc7a76c90",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "readFolder is a non-suspend lambda; LocalFolderInventoryProbe.measure is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalStoragePanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "58da24c22af500ea416c993b",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "readAllocated is a non-suspend (Context) -> LocalAllocatedInventory lambda; LocalAllocatedFolderProbe.measure is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalTorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "0538fdefe3f433a34dd68323",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientAddSource.TorrentFile(bytes) is a constructor (cannot suspend)."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalTorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "892b6006e0d749e2d883207b",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientAddSource.Magnet(magnet) is a constructor."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalTorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "99de7894481a2e578139e36a",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "running.saveResumeDataFor(exact) is a plain fun on LocalTorrentEngine."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipArchiveReview.kt",
+  "kind": "broad-catch",
+  "fingerprint": "9ec30a0c26e28d6f2044c602",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalZipDocumentInspector.inspect(context, uri) is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "41e544d0011e0cbcb4fcb8f4",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalMultiZipMediaStoreExport.extractNew is a plain blocking fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "76f029354a80ba028a53c491",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalSingleZipMediaStoreExport.extractNew is a plain blocking fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "98aeeda89dda9379aed09c3c",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalSingleZipMediaStoreExport.unfinishedPublications is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "cf0e3a3cace9879a9634ae5e",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "OwnedMediaStoreZipBatchJournal.unfinishedDescriptions is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "dbae70ab75ef59a40070251f",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context, Kind.LIBRARY) is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt",
+  "kind": "broad-catch",
+  "fingerprint": "f881920d16a464bdc40fb26b",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "LocalZipExtraction.reconcilePending(context) is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "57bf2d35868619134040ec86",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "RememberedRemoteProfileRoster.rename is a synchronized plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "7565651528bc818008b8c8a3",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "vault is RememberedRemoteLogin; load() is a synchronized plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "a1f540da727ea0439cc3f179",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "RemoteCredentialLock.saveVerifiedPairIfCurrent and RemoteRememberChoice.declineIfCurrent are plain funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "a358b50235d77011ee13b020",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TransferCollectionStore.addBatch and forTransfer are plain funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "bb0ece60d4451a0159bde76c",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "Body calls vault.rememberingEnabled/setRememberingEnabled and profileRoster.clearAll, all synchronized plain funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "c4d2fe09b233b4c5c7b618de",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "RemoteProfileForget.forget is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "broad-catch",
+  "fingerprint": "d94293fd2bc6fe4b5388fdd5",
+  "count": 2,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "vault.setRememberingEnabled and profileRoster.clearAll are plain funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "runCatching",
+  "fingerprint": "0be8892b6c95cec21c17f501",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "RememberedRemoteProtocolProfiles.saveVerified is a plain fun; the suspending connect/withTimeout happen before and outside runCatching."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "runCatching",
+  "fingerprint": "2b50aedf385d4bfad386ecc5",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "SmartRoutingPolicyStore.read() is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "runCatching",
+  "fingerprint": "7a1bb65e176bdb410fa0db54",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "RememberedRemoteProtocolProfiles.rename is a synchronized plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+  "kind": "runCatching",
+  "fingerprint": "b3a7161e1f3d6bdef5a302ec",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "RememberedRemoteProtocolProfiles.forget is a synchronized plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/OriginalSourceRetirement.kt",
+  "kind": "runCatching",
+  "fingerprint": "c1f1283988fbc38a3101f7f6",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TorrentMetainfoReader.preview is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt",
+  "kind": "runCatching",
+  "fingerprint": "01465ff690715d12b5ed4684",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "aliasStore is a non-suspend (String, String) -> Boolean (saveVerifiedAlias param or TransferAliasStore.saveVerifiedNewAddAlias lambda)."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt",
+  "kind": "runCatching",
+  "fingerprint": "1b8eb1ecb1fe1da3a1b67fda",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "SharedTorrentDocument.read(resolver, uri) is a plain fun; PendingLocalAdd is a constructor."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+  "kind": "runCatching",
+  "fingerprint": "5a94a30f614903d066d175c7",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TransferAliasStore.carryVerifiedMoveAlias is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/TransferMoveControl.kt",
+  "kind": "broad-catch",
+  "fingerprint": "97a9d515d79a88d30c858c54",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "Inside withContext, the try wraps only LocalTorrentEngine.completeIdentityInventory(), a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddSubmission.kt",
+  "kind": "broad-catch",
+  "fingerprint": "2b3e16a6a4ad2eb9ddc990d9",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "freeze is a non-suspend (Ticket) -> UniversalAddExecutor<R> parameter."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/media/ChunksMedia.kt",
+  "kind": "runCatching",
+  "fingerprint": "e243ca5ccd379f251330ae8d",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TransferMediaController.searchableTitles is a plain fun (store.all().mapNotNull)."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/media/TransferMediaController.kt",
+  "kind": "runCatching",
+  "fingerprint": "f18f234de7986643e0c60bb6",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "MediaEnrichmentService.lookup is a plain (blocking) fun; settings and network are non-suspend () -> ... lambdas. The job.isActive check is cooperative and inside requestAllowed, not a thrown cancellation."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/media/ui/MediaTechnicalDetails.kt",
+  "kind": "runCatching",
+  "fingerprint": "5d39f9e33dcb67ff59870b6f",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "open is a non-suspend () -> MediaByteSource? and MediaTrackInspector.inspect is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/media/ui/TransferMediaRoutes.kt",
+  "kind": "runCatching",
+  "fingerprint": "d9107595adc1726867de836b",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "readLocalFile is a non-suspend (MediaFileHint) -> ByteArray? lambda."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/BatchServerCopy.kt",
+  "kind": "broad-catch",
+  "fingerprint": "ffbd0b63a4fa6bc7a28c0584",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TorrentMetainfoReader.preview(definition) is a plain fun; the suspending exportTorrent call has its own cancel-rethrow at line 75."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt",
+  "kind": "broad-catch",
+  "fingerprint": "54e305e22356ec3d6e2f278b",
+  "count": 1,
+  "disposition": "SAFE-RETHROWS",
+  "reason": "A preceding catch (cancel: CancellationException) { coordinator.requireReadback(ticket); throw cancel } handles cancellation from executor.settle."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt",
+  "kind": "broad-catch",
+  "fingerprint": "d044d87db85e13abbaa51dfc",
+  "count": 1,
+  "disposition": "SAFE-RETHROWS",
+  "reason": "A preceding catch (cancel: CancellationException) { interrupted(...); throw cancel } handles cancellation from executor.execute before this broad catch."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeClient.kt",
+  "kind": "broad-catch",
+  "fingerprint": "23140a614d3578b9ce435141",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "JSONObject(body) and ExactRpcJson.objectBody are plain parsing funs; the HTTP exchange is outside this try."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
+  "kind": "broad-catch",
+  "fingerprint": "f49d8a2d4ab7d482c996b425",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ExactRpcJson.arrayBody / JSONArray(body) are plain parsing; request() runs before the try."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "41648d5bff3c6401af83a900",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientAddSource.TorrentFile(exported) is a constructor; the suspending export has its own cancel rethrow at line 57."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "7c395c38606c5a2968f71280",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientAddSource.Magnet(it) is a constructor."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "bd31c85a64c124bbfdb2c571",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "JSONObject(body) only; the suspending request() is outside runCatching."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "cc2055d8f3bf246caed41471",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientMagnets.build is a plain fun."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentReadOnlyRpc.kt",
+  "kind": "broad-catch",
+  "fingerprint": "03b0ef546616aac6ebb70053",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "JSONArray(body) only; read() calls precede the try."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentClientAdapter.kt",
+  "kind": "runCatching",
+  "fingerprint": "6b6d404f5986a2800430b35a",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientAddSource.TorrentFile(bytes) is a constructor."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteSmartConnect.kt",
+  "kind": "broad-catch",
+  "fingerprint": "fea2da2bf0b7dd661b800cb3",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "URI(candidate.endpoint).rawPath is plain parsing; the suspending probe has its own `if (failure is CancellationException) throw failure`."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentFileManager.kt",
+  "kind": "runCatching",
+  "fingerprint": "d16d766bd816172947b9c220",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ExactRpcJson.objectBody(response.body) is plain parsing."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionClient.kt",
+  "kind": "broad-catch",
+  "fingerprint": "6751bc83dc3134ec186908d4",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ExactRpcJson.objectBody / JSONObject(response.body) are plain parsing funs."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionClient.kt",
+  "kind": "runCatching",
+  "fingerprint": "ffb44d093bc8adbba9172ab6",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "ClientAddSource.Magnet(magnet) is a constructor."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionReadOnlyRpc.kt",
+  "kind": "broad-catch",
+  "fingerprint": "d8ccf18217a4a3b4139f0e61",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "JSONObject(response.body) only."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/snapshots/SnapshotRemoteMetainfoCaptureV1.kt",
+  "kind": "runCatching",
+  "fingerprint": "dc614471d307545795177e88",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TorrentMetainfoReader.preview(candidate) is a plain fun; withContext(Dispatchers.Default) is outside runCatching."
+ }
+]

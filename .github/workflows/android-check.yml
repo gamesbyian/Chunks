@@ -21,6 +21,9 @@ on:
       - "tools/prefetch_robolectric_sdk.py"
       - "tools/ci_catalog_measurement.py"
       - "tests/test_ci_catalog_measurement.py"
+      - "tools/check_coroutine_cancellation.py"
+      - "tools/coroutine_cancellation_reviews.json"
+      - "tests/test_coroutine_cancellation_inventory.py"
     # Drafts can accumulate several edits before source-exact acceptance.
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
@@ -50,6 +53,10 @@ jobs:
         run: python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
       - name: Check Local Device terminology contract
         run: python3 tools/check_local_terminology.py
+      - name: Require a reviewed disposition for every broad catch in suspend code (A2611-07)
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_coroutine_cancellation_inventory.py
+          python3 tools/check_coroutine_cancellation.py --reviews tools/coroutine_cancellation_reviews.json
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

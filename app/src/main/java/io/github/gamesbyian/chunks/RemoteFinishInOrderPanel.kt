@@ -85,7 +85,10 @@ internal fun remoteFilesAsLocal(files: List<RemoteFile>): List<LocalTransferFile
 internal suspend fun enableRemoteFinishInOrderAfterAdd(
     context: android.content.Context, remote: RTorrentRemote, scope: String, hash: String
 ): String {
+    // Cancellation is not an unreadable file list: it must stop the Add
+    // continuation, never become a note that still allows Start.
     val files = try { withContext(Dispatchers.IO) { remote.listFiles(hash) } }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
         catch (_: Exception) { return "Finish in Order was not set up: the server's file list could not be read." }
     val asLocal = remoteFilesAsLocal(files)
     val suggestion = FinishInOrderPlanner.suggest(asLocal)
@@ -94,7 +97,12 @@ internal suspend fun enableRemoteFinishInOrderAfterAdd(
     val policy = FinishInOrderPlanner.policyFor(FinishInOrderPlanner.Mode.BALANCED, asLocal, suggestion.order)
     if (!FinishInOrderController.exclusive { withContext(Dispatchers.IO) { store.save(hash, FinishInOrderRecord(policy)) } })
         return "Finish in Order could not be saved; priorities are unchanged."
-    return when (val step = try { stepRemoteFinishInOrder(remote, store, hash) } catch (_: Exception) { null }) {
+    // A cancelled priority step may have dispatched a write; propagate it as
+    // cancellation (uncertain), not as an ordinary unconfirmed first change.
+    val step = try { stepRemoteFinishInOrder(remote, store, hash) }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (_: Exception) { null }
+    return when (step) {
         is FinishInOrderRunner.Step.Applied, is FinishInOrderRunner.Step.Idle ->
             "Finish in Order is on for ${suggestion.order.size} files."
         is FinishInOrderRunner.Step.Suspended -> "Finish in Order is paused: " + step.record.suspendedReason
