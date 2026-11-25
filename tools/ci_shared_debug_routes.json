@@ -72,6 +72,44 @@
       "app/src/sharedTest/java/io/github/gamesbyian/chunks/LazyComposeActions.kt",
       "tools/interop/**",
       "!tools/interop/disposable_snapshot_folder_listing.py"
+    ],
+    "combined": [
+      "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt",
+      "tools/preload_combined_two_servers.py",
+      "tools/installed_combined_two_servers.sh",
+      "tools/combined_fault_controller.py",
+      "tools/interop/disposable_snapshot_folder_listing.py",
+      ".github/workflows/installed-combined-two-servers.yml",
+      ".github/actions/reuse-installed-apks/action.yml",
+      "tools/reuse_installed_apks.sh"
+    ],
+    "remove": [
+      "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddSession.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/OriginalTorrentHandlingUi.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt",
+      "tools/installed_remote_delete_data.sh",
+      "tools/stage_disposable_rutorrent_adapter_delete.py",
+      ".github/workflows/installed-remote-delete-data.yml",
+      ".github/actions/reuse-installed-apks/action.yml",
+      "tools/reuse_installed_apks.sh"
     ]
   }
 }
