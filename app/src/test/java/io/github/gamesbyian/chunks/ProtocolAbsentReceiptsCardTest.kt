@@ -103,6 +103,30 @@ class ProtocolAbsentReceiptsCardTest {
             ProtocolOperationReceiptOwner.Phase.UNKNOWN, owner.receipt(listedKey)?.phase)
     }
 
+    @Test fun theCardStaysWithItsOutcomeAfterTheLastReceiptIsReleased() {
+        // Regression from the hosted installed witness: the screen removed the
+        // card together with the last released receipt, hiding the result.
+        val owner = ProtocolOperationReceiptOwner()
+        val key = unknownRemove(owner, removed)
+        val probe = Probe()
+        val sources = listOf(source(probe, emptySet()))
+        val results = androidx.compose.runtime.mutableStateMapOf<ProtocolOperationReceiptOwner.Key, String>()
+        rule.setContent {
+            ChunksTheme {
+                if (showAbsentReceiptsCard(owner, sources, results))
+                    ProtocolAbsentReceiptsCard(sources, owner, results)
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_CHECK + "." + removed).performClick()
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.RECONCILED_ABSENT }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_RESULT + "." + removed)
+            .assertTextContains("not registered", substring = true)
+        assertTrue("no receipt is left to check", absentJobReceipts(owner, profile, emptySet()).isEmpty())
+        assertTrue(showAbsentReceiptsCard(owner, sources, results))
+        assertTrue("nothing to show for a profile without receipts or results",
+            !showAbsentReceiptsCard(ProtocolOperationReceiptOwner(), sources, emptyMap()))
+    }
+
     @Test fun failedReadKeepsTheReceiptUnresolvedAndSaysSo() {
         val owner = ProtocolOperationReceiptOwner()
         val key = unknownRemove(owner, removed)

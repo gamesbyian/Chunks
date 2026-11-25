@@ -51,6 +51,18 @@ internal fun absentJobReceipts(
 ): List<ProtocolOperationReceiptOwner.Receipt> =
     owner.checkable(profileId).filter { it.ticket.key.hash !in listedHashes }
 
+/**
+ * Whether the Transfers card must be present: while any such receipt remains,
+ * AND after a check released one, so its outcome stays readable instead of
+ * disappearing together with the last unresolved receipt.
+ */
+internal fun showAbsentReceiptsCard(
+    owner: ProtocolOperationReceiptOwner,
+    sources: List<ProtocolReceiptCheckSource>,
+    results: Map<ProtocolOperationReceiptOwner.Key, String>
+): Boolean = results.isNotEmpty() ||
+    sources.any { absentJobReceipts(owner, it.profileId, it.listedHashes).isNotEmpty() }
+
 internal fun listedHashes(transfers: List<UnifiedTransferObservation>): Set<String> =
     transfers.map { it.key.infoHash.lowercase(java.util.Locale.ROOT) }.toSet()
 
@@ -58,11 +70,13 @@ internal fun listedHashes(transfers: List<UnifiedTransferObservation>): Set<Stri
 internal fun ProtocolAbsentReceiptsCard(
     sources: List<ProtocolReceiptCheckSource>,
     owner: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
+    /** Hoisted by the caller so outcomes outlive the last unresolved receipt. */
+    results: MutableMap<ProtocolOperationReceiptOwner.Key, String> =
+        remember { mutableStateMapOf() },
     onChecked: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
     val busy = remember { mutableStateMapOf<ProtocolOperationReceiptOwner.Key, Boolean>() }
-    val results = remember { mutableStateMapOf<ProtocolOperationReceiptOwner.Key, String>() }
     val current by rememberUpdatedState(sources)
     val pending = sources.flatMap { source ->
         absentJobReceipts(owner, source.profileId, source.listedHashes).map { source to it }

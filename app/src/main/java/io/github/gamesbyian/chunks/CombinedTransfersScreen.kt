@@ -1088,6 +1088,8 @@ internal fun CombinedTransfersScreen(
     }
 
     val listState = listState ?: rememberLazyListState()
+    // Read-only receipt-check outcomes outlive the receipts they released (#2026).
+    val absentReceiptResults = remember { androidx.compose.runtime.mutableStateMapOf<ProtocolOperationReceiptOwner.Key, String>() }
     // A shared Android magnet must expose its exact destination choices even
     // when the Combined list was last visited far below its Add card. This
     // changes only the view position, never authorizes an Add or remote call.
@@ -2026,9 +2028,9 @@ internal fun CombinedTransfersScreen(
                 protocolOwnerCurrent(profile)
             }
         }
-        if (receiptSources.any { absentJobReceipts(ProtocolOperationReceipts.owner, it.profileId, it.listedHashes).isNotEmpty() })
+        if (showAbsentReceiptsCard(ProtocolOperationReceipts.owner, receiptSources, absentReceiptResults))
             item(key = "protocol-absent-receipts") {
-                ProtocolAbsentReceiptsCard(receiptSources) { profileId ->
+                ProtocolAbsentReceiptsCard(receiptSources, results = absentReceiptResults) { profileId ->
                     protocolProfiles.firstOrNull { it.id == profileId }?.let { protocolSources.reload(it.environment) }
                 }
             }
