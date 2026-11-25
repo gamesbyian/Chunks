@@ -148,4 +148,4 @@ A user-facing promise goes in PRODUCT or its linked feature contract; screen beh
 
 - [Cross-media real-record/API verification](research/MEDIA-API-RECORD-EVIDENCE-2026-11-02.md): dated public credits and provider-specific API schema/quality caveats, with explicit gaps before live JSON and installed integration acceptance.
 
-**2026-11-25 governance archives:** [AGENTS prior snapshot](../AGENTS-HISTORY-2026-11-25.md), [complete evidence ledger](QUALITY-LEDGER-HISTORY-2026-11-25.md), [coverage snapshot](SPEC-COVERAGE-HISTORY-2026-11-25.md), [handoff snapshot](NEXT-PUSH-HANDOFF-HISTORY-2026-11-25.md). Historical only; active entry points supersede rolling status narration.
+**2026-11-25 governance archives:** [AGENTS prior snapshot](../AGENTS-HISTORY-2026-11-25.md), [complete evidence ledger](QUALITY-LEDGER-HISTORY-2026-11-25.md), [coverage snapshot](SPEC-COVERAGE-HISTORY-2026-11-25.md), [handoff snapshot](NEXT-PUSH-HANDOFF-HISTORY-2026-11-25.md), [technical capability snapshot](TECHNICAL-COMPLETENESS-LEDGER-HISTORY-2026-11-25.md). Historical only; active entry points supersede rolling status narration.

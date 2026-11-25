@@ -119,7 +119,8 @@ def verify(root: Path = ROOT, *, strict_anchors: bool = False) -> tuple[list[str
 ENTRY_LIMITS = {"AGENTS.md": 7000, "docs/QUALITY-LEDGER.md": 12000,
                 "docs/NEXT-PUSH-HANDOFF-2026-11-08.md": 7000}
 STATUS_FILES = {"docs/WORK-QUEUE.md", "docs/SPEC-COVERAGE.md",
-                "docs/NEXT-PUSH-HANDOFF-2026-11-08.md", "docs/QUALITY-LEDGER.md"}
+                "docs/NEXT-PUSH-HANDOFF-2026-11-08.md", "docs/QUALITY-LEDGER.md",
+                "docs/TECHNICAL-COMPLETENESS-LEDGER.md"}
 LEDGER_ARCHIVE = "docs/QUALITY-LEDGER-HISTORY-2026-11-25.md"
 LEDGER_BLOB = "ea43be8dc3ac990f37f6f8ee6d97fe054b8e5b36"
 
