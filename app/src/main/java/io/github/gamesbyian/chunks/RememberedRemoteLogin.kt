@@ -1,15 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import android.util.Base64
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 
 /**
@@ -66,12 +59,18 @@ internal object RemoteCredentialLock {
  * never falls back to a hardcoded key or unencrypted password storage.
  */
 
-internal class RememberedRemoteLogin(context: Context) {
+internal class RememberedRemoteLogin(
+    context: Context,
+    private val keys: SealingKeys = AndroidKeystoreSealingKeys(KEY_ALIAS)
+) {
+    internal companion object {
+        /** Persisted since the first release; changing it strands the saved login. */
+        const val KEY_ALIAS = "io.github.gamesbyian.chunks.remembered-remote-login-v1"
+        const val PREFS = "remembered-remote-login-v1"
+    }
+
     private val appContext = context.applicationContext
-    private val prefs = appContext.getSharedPreferences(
-        "remembered-remote-login-v1", Context.MODE_PRIVATE
-    )
-    private val alias = "io.github.gamesbyian.chunks.remembered-remote-login-v1"
+    private val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /** Inject a transient key-access failure in device tests without changing the key. */
     @androidx.annotation.VisibleForTesting
@@ -113,7 +112,7 @@ internal class RememberedRemoteLogin(context: Context) {
         // toggles remembering OFF and back ON before its network call finishes.
         RemoteCredentialLock.invalidate()
         if (!enabled) {
-            runCatching { keyStore().deleteEntry(alias) }
+            runCatching { keys.erase() }
             // If a roster scrub fails, the OFF policy is already committed.
             // Re-enabling is blocked until its scrub succeeds.
             // Always attempt BOTH scrubs. A failure in one store cannot
@@ -138,11 +137,9 @@ internal class RememberedRemoteLogin(context: Context) {
             val packed = Base64.decode(text, Base64.NO_WRAP)
             require(packed.size in 13..16384)
             if (rejectDecryptForTest) throw IllegalStateException("Injected saved-login key outage")
-            val key = keyStore().getKey(alias, null) as? SecretKey
+            val key = keys.decryptionKey()
                 ?: throw IllegalStateException("Saved encryption key unavailable")
-            val decipher = Cipher.getInstance("AES/GCM/NoPadding")
-            decipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, packed, 0, 12))
-            val decoded = decipher.doFinal(packed, 12, packed.size - 12)
+            val decoded = SealedBlob.open(key, packed)
             val fields = JSONArray(String(decoded, Charsets.UTF_8))
             require(fields.length() == 3)
             val endpoint = fields.getString(0)
@@ -169,9 +166,7 @@ internal class RememberedRemoteLogin(context: Context) {
             credentials.username.length <= 512 && credentials.password.length <= 4096)
         val encoded = JSONArray().put(credentials.endpoint).put(credentials.username)
             .put(credentials.password).toString().toByteArray(Charsets.UTF_8)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, getOrMakeKey())
-        val packed = cipher.iv + cipher.doFinal(encoded)
+        val packed = SealedBlob.seal(keys.encryptionKey(), encoded)
         return prefs.edit().putString(
             "ciphertext", Base64.encodeToString(packed, Base64.NO_WRAP)
         ).commit()
@@ -192,29 +187,11 @@ internal class RememberedRemoteLogin(context: Context) {
         if (!prefs.edit().remove("ciphertext").commit()) return false
         RemoteCredentialLock.invalidate()
         return try {
-            keyStore().deleteEntry(alias)
+            keys.erase()
             true
         } catch (_: Exception) {
             // No ciphertext remains. A stranded key cannot recreate it.
             true
         }
-    }
-
-    private fun keyStore(): KeyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-
-    private fun getOrMakeKey(): SecretKey {
-        val existing = keyStore().getKey(alias, null) as? SecretKey
-        if (existing != null) return existing
-        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        generator.init(
-            KeyGenParameterSpec.Builder(
-                alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-            ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                .setRandomizedEncryptionRequired(true)
-                .build()
-        )
-        return generator.generateKey()
     }
 }

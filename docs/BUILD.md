@@ -4,6 +4,10 @@
 
 **Implementation gates:** Use [WORK-QUEUE](WORK-QUEUE.md) and [CI-POLICY](CI-POLICY.md) for current tests. The [physical handset runbook](PHYSICAL-HANDSET-ACCEPTANCE.md) is mandatory for claims about owner hardware; emulator proof alone does not suffice. Historical build records and artifact names are archived in [BUILD-HISTORY-2026-11-09.md](BUILD-HISTORY-2026-11-09.md).
 
+## Local JVM toolchain for agent containers
+
+Match `android-check.yml` before spending hosted minutes: **JDK 17** (JDK 21 fails Security-Manager-based tests), **Gradle 9.3.1**, SDK `platforms;android-37.0` + `build-tools;36.0.0` via `sdkmanager --channel=3`, `sdk.dir` in the ignored `local.properties`, and a **UTF-8 locale** (`LC_ALL=C.UTF-8`; otherwise Unicode-path tests fail with `InvalidPathException`). Run `python3 tools/prefetch_robolectric_sdk.py --sdk 35` once, then `gradle --no-daemon --init-script tools/ci_jvm_two_forks.init.gradle :app:testDebugUnitTest :app:assembleDebug`. Behind a rate-limiting proxy, add `-Dorg.gradle.internal.repository.max.retries=12 -Dorg.gradle.internal.repository.initial.backoff=3000` and retry on HTTP 429 until the dependency cache is warm. Containers without `/dev/kvm` cannot run the installed/emulator tiers; those remain hosted CI evidence. A local JVM pass is foundation evidence only.
+
 ## Canonical SVG launcher artwork
 
 The authoritative icon drawing is [`docs/design/approved/chunks-app-icon-master.svg`](design/approved/chunks-app-icon-master.svg), the transparent scalable folder-and-chunks illustration with **no baked-in black bezel**. The original owner-supplied [`chunks-app-icon-master.png`](design/approved/chunks-app-icon-master.png) is retained byte-for-byte **only as visual reference** (Git blob `03a8677e9c90f4b455e67683fcc4a2b79517b1ea`). The Android APK no longer ships that 1.2 MB PNG foreground.
