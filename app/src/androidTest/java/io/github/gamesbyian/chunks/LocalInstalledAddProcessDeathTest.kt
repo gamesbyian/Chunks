@@ -84,7 +84,19 @@ class LocalInstalledAddProcessDeathTest {
                         "reviewedDocument=${owner.reviewedTorrent.value != null} " +
                         "ticket=${owner.session.attemptedTicket != null}"
                 }
-                throw AssertionError("Local submit unavailable: matches=${matches.size} reason=$diagnostic $state", failure)
+                // #2108: which owner withheld the first confirmed inventory?
+                // A probe that cannot take the engine holder's lock within 2 s
+                // means a long native start/read holds it; never waits longer.
+                val holder = java.util.concurrent.Executors.newSingleThreadExecutor()
+                val engineProbe = try {
+                    holder.submit<String> {
+                        if (LocalEngineHolder.current() == null) "absent" else "running"
+                    }.get(2, java.util.concurrent.TimeUnit.SECONDS)
+                } catch (_: java.util.concurrent.TimeoutException) { "holderLockBusy" }
+                finally { holder.shutdownNow() }
+                val mutationLock = LocalMutationFence.revision.blocksMutations()
+                throw AssertionError("Local submit unavailable: matches=${matches.size} reason=$diagnostic $state " +
+                    "engine=$engineProbe mutationLock=$mutationLock", failure)
             }
             journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
             journey.awaitTransferReceipt("Start unverified")
