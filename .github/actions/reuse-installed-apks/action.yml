@@ -15,18 +15,7 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         APK_RUN_ID: ${{ inputs.run-id }}
-      run: |
-        [[ "$APK_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo "::error::Invalid APK producer run ID"; exit 1; }
-        test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-        gh api "repos/$GITHUB_REPOSITORY/actions/runs/$APK_RUN_ID" |
-          jq -e --arg repo "$GITHUB_REPOSITORY" --arg sha "$GITHUB_SHA" '
-            .head_repository.full_name == $repo and
-            .head_sha == $sha and .event == "workflow_dispatch" and
-            .path == ".github/workflows/installed-protocol-client.yml" and
-            .status == "completed" and .conclusion == "success"' >/dev/null || {
-              echo "::error::APK producer is not a successful exact-source manual Installed Universal Add run"
-              exit 1
-            }
+      run: bash tools/reuse_installed_apks.sh verify-run
     - uses: actions/download-artifact@v4
       with:
         name: chunks-protocol-apks
@@ -37,13 +26,4 @@ runs:
       shell: bash
       env:
         APK_RUN_ID: ${{ inputs.run-id }}
-      run: |
-        input="$RUNNER_TEMP/shared-installed-apks"
-        test "$(cat "$input/source-sha")" = "$(git rev-parse HEAD)"
-        test "$(cat "$input/source-tree")" = "$(git rev-parse HEAD^{tree})"
-        test "$(awk '{print $2}' "$input/SHA256SUMS")" = $'app.apk\ntest.apk'
-        (cd "$input" && sha256sum --strict --check SHA256SUMS)
-        mkdir -p app/build/outputs/apk/{debug,androidTest/debug}
-        cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
-        cp "$input/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-        echo "CHUNKS_SHARED_INSTALLED_APK_REUSE: producer_run=$APK_RUN_ID source=$GITHUB_SHA build_skipped=true"
+      run: bash tools/reuse_installed_apks.sh stage
