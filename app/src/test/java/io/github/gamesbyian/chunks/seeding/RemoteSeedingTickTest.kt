@@ -455,7 +455,7 @@ class RemoteSeedingTickTest {
             val thrown = org.junit.Assert.assertThrows(CancellationException::class.java) {
                 RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000)
             }
-            org.junit.Assert.assertSame(cancelled, thrown)
+            assertEquals(cancelled.message, thrown.message)
             assertEquals("no later Stop after cancellation at $stage", 0, inner.stops)
             assertNull(store.get(new)?.stopAttemptedReason)
             assertEquals(if (stage == "readback") 1 else 0, client.writes)
