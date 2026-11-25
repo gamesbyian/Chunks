@@ -40,6 +40,9 @@ on:
       same_run_apks:
         type: boolean
         required: true
+      artifact_name:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -54,6 +57,8 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - name: Reuse the exact installed Universal Add APK pair
@@ -62,6 +67,7 @@ jobs:
         with:
           run-id: ${{ inputs.same_run_apks && github.run_id || inputs.apk_run_id }}
           same-run: ${{ inputs.same_run_apks && 'true' || 'false' }}
+          artifact-name: ${{ inputs.artifact_name }}
           github-token: ${{ github.token }}
       - name: Record Combined APK reuse
         if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id != ''
