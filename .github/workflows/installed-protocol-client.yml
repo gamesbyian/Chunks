@@ -90,62 +90,7 @@ jobs:
         run: |
           test "$(cat "$RUNNER_TEMP/protocol-apks/source-sha")" = "$GITHUB_SHA"
           test "$(cat "$RUNNER_TEMP/protocol-apks/source-tree")" = "$(git rev-parse HEAD^{tree})"
-          test "$(awk '{print $2}' "$RUNNER_TEMP/protocol-apks/SHA256SUMS")" = 
-          mkdir -p app/build/outputs/apk/{debug,androidTest/debug}
-          cp "$RUNNER_TEMP/protocol-apks/app.apk" app/build/outputs/apk/debug/app-debug.apk
-          cp "$RUNNER_TEMP/protocol-apks/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-      - name: Start disposable Transmission, qBittorrent, Deluge and rTorrent
-        if: matrix.lane != 'local-document'
-        run: |
-          bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web rtorrent nginx
-          sudo systemctl stop transmission-daemon deluged deluge-web qbittorrent-nox 2>/dev/null || true
-          sudo pkill -x transmission-da 2>/dev/null || true
-          sudo pkill -f /usr/bin/deluged 2>/dev/null || true
-          if [ -f /etc/apparmor.d/transmission ]; then
-            sudo apparmor_parser -R /etc/apparmor.d/transmission 2>/dev/null || true
-          fi
-          SUDO=sudo tools/interop/start_local_clients.sh "$RUNNER_TEMP/interop"
-      - name: Prepare emulator
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
-          test -c /dev/kvm
-          sudo chmod 0666 /dev/kvm
-      - name: Installed journeys and post-write Add response faults
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          disk-size: 2048M
-          emulator-boot-timeout: 600
-          disable-animations: true
-          script: bash tools/installed_protocol_client.sh ${{ matrix.lane }}
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chunks-protocol-lane-${{ matrix.lane }}-attempt-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/interop/evidence/
-          retention-days: 14
-          if-no-files-found: warn
-
-  installed-protocol-client:
-    needs: protocol-lane
-    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: chunks-protocol-lane-*
-          path: ${{ runner.temp }}/protocol-lanes
-      - name: Require every exact-source lane including newest failed attempts
-        env:
-          LANES_RESULT: ${{ needs.protocol-lane.result }}
-        run: python3 tools/verify_installed_protocol_lanes.py "$RUNNER_TEMP/protocol-lanes" "$GITHUB_SHA" "$(git rev-parse HEAD^{tree})" "$LANES_RESULT"
-app.apk\ntest.apk'
+          test "$(awk '{print $2}' "$RUNNER_TEMP/protocol-apks/SHA256SUMS")" = $'app.apk\ntest.apk'
           (cd "$RUNNER_TEMP/protocol-apks" && sha256sum --strict --check SHA256SUMS)
           mkdir -p app/build/outputs/apk/{debug,androidTest/debug}
           cp "$RUNNER_TEMP/protocol-apks/app.apk" app/build/outputs/apk/debug/app-debug.apk
