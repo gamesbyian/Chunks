@@ -37,6 +37,11 @@ on:
       - 'tests/test_ci_event_routing_policy.py'
       - 'tests/test_installed_remote_delete_provenance.py'
       - 'tests/test_installed_apk_identity.py'
+      - 'tests/test_installed_apk_reuse.py'
+      - 'tools/reuse_installed_apks.sh'
+      - '.github/actions/reuse-installed-apks/action.yml'
+      - '.github/workflows/installed-combined-two-servers.yml'
+      - '.github/workflows/installed-remote-delete-data.yml'
       - 'tools/installed_remote_delete_data.sh'
       - 'tools/verify_installed_apk_bytes.sh'
       - '.github/workflows/portable-agent-skills.yml'
@@ -182,6 +187,11 @@ on:
       - 'tests/test_ci_event_routing_policy.py'
       - 'tests/test_installed_remote_delete_provenance.py'
       - 'tests/test_installed_apk_identity.py'
+      - 'tests/test_installed_apk_reuse.py'
+      - 'tools/reuse_installed_apks.sh'
+      - '.github/actions/reuse-installed-apks/action.yml'
+      - '.github/workflows/installed-combined-two-servers.yml'
+      - '.github/workflows/installed-remote-delete-data.yml'
       - 'tools/installed_remote_delete_data.sh'
       - 'tools/verify_installed_apk_bytes.sh'
       - '.github/workflows/portable-agent-skills.yml'
@@ -399,6 +409,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_installed_apk_identity.py'
           python3 -m unittest discover -s tests -p 'test_installed_remote_delete_provenance.py'
+          python3 -m unittest discover -s tests -p 'test_installed_apk_reuse.py'
       - name: Verify release APK identity negative controls (offline)
         run: python3 -m unittest discover -s tests -p 'test_verify_release_apk_identity.py'
       - name: Refuse stale, cancelled and mismatched PR CI receipts (offline)
