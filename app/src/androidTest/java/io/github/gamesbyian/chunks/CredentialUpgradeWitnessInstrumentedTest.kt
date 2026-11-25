@@ -35,6 +35,40 @@ internal object CredentialUpgradeWitness {
 
     fun phase(): String? = InstrumentationRegistry.getArguments().getString(ARGUMENT)
     fun context(): Context = InstrumentationRegistry.getInstrumentation().targetContext
+
+    /**
+     * Construct a store in WHICHEVER app APK is installed, with all optional
+     * arguments at their defaults: either a plain `(Context)` constructor or
+     * Kotlin's synthetic default-argument constructor
+     * `(Context, ..., int mask, DefaultConstructorMarker)`.
+     */
+    fun newStore(className: String, context: Context): Any {
+        val type = Class.forName(className)
+        type.declaredConstructors.firstOrNull {
+            it.parameterTypes.contentEquals(arrayOf(Context::class.java))
+        }?.let { it.isAccessible = true; return it.newInstance(context) }
+        val synthetic = type.declaredConstructors.single {
+            val p = it.parameterTypes
+            p.size >= 3 && p[0] == Context::class.java && p[p.size - 2] == Int::class.javaPrimitiveType &&
+                p.last().name == "kotlin.jvm.internal.DefaultConstructorMarker"
+        }
+        synthetic.isAccessible = true
+        val types = synthetic.parameterTypes
+        val optional = 1 until types.size - 2
+        val mask = optional.fold(0) { bits, index -> bits or (1 shl index) }
+        val args = arrayOfNulls<Any>(types.size)
+        args[0] = context
+        for (index in optional) args[index] = zeroFor(types[index])
+        args[types.size - 2] = mask
+        return synthetic.newInstance(*args)
+    }
+
+    private fun zeroFor(type: Class<*>): Any? = when (type) {
+        Boolean::class.javaPrimitiveType -> false
+        Int::class.javaPrimitiveType -> 0
+        Long::class.javaPrimitiveType -> 0L
+        else -> null
+    }
 }
 
 /** Runs against the PREVIOUS app APK. Uses only signatures stable across releases. */
@@ -43,18 +77,18 @@ class CredentialUpgradeSeedInstrumentedTest {
     @Test fun seedRecordsWithPreviousRelease() {
         assumeTrue("Only in credential-upgrade-witness.yml", CredentialUpgradeWitness.phase() == "seed")
         val context = CredentialUpgradeWitness.context()
-        // Reflection on the one-argument constructors: a Kotlin default parameter
-        // in a later release would otherwise bind to a constructor absent here.
-        val loginClass = Class.forName("io.github.gamesbyian.chunks.RememberedRemoteLogin")
-        val login = loginClass.getConstructor(Context::class.java).newInstance(context)
+        // Resolved reflectively: the candidate's compiled constructor signature
+        // may not exist in the base APK (Kotlin default parameters).
+        val login = CredentialUpgradeWitness.newStore("io.github.gamesbyian.chunks.RememberedRemoteLogin", context)
+        val loginClass = login.javaClass
         assertEquals(true, loginClass.getMethod("setRememberingEnabled", Boolean::class.javaPrimitiveType)
             .invoke(login, true))
         assertEquals(true, loginClass.getMethod("clear").invoke(login))
         assertEquals(true, loginClass.getMethod("save", RemoteCredentials::class.java)
             .invoke(login, CredentialUpgradeWitness.login))
 
-        val rosterClass = Class.forName("io.github.gamesbyian.chunks.RememberedRemoteProfileRoster")
-        val roster = rosterClass.getConstructor(Context::class.java).newInstance(context)
+        val roster = CredentialUpgradeWitness.newStore("io.github.gamesbyian.chunks.RememberedRemoteProfileRoster", context)
+        val rosterClass = roster.javaClass
         assertEquals(true, rosterClass.getMethod("clearAll").invoke(roster))
         assertEquals(true, rosterClass.getMethod("saveVerified", RemoteCredentials::class.java,
             String::class.java, Long::class.javaPrimitiveType)
