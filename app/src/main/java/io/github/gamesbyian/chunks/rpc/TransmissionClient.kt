@@ -43,11 +43,12 @@ internal class TransmissionClient(
     override suspend fun transferSource(hash: String): ClientAddSource? {
         val exact = ClientHashes.requireHash(hash)
         val rows = call("torrent-get", JSONObject().put("ids", JSONArray().put(exact))
-            .put("fields", JSONArray(listOf("hashString", "magnetLink"))), mutating = false)
+            .put("fields", JSONArray(listOf("hashString", "magnetLink", "isPrivate"))), mutating = false)
             .optJSONArray("torrents") ?: throw IOException("Transmission source unavailable")
         val row = exactProtocolRow((0 until rows.length()).map {
             rows.optJSONObject(it) ?: throw IOException("Invalid Transmission source row")
         }, exact) { it.optString("hashString") } ?: return null
+        if ((row.opt("isPrivate") as? Boolean) != false) return null
         val magnet = (row.opt("magnetLink") as? String)?.takeIf { it.startsWith("magnet:?") } ?: return null
         // Transmission's own magnet carries this job's trackers and name.
         return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
@@ -161,11 +162,13 @@ internal class TransmissionClient(
         }
         val r = row(listOf("uploadedEver", "downloadedEver", "secondsSeeding", "status", "leftUntilDone", "isPrivate"))
             ?: return null
-        val private = if (r.has("isPrivate")) r.optBoolean("isPrivate") else null
+        val private = r.opt("isPrivate") as? Boolean
         // Tracker URLs only for a reported-public transfer, re-checked after the read.
         val trackers = if (private == false) row(listOf("trackers", "isPrivate"))?.let { t ->
-            if (t.optBoolean("isPrivate", true)) null
-            else t.optJSONArray("trackers")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("announce")?.takeIf(String::isNotBlank) } }
+            if ((t.opt("isPrivate") as? Boolean) != false) null
+            else t.optJSONArray("trackers")?.let { a ->
+                (0 until a.length()).mapNotNull { (a.optJSONObject(it)?.opt("announce") as? String)?.takeIf(String::isNotBlank) }
+            }
         } else null
         fun count(key: String) = if (r.has(key)) r.optLong(key, -1).takeIf { it >= 0 } else null
         return ClientSeedingFacts(exact, count("uploadedEver"), count("downloadedEver"), count("secondsSeeding"),
