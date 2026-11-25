@@ -132,6 +132,10 @@ def inspect(path, root):
     concurrent = ("workflow" if re.search(r"(?m)^concurrency:", clean) else
                   "job" if re.search(r"(?m)^    concurrency:", clean) else "none")
     uses = sorted(set(re.findall(r"(?m)^\s*(?:-\s+)?uses:\s*([^\s#]+)", clean)))
+    # Only job-level uses invokes a reusable workflow; steps and shell text do not.
+    local_calls = sorted(set(re.findall(
+        r"(?m)^    uses:[ \t]+[\x27\x22]?\./(\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml)[\x27\x22]?(?:[ \t]*(?:#.*)?)?$",
+        block(clean, "jobs"))))
     timeouts = [int(x) for x in re.findall(r"timeout-minutes:\s*(\d+)", clean)]
     flags = {
         "gradle": bool(re.search(r"setup-gradle@|gradle --no-daemon|\./gradlew", clean)),
@@ -161,7 +165,7 @@ def inspect(path, root):
         "self_trigger_on_main_push": duplicate_self_candidate,
         "self_trigger_on_pr": self_on_pr,
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-        "events": events, "jobs": jobs,
+        "events": events, "jobs": jobs, "local_workflow_calls": local_calls,
         "pr_paths_filter": any(re.search(r"(?m)^    paths(?:-ignore)?:", scope)
                                for scope in (pr_scope, pr_target_scope)),
         "concurrency": concurrent,
@@ -186,8 +190,27 @@ def collect(root):
                if flag.startswith("missing_")]
     if missing:
         raise ValueError("Invalid workflow definitions: " + repr(missing[:10]))
+    # Report potential reachability, not a claim that job conditions selected a call.
+    index = {w["path"]: w for w in workflows}
+    direct_pr = {w["path"] for w in workflows
+                 if set(w["events"]) & {"pull_request", "pull_request_target"}}
+    call_edges = [(w["path"], target) for w in workflows for target in w["local_workflow_calls"]]
+    invalid_calls = [(caller, target) for caller, target in call_edges
+                     if target not in index or "workflow_call" not in index[target]["events"]]
+    reachable = set(direct_pr)
+    while True:
+        expanded = reachable | {target for caller, target in call_edges
+                                if caller in reachable and target in index
+                                and "workflow_call" in index[target]["events"]}
+        if expanded == reachable:
+            break
+        reachable = expanded
     return {
         "schema": 1,
+        "local_workflow_call_edges": call_edges,
+        "invalid_local_workflow_calls": invalid_calls,
+        "direct_pr_workflows": sorted(direct_pr),
+        "indirect_pr_workflows": sorted(reachable - direct_pr),
         "workflow_count": len(workflows),
         "event_counts": {e: sum(e in w["events"] for w in workflows)
                          for e in EVENTS if any(e in w["events"] for w in workflows)},
@@ -218,6 +241,9 @@ def markdown(report):
         f"- {report['workflow_count']} workflow files enumerated.",
         "- Declared events: " + ", ".join(
             f"{k}: {v}" for k, v in sorted(report["event_counts"].items())),
+        f"- Direct PR definitions: {len(report['direct_pr_workflows'])}; additional potentially reachable reusable definitions: "
+        f"{len(report['indirect_pr_workflows'])} ({names(report['indirect_pr_workflows'])}). Job conditions still decide execution.",
+        f"- Invalid local reusable workflow references: {len(report['invalid_local_workflow_calls'])}.",
         f"- PR workflows without concurrency: {len(report['missing_concurrency'])} "
         f"({names(report['missing_concurrency'])})",
         f"- Main-push self-trigger candidates: {len(report['main_self_trigger_candidates'])} "
