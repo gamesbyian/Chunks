@@ -445,6 +445,7 @@ class ProtocolClientOperationsPanelTest {
         var refreshes = 0
         var current by mutableStateOf(false)
         var refreshing by mutableStateOf(false)
+        var failed by mutableStateOf(false)
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
@@ -452,7 +453,8 @@ class ProtocolClientOperationsPanelTest {
                     observedStarted = false, current = current,
                     createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
                     sourceGeneration = "g1", receiptOwner = ProtocolOperationReceiptOwner(),
-                    onRefreshList = { refreshes++ }, listRefreshing = refreshing
+                    onRefreshList = { refreshes++ }, listRefreshing = refreshing,
+                    listRefreshFailed = failed
                 )
             }
         }
@@ -460,10 +462,18 @@ class ProtocolClientOperationsPanelTest {
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertIsEnabled().performClick()
         assertEquals(1, refreshes)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS).assertDoesNotExist()
         rule.runOnIdle { refreshing = true }
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertIsNotEnabled()
         rule.onNodeWithText("Refreshing transfer list…").assertExists()
-        rule.runOnIdle { refreshing = false; current = true }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS)
+            .assertTextContains("Reading the transfer list", substring = true)
+        // A failed read says so in place, and the refresh can be tried again.
+        rule.runOnIdle { refreshing = false; failed = true }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS)
+            .assertTextContains("Could not read the transfer list", substring = true)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertIsEnabled()
+        rule.runOnIdle { failed = false; current = true }
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsEnabled()
         assertEquals("a list refresh is never a command", 0, fake.writes)

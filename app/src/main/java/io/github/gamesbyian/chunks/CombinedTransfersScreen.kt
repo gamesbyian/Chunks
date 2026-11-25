@@ -1090,6 +1090,12 @@ internal fun CombinedTransfersScreen(
     val listState = listState ?: rememberLazyListState()
     // Read-only receipt-check outcomes outlive the receipts they released (#2026).
     val absentReceiptResults = remember { androidx.compose.runtime.mutableStateMapOf<ProtocolOperationReceiptOwner.Key, String>() }
+    // A removed profile's outcomes are dropped rather than kept hidden forever.
+    val configuredReceiptProfiles = protocolProfiles.map { it.id }.toSet()
+    LaunchedEffect(configuredReceiptProfiles) {
+        absentReceiptResults.keys.filter { it.profileId !in configuredReceiptProfiles }
+            .forEach { absentReceiptResults.remove(it) }
+    }
     // A shared Android magnet must expose its exact destination choices even
     // when the Combined list was last visited far below its Add card. This
     // changes only the view position, never authorizes an Add or remote call.
@@ -1281,6 +1287,9 @@ internal fun CombinedTransfersScreen(
         }
         val protocolOperations: (@Composable () -> Unit)? = focusedProtocol?.let { profile ->
             {
+                // Read progress regardless of identity witness, so a read in
+                // flight is never shown as an idle refresh control.
+                val rawProtocolListing = protocolSources.listings[profile.environment]
                 val protocolTargets = protocolMoveTargets.filter { it.id != profile.id } +
                     listOfNotNull(rtorrentMoveTarget, localMoveTarget)
                 ProtocolClientOperationsPanel(
@@ -1293,10 +1302,17 @@ internal fun CombinedTransfersScreen(
                         focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
-                    // Only where a fresh list can make these controls current again.
-                    onRefreshList = if (focusedKey.infoHash.matches(V1_TRANSFER_HASH))
+                    // Only where a fresh list can make these controls current again:
+                    // an out-of-date, offline, failed or still-loading read. Never for
+                    // a job that a complete list no longer shows, a locked client or
+                    // an inventory the client cannot report completely.
+                    onRefreshList = if (focusedKey.infoHash.matches(V1_TRANSFER_HASH) &&
+                        (details.readState == TransferDetailReadState.STALE ||
+                            details.readState == TransferDetailReadState.OFFLINE ||
+                            rawProtocolListing?.failed == true || rawProtocolListing?.loading == true))
                         ({ protocolSources.reload(profile.environment) }) else null,
-                    listRefreshing = focusedProtocolListing?.loading == true,
+                    listRefreshing = rawProtocolListing?.loading == true,
+                    listRefreshFailed = rawProtocolListing?.failed == true,
                     moveTargets = protocolTargets,
                     moveConnections = moveConnections,
                     suggestedTarget = moveSuggestionFor(protocolTargets),

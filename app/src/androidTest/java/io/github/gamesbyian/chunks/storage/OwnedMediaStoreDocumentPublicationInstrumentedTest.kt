@@ -25,11 +25,6 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val resolver get() = context.contentResolver
 
-    /**
-     * Exact-row teardown that still fails the test when the row cannot be
-     * deleted, but never REPLACES an earlier assertion failure (#2104): the
-     * cleanup failure is attached to the primary failure as suppressed.
-     */
     /** #2104: what the provider still says about a row that cleanup could not delete. */
     private fun rowState(uri: android.net.Uri): String = runCatching {
         if (Build.VERSION.SDK_INT < 30) {
@@ -50,12 +45,19 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
         } ?: "(query returned no cursor)"
     }.getOrElse { "(state unreadable: ${it.javaClass.simpleName})" }
 
+    /**
+     * Exact-row teardown that still fails the test when the row cannot be
+     * deleted, but never REPLACES an earlier assertion failure (#2104): the
+     * cleanup failure is attached to the primary failure as suppressed.
+     */
     private fun deleteExactRow(primary: Throwable?, uri: android.net.Uri) {
         val failure = try {
             val deleted = resolver.delete(uri, null, null)
             if (deleted == 1) null
             else AssertionError("Exact test row cleanup deleted $deleted rows, expected 1: $uri " + rowState(uri))
-        } catch (cleanup: Throwable) { cleanup }
+        } catch (cleanup: Throwable) {
+            AssertionError("Exact test row cleanup threw for $uri " + rowState(uri), cleanup)
+        }
         if (failure != null) {
             if (primary != null) primary.addSuppressed(failure) else throw failure
         }

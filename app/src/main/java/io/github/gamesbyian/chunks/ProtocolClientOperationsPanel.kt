@@ -134,7 +134,9 @@ internal fun ProtocolClientOperationsPanel(
      * the controls disabled until the next automatic attempt). Never a command.
      */
     onRefreshList: (() -> Unit)? = null,
-    listRefreshing: Boolean = false
+    listRefreshing: Boolean = false,
+    /** The last list read failed; said in place so a refresh never looks like a no-op. */
+    listRefreshFailed: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
@@ -343,13 +345,28 @@ internal fun ProtocolClientOperationsPanel(
         sessionError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow) }
         if (!current) Text("The transfer list is out of date or locked. Refresh before changing this transfer.",
             style = MaterialTheme.typography.bodySmall)
-        if (!current && onRefreshList != null) OutlinedButton(
-            onClick = onRefreshList,
-            enabled = !listRefreshing,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .testTag(ChunksSemantics.PROTOCOL_REFRESH_LIST)
-                .semantics { contentDescription = "Refresh the transfer list on $clientLabel; read only" }
-        ) { Text(if (listRefreshing) "Refreshing transfer list…" else "Refresh transfer list") }
+        if (!current && onRefreshList != null) {
+            val refreshStatus = when {
+                listRefreshing -> "Reading the transfer list on $clientLabel…"
+                listRefreshFailed -> "Could not read the transfer list on $clientLabel. Controls stay paused."
+                else -> null
+            }
+            refreshStatus?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS)
+                        .semantics { liveRegion = LiveRegionMode.Polite })
+            }
+            OutlinedButton(
+                onClick = onRefreshList,
+                enabled = !listRefreshing,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.PROTOCOL_REFRESH_LIST)
+                    .semantics {
+                        contentDescription = if (listRefreshing) "Refreshing the transfer list on $clientLabel"
+                            else "Refresh the transfer list on $clientLabel; read only"
+                    }
+            ) { Text(if (listRefreshing) "Refreshing transfer list…" else "Refresh transfer list") }
+        }
         if (!moveOnly) ResponsiveActionGroup(maxColumns = 2) { cell ->
             if (ClientCapability.START_STOP in caps) {
                 val start = observedStarted != true
