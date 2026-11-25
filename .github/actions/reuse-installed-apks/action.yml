@@ -11,6 +11,10 @@ inputs:
     description: Download a dependency artifact from this workflow run
     required: false
     default: 'false'
+  artifact-name:
+    description: Exact attempt-scoped artifact name from the same-run build dependency
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -33,11 +37,14 @@ runs:
       shell: bash
       env:
         APK_RUN_ID: ${{ inputs.run-id }}
-      run: test "$APK_RUN_ID" = "$GITHUB_RUN_ID"
+        APK_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        test "$APK_RUN_ID" = "$GITHUB_RUN_ID"
+        [[ "$APK_ARTIFACT_NAME" =~ ^chunks-protocol-apks-attempt-[1-9][0-9]*$ ]]
     - uses: actions/download-artifact@v4
       if: inputs.same-run == 'true'
       with:
-        name: chunks-protocol-apks
+        name: ${{ inputs.artifact-name }}
         path: ${{ runner.temp }}/shared-installed-apks
     - name: Verify and stage exact APK pair
       shell: bash
