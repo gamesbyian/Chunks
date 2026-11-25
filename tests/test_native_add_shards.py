@@ -342,7 +342,7 @@ class ShardedNativeAddTests(unittest.TestCase):
             "chunks-shared-debug-apks-attempt-",
             "needs.build-once.outputs.artifact-name",
             "source-tree",
-            "sha256sum -c SHA256SUMS",
+            "sha256sum --strict --check SHA256SUMS",
             "script: bash tools/native_add_prebuilt.sh",
             "check_native_atlas_contract.py",
             "test_instrumentation_stream.py",
