@@ -1,10 +1,12 @@
 # Clean Android emulator snapshot pilot (manual, non-production)
 
-**Authority:** [CI engineering standard](CI-ENGINEERING-STANDARD.md), [CI policy](CI-POLICY.md), [Android evidence-first](../.agents/skills/android-evidence-first/SKILL.md), [work queue](WORK-QUEUE.md). This is a bounded experimental operating recipe, not an active work queue or app acceptance gate.
+**Authority:** [CI engineering standard](CI-ENGINEERING-STANDARD.md), [CI policy](CI-POLICY.md), [Android evidence-first](../.agents/skills/android-evidence-first/SKILL.md), [work queue](WORK-QUEUE.md). This is a historical experimental record, not an active work queue or app acceptance gate. The executable workflow now provides only the cold baseline.
 
 **Owner update (2026-11-25):** Emulator snapshots are disposable after their intended tests finish. Temporary [PR #2090](https://github.com/gamesbyian/Chunks/pull/2090) measured local clean cold/generate/warm invocations on one isolated hosted runner without writing an Actions cache or uploading an AVD. It deleted its own temporary AVD in an always-run cleanup. Run 45562483554: cold 80.995/46.846s, generation 46.654s, 3271 MiB, attempted warm 28.601/35.733s. Both explicitly failed hardware snapshot loading and fell back. No successful warm samples; do not adopt on this configuration. The previous cross-run cache protocol remains historical/conditional until complete local and transfer measurements justify it. Existing repository-cache pressure must still be respected during any transient write; deleting a snapshot afterward does not undo evictions. No deletion of unrelated Gradle caches or privileged PR cleanup is authorized.
 
-## Observed architecture and specific hypothesis
+**Disposition:** retire the persistent-cache branch of the manual workflow. No new AVD repository cache or artifact is created, and the cold baseline deletes only its disposable local AVD even on failure. The original cross-run recipe below is retained as historical evidence, not instructions to execute. A future experiment must use ephemeral clean local snapshots and demonstrate a real successful restore and net savings before reintroducing any cache transfer. Existing Gradle caches are not cleanup targets.
+
+## Historical observed architecture and specific hypothesis
 
 Chunks already runs actual KVM-backed API29 storage and API35 installed instrumentation. Native Add builds one source-bound app/test APK pair and distributes it to two independent emulators. Those tests and evidence receipts remain mandatory.
 
