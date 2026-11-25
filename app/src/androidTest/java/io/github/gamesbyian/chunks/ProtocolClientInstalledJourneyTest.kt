@@ -10,6 +10,8 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -809,6 +811,159 @@ class ProtocolClientInstalledJourneyTest {
         assertEquals("The verified login was saved once", 1,
             profiles.count { it.credentials.endpoint == url && it.backend == kind })
         stage("profile-saved")
+    }
+
+    // ---- #2026 retained typed-Stop receipt across process death ----------
+    // Phase 1 and phase 2 run as separate instrumentations from
+    // tools/installed_protocol_client.sh; the first kills its own app process
+    // while a real, daemon-accepted Stop reply is withheld by the relay.
+    private val receiptJournal get() = InstrumentationRegistry.getInstrumentation().targetContext
+        .getSharedPreferences("chunks_protocol_receipts_v1", android.content.Context.MODE_PRIVATE)
+    private fun retainedStopEntry(hash: String): JSONObject? {
+        val entries = org.json.JSONArray(receiptJournal.getString("entries", "[]") ?: "[]")
+        return (0 until entries.length()).map { entries.getJSONObject(it) }
+            .singleOrNull { it.optString("h").equals(hash, ignoreCase = true) && it.optString("k") == "STOP" }
+    }
+    // Instrumentation runs as the app UID; app data survives the kill (cleared only before phase 1).
+    private val stopWitnessFile get() =
+        File(InstrumentationRegistry.getInstrumentation().targetContext.noBackupFilesDir, "chunks-stop-witness.json")
+
+    @Test fun typedStopAckHeldThenKillTheAppProcess() {
+        assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_stop_death") == "authorized")
+        val kind = RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
+        assumeTrue("The relay faults only Transmission's typed Stop", kind == RemoteBackendKind.TRANSMISSION)
+        val appUrl = decoded("chunks_protocol_app_url_b64")
+        val user = decoded("chunks_protocol_user_b64")
+        val pass = decoded("chunks_protocol_pass_b64")
+        val credentials = RemoteCredentials(decoded("chunks_protocol_url_b64"), user, pass)
+        suspend fun independentRead(hash: String) = RemoteTorrentClients.create(kind, credentials, null).torrent(hash)
+        val relay = InstalledAddResponseFault(appUrl)
+
+        val preload = fixture("stop-death")
+        val name = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(preload.torrent).name
+        val hash = preload.infoHashV1
+        val added = runBlocking {
+            ClientOperations(RemoteTorrentClients.create(kind, credentials, null), 40, 500)
+                .add(ClientAddRequest(ClientAddSource.TorrentFile(preload.torrent), null, startNow = true))
+        }
+        assertTrue("Fixture preload: $added", added is ClientOperationOutcome.Verified)
+        assertTrue("Fixture is started before the Stop",
+            runBlocking { independentRead(hash) }?.runState != ClientRunState.STOPPED)
+        stopWitnessFile.writeText(JSONObject().put("hash", hash).put("name", name).toString())
+        stage("stop-death-fixture-started")
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            connect(kind, appUrl, user, pass)
+            val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+            waitFor("durable exact-client profile") {
+                profiles.list().any { it.backend == kind && it.credentials.endpoint == appUrl }
+            }
+            waitFor("fixture row in canonical Transfers", 90_000) {
+                runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
+            }
+            val details = hasContentDescription("Details for $name", substring = true)
+            waitFor("Details control") { runCatching { scrollToNode(details); true }.getOrDefault(false) }
+            rule.onAllNodes(details).onFirst().performClick()
+            waitFor("Stop offered for the started fixture", 60_000) {
+                rule.onAllNodes(hasTestTag(ChunksSemantics.PROTOCOL_START_STOP) and hasText("Stop"))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            relay.arm("hold-stop")
+            clickOnce(ChunksSemantics.PROTOCOL_START_STOP, "Stop", 60_000)
+            stage("stop-dispatched-once")
+            // Kill well inside the app's 15 s read timeout: the journal must
+            // already hold the possible write before any reply could arrive.
+            rule.waitUntil(10_000) { relay.hasWithheldReply() }
+            // Transmission acknowledges torrent-stop before the status flips;
+            // read independently (direct port) until it settles, bounded.
+            waitFor("daemon reports the executed Stop", 10_000) {
+                runBlocking { independentRead(hash) }?.runState == ClientRunState.STOPPED
+            }
+            stage("stop-executed-by-daemon-reply-withheld")
+            val entry = requireNotNull(retainedStopEntry(hash)) { "No durable Stop receipt before the kill" }
+            assertTrue("Durable possible write, credential-free: $entry",
+                entry.optString("s") in setOf("POSSIBLE_WRITE", "UNKNOWN") && !entry.toString().contains(pass))
+            stage("stop-durable-possible-write-before-kill")
+            android.util.Log.i("ChunksStopDeath", "process-death-stop-awaits-ack")
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+
+    @Test fun freshProcessKeepsStopUnknownUntilReadOnlyCheck() {
+        assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_stop_death") == "authorized")
+        val kind = RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
+        assumeTrue("The relay faults only Transmission's typed Stop", kind == RemoteBackendKind.TRANSMISSION)
+        val appUrl = decoded("chunks_protocol_app_url_b64")
+        val credentials = RemoteCredentials(decoded("chunks_protocol_url_b64"),
+            decoded("chunks_protocol_user_b64"), decoded("chunks_protocol_pass_b64"))
+        val direct = ClientOperations(RemoteTorrentClients.create(kind, credentials, null), 40, 500)
+        val relay = InstalledAddResponseFault(appUrl)
+        val saved = JSONObject(stopWitnessFile.readText())
+        val hash = saved.getString("hash")
+        val name = saved.getString("name")
+        val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+        val profileId = profiles.list().single { it.backend == kind && it.credentials.endpoint == appUrl }.id
+
+        relay.requireOneStopAndNoReplay()
+        assertTrue("The retained receipt survived process death",
+            retainedStopEntry(hash)?.optString("s") in setOf("POSSIBLE_WRITE", "UNKNOWN"))
+        stage("stop-receipt-survived-process-death")
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            rule.waitForIdle()
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+            // A remembered typed profile is offered on its own saved card after
+            // relaunch; viewing it reconnects that exact profile.
+            val viewExactProfile = hasTestTag("protocol-profile-view-$profileId") and isEnabled()
+            waitFor("exact remembered typed profile is offered", 90_000) {
+                runCatching { scrollToNode(hasTestTag("protocol-profile-view-$profileId")); true }
+                    .getOrDefault(false) && rule.onAllNodes(viewExactProfile).fetchSemanticsNodes().isNotEmpty()
+            }
+            LazyComposeActions.activateOnce(rule, viewExactProfile)
+            stage("stop-death-reconnected-exact-profile")
+            waitFor("fixture row after relaunch", 90_000) {
+                runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
+            }
+            val details = hasContentDescription("Details for $name", substring = true)
+            waitFor("Details control") { runCatching { scrollToNode(details); true }.getOrDefault(false) }
+            rule.onAllNodes(details).onFirst().performClick()
+
+            waitFor("retained UNKNOWN Stop is shown", 60_000) {
+                visible("Its result is unknown") && visible("Commands are paused until a read-only check.")
+            }
+            assertEquals("UNKNOWN", retainedStopEntry(hash)?.optString("s"))
+            scrollToNode(hasTestTag(ChunksSemantics.PROTOCOL_START_STOP))
+            rule.onNode(hasTestTag(ChunksSemantics.PROTOCOL_START_STOP), useUnmergedTree = true).assertIsNotEnabled()
+            relay.requireOneStopAndNoReplay()
+            stage("stop-unknown-retained-writes-blocked-no-replay")
+
+            val check = hasText("Check this transfer without changing it")
+            waitFor("read-only Check offered") {
+                runCatching { scrollToNode(check); rule.onNode(check).assertIsEnabled(); true }.getOrDefault(false)
+            }
+            LazyComposeActions.activateOnce(rule, check)
+            waitFor("read-only Check reconciles the exact receipt", 60_000) {
+                visible("read-only check found the transfer still registered")
+            }
+            assertNull("Only this exact receipt is released", retainedStopEntry(hash))
+            relay.requireOneStopAndNoReplay()
+            assertEquals("Still stopped after the read-only Check; nothing replayed",
+                ClientRunState.STOPPED, runBlocking { direct.client.torrent(hash) }?.runState)
+            waitFor("write controls return after reconciliation") {
+                runCatching {
+                    scrollToNode(hasTestTag(ChunksSemantics.PROTOCOL_START_STOP))
+                    rule.onNode(hasTestTag(ChunksSemantics.PROTOCOL_START_STOP), useUnmergedTree = true)
+                        .assertIsEnabled(); true
+                }.getOrDefault(false)
+            }
+            stage("stop-read-only-check-released-exact-receipt")
+        }
+        // Disposable fixture cleanup through the DIRECT daemon port, never the relay.
+        // Job-only removal (keep files on the disposable daemon), then confirm
+        // absence with an independent read; payload deletion is not claimed here.
+        val removed = runBlocking { direct.remove(hash, deleteData = false) }
+        assertNull("Disposable fixture job removed ($removed)", runBlocking { direct.client.torrent(hash) })
+        stopWitnessFile.delete()
     }
 
     @Test fun installedAddAfterTheDaemonResponseIsWithheld() {

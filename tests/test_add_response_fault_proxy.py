@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "interop"))
-from add_response_fault_proxy import FaultState, rtorrent_view_mutation
+from add_response_fault_proxy import FaultState, STOP, accepted_stop, rtorrent_view_mutation
 
 
 def rpc(method, nested=()):
@@ -54,6 +54,27 @@ class RTorrentViewMutationRelayTests(unittest.TestCase):
         state.arm("drop")
         self.assertEqual(0, state.report()["view_mutations"])
         self.assertEqual(0, state.report()["adds"])
+
+    def test_hold_stop_faults_only_the_typed_stop_and_counts_any_replay(self):
+        state = FaultState()
+        state.arm("hold-stop")
+        self.assertEqual((None, None), state.begin(True, False, False, False))
+        mode, _ = state.begin(False, False, False, True)
+        self.assertEqual("hold-stop", mode)
+        self.assertEqual((None, None), state.begin(False, True, False, False))
+        counts = state.report()
+        self.assertEqual((1, 1, 1), (counts["adds"], counts["stops"], counts["starts"]))
+        # Ordinary Add-fault modes never fault a Stop.
+        state.arm("hold")
+        self.assertEqual((None, None), state.begin(False, False, False, True))
+        self.assertEqual({"torrent-stop"}, STOP["transmission"])
+        self.assertFalse(STOP["qbittorrent"] | STOP["deluge"] | STOP["rtorrent"])
+
+    def test_only_an_executed_transmission_stop_is_withheld(self):
+        self.assertTrue(accepted_stop("transmission", 200, b'{"result":"success","arguments":{}}'))
+        self.assertFalse(accepted_stop("transmission", 200, b'{"result":"invalid argument"}'))
+        self.assertFalse(accepted_stop("transmission", 409, b""))
+        self.assertFalse(accepted_stop("deluge", 200, b'{"result":"success"}'))
 
 
 if __name__ == "__main__":

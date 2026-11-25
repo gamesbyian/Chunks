@@ -195,6 +195,50 @@ run_rtorrent_death() {
   echo "CHUNKS_INSTALLED_PROTOCOL: RTORRENT survived installed process-death proof with one stopped job and original intact" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
+# #2026: a real typed Transmission Stop whose daemon-accepted reply is withheld
+# by the relay; the app dies before any reply, and the fresh process must keep
+# the exact receipt UNKNOWN with writes blocked until an explicit read-only Check.
+run_transmission_stop_death() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION typed-Stop process-death journey started"
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
+  adb logcat -c || return 1
+  local class=io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest
+  local before="$out/stop-death-phase1.txt" after="$out/stop-death-phase2.txt"
+  local stop_args=(-e chunks_protocol_stop_death authorized
+    -e chunks_protocol_kind_b64 "$(b64 TRANSMISSION)"
+    -e chunks_protocol_url_b64 "$(b64 http://127.0.0.1:19091/transmission/rpc)"
+    -e chunks_protocol_app_url_b64 "$(b64 http://127.0.0.1:19191/transmission/rpc)"
+    -e chunks_protocol_user_b64 "$(b64 chunks)"
+    -e chunks_protocol_pass_b64 "$(b64 chunkspass)")
+  local phase1_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r \
+    -e class "$class#typedStopAckHeldThenKillTheAppProcess" "${stop_args[@]}" "$runner" > "$before" 2>&1 || phase1_status=$?
+  abort_on_instrument_timeout "$phase1_status" "TRANSMISSION-stop-death-phase1"
+  adb logcat -d -s ChunksStopDeath:I > "$out/stop-death-boundary.txt" || return 1
+  if ! grep -Fq 'process-death-stop-awaits-ack' "$out/stop-death-boundary.txt" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=stop-durable-possible-write-before-kill' "$before" ||
+    grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
+    tail -80 "$before"
+    echo "::error::The installed app did not die with a durable possible Stop write"
+    return 1
+  fi
+  local phase2_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r \
+    -e class "$class#freshProcessKeepsStopUnknownUntilReadOnlyCheck" "${stop_args[@]}" "$runner" > "$after" 2>&1 || phase2_status=$?
+  abort_on_instrument_timeout "$phase2_status" "TRANSMISSION-stop-death-phase2"
+  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=stop-unknown-retained-writes-blocked-no-replay' "$after" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=stop-read-only-check-released-exact-receipt' "$after"; then
+    tail -80 "$after"
+    echo "::error::Fresh-process typed Stop receipt verification failed"
+    return 1
+  fi
+  echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION typed-Stop process-death journey finished after $((SECONDS - phase_started))s"
+  echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION typed Stop stayed UNKNOWN across process death, writes blocked, no replay, released only by read-only Check" |
+    tee -a "$GITHUB_STEP_SUMMARY"
+}
 run_local_add_death() {
   local phase_started=$SECONDS
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey started"
@@ -234,7 +278,8 @@ case "$lane" in
   transmission-rtorrent)
     run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
     run_rtorrent_faults || failed=1
-    run_rtorrent_death || failed=1 ;;
+    run_rtorrent_death || failed=1
+    run_transmission_stop_death || failed=1 ;;
   qbittorrent-deluge)
     run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
     # Deluge ignores username; nonempty placeholder preserves adb argument positions.

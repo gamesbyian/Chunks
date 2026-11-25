@@ -75,7 +75,8 @@ class LaneTests(unittest.TestCase):
             self.assertIn(lane + ")", runner)
         for kind in ("TRANSMISSION", "QBITTORRENT", "DELUGE"):
             self.assertEqual(1, runner.count("run_pair " + kind + " "))
-        for call in ("run_rtorrent_faults", "run_rtorrent_death", "run_local_add_death",
+        for call in ("run_rtorrent_faults", "run_rtorrent_death", "run_transmission_stop_death",
+                     "run_local_add_death",
                      "bash tools/installed_external_document_process_loss.sh"):
             self.assertEqual(1, runner.count(call + " || failed=1"))
 

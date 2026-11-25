@@ -273,6 +273,8 @@ class ShardedNativeAddTests(unittest.TestCase):
                 ("ExternalDocumentProcessLossInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
                 ("CredentialUpgradeSeedInstrumentedTest", "seedRecordsWithPreviousRelease"),
                 ("CredentialUpgradeVerifyInstrumentedTest", "recordsSealedByPreviousReleaseOpenAfterUpgrade"),
+                ("ProtocolClientInstalledJourneyTest", "typedStopAckHeldThenKillTheAppProcess"),
+                ("ProtocolClientInstalledJourneyTest", "freshProcessKeepsStopUnknownUntilReadOnlyCheck"),
             )
         }
         expected.update(installed_fault_ids)

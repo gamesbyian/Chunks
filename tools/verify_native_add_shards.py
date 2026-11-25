@@ -98,6 +98,10 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
         # in credential-upgrade-witness.yml, which requires each to pass once.
         ("CredentialUpgradeSeedInstrumentedTest", "seedRecordsWithPreviousRelease"),
         ("CredentialUpgradeVerifyInstrumentedTest", "recordsSealedByPreviousReleaseOpenAfterUpgrade"),
+        # #2026 typed-Stop process-death phases need the Transmission relay and a
+        # process kill; they execute only in installed-protocol-client.yml.
+        ("ProtocolClientInstalledJourneyTest", "typedStopAckHeldThenKillTheAppProcess"),
+        ("ProtocolClientInstalledJourneyTest", "freshProcessKeepsStopUnknownUntilReadOnlyCheck"),
     )
 )
 
