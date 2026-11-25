@@ -33,14 +33,20 @@ class KeystoreSealedBlobCompatibilityTest {
     private val context get() = ApplicationProvider.getApplicationContext<Context>()
     private fun prefs(name: String) = context.getSharedPreferences(name, Context.MODE_PRIVATE)
 
-    /** Software AES key standing in for a device-bound Keystore entry. */
+    /**
+     * Software AES key standing in for a device-bound Keystore entry. Like a
+     * real Keystore, a key generated after erasure is new material, so records
+     * sealed under the erased key can never open again.
+     */
     private class RecordingKeys(seed: Int = 13) : SealingKeys {
         var secret: SecretKey? = SecretKeySpec(ByteArray(32) { (it * 7 + seed).toByte() }, "AES")
         var created = 0
         var erased = 0
         var onErase: () -> Unit = {}
         val material = secret!!
-        override fun encryptionKey(): SecretKey = secret ?: material.also { created++; secret = it }
+        override fun encryptionKey(): SecretKey = secret ?: SecretKeySpec(
+            ByteArray(32) { (it * 11 + 101 + created).toByte() }, "AES"
+        ).also { created++; secret = it }
         override fun decryptionKey(): SecretKey? = secret
         override fun erase() { onErase(); erased++; secret = null }
     }
@@ -142,6 +148,14 @@ class KeystoreSealedBlobCompatibilityTest {
         assertTrue(vault.clear())
         assertEquals(false, ciphertextAtErase)
         assertEquals(1, keys.erased)
+        assertNull(vault.load())
+
+        // A later save generates a new key; nothing sealed before the clear
+        // can be resurrected by it.
+        val stale = legacySeal(keys.material, JSONArray().put("https://old.example/").put("old").put("old").toString())
+        assertTrue(vault.save(RemoteCredentials("https://new.example/RPC2", "new", "pw")))
+        assertEquals(1, keys.created)
+        prefs(loginPrefs).edit().putString("ciphertext", stale).commit()
         assertNull(vault.load())
     }
 

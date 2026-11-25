@@ -13,6 +13,10 @@ import javax.crypto.spec.GCMParameterSpec
  * encrypted preference store so that key creation, lookup and erasure are
  * written once (A2611-05). Each store keeps its own alias, preference file,
  * record schema, bounds and fail-closed policy; this type owns none of those.
+ *
+ * Injection is per store instance. Cross-store opt-out scrubs (for example
+ * [RememberedRemoteLogin.setRememberingEnabled]) construct sibling stores
+ * with their production Keystore keys.
  */
 internal interface SealingKeys {
     /** The existing key, or a newly generated one. Only sealing may create a key. */
@@ -37,7 +41,10 @@ internal class AndroidKeystoreSealingKeys(private val alias: String) : SealingKe
 
     override fun decryptionKey(): SecretKey? = store().getKey(alias, null) as? SecretKey
 
-    override fun encryptionKey(): SecretKey {
+    override fun encryptionKey(): SecretKey = synchronized(CREATION_LOCK) {
+        // Check-then-generate must be atomic: a second concurrent generation
+        // under one alias would replace the key the first caller sealed with.
+        // Not every caller holds RemoteCredentialLock (the media credential).
         decryptionKey()?.let { return it }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, PROVIDER)
         generator.init(
@@ -49,12 +56,15 @@ internal class AndroidKeystoreSealingKeys(private val alias: String) : SealingKe
                 .setRandomizedEncryptionRequired(true)
                 .build()
         )
-        return generator.generateKey()
+        generator.generateKey()
     }
 
     override fun erase() { store().deleteEntry(alias) }
 
-    private companion object { const val PROVIDER = "AndroidKeyStore" }
+    private companion object {
+        const val PROVIDER = "AndroidKeyStore"
+        val CREATION_LOCK = Any()
+    }
 }
 
 /**
