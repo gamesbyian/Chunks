@@ -85,6 +85,37 @@ class AcceptanceReportTest(unittest.TestCase):
                 self.assertFalse(r.evaluate([check("unrelated / " + gate)], [gate], CONFIG, {})["acceptable"])
                 self.assertFalse(r.evaluate([check(alias, "skipped")], [gate], CONFIG, {})["acceptable"])
 
+    def test_newer_unexpanded_caller_or_matrix_blocks_old_exact_child(self):
+        url = "https://github.com/gamesbyian/Chunks/actions/runs/"
+        for gate, alias, parent in (
+            ("two-server-combined", "combined / two-server-combined", "combined"),
+            ("remote-delete-data", "remove / remote-delete-data", "remove"),
+            ("installed-protocol-client", "protocol / installed-protocol-client", "protocol"),
+            ("api29-downloads", "api29 / api29-downloads", "api29"),
+            ("installed-resume-death (29)", "resume / installed-resume-death (29)", "resume"),
+            ("installed-resume-death (35)", "resume / installed-resume-death (35)", "resume"),
+            ("add-review-device-test (0)", "add-review-device-test (0)", "add-review-device-test"),
+        ):
+            with self.subTest(gate=gate):
+                old = dict(check(alias), id=50, details_url=url + "100/job/50")
+                # Later workflow ID wins even if check IDs arrive out of order.
+                for conclusion, status, expected in (
+                    ("skipped", "completed", r.NOT_EXECUTED),
+                    ("cancelled", "completed", r.NOT_EXECUTED),
+                    ("failure", "completed", r.FAILED),
+                    (None, "in_progress", r.PENDING),
+                    ("success", "completed", r.NOT_REPORTED),
+                ):
+                    parent_check = dict(check(parent, conclusion, status), id=40,
+                                        details_url=url + "110/job/40")
+                    self.assertEqual(expected, r.evaluate([old, parent_check], [gate], CONFIG, {})["rows"][0]["state"])
+                    self.assertFalse(r.evaluate([parent_check], [gate], CONFIG, {})["acceptable"])
+                fresh = dict(check(alias), id=30, details_url=url + "120/job/30")
+                self.assertTrue(r.evaluate([old, parent_check, fresh], [gate], CONFIG, {})["acceptable"])
+                # Same-run later attempt with an unexpanded skipped caller.
+                retry = dict(check(parent, "skipped"), id=31, details_url=url + "120/job/31")
+                self.assertFalse(r.evaluate([fresh, retry], [gate], CONFIG, {})["acceptable"])
+
     def test_pending_is_not_a_pass(self):
         gates = r.profile_gates(CONFIG, "foundation")
         checks = [check(gates[0]), check(gates[1], None, "in_progress")]

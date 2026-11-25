@@ -27,6 +27,7 @@ class WorkflowInventoryTests(unittest.TestCase):
         # Main-push and manual runs use unique run IDs and must stay intact.
         report = collect(ROOT)
         self.assertEqual([], report["missing_concurrency"])
+        self.assertEqual([], report["invalid_local_workflow_calls"])
         self.assertEqual([], report["main_self_trigger_candidates"])
         self.assertEqual([], report["artifact_default_retention_candidates"])
         self.assertEqual([], [entry["path"] for entry in report["workflows"]
@@ -374,6 +375,75 @@ jobs:
         self.assertEqual([".github/workflows/uploads.yml"],
                          report["artifact_default_retention_candidates"])
         self.assertIn("2 steps across 1 workflows", markdown(report))
+
+    def test_local_reusable_graph_counts_indirect_pr_paths_without_claiming_execution(self):
+        self.fixture("caller.yml", """name: Caller
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+concurrency:
+  group: caller
+  cancel-in-progress: true
+jobs:
+  call:
+    uses: ./.github/workflows/child.yml
+    if: false
+  real:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          uses: ./.github/workflows/manual.yml
+""")
+        self.fixture("child.yml", """name: Child
+on:
+  workflow_call:
+jobs:
+  nested:
+    uses: './.github/workflows/grandchild.yaml'
+""")
+        self.fixture("grandchild.yaml", """name: Grandchild
+on:
+  workflow_call:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""")
+        self.fixture("manual.yml", """name: Manual
+on:
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""")
+        report = collect(self.root)
+        self.assertEqual([".github/workflows/caller.yml"], report["direct_pr_workflows"])
+        self.assertEqual([".github/workflows/child.yml", ".github/workflows/grandchild.yaml"],
+                         report["indirect_pr_workflows"])
+        self.assertEqual([], report["invalid_local_workflow_calls"])
+        self.assertEqual(2, len(report["local_workflow_call_edges"]))
+        self.assertIn("Job conditions still decide execution", markdown(report))
+
+    def test_invalid_local_reusable_reference_is_reported(self):
+        self.fixture("caller.yml", """name: Caller
+on:
+  workflow_dispatch:
+jobs:
+  missing:
+    uses: ./.github/workflows/missing.yml
+  not_callable:
+    uses: ./.github/workflows/manual.yml
+""")
+        self.fixture("manual.yml", """name: Manual
+on:
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""")
+        result = collect(self.root)
+        self.assertEqual(2, len(result["invalid_local_workflow_calls"]))
+        self.assertEqual([], result["indirect_pr_workflows"])
 
     def test_current_repo_has_no_missing_workflows(self):
         result = collect(ROOT)
