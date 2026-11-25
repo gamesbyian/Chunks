@@ -226,7 +226,8 @@ internal class ClientOperations(
 
     /** Delete payload only while the exact job still points at the person's reviewed folder. */
     suspend fun removeReviewedPayload(hash: String, reviewedDirectory: String): ClientOperationOutcome =
-        removeChecked(hash, deleteData = true, expectedDirectory = ClientHashes.requireDirectory(reviewedDirectory)) {
+        removeChecked(hash, deleteData = true, expectedDirectory = ClientHashes.requireDirectory(reviewedDirectory),
+            sharedPayloadGuard = !client.provesNoSharedPayloadBeforeDelete) {
             client.remove(hash, deleteData = true)
         }
 
@@ -253,10 +254,12 @@ internal class ClientOperations(
 
     private suspend fun removeChecked(
         hash: String, deleteData: Boolean, dispatchInAdapter: Boolean = false,
-        expectedDirectory: String? = null, send: suspend () -> Unit
+        expectedDirectory: String? = null, sharedPayloadGuard: Boolean = false, send: suspend () -> Unit
     ): ClientOperationOutcome {
         val result = mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
-            send, expectedDirectory = expectedDirectory, dispatchInAdapter = dispatchInAdapter) { observed ->
+            send, expectedDirectory = expectedDirectory, dispatchInAdapter = dispatchInAdapter,
+            sharedPayloadGuard = sharedPayloadGuard
+        ) { observed ->
             if (observed == null) null else "Still registered"
         }
         // Registration absence proves job removal, not filesystem cleanup.
@@ -351,6 +354,8 @@ internal class ClientOperations(
         send: suspend () -> Unit,
         expectedDirectory: String? = null,
         dispatchInAdapter: Boolean = false,
+        /** Prove read-only, after the exact pre-read and before any write, that no sibling job shares this payload. */
+        sharedPayloadGuard: Boolean = false,
         unmet: (ClientTorrent?) -> String?
     ): ClientOperationOutcome {
         val exact = ClientHashes.requireHash(hash)
@@ -361,9 +366,13 @@ internal class ClientOperations(
         when (val pre = exactRead(exact)) {
             is Read.Failed -> return ClientOperationOutcome.Refused(exact, "Could not verify the transfer first")
             Read.Absent -> return ClientOperationOutcome.Refused(exact, "Transfer is not in this client")
-            is Read.Present -> if (expectedDirectory != null &&
-                !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))
-                return ClientOperationOutcome.Refused(exact, "Transfer is no longer in the reviewed folder")
+            is Read.Present -> {
+                if (expectedDirectory != null &&
+                    !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))
+                    return ClientOperationOutcome.Refused(exact, "Transfer is no longer in the reviewed folder")
+                if (sharedPayloadGuard)
+                    ClientPayloadOverlap.refusal(client, pre.torrent)?.let { return ClientOperationOutcome.Refused(exact, it) }
+            }
         }
         write(exact, dispatchInAdapter, send)?.let { return it }
         return readback(exact, unmet)

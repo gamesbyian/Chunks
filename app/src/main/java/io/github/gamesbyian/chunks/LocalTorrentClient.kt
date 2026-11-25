@@ -61,6 +61,7 @@ internal class LocalTorrentClient(
     override val kind = TorrentClientKind.LOCAL
     // removeChecked returns normally only after the native exact-file readback reports ABSENT.
     override val verifiesPayloadDeletionOnReturn = true
+    override val provesNoSharedPayloadBeforeDelete = true // LocalTorrentEngine.removeWithDataIfMatching surveys every native job
 
     override suspend fun session(): ClientSessionInfo = withContext(io) {
         ClientSessionInfo(

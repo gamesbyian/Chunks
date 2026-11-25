@@ -38,6 +38,11 @@ internal interface TorrentClient {
     suspend fun setStarted(hash: String, started: Boolean)
     /** True only if a normal data-removal return includes independent exact-payload absence proof. */
     val verifiesPayloadDeletionOnReturn: Boolean get() = false
+    /**
+     * True only when this adapter itself refuses Remove + data while another job in the same client lists
+     * one of the payload files. Otherwise [ClientOperations] proves that read-only before dispatch.
+     */
+    val provesNoSharedPayloadBeforeDelete: Boolean get() = false
     suspend fun remove(hash: String, deleteData: Boolean)
 
     /** Move's job-only removal. Implementations with preflight reads check after those reads. */
