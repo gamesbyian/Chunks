@@ -413,6 +413,19 @@ internal class DelugeClient(
                     }
                     throw ClientRefusedException("Deluge refused this request")
                 }
+                if (method.startsWith("core.")) {
+                    // The Web UI routes core.* through one process-global daemon slot and the call carries no
+                    // host ID, so the pre-call status proves nothing about where this call ran. Bracket it: if
+                    // the selected daemon is not bound afterwards, a read's rows may belong to another daemon
+                    // (never usable as presence or absence evidence) and a write's destination is unknown.
+                    val stillBound = try {
+                        (selectedHostStatus().opt(1) as? String).equals("connected", ignoreCase = true)
+                    } catch (e: CancellationException) { throw e } catch (_: Exception) { false }
+                    if (!stillBound) {
+                        if (mutating) throw ClientWriteUncertainException("The selected Deluge daemon stopped being bound during the write")
+                        throw IOException("The selected Deluge daemon stopped being bound during the read")
+                    }
+                }
                 return@withContext result
             }
             @Suppress("UNREACHABLE_CODE") null

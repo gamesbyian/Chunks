@@ -418,6 +418,35 @@ class ExactProtocolReadTest {
         assertTrue(runCatching { f.client.torrent(hash) }.exceptionOrNull() is ClientRefusedException)
     }
 
+    @Test fun delugeReadIsDiscardedWhenTheSelectedDaemonIsNoLongerBoundAfterIt() = runBlocking {
+        var host = "Connected"
+        val statusCalls = ArrayList<String>()
+        val f = fixture(TorrentClientKind.DELUGE, listOf(listOf(hash)),
+            delugeHostStatus = { host }, beforeReply = { method ->
+                statusCalls += method
+                // The status check before the read still passed; the shared slot moved during the read.
+                if (method == "core.get_torrents_status") host = "Online"
+            })
+        // The rows below could belong to another daemon behind the same Web UI: never usable evidence.
+        assertTrue(runCatching { f.client.torrent(hash) }.exceptionOrNull() is java.io.IOException)
+        assertEquals("web.get_host_status", statusCalls.last())
+        assertEquals(0, f.writes())
+    }
+
+    @Test fun delugeRemovalReadbackCannotVerifyWhenTheSelectedDaemonIsNotBoundAfterTheAbsentRead() = runBlocking {
+        var host = "Connected"
+        var inventoryReads = 0
+        val f = fixture(TorrentClientKind.DELUGE, listOf(listOf(hash), emptyList()),
+            delugeHostStatus = { host }, beforeReply = { method ->
+                // The readback that would show the job absent is the one served by another daemon.
+                if (method == "core.get_torrents_status" && ++inventoryReads == 2) host = "Online"
+            })
+        val outcome = ClientOperations(f.client, readbackAttempts = 1).remove(hash, deleteData = false)
+        assertFalse("An absence read from an unbound slot verified a removal: $outcome",
+            outcome is ClientOperationOutcome.Verified)
+        assertEquals(1, f.writes())
+    }
+
     @Test fun malformedTransmissionStatusCannotProveStoppedAdd() = runBlocking {
         for (wireStatus in listOf("0", 0.5, 4_294_967_296L)) {
             val f = fixture(TorrentClientKind.TRANSMISSION, listOf(emptyList(), listOf(hash)),

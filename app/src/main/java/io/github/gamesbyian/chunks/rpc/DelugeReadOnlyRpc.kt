@@ -131,6 +131,13 @@ internal class DelugeReadOnlyRpc(
                 reportedSavePath = optionalText(entry, "save_path", 4096)
             )
         }
+        // The Web UI's daemon slot is shared and the JSON call carries no host ID. Confirm the
+        // selected daemon was still the bound one after the read, or the rows may belong to another.
+        val after = rpc("web.get_host_status", JSONArray().put(daemonHostId), 7, cookie) as? JSONArray
+            ?: throw IOException("Deluge active daemon status unavailable")
+        if (after.opt(0) != daemonHostId || !(after.opt(1) as? String).equals("connected", ignoreCase = true)) {
+            throw IOException("Deluge Web UI stopped being connected to the selected daemon during the read")
+        }
         Snapshot(daemonHostId, version, torrents)
     }
 
