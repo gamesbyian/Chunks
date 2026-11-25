@@ -875,8 +875,11 @@ class ProtocolClientInstalledJourneyTest {
             // Kill well inside the app's 15 s read timeout: the journal must
             // already hold the possible write before any reply could arrive.
             rule.waitUntil(10_000) { relay.hasWithheldReply() }
-            assertEquals("The daemon really executed the Stop", ClientRunState.STOPPED,
-                runBlocking { independentRead(hash) }?.runState)
+            // Transmission acknowledges torrent-stop before the status flips;
+            // read independently (direct port) until it settles, bounded.
+            waitFor("daemon reports the executed Stop", 10_000) {
+                runBlocking { independentRead(hash) }?.runState == ClientRunState.STOPPED
+            }
             stage("stop-executed-by-daemon-reply-withheld")
             val entry = requireNotNull(retainedStopEntry(hash)) { "No durable Stop receipt before the kill" }
             assertTrue("Durable possible write, credential-free: $entry",
