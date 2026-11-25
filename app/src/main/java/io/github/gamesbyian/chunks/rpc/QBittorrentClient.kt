@@ -61,9 +61,19 @@ internal class QBittorrentClient(
         }
         val rows = optionalRead { ExactRpcJson.arrayBody(request("GET", "torrents/info?hashes=$exact")) } ?: return null
         val row = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hash") } ?: return null
-        val magnet = (row.opt("magnet_uri") as? String)?.takeIf { it.startsWith("magnet:?") } ?: return null
-        if (reportedPrivate(exact, row) != false) return null
-        return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
+        val privacy = reportedPrivate(exact, row)
+        val source = when {
+            privacy == false -> (row.opt("magnet_uri") as? String)?.takeIf { it.startsWith("magnet:?") }
+                ?.let { runCatching { ClientAddSource.Magnet(it) }.getOrNull() }
+            // qBittorrent >= 5.0 reports an explicit JSON null `private` until the job has metadata
+            // (a magnet nobody has answered yet). Privacy is then unknown, not public, so the job's own
+            // announce URLs must not travel. Its identity and name still can: a hash-only magnet cannot
+            // carry a passkey. Malformed or absent evidence stays refused.
+            privacy == null && row.has("private") && row.isNull("private") ->
+                runCatching { ClientMagnets.build(exact, row.opt("name") as? String, emptyList()) }.getOrNull()
+            else -> null
+        }
+        return source?.takeIf { it.infoHash == exact }
     }
 
     override suspend fun torrents(): List<ClientTorrent> = info(null)

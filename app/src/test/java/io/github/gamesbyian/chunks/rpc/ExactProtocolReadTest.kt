@@ -167,7 +167,15 @@ class ExactProtocolReadTest {
             })
             val exported = f.client.transferSource(hash)
             val facts = requireNotNull(f.client.seedingFacts(hash))
-            assertEquals(privacy == false, exported is ClientAddSource.Magnet)
+            // The one documented carve-out: qBittorrent's explicit JSON null means "no metadata yet".
+            // It may copy identity and name only; no announce URL may travel with unknown privacy.
+            val hashOnly = kind == TorrentClientKind.QBITTORRENT && privacy === JSONObject.NULL
+            assertEquals(privacy == false || hashOnly, exported is ClientAddSource.Magnet)
+            if (hashOnly) {
+                val uri = (exported as ClientAddSource.Magnet).uri
+                assertEquals(hash, exported.infoHash)
+                assertFalse("No tracker with unknown privacy", uri.contains("tr=") || uri.contains("tracker.invalid"))
+            }
             assertEquals(privacy as? Boolean, facts.isPrivate)
             assertEquals(if (privacy == false) listOf(tracker) else null, facts.publicTrackerUrls)
             if (kind == TorrentClientKind.QBITTORRENT) {

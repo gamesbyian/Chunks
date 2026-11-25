@@ -269,6 +269,32 @@ class RealClientInteropTest {
             }
         }
 
+        if (disposableLoopback && kind == RemoteBackendKind.QBITTORRENT) {
+            // A magnet nobody has answered has no metadata, so qBittorrent cannot know its privacy.
+            // Its Copy source may carry identity only: never the announce URL the job was given.
+            val bare = ByteArray(20).also { SecureRandom().nextBytes(it) }
+                .joinToString("") { "%02x".format(it) }
+            val announce = "http://127.0.0.1:1/announce"
+            assertVerified("metadata_less_add_stopped", ops.add(ClientAddRequest(
+                ClientAddSource.Magnet("magnet:?xt=urn:btih:$bare&dn=chunks-interop-bare&tr=" +
+                    java.net.URLEncoder.encode(announce, "UTF-8")), directory, startNow = false)))
+            try {
+                val reported = requireNotNull(client.seedingFacts(bare)).isPrivate
+                val source = client.transferSource(bare)
+                // Whatever the daemon reports, a magnet leaves only with positive public evidence,
+                // or as identity alone when privacy is unknown.
+                if (source != null) assertEquals(bare, source.infoHash)
+                val trackerFree = source is ClientAddSource.Magnet && !source.uri.contains("tr=")
+                if (reported != false) assertTrue("Unknown or private: no announce URL may travel",
+                    source == null || trackerFree)
+                if (reported == null) assertTrue("Unknown privacy still copies identity", trackerFree)
+                stage("metadata_less_job reported_private=$reported source=" +
+                    (if (source == null) "refused" else if (trackerFree) "hash_only" else "full_public"))
+            } finally {
+                assertVerified("metadata_less_remove_session_only", ops.remove(bare, deleteData = false))
+            }
+        }
+
         // 11. No unrelated inventory changed.
         val after = client.torrents().map { it.hash }.toSet()
         assertEquals(before, after)
