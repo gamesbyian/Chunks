@@ -61,6 +61,10 @@ run_phase() {
   fi
   curl --fail --silent --max-time 3 "$counts" > "$out/$method-counts.json"
   python3 tools/parse_instrumentation_stream.py --raw "$scratch/$method.raw" --junit "$out/$method.xml"
+  # #2118: keep only the test's privacy-safe bounded diagnostic line (it never
+  # names sources, URLs, hashes or provider content) beside the JUnit receipt.
+  grep -oE 'Controlled first metadata request absent: [^[:cntrl:]]*' "$scratch/$method.raw" \
+    > "$out/$method-assertion.txt" || true
   python3 tools/ci_failure_digest.py --suite "installed-second-add-media-$method" --status "$result" \
     --require-executed --glob "$out/$method.xml" --output "$out/$method-digest.json"
 }
