@@ -19,10 +19,14 @@ echo "CHUNKS_AUTO_MEDIA_SOURCE: commit=$(git rev-parse HEAD) tree=$(git rev-pars
 
 adb install -r "$candidate" >/dev/null
 adb install -r "$test_apk" >/dev/null
-device_path="$(adb shell pm path "$pkg" | tr -d '[:space:]' | grep '^package:' | head -1 | cut -d: -f2-)"
+# Whole outputs first: under pipefail an early-exiting reader can SIGPIPE
+# a still-writing producer and fail with 141 depending on timing.
+pm_path="$(adb shell pm path "$pkg")"
+device_path="$(tr -d '[:space:]' <<<"$pm_path" | grep '^package:' | sed -n 1p | cut -d: -f2-)"
 test -n "$device_path"
 aapt="${ANDROID_HOME:?}/build-tools/36.0.0/aapt"
-version="$("$aapt" dump badging "$candidate" | grep -m1 '^package:' | awk -F "versionName='" '{print $2}' | cut -d "'" -f1)"
+badging="$("$aapt" dump badging "$candidate")"
+version="$(grep -m1 '^package:' <<<"$badging" | awk -F "versionName='" '{print $2}' | cut -d "'" -f1)"
 test -n "$version"
 echo "CHUNKS_AUTO_MEDIA_PACKAGE: app_id=$pkg version=$version" | tee "$out/package.txt"
 bash tools/verify_installed_apk_bytes.sh "$candidate" "$device_path" "$out/installed-pull-tmp.apk" | tee "$out/installed-sha256.txt"
