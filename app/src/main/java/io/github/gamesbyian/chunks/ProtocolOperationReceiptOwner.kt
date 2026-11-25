@@ -66,6 +66,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
     private val entries = mutableStateMapOf<Key, Receipt>()
     private var sequence = 0L
     private var journal: Journal? = null
+    private var lastSaved: List<Persisted>? = null
     private val v1Hash = Regex("[0-9a-f]{40}")
 
     @Synchronized fun receipt(key: Key): Receipt? = entries[key]
@@ -75,6 +76,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         if (this.journal != null) return
         this.journal = journal
         val restored = runCatching { journal.load() }.getOrDefault(emptyList())
+        lastSaved = null
         for (item in restored) {
             val kind = ProtocolOperationKind.entries.firstOrNull { it.name == item.kind } ?: continue
             val phase = Phase.entries.firstOrNull { it.name == item.phase } ?: continue
@@ -98,7 +100,11 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
             it.phase == Phase.POSSIBLE_WRITE || it.phase == Phase.UNKNOWN ||
                 it.phase == Phase.ACK_PENDING || it.phase == Phase.REGISTRATION_ABSENT
         }.map { Persisted(it.ticket.key.profileId, it.ticket.key.hash, it.ticket.kind.name, it.phase.name) }
-        return runCatching { target.save(unresolved) }.getOrDefault(false)
+        // Policy leases and preflight come and go constantly; only a changed durable set costs a disk commit.
+        if (unresolved == lastSaved) return true
+        val saved = runCatching { target.save(unresolved) }.getOrDefault(false)
+        if (saved) lastSaved = unresolved
+        return saved
     }
 
     @Synchronized fun begin(key: Key, generation: String, kind: ProtocolOperationKind): Ticket? {
