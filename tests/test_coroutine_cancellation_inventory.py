@@ -67,6 +67,19 @@ fun sync() = runCatching { localParse() }
         with self.assertRaises(ValueError):
             review_differences([row], [{**review, "reason": ""}])
 
+    def test_committed_reviews_are_only_reviewed_safe_dispositions(self):
+        import json
+        from pathlib import Path
+        reviews = json.loads((Path(__file__).resolve().parent.parent /
+                              "tools/coroutine_cancellation_reviews.json").read_text(encoding="utf-8"))
+        self.assertTrue(reviews)
+        allowed = {"SAFE-NONSUSPEND", "SAFE-RETHROWS", "SAFE-TERMINAL"}
+        for review in reviews:
+            # A confirmed defect is fixed in source, never parked in the review file.
+            self.assertIn(review["disposition"], allowed, review)
+            self.assertGreaterEqual(len(review["reason"].strip()), 20, review)
+            self.assertTrue(review["path"].startswith("app/src/main/"), review)
+
 
 if __name__ == "__main__":
     unittest.main()
