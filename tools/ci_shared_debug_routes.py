@@ -15,7 +15,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tools/ci_shared_debug_routes.json"
-LANES = ("native", "protocol", "combined", "remove")
+LANES = ("native", "protocol", "combined", "remove", "api29", "resume")
 
 
 def load_routes(path=MANIFEST):
@@ -31,7 +31,8 @@ def load_routes(path=MANIFEST):
             pattern = item.removeprefix("!")
             literal = pattern.removesuffix("/**")
             if (not literal or literal.startswith("/") or ".." in Path(literal).parts
-                    or not re.fullmatch(r"[A-Za-z0-9_./-]+", literal)):
+                    or not re.fullmatch(r"[A-Za-z0-9_./*-]+", literal)
+                    or ("*" in literal and ("*" in str(Path(literal).parent) or literal.count("*") != 1))):
                 raise ValueError("Unsupported shared debug route glob")
     if any(p.startswith("!") for p in data["common"]):
         raise ValueError("Shared control paths cannot be negative")
@@ -41,6 +42,8 @@ def load_routes(path=MANIFEST):
 def matches(pattern, path):
     if pattern.endswith("/**"):
         return path.startswith(pattern[:-2])
+    if "*" in pattern:
+        return re.fullmatch(re.escape(pattern).replace(r"\*", "[^/]*"), path) is not None
     return path == pattern
 
 
