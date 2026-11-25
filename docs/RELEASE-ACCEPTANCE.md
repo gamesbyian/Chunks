@@ -47,4 +47,4 @@ All apply regardless of cosmetic readiness:
 
 - [ ] Manual release-signing workflow succeeds with a persistent authorized key and pinned certificate; signature, package/version, artifact hash, repeatable provenance, changelog and immutable release assets verified.
 - [ ] Critical failed/missing gates: **HOLD**, assign a concrete repro and source-exact owner. A capability-limited operation may be explicitly scoped out only if product contract allows a safe visible refusal, and owner accepts the release boundary.
-- [ ] Publish one final [quality ledger](QUALITY-LEDGER.md) receipt recording accepted, pending, blocked, deferred and physical-owner-acceptance items separately; do not replace evidence with this checklist's unchecked boxes.
+- [ ] Publish one final release PR/issue receipt linked from the [evidence index](QUALITY-LEDGER.md), recording accepted, pending, blocked, deferred and physical-owner-acceptance items separately; do not replace evidence with this checklist's unchecked boxes.

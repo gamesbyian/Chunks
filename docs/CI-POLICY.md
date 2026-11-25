@@ -2,7 +2,7 @@
 
 **Measured CI follow-through (FE-14, #10):** Compare phase timings, critical path AND aggregate runner minutes for comparable workloads: build, AVD preparation, journeys, daemon startup, uploads and waits. Reuse immutable exact-source APK/build/fixture preparation with digest/provenance while preserving each isolated observation and negative. Native-delete build-once is already integrated; inspect live results before further optimization. No unmeasured trigger pruning, timeout extension, failure suppression or acceptance borrowing. See [measured CI optimization evidence](audits/CI-OPTIMIZATION-2026-11-25.md) for the fixed-cohort audit and shared APK qualification.
 
-**Use this file as instructions, not a CI diary.** Historical measurements, PRs, cost analyses and failed attempts are preserved in [CI-POLICY-HISTORY-2026-11-09.md](CI-POLICY-HISTORY-2026-11-09.md). Run-level results belong in [QUALITY-LEDGER](QUALITY-LEDGER.md). Required receipt schema and classification live in [CI-EVIDENCE-AND-RUNTIME-CONTRACT](CI-EVIDENCE-AND-RUNTIME-CONTRACT.md).
+**Use this file as instructions, not a CI diary.** Historical measurements, PRs, cost analyses and failed attempts are preserved in [CI-POLICY-HISTORY-2026-11-09.md](CI-POLICY-HISTORY-2026-11-09.md). Record run-level results in the owning PR/issue; [QUALITY-LEDGER](QUALITY-LEDGER.md) indexes historical evidence. Required receipt schema and classification live in [CI-EVIDENCE-AND-RUNTIME-CONTRACT](CI-EVIDENCE-AND-RUNTIME-CONTRACT.md).
 
 ## Batched exact-source validation (mandatory)
 
@@ -67,7 +67,7 @@ Write and change tests by [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md): stable sema
 
 The integrator must independently review PR diffs, source ancestry/overlap and required check execution. Green on an older parent does not qualify a rebased dependent. Use current GitHub state, not a dated handoff, before merging.
 
-A source-matched installable debug APK may be identified as a tested pre-alpha only after confirming exact source and independently hashing the **actual installed and tested** APK bytes. Record receipt in [QUALITY-LEDGER](QUALITY-LEDGER.md). Physical Pixel, protected Seedhost, publisher-signing, OEM/Doze and human accessibility are separate evidence tiers and cannot be inferred from emulator tests.
+A source-matched installable debug APK may be identified as a tested pre-alpha only after confirming exact source and independently hashing the **actual installed and tested** APK bytes. Record the receipt in the owning PR/issue; use the [evidence index](QUALITY-LEDGER.md) for archives. Physical Pixel, protected Seedhost, publisher-signing, OEM/Doze and human accessibility are separate evidence tiers and cannot be inferred from emulator tests.
 
 ## Time and cost discipline
 
