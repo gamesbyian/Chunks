@@ -8,6 +8,7 @@ import io.github.gamesbyian.chunks.ProtocolOperationReceiptOwner
 import io.github.gamesbyian.chunks.engine.FinishInOrderPlanner
 import io.github.gamesbyian.chunks.engine.FinishInOrderRecord
 import io.github.gamesbyian.chunks.tickProtocolRemotePolicies
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import io.github.gamesbyian.chunks.rpc.ClientAddRequest
 import io.github.gamesbyian.chunks.rpc.ClientCapability
@@ -410,6 +411,128 @@ class RemoteSeedingTickTest {
         assertEquals(128_000L, client.caps[capped])
         RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 4_000)
         assertEquals("never rewritten when it already matches", 1, client.capWrites)
+    }
+
+    @Test fun cancelledCapStepOrReadOrPostWriteReadbackAbortsThePolicyTick() {
+        for (stage in listOf("step", "read", "readback")) {
+            val inner = FakeClient()
+            val cancelled = CancellationException("cancelled $stage")
+            val client = object : TorrentClient by inner {
+                var failureStage: String? = stage
+                var cap = 0L
+                var writes = 0
+                var capReads = 0
+                override suspend fun uploadCapStepBytes(): Long {
+                    if (failureStage == "step") throw cancelled
+                    return 1000L
+                }
+                override suspend fun uploadCapBytesPerSecond(hash: String): Long {
+                    capReads++
+                    if (failureStage == "read" || (failureStage == "readback" && writes > 0)) {
+                        throw cancelled
+                    }
+                    return cap
+                }
+                override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+                    writes++
+                    cap = bytesPerSecond
+                }
+            }
+            val ops = ClientOperations(client, 2, 1)
+            val profile = "cancel-cap-$stage"
+            val environment = RemoteSeeding.protocolEnvironment(profile)
+            val store = PreferencesAssignmentStore(context, environment)
+            val policy = SeedingPolicy(ratioGoal = BigDecimal.ONE,
+                uploadLimit = RateLimit(128_000, RateLimit.Unit.KB))
+            assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+                mapOf(environment to policy))))
+            assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+            assertEquals(RemoteSeeding.Tick.NO_WRITE,
+                RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000))
+            inner.jobs[new] = true
+            inner.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 60, true, false, emptyList())
+
+            val thrown = org.junit.Assert.assertThrows(CancellationException::class.java) {
+                RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000)
+            }
+            org.junit.Assert.assertSame(cancelled, thrown)
+            assertEquals("no later Stop after cancellation at $stage", 0, inner.stops)
+            assertNull(store.get(new)?.stopAttemptedReason)
+            assertEquals(if (stage == "readback") 1 else 0, client.writes)
+            if (stage == "readback") {
+                val readsBefore = client.capReads
+                client.failureStage = null
+                assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED,
+                    RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 4_000))
+                assertTrue(client.capReads > readsBefore)
+                assertEquals("fresh read found cap already applied, no replay", 1, client.writes)
+                assertEquals(1, inner.stops)
+                assertNotNull(store.get(new)?.stoppedByRule)
+            }
+        }
+    }
+
+    @Test fun cancelledStopRetainsTheDurableAttemptAndNeverReplays() {
+        val inner = FakeClient()
+        val cancelled = CancellationException("Stop reply cancelled")
+        val client = object : TorrentClient by inner {
+            override suspend fun setStarted(hash: String, started: Boolean) {
+                inner.setStarted(hash, started)
+                if (!started) throw cancelled
+            }
+        }
+        val profile = "cancel-stop"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val ops = ClientOperations(client, 2, 1)
+        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to SeedingPolicy(ratioGoal = BigDecimal.ONE)))))
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        assertEquals(RemoteSeeding.Tick.NO_WRITE,
+            RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000))
+        inner.jobs[new] = true
+        inner.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 60, true, false, emptyList())
+
+        org.junit.Assert.assertThrows(CancellationException::class.java) {
+            RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000)
+        }
+        assertEquals(1, inner.stops)
+        val restored = PreferencesAssignmentStore(context, environment).get(new)
+        assertNotNull(restored?.stopAttemptedReason)
+        assertNull(restored?.stoppedByRule)
+        inner.jobs[new] = true // person explicitly starts the job again
+        assertEquals(RemoteSeeding.Tick.NO_WRITE,
+            RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 4_000))
+        assertEquals(1, inner.stops)
+        assertEquals(true, inner.jobs[new])
+    }
+
+    @Test fun ordinaryCapReadFailureDoesNotAuthorizeCapWriteOrSuppressRatioPolicy() {
+        val inner = FakeClient()
+        val client = object : TorrentClient by inner {
+            var writes = 0
+            override suspend fun uploadCapStepBytes(): Long = 1000L
+            override suspend fun uploadCapBytesPerSecond(hash: String): Long {
+                throw java.io.IOException("unreadable cap")
+            }
+            override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
+                writes++
+            }
+        }
+        val ops = ClientOperations(client, 2, 1)
+        val profile = "ordinary-cap-read-failure"
+        val environment = RemoteSeeding.protocolEnvironment(profile)
+        val policy = SeedingPolicy(ratioGoal = BigDecimal.ONE,
+            uploadLimit = RateLimit(128_000, RateLimit.Unit.KB))
+        assertTrue(SeedingRuleStore(context).save(SeedingRuleStore.Snapshot(emptyList(),
+            mapOf(environment to policy))))
+        assertTrue(RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 2_000)
+        inner.jobs[new] = true
+        inner.facts[new] = ClientSeedingFacts(new, 2_000, 1_000, 60, true, false, emptyList())
+        assertEquals(RemoteSeeding.Tick.STOP_ATTEMPTED,
+            RemoteSeeding.tickProtocol(context, profile, ops, nowMs = 3_000))
+        assertEquals(0, client.writes)
+        assertEquals(1, inner.stops)
     }
 
     @Test fun aPrivateOrUnprovenTransferNeverHasItsTrackersUsed() {

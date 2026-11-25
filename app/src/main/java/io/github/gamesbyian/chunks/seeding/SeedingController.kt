@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.seeding
 
+import kotlinx.coroutines.CancellationException
+
 /**
  * Applies Smart Seeding Rules to one engine's transfers, without retroactive
  * surprises (SMART-SEEDING-RULES):
@@ -78,7 +80,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                     // rule were resolved: assignments do not auto-rematch after
                     // later metadata arrives.
                     val described = if (facts.trackerUrls == null)
-                        runCatching { engine.details(facts) }.getOrNull() ?: continue else facts
+                        policyAttempt { engine.details(facts) }.getOrNull() ?: continue else facts
                     if (described.trackerUrls == null) continue
                     val r = SeedingRuleEngine.resolve(
                         TransferFacts(environment, described.trackerUrls, described.isPrivate), rules, default)
@@ -94,6 +96,11 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
             engine.withPolicyAccess(facts.infoHash) { enforce(facts.infoHash, policy, assignment, mayStop) }
         }
     }
+
+    // Preserve ordinary per-job fault isolation, but a cancellation must stop
+    // the whole policy tick instead of authorizing a later engine operation.
+    private inline fun <T> policyAttempt(block: () -> T): Result<T> =
+        runCatching(block).onFailure { if (it is CancellationException) throw it }
 
     private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment, mayStop: Boolean) {
         if (!engine.mayMutate()) return
@@ -120,7 +127,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 // LocalTorrentEngine already maps some libtorrent read
                 // exceptions to null; a thrown error and a null response are
                 // equally unknown, never permission to send a cap setter.
-                val currentLimit = runCatching { engine.uploadLimit(hash) }.getOrNull()
+                val currentLimit = policyAttempt { engine.uploadLimit(hash) }.getOrNull()
                 val readFailureNote =
                     "The client could not check this transfer's upload limit; it was left unchanged."
                 if (currentLimit == null) {
@@ -132,7 +139,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 } else {
                     if (currentLimit != bytes.toInt()) {
                         // The setter itself requires verified engine readback.
-                        val confirmed = runCatching {
+                        val confirmed = policyAttempt {
                             engine.setUploadLimit(hash, bytes)
                         }.getOrDefault(false)
                         if (!confirmed) {
@@ -155,7 +162,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         if (!mayStop) return
         // An inaccessible per-torrent native counter must never abort the
         // service-wide poll or authorize an unverified automatic Pause.
-        val observation = runCatching { engine.observe(hash) }.getOrNull() ?: return
+        val observation = policyAttempt { engine.observe(hash) }.getOrNull() ?: return
         val decision = SeedingEnforcement.decide(policy, observation)
         if (decision is SeedingEnforcement.Decision.Stop && engine.mayMutate()) {
             // Commit the attempt BEFORE calling the engine. A failed commit is
@@ -166,7 +173,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 note = "Automatic stop is pending confirmation; it will not be retried automatically."
             )
             if (!store.put(hash, attempted)) return
-            val confirmed = runCatching { engine.pause(hash) }.getOrDefault(false)
+            val confirmed = policyAttempt { engine.pause(hash) }.getOrDefault(false)
             if (confirmed) {
                 store.put(hash, attempted.copy(stoppedByRule = decision.reason, note = null))
             } else {
