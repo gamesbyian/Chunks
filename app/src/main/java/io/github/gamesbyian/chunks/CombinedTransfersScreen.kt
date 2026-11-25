@@ -2032,11 +2032,17 @@ internal fun CombinedTransfersScreen(
                 protocolOwnerCurrent(profile)
             }
         }
-        if (showAbsentReceiptsCard(ProtocolOperationReceipts.owner, receiptSources, absentReceiptResults))
+        // A privacy-locked profile's earlier outcomes stay retained, never shown.
+        val visibleReceiptProfiles = protocolProfiles.filter { it.environment in protocolAllowed }.map { it.id }.toSet()
+        val receiptResultVisible: (ProtocolOperationReceiptOwner.Key) -> Boolean =
+            { it.profileId in visibleReceiptProfiles }
+        if (showAbsentReceiptsCard(ProtocolOperationReceipts.owner, receiptSources, absentReceiptResults,
+                receiptResultVisible))
             item(key = "protocol-absent-receipts") {
-                ProtocolAbsentReceiptsCard(receiptSources, results = absentReceiptResults) { profileId ->
-                    protocolProfiles.firstOrNull { it.id == profileId }?.let { protocolSources.reload(it.environment) }
-                }
+                ProtocolAbsentReceiptsCard(receiptSources, results = absentReceiptResults,
+                    onChecked = { profileId ->
+                        protocolProfiles.firstOrNull { it.id == profileId }?.let { protocolSources.reload(it.environment) }
+                    }, resultVisible = receiptResultVisible)
             }
         // Detailed environment status is available after the inventory, rather
         // than charging every user a tall status panel before the first row.

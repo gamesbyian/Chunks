@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -125,6 +127,34 @@ class ProtocolAbsentReceiptsCardTest {
         assertTrue(showAbsentReceiptsCard(owner, sources, results))
         assertTrue("nothing to show for a profile without receipts or results",
             !showAbsentReceiptsCard(ProtocolOperationReceiptOwner(), sources, emptyMap()))
+    }
+
+    @Test fun aLockedProfilesOutcomeIsRetainedButNotShown() {
+        val owner = ProtocolOperationReceiptOwner()
+        val key = unknownRemove(owner, removed)
+        val probe = Probe()
+        val results = androidx.compose.runtime.mutableStateMapOf<ProtocolOperationReceiptOwner.Key, String>()
+        var unlocked by androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                val sources = if (unlocked) listOf(source(probe, emptySet())) else emptyList()
+                val visible: (ProtocolOperationReceiptOwner.Key) -> Boolean = { unlocked && it.profileId == profile }
+                if (showAbsentReceiptsCard(owner, sources, results, visible))
+                    ProtocolAbsentReceiptsCard(sources, owner, results, resultVisible = visible)
+            }
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_CHECK + "." + removed).performClick()
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.RECONCILED_ABSENT }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_RESULT + "." + removed).assertExists()
+        rule.runOnIdle { unlocked = false }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPTS).assertDoesNotExist()
+        rule.runOnIdle {
+            assertTrue("the outcome is retained while hidden", key in results)
+            unlocked = true
+        }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_RESULT + "." + removed)
+            .assertTextContains("not registered", substring = true)
+        assertEquals(0, probe.writes)
     }
 
     @Test fun failedReadKeepsTheReceiptUnresolvedAndSaysSo() {
