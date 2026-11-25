@@ -13,6 +13,8 @@ Aggregate job_window_minutes intentionally includes idle gaps between workflow r
 Attempt-window and retry-gap metrics separate these, without changing runner-minute totals.
 Step hotspots use GitHub step numbers rather than names to avoid leaking dynamic/secret labels.
 ALL workflow rerun attempts are fetched; latest-only jobs silently undercount failed attempts.
+GitHub carries successful job records into retries with new IDs but original runner/timestamps;
+exact positive matches count as one execution, not two allocations.
 Missing/incomplete step data is reported as unknown; it is never interpreted as zero time.
 """
 from __future__ import annotations
@@ -149,6 +151,24 @@ def get_runs(repo: str, branch: str, created: str | None = None) -> list[dict]:
     return runs
 
 
+def carried_forward_identity(job):
+    """Strong execution fingerprint; never conflate different parallel jobs.
+
+    Observed on runs 45546591010 and 45509308051: a retry copies a
+    successful job's name, runner ID and original start/end under a new ID.
+    A positive-duration job cannot execute twice on the same runner at the
+    same time. Do not infer identity when any of these fields are missing.
+    """
+    runner = job.get("runner_id")
+    name = job.get("name")
+    start, end = job.get("started_at"), job.get("completed_at")
+    if (job.get("conclusion") != "success" or type(runner) is not int
+            or runner <= 0 or not isinstance(name, str) or not name
+            or not start or not end or minutes(start, end) <= 0):
+        return None
+    return name, runner, instant(start), instant(end)
+
+
 def cost_report(runs: list[dict]) -> dict:
     """Completed runs only: sum each job's actual timestamps, including matrix jobs."""
     seen_runs = set()
@@ -161,6 +181,8 @@ def cost_report(runs: list[dict]) -> dict:
         "failed_jobs_across_attempts": 0,
         "complete_attempt_window_minutes": 0.0, "retry_idle_gap_minutes": 0.0,
         "runs_with_complete_attempt_windows": 0,
+        "carried_forward_job_records": 0,
+        "carried_forward_minutes_excluded": 0.0,
     })
     rows = []
     step_by_workflow = defaultdict(lambda: {
@@ -197,7 +219,11 @@ def cost_report(runs: list[dict]) -> dict:
         timed_ends = []
         attempt_job_intervals = defaultdict(list)
         failed_job_ends = []
-        for job in jobs:
+        execution_attempt = {}
+        carried_count = 0
+        carried_minutes = 0.0
+        # API order is not a contract; attribute an execution to its earliest attempt.
+        for job in sorted(jobs, key=lambda j: j.get("run_attempt", 1) if type(j.get("run_attempt", 1)) is int else 0):
             job_id = int(job["id"])
             if job_id in seen_jobs:
                 raise ValueError(f"Duplicate job {job_id} on run {run_id}")
@@ -206,6 +232,16 @@ def cost_report(runs: list[dict]) -> dict:
             if type(attempt) is not int or attempt < 1 or attempt > run_attempt:
                 raise ValueError(f"Invalid job attempt on job {job_id}")
             observed_attempts.add(attempt)
+            execution = carried_forward_identity(job)
+            if execution is not None:
+                previous = execution_attempt.get(execution)
+                if previous is not None and previous < attempt:
+                    carried_count += 1
+                    carried_minutes += minutes(job["started_at"], job["completed_at"])
+                    continue
+                if previous == attempt:
+                    raise ValueError(f"Duplicate execution within attempt {attempt} on run {run_id}")
+                execution_attempt[execution] = attempt
             if job.get("conclusion") == "failure":
                 failed_jobs_across_attempts += 1
             # GitHub sometimes gives skipped jobs inverted timestamps (e.g.
@@ -311,7 +347,9 @@ def cost_report(runs: list[dict]) -> dict:
             raise ValueError(f"Failed job completes before workflow created_at on run {run_id}")
         group = by_name[name]
         group["runs"] += 1
-        group["jobs"] += len(jobs)
+        group["jobs"] += len(jobs) - carried_count
+        group["carried_forward_job_records"] += carried_count
+        group["carried_forward_minutes_excluded"] += carried_minutes
         group["runner_minutes"] += total
         group["wall_minutes"] += wall
         group["prior_attempt_runner_minutes"] += prior_attempt_minutes
@@ -337,6 +375,8 @@ def cost_report(runs: list[dict]) -> dict:
             "run_id": run_id, "workflow": name, "conclusion": outcome,
             "runner_minutes": round(total, 3), "wall_minutes": round(wall, 3),
             "reported_attempts": run_attempt,
+            "carried_forward_job_records": carried_count,
+            "carried_forward_minutes_excluded": round(carried_minutes, 3),
             "job_attempts_observed": sorted(observed_attempts),
             # An absent attempt can mean no runner allocated; never silently
             # certify its cost as zero from an incomplete offline jobs payload.
@@ -413,9 +453,11 @@ def cost_report(runs: list[dict]) -> dict:
     }
     return {
         "schema": "chunks-ci-runner-cost-v1",
-        "source": "GitHub Actions job started_at/completed_at timestamps, all run attempts",
+        "source": "GitHub Actions job started_at/completed_at timestamps, all run attempts, exact carried-forward successful executions counted once",
         "scope": "completed runs only; head_sha is PR branch identity, not necessarily the tested merge checkout; runner minutes are not billed minutes; job_window_minutes spans all rerun attempts including idle retry gaps, whereas complete_attempt_window_minutes excludes between-attempt gaps but may include dependencies within each attempt; absent attempt jobs make these new metrics unknown; queue/failure-completion metrics are timing proxies, not actionable-feedback guarantees",
         "runs": len(rows),
+        "carried_forward_job_records": sum(x["carried_forward_job_records"] for x in rows),
+        "carried_forward_minutes_excluded": round(sum(x["carried_forward_minutes_excluded"] for x in rows), 3),
         "runner_minutes": round(sum(x["runner_minutes"] for x in rows), 3),
         "prior_attempt_runner_minutes": round(
             sum(x["prior_attempt_runner_minutes"] for x in rows), 3),
