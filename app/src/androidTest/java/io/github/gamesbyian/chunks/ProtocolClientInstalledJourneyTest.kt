@@ -959,7 +959,10 @@ class ProtocolClientInstalledJourneyTest {
             stage("stop-read-only-check-released-exact-receipt")
         }
         // Disposable fixture cleanup through the DIRECT daemon port, never the relay.
-        assertTrue(runBlocking { direct.remove(hash, deleteData = true) } is ClientOperationOutcome.Verified)
+        // Job-only removal (keep files on the disposable daemon), then confirm
+        // absence with an independent read; payload deletion is not claimed here.
+        val removed = runBlocking { direct.remove(hash, deleteData = false) }
+        assertNull("Disposable fixture job removed ($removed)", runBlocking { direct.client.torrent(hash) })
         stopWitnessFile.delete()
     }
 
