@@ -94,6 +94,10 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
         ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
         ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
         ("ExternalDocumentProcessLossInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
+        # Seed (base APK) and verify (after in-place upgrade) phases execute only
+        # in credential-upgrade-witness.yml, which requires each to pass once.
+        ("CredentialUpgradeSeedInstrumentedTest", "seedRecordsWithPreviousRelease"),
+        ("CredentialUpgradeVerifyInstrumentedTest", "recordsSealedByPreviousReleaseOpenAfterUpgrade"),
     )
 )
 
