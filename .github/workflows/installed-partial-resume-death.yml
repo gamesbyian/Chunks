@@ -111,35 +111,7 @@ jobs:
           input="$RUNNER_TEMP/resume-death-apks"
           test "$(cat "$input/source-sha")" = "$(git rev-parse HEAD)"
           test "$(cat "$input/source-tree")" = "$(git rev-parse HEAD^{tree})"
-          test "$(awk '{print $2}' "$input/SHA256SUMS")" = 
-          mkdir -p app/build/outputs/apk/debug app/build/outputs/apk/androidTest/debug
-          cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
-          cp "$input/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-      - name: Prepare emulator
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
-          test -c /dev/kvm
-          sudo chmod 0666 /dev/kvm
-      - name: Installed kill mid-download, restore in a fresh process
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ matrix.api }}
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          disk-size: 2048M
-          emulator-boot-timeout: 600
-          disable-animations: true
-          script: bash tools/installed_partial_resume_death.sh ${{ matrix.api }}
-      - name: Upload installed resume-death evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chunks-resume-death-api${{ matrix.api }}-attempt-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/chunks-resume-death-api${{ matrix.api }}/
-          retention-days: 14
-          if-no-files-found: warn
-app.apk\ntest.apk'
+          test "$(awk '{print $2}' "$input/SHA256SUMS")" = $'app.apk\ntest.apk'
           (cd "$input" && sha256sum --strict --check SHA256SUMS)
           mkdir -p app/build/outputs/apk/debug app/build/outputs/apk/androidTest/debug
           cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
