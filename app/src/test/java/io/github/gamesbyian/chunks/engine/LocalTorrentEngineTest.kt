@@ -1011,7 +1011,13 @@ class LocalTorrentEngineTest {
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
         try { requireFlushed(local, leech) }
         catch (timeout: AssertionError) {
-            throw AssertionError("Truncated-payload fixture timed out at repaired-download-flush", timeout)
+            // Report what the leecher and seeder saw, so a recurrence shows
+            // whether the peer never reconnected or pieces stalled.
+            val leeched = local.status(leech)
+            val seeding = seeder.status(seed.infoHash)
+            throw AssertionError("Truncated-payload fixture timed out at repaired-download-flush: " +
+                "leech state=${leeched?.state} progressPpm=${leeched?.progressPpm} peers=${leeched?.peers} " +
+                "seeder state=${seeding?.state} peers=${seeding?.peers}", timeout)
         }
         for ((name, bytes) in fixture.files)
             assertArrayEquals(bytes, File(destination, "Chunks public fixture/$name").readBytes())
