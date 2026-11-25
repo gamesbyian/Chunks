@@ -307,8 +307,8 @@ jobs:
           retention-days: 14
 
   verify-complete-native-add:
-    needs: add-review-device-test
-    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
+    needs: [select, add-review-device-test]
+    if: always() && needs.select.outputs.native == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
