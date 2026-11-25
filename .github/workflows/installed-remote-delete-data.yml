@@ -3,34 +3,29 @@ name: Installed remote Remove transfer and data (disposable ruTorrent)
 # Remote L6 through the installed app on a DISPOSABLE real rTorrent behind the
 # pinned upstream ruTorrent PHP tree. No secrets, no protected host.
 on:
-  pull_request:
-    branches: [main]
-    # Draft iterations must not launch disposable daemons, Gradle or emulators.
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
-    paths:
-      - "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt"
-      # Navigation and remote header changes can break these real journeys.
-      - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
-      # Remote Add original .torrent Archive/remove journey on the same disposable server.
-      - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddSession.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/OriginalTorrentHandlingUi.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
-      - "tools/installed_remote_delete_data.sh"
-      - "tools/stage_disposable_rutorrent_adapter_delete.py"
-      - ".github/workflows/installed-remote-delete-data.yml"
+  # Automatic PR selection is centralized in native-add-instrumentation.yml.
   workflow_dispatch:
+    inputs:
+      apk_run_id:
+        description: 'Optional successful Installed Universal Add run at this exact commit'
+        type: string
+        required: false
+
+  workflow_call:
+    inputs:
+      same_run_apks:
+        type: boolean
+        required: true
+      artifact_name:
+        type: string
+        required: true
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: chunks-installed-remote-delete-${{ github.event.pull_request.number || github.run_id }}
+  group: chunks-installed-remote-delete-${{ inputs.same_run_apks && format('shared-{0}', github.run_id) || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -47,6 +42,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate instrumentation harness syntax
         run: bash -n tools/installed_remote_delete_data.sh
+      - name: Reuse the exact installed Universal Add APK pair
+        if: inputs.same_run_apks || (github.event_name == 'workflow_dispatch' && inputs.apk_run_id != '')
+        uses: ./.github/actions/reuse-installed-apks
+        with:
+          run-id: ${{ inputs.same_run_apks && github.run_id || inputs.apk_run_id }}
+          same-run: ${{ inputs.same_run_apks && 'true' || 'false' }}
+          artifact-name: ${{ inputs.artifact_name }}
+          github-token: ${{ github.token }}
       # The runner context is unavailable in job-level env; export paths here.
       - name: Disposable paths
         run: |
@@ -107,15 +110,18 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+        if: ${{ !inputs.same_run_apks && (github.event_name != 'workflow_dispatch' || inputs.apk_run_id == '') }}
         with:
           gradle-version: "9.3.1"
       - name: Install pinned compile SDK
+        if: ${{ !inputs.same_run_apks && (github.event_name != 'workflow_dispatch' || inputs.apk_run_id == '') }}
         run: |
           printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
           if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
       - name: Build app and instrumentation APKs
+        if: ${{ !inputs.same_run_apks && (github.event_name != 'workflow_dispatch' || inputs.apk_run_id == '') }}
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Prepare emulator
         run: |
