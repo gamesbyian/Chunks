@@ -83,6 +83,16 @@ class RealClientInteropTest {
         return Fixture(result, name, files)
     }
 
+    /** Same name and payload paths, different info dictionary: another job over the very same files. */
+    private fun twin(of: Fixture): TorrentMetainfoBuilder.Result = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(
+        name = of.name,
+        entries = of.files.map { (file, bytes) ->
+            TorrentMetainfoBuilder.Entry(listOf(file), bytes.size.toLong()) { bytes.inputStream() }
+        },
+        trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")),
+        pieceLength = 32 * 1024
+    ))
+
     private fun assertVerified(label: String, outcome: ClientOperationOutcome) {
         assertTrue("$label: $outcome", outcome is ClientOperationOutcome.Verified)
         stage("$label=verified")
@@ -217,6 +227,26 @@ class RealClientInteropTest {
             }
         } else {
         val reviewedFolder = requireNotNull(client.torrent(hash)?.downloadDirectory)
+        if (payloadRoot != null && kind != RemoteBackendKind.RTORRENT) {
+            // A cross-seeded sibling over the same files: the daemon would delete them for either job.
+            val sibling = twin(fx)
+            val siblingHash = sibling.infoHashV1
+            assertFalse(siblingHash == hash)
+            assertVerified("shared_payload_sibling_add_stopped", ops.add(ClientAddRequest(
+                ClientAddSource.TorrentFile(sibling.torrent), reviewedFolder, startNow = false)))
+            try {
+                val shared = ops.removeReviewedPayload(hash, reviewedFolder)
+                assertTrue("A payload another job lists must refuse data removal: $shared",
+                    shared is ClientOperationOutcome.Refused && shared.reason == ClientPayloadOverlap.SHARED)
+                assertEquals("Both jobs remain after the refusal", hash, client.torrent(hash)?.hash)
+                assertEquals(siblingHash, client.torrent(siblingHash)?.hash)
+                assertTrue("The shared payload is untouched",
+                    fx.files.keys.all { File(finalDir, fx.name + "/" + it).isFile })
+                stage("remove_with_shared_payload=refused_before_dispatch")
+            } finally {
+                assertVerified("shared_payload_sibling_remove_session_only", ops.remove(siblingHash, deleteData = false))
+            }
+        }
         val stale = ops.removeReviewedPayload(hash, reviewedFolder.trimEnd('/') + "/chunks-unreviewed-folder")
         assertTrue("Stale reviewed folder must refuse data removal: $stale", stale is ClientOperationOutcome.Refused)
         assertEquals("The reviewed job remains after the refusal", hash, client.torrent(hash)?.hash)
