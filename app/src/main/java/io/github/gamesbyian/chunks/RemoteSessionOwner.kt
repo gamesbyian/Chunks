@@ -16,8 +16,9 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
  * a retained session with a fresh gate would forget an uncertain write's
  * readback latch and admit another write without the fresh read it requires.
  * Coroutines (refresh, Connect, policy ticks) stay composition-scoped: a
- * recreation cancels them and the next fence ticket makes any late reply
- * non-current. No credential, private source or tracker data is kept here
+ * recreation cancels them. A cancelled read rethrows before touching this
+ * state, and a cancelled policy tick settles the gate only for this exact
+ * session, never for a later one. No credential, private source or tracker data is kept here
  * beyond what [RTorrentRemote] already holds for the live session.
  */
 internal class RemoteSessionOwner : ViewModel() {

@@ -184,4 +184,29 @@ class RemoteSessionRecreationTest {
             reads + 2, requests.count { it == "d.multicall2" })
         assertFalse(session.stale.value)
     }
+
+    @Test fun aReadCancelledByRecreationNeverMarksTheRetainedSessionStale() {
+        val session = RemoteSessionOwner()
+        val restoration = StateRestorationTester(rule)
+        connect(restoration, session)
+        assertFalse(session.stale.value)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val held = java.util.concurrent.CountDownLatch(1)
+        holdNextRead = release
+        readHeld = held
+        // Returning to Transfers re-reads the server while the list is not stale.
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        assertTrue("a read is in flight", held.await(15, java.util.concurrent.TimeUnit.SECONDS))
+        restoration.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        val reads = requests.count { it == "d.multicall2" }
+        // The disposed composition's read now completes into a cancelled coroutine.
+        release.countDown()
+        Thread.sleep(500)
+        rule.mainClock.advanceTimeByFrame()
+        rule.waitForIdle()
+        assertFalse("a cancelled read must not mark the retained session stale", session.stale.value)
+        assertTrue("writes are still admitted", session.mutationGate.canStart)
+        assertEquals("no extra read was needed", reads, requests.count { it == "d.multicall2" })
+    }
 }

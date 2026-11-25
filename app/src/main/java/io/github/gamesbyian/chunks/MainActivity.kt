@@ -320,7 +320,7 @@ private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Se
 @Composable
 internal fun ChunksApp(
     retainedAddOwner: LocalAddAttemptOwner,
-    /** Retained by the Activity; tests and previews get a composition-local one. */
+    /** Retained by the Activity; tests and previews default to a remembered, non-retained owner. */
     remoteSession: RemoteSessionOwner = remember { RemoteSessionOwner() }
 ) {
     val incomingDelivery = retainedAddOwner.incomingDelivery
@@ -999,6 +999,12 @@ internal fun ChunksApp(
                                 // cannot clear its safety latch or replace the queue.
                                 stale = true
                             }
+                        } catch (cancel: CancellationException) {
+                            // Recreation cancels this composition's read. The
+                            // session (and its stale flag) is retained, so a
+                            // cancelled read must not mark it stale after the
+                            // live composition has already checked it (A2611-02).
+                            throw cancel
                         } catch (failure: Exception) {
                             if (server === remote && remoteFence.current(ticket)) {
                                 stale = true
@@ -1020,9 +1026,17 @@ internal fun ChunksApp(
     // covered by this composition's refresh() is not read twice; one arriving
     // during a read in flight is queued behind it (that read's ticket predates
     // the settle and cannot release the latch).
-    val readbackRequests = remoteSession.readbackRequests.longValue
-    LaunchedEffect(server, readbackRequests) {
-        if (server != null && stale && readbackRequests > servedReadback[0]) refresh()
+    // Observed inside the effect so a settle does not recompose all of ChunksApp.
+    // Also reads when a view switch was interrupted by recreation.
+    val latestRefresh by androidx.compose.runtime.rememberUpdatedState(refresh)
+    LaunchedEffect(server) {
+        if (server == null) return@LaunchedEffect
+        var attaching = true
+        androidx.compose.runtime.snapshotFlow { remoteSession.readbackRequests.longValue }.collect { requested ->
+            val interruptedViewSwitch = attaching && currentView != requestedView
+            attaching = false
+            if ((stale && requested > servedReadback[0]) || interruptedViewSwitch) latestRefresh()
+        }
     }
 
     /** Disconnect does not forget credentials, transfer bytes or Add draft. */
@@ -1671,12 +1685,17 @@ internal fun ChunksApp(
                     } catch (cancel: CancellationException) {
                         if (parentJob?.isActive != true || ownerCurrent()) throw cancel
                     } finally {
-                        if (tick == RemoteSeeding.Tick.NO_WRITE || tick == RemoteSeeding.Tick.NOT_RUN)
-                            mutationGate.abandonKnownNoWrite()
-                        else {
-                            mutationGate.settled()
-                            remoteSession.requestReadback()
-                            if (server === connectedRemote) { stale = true; refresh() }
+                        // The gate is shared with any later session: only this exact
+                        // session's admission may be settled (a reconnect reset it).
+                        if (server === connectedRemote) {
+                            if (tick == RemoteSeeding.Tick.NO_WRITE || tick == RemoteSeeding.Tick.NOT_RUN)
+                                mutationGate.abandonKnownNoWrite()
+                            else {
+                                mutationGate.settled()
+                                remoteSession.requestReadback()
+                                stale = true
+                                refresh()
+                            }
                         }
                     }
                 }
@@ -1703,11 +1722,16 @@ internal fun ChunksApp(
                     } catch (_: Exception) {
                         // A partial write retains the readback fence.
                     } finally {
-                        if (noWrite) mutationGate.abandonKnownNoWrite()
-                        else {
-                            mutationGate.settled()
-                            remoteSession.requestReadback()
-                            if (server === connectedRemote) { stale = true; refresh() }
+                        // The gate is shared with any later session: only this exact
+                        // session's admission may be settled (a reconnect reset it).
+                        if (server === connectedRemote) {
+                            if (noWrite) mutationGate.abandonKnownNoWrite()
+                            else {
+                                mutationGate.settled()
+                                remoteSession.requestReadback()
+                                stale = true
+                                refresh()
+                            }
                         }
                     }
                 }
