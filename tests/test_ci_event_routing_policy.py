@@ -153,7 +153,9 @@ class CiDispatchRelevance(unittest.TestCase):
                 self.assertTrue((ROOT / path).is_file())
                 self.assertFalse(dispatches_for_changed_paths(native, (path,)))
                 owner = workflow(owner_name)
-                self.assertTrue(dispatches_for_changed_paths(owner, (path,)))
+                route = {"installed-combined-two-servers.yml": "combined",
+                         "installed-remote-delete-data.yml": "remove"}.get(owner_name)
+                self.assertTrue(dispatches_for_changed_paths(shared_route_source(route) if route else owner, (path,)))
                 self.assertIn("android-emulator-runner@v2", owner)
                 executable = OWNER_EXECUTION[filename]
                 self.assertIn(executable, owner, "Owning workflow must invoke its class selector")
@@ -233,7 +235,7 @@ class CiDispatchRelevance(unittest.TestCase):
                 self.assertFalse(dispatches_for_changed_paths(source, (own_path,)))
                 self.assertTrue(dispatches_for_changed_paths(docs, (own_path,)))
         self.assertTrue(dispatches_for_changed_paths(
-            workflow("installed-combined-two-servers.yml"),
+            shared_route_source("combined"),
             ("app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/"
              "RemoteSnapshotRestoreInstalledTest.kt",)))
 
