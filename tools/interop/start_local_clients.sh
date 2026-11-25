@@ -84,6 +84,38 @@ HOSTS
   "$PY" /usr/bin/deluged -c "$ROOT/de" -p 58946 -L warning -l "$ROOT/de.log"
   sleep 3
   "$PY" /usr/bin/deluge-web -c "$ROOT/de" -p 18112 -i 127.0.0.1 -L warning -l "$ROOT/deweb.log" &
+  # A SECOND daemon plus a SECOND Web UI whose host list registers both, so the
+  # process-global daemon slot can be switched between two real daemons. The
+  # primary Web UI above keeps exactly one host for the single-daemon journeys.
+  mkdir -p "$ROOT/de2" "$ROOT/de2web" "$ROOT/dl/de2"
+  echo "localclient:localpass:10" > "$ROOT/de2/auth"
+  cat > "$ROOT/de2/core.conf" <<'CORE2'
+{
+    "file": 1,
+    "format": 1
+}{
+    "listen_ports": [51517, 51517],
+    "random_port": false,
+    "dht": false,
+    "lsd": false,
+    "upnp": false,
+    "natpmp": false
+}
+CORE2
+  cat > "$ROOT/de2web/hostlist.conf" <<HOSTS2
+{
+    "file": 3,
+    "format": 1
+}{
+    "hosts": [
+        ["c0ffee00c0ffee00c0ffee00c0ffee00", "127.0.0.1", 58946, "localclient", "localpass"],
+        ["decaf000decaf000decaf000decaf000", "127.0.0.1", 58947, "localclient", "localpass"]
+    ]
+}
+HOSTS2
+  "$PY" /usr/bin/deluged -c "$ROOT/de2" -p 58947 -L warning -l "$ROOT/de2.log"
+  sleep 2
+  "$PY" /usr/bin/deluge-web -c "$ROOT/de2web" -p 18113 -i 127.0.0.1 -L warning -l "$ROOT/deweb2.log" &
 else
   echo "interop: no Python can import Deluge; Deluge daemon not started" >&2
 fi

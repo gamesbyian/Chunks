@@ -10,6 +10,12 @@ if [ -f "$_root/de/hostlist.conf" ]; then
   export CHUNKS_INTEROP_DELUGE_URL=http://127.0.0.1:18112/json
   export CHUNKS_INTEROP_DELUGE_PASS=deluge
   export CHUNKS_INTEROP_DELUGE_PAYLOAD_DIR="$_root/dl/de"
+  if [ -f "$_root/de2web/hostlist.conf" ]; then
+    export CHUNKS_INTEROP_DELUGE2_URL=http://127.0.0.1:18113/json
+    export CHUNKS_INTEROP_DELUGE2_PASS=deluge
+    export CHUNKS_INTEROP_DELUGE2_HOST_A=c0ffee00c0ffee00c0ffee00c0ffee00
+    export CHUNKS_INTEROP_DELUGE2_HOST_B=decaf000decaf000decaf000decaf000
+  fi
 fi
 if [ -f "$_root/rt/rtorrent.rc" ]; then
   export CHUNKS_INTEROP_RTORRENT_URL=http://127.0.0.1:18090/RPC2
