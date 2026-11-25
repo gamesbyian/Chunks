@@ -113,17 +113,18 @@ class CleanAvdProbeTests(unittest.TestCase):
         self.assertNotIn("\n  push:", source)
         self.assertNotIn("\n  pull_request:", source)
         self.assertIn("if: github.ref == 'refs/heads/main'", source)
-        self.assertEqual(1, source.count("script: bash tools/ci_avd_pilot_probe.sh pristine"))
         self.assertEqual(1, source.count("script: bash tools/ci_avd_pilot_probe.sh measure"))
+        self.assertNotIn("script: bash tools/ci_avd_pilot_probe.sh pristine", source)
         self.assertNotIn("script: |\n", source)
-        self.assertIn("if: inputs.mode == 'snapshot'\n        id: android-sdk", source)
-        self.assertLess(
-            source.index("Fail early if the cache quota has insufficient headroom"),
-            source.index("Install Android 35 image and derive versioned cache identity"),
-        )
-        self.assertIn("if (( used >= 7000000000 ))", source)
-        self.assertIn("if (( prospective > 9000000000 ))", source)
-        self.assertIn("actions: read", source)
+        self.assertIn("force-avd-creation: true", source)
+        self.assertIn("emulator-options: -no-snapshot ", source)
+        self.assertNotIn("actions/cache", source)
+        self.assertNotIn("actions: write", source)
+        self.assertNotIn("actions: read", source)
+        self.assertIn("Delete only the disposable local AVD\n        if: always()", source)
+        self.assertIn('rm -rf -- "$HOME/.android/avd/test.avd"', source)
+        self.assertIn('rm -f -- "$HOME/.android/avd/test.ini"', source)
+        self.assertNotIn('rm -rf -- "$HOME/.android/avd"', source)
         for path in (
             ".github/workflows/avd-snapshot-pilot.yml",
             "tools/ci_avd_pilot_probe.sh",
