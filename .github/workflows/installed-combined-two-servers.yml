@@ -67,7 +67,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id != ''
         env:
           APK_RUN_ID: ${{ inputs.apk_run_id }}
-        run: echo "CHUNKS_COMBINED_APK_REUSE: producer_run=$APK_RUN_ID source=$GITHUB_SHA build_skipped=true"
+        run: |
+          echo "CHUNKS_COMBINED_APK_REUSE: producer_run=$APK_RUN_ID source=$GITHUB_SHA build_skipped=true"
       - name: Start two disposable real rTorrent daemons behind SCGI proxies
         run: |
           bash tools/apt_install_retry.sh rtorrent nginx
