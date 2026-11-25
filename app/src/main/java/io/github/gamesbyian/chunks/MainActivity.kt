@@ -182,6 +182,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A possible typed remote write that outlived the previous process stays unresolved.
+        ProtocolOperationReceipts.install(applicationContext)
         // The near-black Compose surface extends behind the system status bar,
         // so the status bar icons must be light.
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
