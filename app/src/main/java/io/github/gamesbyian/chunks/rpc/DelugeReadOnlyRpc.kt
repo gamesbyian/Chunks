@@ -87,13 +87,23 @@ internal class DelugeReadOnlyRpc(
 
         // The only non-accessor selects a verified daemon in the Web UI's
         // shared slot. The cookie authenticates the request, not the slot.
-        val supported = rpc("web.connect", JSONArray().put(daemonHostId), 4, cookie) as? JSONArray
+        // When the slot is ALREADY bound to this exact daemon, never reconnect:
+        // web.connect re-establishes the daemon connection, so every periodic
+        // inventory read would break another Chunks session's read or write
+        // that is mid-bracket on the same Web UI (#2109). DelugeClient already
+        // follows this rule; the daemon's own method list proves capability.
+        val alreadyBound = (status.opt(1) as String).equals("connected", ignoreCase = true)
+        val supported = (if (alreadyBound) rpc("daemon.get_method_list", JSONArray(), 4, cookie)
+            else rpc("web.connect", JSONArray().put(daemonHostId), 4, cookie)) as? JSONArray
             ?: throw IOException("Selected Deluge daemon refused connection")
-        // web.connect returns *daemon* methods; web.update_ui itself is a
-        // WebUI-side aggregator and never proves the selected daemon supports
-        // full-inventory reads. No arbitrary nonempty method list is enough.
-        if (supported.length() > 5000 ||
-            !(0 until supported.length()).any { supported.opt(it) == "core.get_torrents_status" }) {
+        // Both return *daemon* methods (get_method_list may omit the "core."
+        // prefix); web.update_ui itself is a WebUI-side aggregator and never
+        // proves the selected daemon supports full-inventory reads. No
+        // arbitrary nonempty method list is enough.
+        if (supported.length() > 5000 || !(0 until supported.length()).any {
+                val method = supported.opt(it) as? String
+                method == "core.get_torrents_status" || method == "get_torrents_status"
+            }) {
             throw IOException("Selected Deluge daemon lacks inventory capability")
         }
         val bound = rpc("web.get_host_status", JSONArray().put(daemonHostId), 5, cookie) as? JSONArray

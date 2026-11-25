@@ -103,6 +103,21 @@ class DelugeReadOnlyRpcTest {
             org.json.JSONObject(script.calls.last().body.toString(Charsets.UTF_8)).getString("method"))
     }
 
+    @Test fun anAlreadyBoundDaemonIsNeverReconnectedButStillProvesInventoryCapability() = runBlocking {
+        // #2109: web.connect re-establishes the shared slot, breaking another
+        // Chunks session's bracketed read or write on the same Web UI.
+        for (methods in listOf("""["core.get_torrents_status"]""", """["get_torrents_status"]""")) {
+            val script = Scripted(login(), hosts(), status("Connected"), result(4, methods), active(), update(), finalStatus())
+            assertEquals(hash, client(script).inspect().torrents.single().hash)
+            val sent = script.calls.map { org.json.JSONObject(it.body.toString(Charsets.UTF_8)).getString("method") }
+            assertFalse("no reconnect of an already bound daemon", "web.connect" in sent)
+            assertEquals("daemon.get_method_list", sent[3])
+        }
+        val incapable = Scripted(login(), hosts(), status("Connected"), result(4, """["pause_torrent"]"""))
+        try { client(incapable).inspect(); fail("Bound daemon without inventory capability accepted") }
+        catch (expected: IOException) { assertEquals(4, incapable.calls.size) }
+    }
+
     @Test fun inventoryIsDiscardedWhenTheSelectedDaemonIsNotBoundAfterTheRead() = runBlocking {
         for (after in listOf(finalStatus("Online"), finalStatus(host = "another-daemon"), result(7, "true"))) {
             val script = Scripted(login(), hosts(), status(), connected(), active(), update(), after)
