@@ -9,6 +9,7 @@ import io.github.gamesbyian.chunks.rpc.ClientTorrent
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteWriteOwnerFence
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -109,7 +110,7 @@ internal class ProtocolSeedingPort(
 
     // The client's own per-transfer cap step, read once per tick; null = no per-transfer cap.
     private val capStep: Long? by lazy {
-        runBlocking { try { operations.client.uploadCapStepBytes() } catch (_: Exception) { null } }
+        runBlocking { readCapOrNull { operations.client.uploadCapStepBytes() } }
     }
     override val supportsPerTransferUploadCap: Boolean get() = capStep != null
     override fun uploadCapRepresentable(bytesPerSecond: Long): Boolean =
@@ -139,7 +140,7 @@ internal class ProtocolSeedingPort(
 
     /** Independent readback of the exact transfer's own cap; null when unreadable or out of range. */
     override fun uploadLimit(infoHash: String): Int? = runBlocking {
-        try { operations.client.uploadCapBytesPerSecond(infoHash) } catch (_: Exception) { null }
+        readCapOrNull { operations.client.uploadCapBytesPerSecond(infoHash) }
     }?.takeIf { it in 0L..Int.MAX_VALUE.toLong() }?.toInt()
 
     /**
@@ -154,10 +155,20 @@ internal class ProtocolSeedingPort(
         return runBlocking(RemoteWriteOwnerFence(ownerCurrent)) {
             if (!ownerCurrent()) return@runBlocking false
             try { operations.client.setUploadCapBytesPerSecond(infoHash, bytes) }
-            catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+            catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { return@runBlocking false }
-            (try { operations.client.uploadCapBytesPerSecond(infoHash) } catch (_: Exception) { null }) == bytes
+            readCapOrNull { operations.client.uploadCapBytesPerSecond(infoHash) } == bytes
         }
+    }
+
+    // A failed read can be unknown. Cancellation is a control-flow signal,
+    // not an unsupported cap or authority to continue the tick.
+    private suspend fun <T> readCapOrNull(read: suspend () -> T): T? = try {
+        read()
+    } catch (cancel: CancellationException) {
+        throw cancel
+    } catch (_: Exception) {
+        null
     }
 
     override fun pause(infoHash: String): Boolean {
@@ -256,6 +267,10 @@ internal object RemoteSeeding {
             }
             SeedingController(engine, store)
                 .tick(environment, snapshot.rules, snapshot.defaults[environment] ?: SeedingPolicy(), nowMs)
+        } catch (cancel: CancellationException) {
+            // The scheduler must abandon the rest of this profile tick, including
+            // Finish in Order. Durable Stop attempt markers remain in the store.
+            throw cancel
         } catch (_: Exception) {
             // A read fault ends this tick; a fault after a Stop still needs a refresh.
             if (!engine.stopAttempted) return Tick.NO_WRITE
