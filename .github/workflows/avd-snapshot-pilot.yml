@@ -1,22 +1,14 @@
-name: Chunks clean AVD snapshot pilot (manual only)
+name: Chunks clean AVD cold baseline (manual only)
 
-# Diagnostic experiment only. Never selected by pull_request or push.
-# A cached clean Android boot is not evidence that any Chunks test passed.
+# Snapshot restore failed twice in #2090, even without network transfer.
+# Keep the useful cold baseline, retire all persistent AVD cache writes.
+# A clean boot does not qualify any Chunks APK or installed journey.
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: "Cold emulator baseline or clean saved-snapshot restore"
-        required: true
-        type: choice
-        options: [cold, snapshot]
-        default: cold
 
 permissions:
   contents: read
-  actions: read  # Read current cache usage; no cache deletion, no write token
 
-# Keep cache generation and evaluation serial; never cancel a partial write.
 concurrency:
   group: chunks-avd-snapshot-pilot
   cancel-in-progress: false
@@ -25,7 +17,7 @@ jobs:
   measure:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 22
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Require hardware acceleration before allocating Android
@@ -33,125 +25,9 @@ jobs:
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
-      # Refuse speculative snapshot work before expensive SDK allocation.
-      - name: Fail early if the cache quota has insufficient headroom
-        if: inputs.mode == 'snapshot'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          used="$(gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '.active_caches_size_in_bytes')"
-          [[ "$used" =~ ^[0-9]+$ ]]
-          # Require roughly 3GB of headroom before starting bootstrap.
-          if (( used >= 7000000000 )); then
-            echo '::error title=AVD cache bootstrap refused::Insufficient repository cache headroom under default 10 GB quota'
-            exit 1
-          fi
-      # Resolve exact emulator/system-image revisions BEFORE looking up a
-      # snapshot. A version change must never silently restore a stale VM.
-      - name: Install Android 35 image and derive versioned cache identity
-        if: inputs.mode == 'snapshot'
-        id: android-sdk
-        shell: bash
-        run: |
-          set -euo pipefail
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            'emulator' 'system-images;android-35;google_apis;x86_64'
-          emulator_meta="$ANDROID_HOME/emulator/source.properties"
-          image_meta="$ANDROID_HOME/system-images/android-35/google_apis/x86_64/source.properties"
-          test -s "$emulator_meta" && test -s "$image_meta"
-          emulator_revision="$(sed -n 's/^Pkg.Revision=//p' "$emulator_meta" | head -1)"
-          image_revision="$(sed -n 's/^Pkg.Revision=//p' "$image_meta" | head -1)"
-          [[ "$emulator_revision" =~ ^[0-9]+([.][0-9]+)*$ ]]
-          [[ "$image_revision" =~ ^[0-9]+([.][0-9]+)*$ ]]
-          printf 'key=chunks-avd-pilot-ubuntu2404-api35-googleapis-x86_64-pixel6-2g-v1-em%s-img%s\n' \
-            "$emulator_revision" "$image_revision" >> "$GITHUB_OUTPUT"
-          printf 'emulator_rev=%s\nimage_rev=%s\n' \
-            "$emulator_revision" "$image_revision" >> "$GITHUB_OUTPUT"
-      - name: Restore only the isolated clean AVD (never app state or ADB keys)
-        if: inputs.mode == 'snapshot'
-        id: avd-restore
-        uses: actions/cache/restore@v4
-        with:
-          path: ~/.android/avd
-          key: ${{ steps.android-sdk.outputs.key }}
-      - name: Reject invalid restored snapshot before launch
-        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s "$HOME/.android/avd/test.ini"
-          test -d "$HOME/.android/avd/test.avd"
-          # Exact default Quick Boot metadata and RAM, not an arbitrary file
-          # from an empty/invalid snapshot directory.
-          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/snapshot.pb"
-          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.bin" || \
-            test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.img"
-      # Snapshot creation is deliberately a separate invocation, containing
-      # no Chunks APK, torrent, credentials, seedbox connection or test fixture.
-      - name: Generate clean boot snapshot on cache miss
-        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          disk-size: 2048M
-          avd-name: test
-          force-avd-creation: false
-          emulator-boot-timeout: 600
-          disable-animations: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          # Upstream splits multiline scripts into independent /bin/sh -c invocations.
-          # Keep checks in a single checked Bash subprocess.
-          script: bash tools/ci_avd_pilot_probe.sh pristine
-      - name: Verify snapshot was written and publish cache only after success
-        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s "$HOME/.android/avd/test.ini"
-          # Exact default Quick Boot metadata and RAM, not an arbitrary file
-          # from an empty/invalid snapshot directory.
-          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/snapshot.pb"
-          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.bin" || \
-            test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.img"
-      - name: Record AVD cache footprint before using or saving it
-        if: inputs.mode == 'snapshot'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cache_mib="$(du -sm "$HOME/.android/avd" | awk '{print $1}')"
-          [[ "$cache_mib" =~ ^[0-9]+$ ]]
-          echo "CHUNKS_AVD_CACHE_MIB=$cache_mib" >> "$GITHUB_ENV"
-          echo "Isolated AVD cache footprint (MiB): $cache_mib"
-      - name: Bound final snapshot write against repository quota
-        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          used="$(gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '.active_caches_size_in_bytes')"
-          [[ "$used" =~ ^[0-9]+$ ]]
-          [[ "${CHUNKS_AVD_CACHE_MIB:-}" =~ ^[0-9]+$ ]]
-          prospective=$(( used + CHUNKS_AVD_CACHE_MIB * 1048576 ))
-          if (( prospective > 9000000000 )); then
-            echo '::error title=AVD cache write refused::Existing caches plus estimated AVD exceed conservative 9 GB ceiling'
-            exit 1
-          fi
-      - name: Save verified clean AVD for a future manual run
-        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ~/.android/avd
-          key: ${{ steps.android-sdk.outputs.key }}
       - name: Mark start of measured emulator-runner invocation
-        shell: bash
         run: echo "CHUNKS_AVD_PROBE_START_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
-      - name: Boot and validate cold or saved-snapshot emulator
+      - name: Boot and verify a clean cold emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -160,17 +36,12 @@ jobs:
           profile: pixel_6
           disk-size: 2048M
           avd-name: test
-          force-avd-creation: ${{ inputs.mode == 'cold' }}
+          force-avd-creation: true
           emulator-boot-timeout: 600
           disable-animations: true
-          # Cold mode disables snapshots. Snapshot mode loads the cached clean
-          # boot but never saves the possibly modified measurement session.
-          # Verbose snapshot mode preserves host emulator load/fallback events
-          # in the Actions log. Only a successful load, not a cache hit, counts.
-          emulator-options: ${{ inputs.mode == 'snapshot' && '-verbose -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: bash tools/ci_avd_pilot_probe.sh measure
-      - name: Read installed SDK revisions for cold-mode provenance
-        if: inputs.mode == 'cold'
+      - name: Record successful cold baseline and exact SDK revisions
         shell: bash
         run: |
           set -euo pipefail
@@ -181,33 +52,23 @@ jobs:
           img="$(sed -n 's/^Pkg.Revision=//p' "$image_meta" | head -1)"
           [[ "$em" =~ ^[0-9]+([.][0-9]+)*$ ]]
           [[ "$img" =~ ^[0-9]+([.][0-9]+)*$ ]]
-          printf 'CHUNKS_COLD_EMULATOR_REV=%s\nCHUNKS_COLD_IMAGE_REV=%s\n' "$em" "$img" >> "$GITHUB_ENV"
-      - name: Print bounded comparison receipt
+          [[ "$CHUNKS_AVD_PROBE_START_MS" =~ ^[0-9]+$ ]]
+          elapsed=$(( $(date +%s%3N) - CHUNKS_AVD_PROBE_START_MS ))
+          {
+            echo '### Isolated cold AVD baseline (no app tests)'
+            echo "- System image: API35 google_apis x86_64 revision $img"
+            echo "- Emulator revision: $em"
+            echo "- Source checkout: $GITHUB_SHA"
+            echo "- Measured emulator-runner step and probe (milliseconds): $elapsed"
+            echo '- No persistent cache or snapshot; no installed Chunks acceptance.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Delete only the disposable local AVD
         if: always()
-        env:
-          CHUNKS_MODE: ${{ inputs.mode }}
-          CHUNKS_CACHE_HIT: ${{ steps.avd-restore.outputs.cache-hit }}
-          CHUNKS_EMULATOR_REV: ${{ steps.android-sdk.outputs.emulator_rev }}
-          CHUNKS_IMAGE_REV: ${{ steps.android-sdk.outputs.image_rev }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "Mode: $CHUNKS_MODE; cache hit: ${CHUNKS_CACHE_HIT:-not applicable}"
-          {
-            echo '### Isolated AVD startup pilot (no app tests)'
-            echo "- Mode: $CHUNKS_MODE"
-            echo "- Cache hit: ${CHUNKS_CACHE_HIT:-not applicable}"
-            echo "- Restored/generated AVD directory (MiB): ${CHUNKS_AVD_CACHE_MIB:-not applicable}"
-            echo "- System image: API35 google_apis x86_64 revision ${CHUNKS_COLD_IMAGE_REV:-${CHUNKS_IMAGE_REV:-unknown}}"
-            echo "- Emulator revision: ${CHUNKS_COLD_EMULATOR_REV:-${CHUNKS_EMULATOR_REV:-unknown}}"
-            echo "- Source checkout: $GITHUB_SHA"
-            if [[ "${CHUNKS_AVD_PROBE_START_MS:-}" =~ ^[0-9]+$ ]]; then
-              elapsed=$(( $(date +%s%3N) - CHUNKS_AVD_PROBE_START_MS ))
-              echo "- Measured emulator-runner step and probe (milliseconds): $elapsed"
-            else
-              echo '- Measured emulator-runner step and probe: not executed'
-            fi
-            echo '- Compare full runner job time and cache restore/save times in Actions, not just this interval.'
-            echo '- A cache hit and valid snapshot files do not by themselves prove Quick Boot was loaded: examine emulator startup logs for snapshot restore rather than cold-boot fallback.'
-            echo '- A boot receipt does not qualify any APK, installed test, torrent, rTorrent session or physical phone.'
-          } >> "$GITHUB_STEP_SUMMARY"
+          rm -rf -- "$HOME/.android/avd/test.avd"
+          rm -f -- "$HOME/.android/avd/test.ini"
+          test ! -e "$HOME/.android/avd/test.avd"
+          test ! -e "$HOME/.android/avd/test.ini"
+          echo "CHUNKS_AVD_LOCAL_CLEANUP: removed disposable test AVD"
