@@ -73,7 +73,10 @@ def evaluate(checks: list[dict], gates: list[str], config: dict, waivers: dict[s
     # match arbitrary suffixes or treat a successful coordinator as test proof.
     aliases = {"combined / two-server-combined": "two-server-combined",
                "remove / remote-delete-data": "remote-delete-data",
-               "protocol / installed-protocol-client": "installed-protocol-client"}
+               "protocol / installed-protocol-client": "installed-protocol-client",
+               "api29 / api29-downloads": "api29-downloads",
+               "resume / installed-resume-death (29)": "installed-resume-death (29)",
+               "resume / installed-resume-death (35)": "installed-resume-death (35)"}
     grouped: dict[str, list[dict]] = {}
     for check in checks:
         name = aliases.get(check["name"], check["name"])
