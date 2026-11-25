@@ -31,6 +31,10 @@ internal object ChunksSemantics {
     const val CONNECTION_CONNECT = "chunks.connection.connect"
     const val PROTOCOL_OPERATIONS = "chunks.protocol.operations"
     const val PROTOCOL_START_STOP = "chunks.protocol.start_stop"
+    /** Read-only re-read of the client's list when Details controls are out of date. */
+    const val PROTOCOL_REFRESH_LIST = "chunks.protocol.refresh_list"
+    /** In-place status of that read: in progress or failed. */
+    const val PROTOCOL_REFRESH_LIST_STATUS = "chunks.protocol.refresh_list.status"
     const val PROTOCOL_ABSENT_RECEIPTS = "chunks.protocol.absent_receipts"
     const val PROTOCOL_ABSENT_RECEIPT_CHECK = "chunks.protocol.absent_receipt_check"
     const val PROTOCOL_ABSENT_RECEIPT_RESULT = "chunks.protocol.absent_receipt_result"

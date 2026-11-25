@@ -84,7 +84,23 @@ class LocalInstalledAddProcessDeathTest {
                         "reviewedDocument=${owner.reviewedTorrent.value != null} " +
                         "ticket=${owner.session.attemptedTicket != null}"
                 }
-                throw AssertionError("Local submit unavailable: matches=${matches.size} reason=$diagnostic $state", failure)
+                // #2108: which owner withheld the first confirmed inventory?
+                // A probe that cannot take the engine holder's lock within 2 s
+                // means a long native start/read holds it; never waits longer.
+                // Both probes take a monitor: bound them on a daemon thread and
+                // never let a probe failure replace the primary assertion.
+                val probes = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+                    Thread(task, "chunks-2108-probe").apply { isDaemon = true }
+                }
+                fun probe(what: () -> String): String = try {
+                    probes.submit<String> { what() }.get(2, java.util.concurrent.TimeUnit.SECONDS)
+                } catch (_: java.util.concurrent.TimeoutException) { "lockBusy" }
+                catch (other: Exception) { "unreadable(${other.javaClass.simpleName})" }
+                val engineProbe = probe { if (LocalEngineHolder.current() == null) "absent" else "running" }
+                val mutationLock = probe { LocalMutationFence.revision.blocksMutations().toString() }
+                probes.shutdownNow()
+                throw AssertionError("Local submit unavailable: matches=${matches.size} reason=$diagnostic $state " +
+                    "engine=$engineProbe mutationLock=$mutationLock", failure)
             }
             journey.activate(ChunksSemantics.FOOTER_TRANSFERS)
             journey.awaitTransferReceipt("Start unverified")

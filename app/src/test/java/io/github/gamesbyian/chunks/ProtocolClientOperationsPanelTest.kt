@@ -438,6 +438,47 @@ class ProtocolClientOperationsPanelTest {
         assertEquals("Read-only reconciliation and navigation never repeat the write", 1, fake.writes)
     }
 
+    @Test fun outOfDateControlsOfferOnlyAReadOnlyListRefreshInPlace() {
+        // #2109: a failed post-command refresh disabled Details controls with
+        // an instruction to refresh but no way to do so from Details.
+        val fake = Fake()
+        var refreshes = 0
+        var current by mutableStateOf(false)
+        var refreshing by mutableStateOf(false)
+        var failed by mutableStateOf(false)
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qB", sourceClientId = "profile-a",
+                    observedStarted = false, current = current,
+                    createOperations = { ClientOperations(fake, 3, 1) }, onChanged = {},
+                    sourceGeneration = "g1", receiptOwner = ProtocolOperationReceiptOwner(),
+                    onRefreshList = { refreshes++ }, listRefreshing = refreshing,
+                    listRefreshFailed = failed
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertIsEnabled().performClick()
+        assertEquals(1, refreshes)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS).assertDoesNotExist()
+        rule.runOnIdle { refreshing = true }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertIsNotEnabled()
+        rule.onNodeWithText("Refreshing transfer list…").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS)
+            .assertTextContains("Reading the transfer list", substring = true)
+        // A failed read says so in place, and the refresh can be tried again.
+        rule.runOnIdle { refreshing = false; failed = true }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST_STATUS)
+            .assertTextContains("Could not read the transfer list", substring = true)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertIsEnabled()
+        rule.runOnIdle { failed = false; current = true }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REFRESH_LIST).assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsEnabled()
+        assertEquals("a list refresh is never a command", 0, fake.writes)
+    }
+
     @Test fun policyLeaseTemporarilyDisablesManualCommandsWithoutOfferingReconciliation() {
         val owner = ProtocolOperationReceiptOwner()
         val fake = Fake()

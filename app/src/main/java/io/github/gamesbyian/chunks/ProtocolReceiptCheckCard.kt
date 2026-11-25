@@ -59,8 +59,10 @@ internal fun absentJobReceipts(
 internal fun showAbsentReceiptsCard(
     owner: ProtocolOperationReceiptOwner,
     sources: List<ProtocolReceiptCheckSource>,
-    results: Map<ProtocolOperationReceiptOwner.Key, String>
-): Boolean = results.isNotEmpty() ||
+    results: Map<ProtocolOperationReceiptOwner.Key, String>,
+    /** Privacy: a locked profile's outcomes stay retained but are not shown. */
+    resultVisible: (ProtocolOperationReceiptOwner.Key) -> Boolean = { true }
+): Boolean = results.keys.any(resultVisible) ||
     sources.any { absentJobReceipts(owner, it.profileId, it.listedHashes).isNotEmpty() }
 
 internal fun listedHashes(transfers: List<UnifiedTransferObservation>): Set<String> =
@@ -73,7 +75,8 @@ internal fun ProtocolAbsentReceiptsCard(
     /** Hoisted by the caller so outcomes outlive the last unresolved receipt. */
     results: MutableMap<ProtocolOperationReceiptOwner.Key, String> =
         remember { mutableStateMapOf() },
-    onChecked: (String) -> Unit = {}
+    onChecked: (String) -> Unit = {},
+    resultVisible: (ProtocolOperationReceiptOwner.Key) -> Boolean = { true }
 ) {
     val scope = rememberCoroutineScope()
     val busy = remember { mutableStateMapOf<ProtocolOperationReceiptOwner.Key, Boolean>() }
@@ -81,7 +84,8 @@ internal fun ProtocolAbsentReceiptsCard(
     val pending = sources.flatMap { source ->
         absentJobReceipts(owner, source.profileId, source.listedHashes).map { source to it }
     }
-    if (pending.isEmpty() && results.isEmpty()) return
+    val shownResults = results.filterKeys(resultVisible)
+    if (pending.isEmpty() && shownResults.isEmpty()) return
     Card(Modifier.fillMaxWidth().testTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPTS)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Earlier requests need checking", style = MaterialTheme.typography.titleMedium,
@@ -127,7 +131,7 @@ internal fun ProtocolAbsentReceiptsCard(
                         }
                 ) { Text("Check without changing it") }
             }
-            for ((key, text) in results) {
+            for ((key, text) in shownResults) {
                 Text(text, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_RESULT + "." + key.hash)
                         .semantics { liveRegion = LiveRegionMode.Polite })
