@@ -102,6 +102,8 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
         # process kill; they execute only in installed-protocol-client.yml.
         ("ProtocolClientInstalledJourneyTest", "typedStopAckHeldThenKillTheAppProcess"),
         ("ProtocolClientInstalledJourneyTest", "freshProcessKeepsStopUnknownUntilReadOnlyCheck"),
+        ("ProtocolClientInstalledJourneyTest", "typedRemoveAckHeldThenKillTheAppProcess"),
+        ("ProtocolClientInstalledJourneyTest", "freshProcessReachesTheRemovedJobsReceiptFromTransfers"),
     )
 )
 

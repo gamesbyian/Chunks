@@ -1088,6 +1088,8 @@ internal fun CombinedTransfersScreen(
     }
 
     val listState = listState ?: rememberLazyListState()
+    // Read-only receipt-check outcomes outlive the receipts they released (#2026).
+    val absentReceiptResults = remember { androidx.compose.runtime.mutableStateMapOf<ProtocolOperationReceiptOwner.Key, String>() }
     // A shared Android magnet must expose its exact destination choices even
     // when the Combined list was last visited far below its Add card. This
     // changes only the view position, never authorizes an Add or remote call.
@@ -2013,6 +2015,25 @@ internal fun CombinedTransfersScreen(
                         quickControls = if (selecting) null else ({ quickControlsFor(row) }))
             }
         }
+        // #2026: retained typed-client receipts whose job is no longer listed
+        // cannot be reached from Details. Offer only their read-only check,
+        // and only from a privacy-visible, complete, current inventory.
+        val receiptSources = protocolProfiles.mapNotNull { profile ->
+            val create = profile.operations ?: return@mapNotNull null
+            if (profile.environment !in protocolAllowed) return@mapNotNull null
+            val snapshot = protocolSources.listings[profile.environment]
+                ?.takeIf { it.witness == profile.identityWitness }?.snapshot
+                ?.takeIf { it.canClaimCompleteLiveInventory } ?: return@mapNotNull null
+            ProtocolReceiptCheckSource(profile.id, profile.label, listedHashes(snapshot.transfers), create) {
+                protocolOwnerCurrent(profile)
+            }
+        }
+        if (showAbsentReceiptsCard(ProtocolOperationReceipts.owner, receiptSources, absentReceiptResults))
+            item(key = "protocol-absent-receipts") {
+                ProtocolAbsentReceiptsCard(receiptSources, results = absentReceiptResults) { profileId ->
+                    protocolProfiles.firstOrNull { it.id == profileId }?.let { protocolSources.reload(it.environment) }
+                }
+            }
         // Detailed environment status is available after the inventory, rather
         // than charging every user a tall status panel before the first row.
         item {
