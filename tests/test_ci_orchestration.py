@@ -13,6 +13,14 @@ def pr_block(name):
 
 
 class DispatchTests(unittest.TestCase):
+    def test_native_add_production_route_keeps_pr_and_manual_triggers(self):
+        # The manual shared-build comparison was archived (docs/archive/workflows);
+        # the production build-once route must keep both entry points.
+        production = (ROOT / "native-add-instrumentation.yml").read_text()
+        self.assertIn("  pull_request:", production)
+        self.assertIn("  workflow_dispatch:", production)
+        self.assertFalse((ROOT / "native-add-shared-build-experiment.yml").exists())
+
     def test_one_pr_runner_owns_overlapping_radio_interrupt_and_doze(self):
         main = pr_block("android-radio-harness-qa.yml")
         for path in ("tools/android_public_swarm_interrupt.sh",
@@ -41,16 +49,6 @@ class DispatchTests(unittest.TestCase):
             self.assertIn("CHUNKS_JOB_STATUS: ${{ job.status }}", text)
             self.assertIn("--require-executed", text)
             self.assertNotIn("if [ -f tools/ci_failure_digest.py ]; then", text)
-
-    def test_legacy_shared_build_comparison_is_manual_only(self):
-        experiment = (ROOT / "native-add-shared-build-experiment.yml").read_text()
-        production = (ROOT / "native-add-instrumentation.yml").read_text()
-        self.assertIn("  workflow_dispatch:", experiment)
-        self.assertNotIn("  pull_request:", experiment)
-        self.assertIn("script: bash tools/native_add_prebuilt.sh", experiment)
-        self.assertIn("verify_native_add_shards.py", experiment)
-        self.assertIn("  pull_request:", production)
-        self.assertIn("  workflow_dispatch:", production)
 
     def test_orchestration_tests_trigger_docs_validation(self):
         text = (ROOT / "documentation-validation.yml").read_text()

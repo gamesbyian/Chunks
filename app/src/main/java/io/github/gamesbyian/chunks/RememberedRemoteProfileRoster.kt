@@ -1,16 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import android.util.Base64
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.net.URI
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 
 /**
@@ -22,9 +15,15 @@ import org.json.JSONArray
  * Callers save only AFTER authenticated connection and only while user has
  * not opted out; opting out MUST clear both encrypted vaults.
  */
-internal class RememberedRemoteProfileRoster(context: Context) {
+internal class RememberedRemoteProfileRoster(
+    context: Context,
+    private val keys: SealingKeys = AndroidKeystoreSealingKeys(KEY_ALIAS)
+) {
     companion object {
         const val MAX_PROFILES = 12
+        /** Persisted alias and preference file; changing either strands saved profiles. */
+        internal const val KEY_ALIAS = "io.github.gamesbyian.chunks.remote-profile-roster-v1"
+        internal const val PREFS = "chunks_remote_profiles_encrypted_v1"
         private const val MAX_ENCODED = 196_608
 
         /** Stable profile ID: SHA-256 of endpoint + NUL + username. Also the seeding environment key. */
@@ -64,10 +63,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         val address: String get() = addressOf(credentials.endpoint)
     }
 
-    private val prefs = context.applicationContext.getSharedPreferences(
-        "chunks_remote_profiles_encrypted_v1", Context.MODE_PRIVATE
-    )
-    private val alias = "io.github.gamesbyian.chunks.remote-profile-roster-v1"
+    private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private val validId = Regex("[a-f0-9]{64}")
     private val legacy = RememberedRemoteLogin(context.applicationContext)
     // A failed encrypted-ID migration must never let a subsequent save replace
@@ -81,22 +77,6 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     /** Simulate Android Keystore becoming unavailable during a read only. */
     @androidx.annotation.VisibleForTesting
     internal var rejectDecryptForTest = false
-
-    private fun keystore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-
-    private fun key(): SecretKey {
-        val existing = keystore().getKey(alias, null) as? SecretKey
-        if (existing != null) return existing
-        val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        generator.init(KeyGenParameterSpec.Builder(
-            alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-        ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
-            .setRandomizedEncryptionRequired(true)
-            .build())
-        return generator.generateKey()
-    }
 
     private fun identity(credentials: RemoteCredentials): String = identityOf(credentials.endpoint, credentials.username)
 
@@ -130,12 +110,9 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             val bytes = Base64.decode(packed, Base64.NO_WRAP)
             require(bytes.size in 29..131_072)
             if (rejectDecryptForTest) throw IllegalStateException("Injected encrypted-roster key outage")
-            val savedKey = keystore().getKey(alias, null) as? SecretKey
+            val savedKey = keys.decryptionKey()
                 ?: throw IllegalStateException("Profile encryption key unavailable")
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, savedKey,
-                GCMParameterSpec(128, bytes, 0, 12))
-            val plain = cipher.doFinal(bytes, 12, bytes.size - 12)
+            val plain = SealedBlob.open(savedKey, bytes)
             val rows = JSONArray(String(plain, Charsets.UTF_8))
             require(rows.length() <= MAX_PROFILES)
             val output = ArrayList<Profile>()
@@ -231,7 +208,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         val erased = prefs.edit().remove("roster").commit()
         if (!erased) return false
         RemoteCredentialLock.invalidate()
-        runCatching { keystore().deleteEntry(alias) }
+        runCatching { keys.erase() }
         return true
     }
 
@@ -256,9 +233,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         return try {
             val raw = rows.toString().toByteArray(Charsets.UTF_8)
             require(raw.size <= 100_000)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, key())
-            val packed = cipher.iv + cipher.doFinal(raw)
+            val packed = SealedBlob.seal(keys.encryptionKey(), raw)
             val encoded = Base64.encodeToString(packed, Base64.NO_WRAP)
             require(encoded.length <= MAX_ENCODED)
             prefs.edit().putString("roster", encoded).commit()

@@ -629,12 +629,3 @@ private fun SettingSwitch(title: String, detail: String, checked: Boolean, enabl
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
-
-/** Compact clickable artwork for a list row; opens identification when tapped. */
-@Composable
-fun TransferMediaArtworkButton(state: TransferMediaUiState, size: Dp, onClick: () -> Unit, modifier: Modifier = Modifier, showArtwork: Boolean = true) {
-    Box(modifier.size(maxOf(size, 48.dp)).clip(RoundedCornerShape(size * 0.18f)).clickable(onClickLabel = "Change artwork", role = Role.Button, onClick = onClick)
-        .semantics { contentDescription = "Artwork: ${state.state.label}" }, contentAlignment = Alignment.Center) {
-        TransferMediaArtwork(state, size, showArtwork = showArtwork)
-    }
-}
