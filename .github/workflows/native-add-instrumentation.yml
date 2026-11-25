@@ -136,7 +136,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           CHUNKS_SCOPE: ${{ inputs.scope || 'native' }}
-        run: python3 tools/ci_shared_debug_routes.py
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
+          python3 tools/ci_shared_debug_routes.py
 
   build-once:
     needs: select
