@@ -8,7 +8,7 @@ import re
 import unittest
 from fnmatch import fnmatchcase
 from tools.ci_shared_debug_routes import (
-    choose, load_routes, matches_ordered, pr_paths, route_patterns, select_paths, union_patterns,
+    LANES, choose, load_routes, matches_ordered, pr_paths, route_patterns, select_paths, union_patterns,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -163,7 +163,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             docs, (".github/workflows/native-add-instrumentation.yml",)))
 
     def test_combined_catalog_ordering_selects_real_installed_campaign(self):
-        combined = (ROOT / ".github/workflows/installed-combined-two-servers.yml").read_text()
+        combined = shared_route_source("combined")
         for name in ("UnifiedTransferCatalog.kt", "TransferSortOrdering.kt"):
             with self.subTest(name=name):
                 self.assertTrue(dispatches_for_changed_paths(combined, (
@@ -463,27 +463,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertNotIn("continue-on-error: true", source)
 
     def test_disposable_installed_workflows_defer_draft_but_resume_on_ready(self):
-        # Preserve complete expensive real-daemon acceptance when a PR is ready;
-        # experimental draft edits and conversions must stay cost-free.
-        for filename, job, script in (
-            ("installed-remote-delete-data.yml", "remote-delete-data",
+        caller = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        self.assertIn("types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]", caller)
+        self.assertIn("if: github.event_name != 'pull_request' || !github.event.pull_request.draft", caller)
+        for lane, filename, job, script in (
+            ("remove", "installed-remote-delete-data.yml", "remote-delete-data",
              "tools/installed_remote_delete_data.sh"),
-            ("installed-combined-two-servers.yml", "two-server-combined",
+            ("combined", "installed-combined-two-servers.yml", "two-server-combined",
              "tools/installed_combined_two_servers.sh"),
         ):
             with self.subTest(workflow=filename):
                 source = (ROOT / ".github/workflows" / filename).read_text()
-                self.assertIn(
-                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
-                    source)
-                self.assertIn(
-                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
-                    source)
-                self.assertIn(f"  {job}:", source)
+                self.assertNotIn("  pull_request:", source)
+                self.assertIn("workflow_call:", source)
                 self.assertIn("workflow_dispatch:", source)
                 self.assertIn("cancel-in-progress: true", source)
+                self.assertIn(f"  {job}:", source)
                 self.assertIn(script, source)
                 self.assertNotIn("continue-on-error: true", source)
+                self.assertIn(f"uses: ./.github/workflows/{filename}", caller)
+                self.assertIn(f"needs.select.outputs.{lane} == 'true'", caller)
+                self.assertIn("needs.build-once.result == 'skipped'", caller)
+                self.assertIn("same_run_apks: ${{ needs.build-once.result == 'success' }}", caller)
+                self.assertIn("tools/reuse_installed_apks.sh", (ROOT / ".github/actions/reuse-installed-apks/action.yml").read_text())
 
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
         source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
@@ -583,20 +585,20 @@ class SharedDebugRouteTests(unittest.TestCase):
             with self.subTest(path=witness):
                 selected = select_paths(self.routes, (witness,))
                 self.assertEqual(bool(selected), matches_ordered(actual, (witness,)))
-                for lane in ("native", "protocol"):
+                for lane in LANES:
                     self.assertEqual(lane in selected,
                         dispatches_for_changed_paths(shared_route_source(lane), (witness,)))
 
     def test_exact_lane_isolation_and_mixed_changes(self):
         native = "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
         protocol = "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
-        self.assertEqual({"native"}, select_paths(self.routes, [native]))
+        self.assertEqual({"native", "combined", "remove"}, select_paths(self.routes, [native]))
         self.assertEqual({"protocol"}, select_paths(self.routes, [protocol]))
-        self.assertEqual({"native", "protocol"}, select_paths(self.routes, [native, protocol]))
+        self.assertEqual(set(LANES), select_paths(self.routes, [native, protocol]))
         self.assertEqual({"protocol"}, select_paths(self.routes, ["tools/interop/start_local_clients.sh"]))
-        self.assertEqual(set(), select_paths(self.routes, ["tools/interop/disposable_snapshot_folder_listing.py"]))
+        self.assertEqual({"combined"}, select_paths(self.routes, ["tools/interop/disposable_snapshot_folder_listing.py"]))
         self.assertEqual(set(), select_paths(self.routes, ["docs/CI-POLICY.md"]))
-        self.assertEqual({"native", "protocol"}, select_paths(self.routes, ["tools/ci_shared_debug_routes.py"]))
+        self.assertEqual(set(LANES), select_paths(self.routes, ["tools/ci_shared_debug_routes.py"]))
 
     def test_complete_rename_and_pagination(self):
         event = self.event(101)
@@ -610,25 +612,26 @@ class SharedDebugRouteTests(unittest.TestCase):
                 return paths[100:]
             return event["pull_request"]
         self.assertIn(old, pr_paths("fixture/repo", event, fetch))
-        self.assertEqual(({"native"}, "exact-pr-files"),
+        self.assertEqual(({"native", "combined", "remove"}, "exact-pr-files"),
                          choose(self.routes, "pull_request", "", event, "fixture/repo", fetch))
 
-    def test_incomplete_or_changed_metadata_selects_both(self):
+    def test_incomplete_or_changed_metadata_selects_all(self):
         event = self.event()
         for payload in ([], [{"filename": "docs/readme.md"}, {"filename": "docs/extra.md"}]):
             def fetch(path):
                 return payload if "/files?" in path else event["pull_request"]
-            self.assertEqual({"native", "protocol"},
+            self.assertEqual(set(LANES),
                              choose(self.routes, "pull_request", "", event, "fixture/repo", fetch)[0])
         changed = self.event()
         changed["pull_request"]["head"]["sha"] = "c" * 40
-        self.assertEqual({"native", "protocol"},
+        self.assertEqual(set(LANES),
                          choose(self.routes, "pull_request", "", event, "fixture/repo",
                                 lambda _: changed["pull_request"])[0])
 
     def test_manual_scope(self):
         for scope, expected in (("native", {"native"}), ("protocol", {"protocol"}),
-                                ("both", {"native", "protocol"})):
+                                ("both", {"native", "protocol"}), ("combined", {"combined"}),
+                                ("remove", {"remove"}), ("all", set(LANES))):
             self.assertEqual((expected, "manual"), choose(self.routes, "workflow_dispatch", scope))
         with self.assertRaises(ValueError):
             choose(self.routes, "workflow_dispatch", "unknown")
