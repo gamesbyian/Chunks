@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Temporary PR route witness: no Native or Universal Add producer selected.
 # Disposable-only D1/C1: installed app against two local real rTorrent daemons.
 set -euo pipefail
 # Bound every Android instrumentation phase independently; timeouts are failures.
