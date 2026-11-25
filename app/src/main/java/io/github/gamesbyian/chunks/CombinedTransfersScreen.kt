@@ -1293,7 +1293,9 @@ internal fun CombinedTransfersScreen(
                         focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
-                    onRefreshList = { protocolSources.reload(profile.environment) },
+                    // Only where a fresh list can make these controls current again.
+                    onRefreshList = if (focusedKey.infoHash.matches(V1_TRANSFER_HASH))
+                        ({ protocolSources.reload(profile.environment) }) else null,
                     listRefreshing = focusedProtocolListing?.loading == true,
                     moveTargets = protocolTargets,
                     moveConnections = moveConnections,
