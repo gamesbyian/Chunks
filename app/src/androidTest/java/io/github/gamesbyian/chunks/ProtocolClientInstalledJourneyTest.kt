@@ -825,9 +825,9 @@ class ProtocolClientInstalledJourneyTest {
         return (0 until entries.length()).map { entries.getJSONObject(it) }
             .singleOrNull { it.optString("h").equals(hash, ignoreCase = true) && it.optString("k") == "STOP" }
     }
-    // Survives the killed app process: the test APK's own private files.
+    // Instrumentation runs as the app UID; app data survives the kill (cleared only before phase 1).
     private val stopWitnessFile get() =
-        File(InstrumentationRegistry.getInstrumentation().context.filesDir, "chunks-stop-witness.json")
+        File(InstrumentationRegistry.getInstrumentation().targetContext.noBackupFilesDir, "chunks-stop-witness.json")
 
     @Test fun typedStopAckHeldThenKillTheAppProcess() {
         assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_stop_death") == "authorized")
