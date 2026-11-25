@@ -27,6 +27,7 @@ on:
       - "tools/interop/disposable_snapshot_folder_listing.py"
       - ".github/workflows/installed-combined-two-servers.yml"
       - ".github/actions/reuse-installed-apks/action.yml"
+      - "tools/reuse_installed_apks.sh"
   workflow_dispatch:
     inputs:
       apk_run_id:
