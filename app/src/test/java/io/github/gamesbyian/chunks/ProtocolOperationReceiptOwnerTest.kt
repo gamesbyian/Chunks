@@ -97,7 +97,9 @@ class ProtocolOperationReceiptOwnerTest {
     private class MemoryJournal(var stored: List<ProtocolOperationReceiptOwner.Persisted> = emptyList(),
                                 var failSaves: Boolean = false) : ProtocolOperationReceiptOwner.Journal {
         override fun load() = stored
+        var saves = 0
         override fun save(entries: List<ProtocolOperationReceiptOwner.Persisted>): Boolean {
+            saves++
             if (failSaves) return false
             stored = entries
             return true
@@ -146,5 +148,16 @@ class ProtocolOperationReceiptOwnerTest {
         assertTrue(owner.possibleWrite(ticket))
         owner.complete(ticket, ClientOperationOutcome.Verified(key.hash, null))
         assertEquals(emptyList<ProtocolOperationReceiptOwner.Persisted>(), journal.stored)
+    }
+
+    @Test fun transientLeasesAndPreflightDoNotTouchTheJournal() {
+        val journal = MemoryJournal()
+        val owner = ProtocolOperationReceiptOwner().also { it.attach(journal) }
+        val baseline = journal.saves
+        repeat(5) {
+            owner.reservePolicy("profile-a", key.hash, ProtocolOperationKind.SMART_SEEDING)?.close()
+            owner.begin(key, "g", ProtocolOperationKind.START)?.let(owner::cancel)
+        }
+        assertEquals(baseline, journal.saves)
     }
 }
