@@ -350,8 +350,10 @@ internal fun ChunksApp(
     var chosenBackend by rememberSaveable { mutableStateOf(RemoteBackendKind.RTORRENT) }
     var delugeDaemonHostId by remember { mutableStateOf("") }
     var readOnlyBackendError by remember { mutableStateOf<String?>(null) }
-    var verifiedReadOnlyProfileId by remember { mutableStateOf<String?>(null) }
-    var transientReadOnlyProfile by remember { mutableStateOf<CombinedReadOnlyProtocolProfile?>(null) }
+    // The verified typed (Transmission/qBittorrent/Deluge) connection is
+    // retained with the rTorrent session through recreation (A2611-02).
+    var verifiedReadOnlyProfileId by remoteSession.verifiedProtocolProfileId
+    var transientReadOnlyProfile by remoteSession.transientProtocolProfile
     var readOnlyConnectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val combinedProtocolProfiles = remember(savedProtocolProfiles, transientReadOnlyProfile) {
         RemoteProtocolCombinedProfiles.saved(savedProtocolProfiles) +

@@ -8,6 +8,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 
 /**
  * The one authenticated rTorrent session and its last accepted inventory,
+ * plus the verified typed-client connection,
  * retained through Activity recreation in RAM only (A2611-02). Process death
  * still drops it; the existing one-shot read-only startup reconnect applies.
  *
@@ -32,6 +33,14 @@ internal class RemoteSessionOwner : ViewModel() {
     /** The view [transfers] was read from, and the view the person asked for. */
     val currentView = mutableStateOf("main")
     val requestedView = mutableStateOf("main")
+    /**
+     * The verified typed-client connection: its saved profile ID, or a
+     * remember-off profile that exists only in RAM. Its credentials already
+     * lived in this process's memory; retaining them through recreation adds
+     * no storage, and process death still drops a remember-off connection.
+     */
+    val verifiedProtocolProfileId = mutableStateOf<String?>(null)
+    val transientProtocolProfile = mutableStateOf<CombinedReadOnlyProtocolProfile?>(null)
     val remoteFence = RemoteUiRequestFence()
     val inspectionFence = RemoteUiRequestFence()
     val mutationGate = RemoteMutationReadbackGate()
