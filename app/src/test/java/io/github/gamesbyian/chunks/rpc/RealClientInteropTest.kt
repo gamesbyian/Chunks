@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks.rpc
 import io.github.gamesbyian.chunks.create.TorrentMetainfoBuilder
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import java.io.File
+import java.net.URI
 import java.security.SecureRandom
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -60,7 +61,7 @@ class RealClientInteropTest {
 
     private class Fixture(val result: TorrentMetainfoBuilder.Result, val name: String, val files: Map<String, ByteArray>)
 
-    private fun fixture(): Fixture {
+    private fun fixture(privateTorrent: Boolean = false): Fixture {
         val random = SecureRandom()
         val name = "chunks-interop-" + System.currentTimeMillis().toString(36) +
             "-" + Integer.toHexString(random.nextInt())
@@ -76,6 +77,7 @@ class RealClientInteropTest {
             // A dead loopback tracker: rTorrent with DHT off silently drops a
             // trackerless .torrent (load.raw_verbose still answers 0).
             trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")),
+            private = privateTorrent,
             pieceLength = 16 * 1024
         ))
         return Fixture(result, name, files)
@@ -109,6 +111,7 @@ class RealClientInteropTest {
         assertFalse(hash in before)
         val payloadRoot = env("PAYLOAD_DIR").takeIf { it.isNotBlank() }?.let(::File)
             ?.takeIf { it.isDirectory }
+        val disposableLoopback = payloadRoot != null && URI(env("URL")).host == "127.0.0.1"
         val directory: String = if (payloadRoot != null) {
             val dir = File(payloadRoot, "chunks-interop-" + hash.take(12)).apply { mkdirs() }
             val top = File(dir, fx.name).apply { mkdirs() }
@@ -133,6 +136,13 @@ class RealClientInteropTest {
             assertTrue(connected.read.snapshot.canClaimCompleteLiveInventory)
             assertTrue(connected.read.snapshot.transfers.any { it.key.infoHash == hash })
             stage("app_connect=verified_inventory_contains_fixture")
+            if (disposableLoopback) {
+                assertEquals("Public transfer can be copied", hash, client.transferSource(hash)?.infoHash)
+                val publicFacts = requireNotNull(client.seedingFacts(hash))
+                assertEquals(false, publicFacts.isPrivate)
+                assertTrue(publicFacts.publicTrackerUrls.orEmpty().contains("http://127.0.0.1:1/announce"))
+                stage("public_job_source_and_tracker=verified")
+            }
         }
 
         // 2. Duplicate Add is refused without a second registration.
@@ -239,6 +249,51 @@ class RealClientInteropTest {
             catch (_: java.io.IOException) { true }
         assertTrue("Wrong password must not authenticate", bad)
         stage("wrong_password=refused")
+
+        if (disposableLoopback && kind != RemoteBackendKind.RTORRENT) {
+            val privateFixture = fixture(privateTorrent = true)
+            val privateHash = privateFixture.result.infoHashV1
+            assertVerified("private_add_stopped", ops.add(ClientAddRequest(
+                ClientAddSource.TorrentFile(privateFixture.result.torrent), directory, startNow = false)))
+            try {
+                val facts = requireNotNull(client.seedingFacts(privateHash))
+                assertEquals(true, facts.isPrivate)
+                assertEquals(null, facts.publicTrackerUrls)
+                val source = client.transferSource(privateHash)
+                assertFalse("Private jobs must never export as magnets", source is ClientAddSource.Magnet)
+                if (source != null) assertEquals(privateHash, source.infoHash)
+                stage("private_job=tracker_rules_excluded source=" +
+                    if (source is ClientAddSource.TorrentFile) "exact_metainfo" else "refused")
+            } finally {
+                assertVerified("private_remove_session_only", ops.remove(privateHash, deleteData = false))
+            }
+        }
+
+        if (disposableLoopback && kind == RemoteBackendKind.QBITTORRENT) {
+            // A magnet nobody has answered has no metadata, so qBittorrent cannot know its privacy.
+            // Its Copy source may carry identity only: never the announce URL the job was given.
+            val bare = ByteArray(20).also { SecureRandom().nextBytes(it) }
+                .joinToString("") { "%02x".format(it) }
+            val announce = "http://127.0.0.1:1/announce"
+            assertVerified("metadata_less_add_stopped", ops.add(ClientAddRequest(
+                ClientAddSource.Magnet("magnet:?xt=urn:btih:$bare&dn=chunks-interop-bare&tr=" +
+                    java.net.URLEncoder.encode(announce, "UTF-8")), directory, startNow = false)))
+            try {
+                val reported = requireNotNull(client.seedingFacts(bare)).isPrivate
+                val source = client.transferSource(bare)
+                // Whatever the daemon reports, a magnet leaves only with positive public evidence,
+                // or as identity alone when privacy is unknown.
+                if (source != null) assertEquals(bare, source.infoHash)
+                val trackerFree = source is ClientAddSource.Magnet && !source.uri.contains("tr=")
+                if (reported != false) assertTrue("Unknown or private: no announce URL may travel",
+                    source == null || trackerFree)
+                if (reported == null) assertTrue("Unknown privacy still copies identity", trackerFree)
+                stage("metadata_less_job reported_private=$reported source=" +
+                    (if (source == null) "refused" else if (trackerFree) "hash_only" else "full_public"))
+            } finally {
+                assertVerified("metadata_less_remove_session_only", ops.remove(bare, deleteData = false))
+            }
+        }
 
         // 11. No unrelated inventory changed.
         val after = client.torrents().map { it.hash }.toSet()

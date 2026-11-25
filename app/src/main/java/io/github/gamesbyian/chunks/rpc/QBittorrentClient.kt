@@ -61,8 +61,19 @@ internal class QBittorrentClient(
         }
         val rows = optionalRead { ExactRpcJson.arrayBody(request("GET", "torrents/info?hashes=$exact")) } ?: return null
         val row = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hash") } ?: return null
-        val magnet = row.optString("magnet_uri").takeIf { it.startsWith("magnet:?") } ?: return null
-        return runCatching { ClientAddSource.Magnet(magnet) }.getOrNull()?.takeIf { it.infoHash == exact }
+        val privacy = reportedPrivate(exact, row)
+        val source = when {
+            privacy == false -> (row.opt("magnet_uri") as? String)?.takeIf { it.startsWith("magnet:?") }
+                ?.let { runCatching { ClientAddSource.Magnet(it) }.getOrNull() }
+            // qBittorrent >= 5.0 reports an explicit JSON null `private` until the job has metadata
+            // (a magnet nobody has answered yet). Privacy is then unknown, not public, so the job's own
+            // announce URLs must not travel. Its identity and name still can: a hash-only magnet cannot
+            // carry a passkey. Malformed or absent evidence stays refused.
+            privacy == null && row.has("private") && row.isNull("private") ->
+                runCatching { ClientMagnets.build(exact, row.opt("name") as? String, emptyList()) }.getOrNull()
+            else -> null
+        }
+        return source?.takeIf { it.infoHash == exact }
     }
 
     override suspend fun torrents(): List<ClientTorrent> = info(null)
@@ -211,17 +222,12 @@ internal class QBittorrentClient(
             throw IOException("Invalid qBittorrent seeding facts")
         }
         val r = exactProtocolRow((0 until rows.length()).map { rows.getJSONObject(it) }, exact) { it.optString("hash") } ?: return null
-        // The private flag: in torrents/info on newer Web APIs, else torrents/properties.
-        val private: Boolean? = when {
-            r.has("private") -> r.optBoolean("private")
-            else -> optionalRead { ExactRpcJson.objectBody(request("GET", "torrents/properties?hash=$exact")) }
-                ?.let { p -> if (p.has("is_private")) p.optBoolean("is_private") else null }
-        }
+        val private = reportedPrivate(exact, r)
         val trackers = if (private == false) optionalRead {
-            JSONArray(request("GET", "torrents/trackers?hash=$exact"))
+            ExactRpcJson.arrayBody(request("GET", "torrents/trackers?hash=$exact"))
         }?.let { a ->
             // DHT/PeX/LSD pseudo-rows are not announce URLs.
-            (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("url") }
+            (0 until a.length()).mapNotNull { a.optJSONObject(it)?.opt("url") as? String }
                 .filter { it.contains("://") }
         } else null
         fun count(key: String) = if (r.has(key)) r.optLong(key, -1).takeIf { it >= 0 } else null
@@ -229,6 +235,14 @@ internal class QBittorrentClient(
         return ClientSeedingFacts(exact, count("uploaded"), count("downloaded"), count("seeding_time"),
             seeding = if (state.isBlank()) null else state in setOf("uploading", "stalledUP", "forcedUP"),
             isPrivate = private, publicTrackerUrls = trackers)
+    }
+
+    // Newer versions include the flag in torrents/info. Only use the legacy
+    // properties endpoint when the field is absent, so malformed evidence stays unknown.
+    private suspend fun reportedPrivate(exact: String, row: JSONObject): Boolean? {
+        if (row.has("private")) return row.opt("private") as? Boolean
+        return optionalRead { ExactRpcJson.objectBody(request("GET", "torrents/properties?hash=$exact")) }
+            ?.opt("is_private") as? Boolean
     }
 
     // Optional reads may be unavailable, but cancellation must remain cancellation.

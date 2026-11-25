@@ -71,9 +71,9 @@ internal class DelugeClient(
         connect()
         val row = call("core.get_torrent_status", JSONArray().put(exact)
             .put(JSONArray(listOf("name", "trackers", "private")))) as? JSONObject ?: return null
-        if (row.optBoolean("private", false)) return null // a bare magnet cannot carry a private job faithfully
+        if ((row.opt("private") as? Boolean) != false) return null
         val trackers = row.optJSONArray("trackers")?.let { list ->
-            (0 until list.length()).mapNotNull { (list.opt(it) as? JSONObject)?.optString("url") }
+            (0 until list.length()).mapNotNull { list.optJSONObject(it)?.opt("url") as? String }
         }.orEmpty()
         return ClientMagnets.build(exact, row.optString("name"), trackers)
     }
@@ -261,10 +261,12 @@ internal class DelugeClient(
         }
         val r = row(listOf("total_uploaded", "all_time_download", "seeding_time", "state", "is_finished", "private"))
             ?: return null
-        val private = if (r.has("private")) r.optBoolean("private") else null
+        val private = r.opt("private") as? Boolean
         val trackers = if (private == false) row(listOf("trackers", "private"))?.let { t ->
-            if (t.optBoolean("private", true)) null
-            else t.optJSONArray("trackers")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optString("url")?.takeIf(String::isNotBlank) } }
+            if ((t.opt("private") as? Boolean) != false) null
+            else t.optJSONArray("trackers")?.let { a ->
+                (0 until a.length()).mapNotNull { (a.optJSONObject(it)?.opt("url") as? String)?.takeIf(String::isNotBlank) }
+            }
         } else null
         fun count(key: String) = if (r.has(key)) r.optLong(key, -1).takeIf { it >= 0 } else null
         return ClientSeedingFacts(exact, count("total_uploaded"), count("all_time_download"), count("seeding_time"),

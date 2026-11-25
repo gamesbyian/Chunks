@@ -31,6 +31,7 @@ class ExactProtocolReadTest {
         removeWire: ((id: Int, attempt: Int) -> String)? = null,
         transmissionStatus: Any = 0,
         delugeHostStatus: () -> String = { "Connected" },
+        sourceWire: ((String) -> String?)? = null,
         beforeReply: (String) -> Unit = {}
     ): Fixture {
         var writes = 0
@@ -47,7 +48,7 @@ class ExactProtocolReadTest {
                     beforeReply(method)
                     val args = when (method) {
                         "session-get" -> """{"version":"4.0","download-dir":"/data"}"""
-                        "torrent-get" -> if (fileWire != null)
+                        "torrent-get" -> sourceWire?.invoke(method) ?: if (fileWire != null)
                             """{"torrents":[{"hashString":"$hash",$fileWire}]}"""
                             else if (duplicateWireKeys)
                             """{"torrents":[{"hashString":"$other"}],"torrents":[]}"""
@@ -81,7 +82,9 @@ class ExactProtocolReadTest {
                         "app/version" -> QBittorrentReadOnlyRpc.Response(200, "v5.1")
                         "app/webapiVersion" -> QBittorrentReadOnlyRpc.Response(200, "2.11")
                         "app/defaultSavePath" -> QBittorrentReadOnlyRpc.Response(200, "/data")
-                        "torrents/info" -> QBittorrentReadOnlyRpc.Response(200, if (duplicateWireKeys)
+                        "torrents/properties", "torrents/trackers" ->
+                            QBittorrentReadOnlyRpc.Response(200, requireNotNull(sourceWire?.invoke(method)))
+                        "torrents/info" -> QBittorrentReadOnlyRpc.Response(200, sourceWire?.invoke(method) ?: if (duplicateWireKeys)
                             """[{"hash":"$other","ha\u0073h":"$hash","state":"pausedDL","save_path":"/data"}]"""
                             else rows("hash"))
                         "torrents/export" -> QBittorrentReadOnlyRpc.Response(404, "")
@@ -107,8 +110,8 @@ class ExactProtocolReadTest {
                         "web.get_host_status" -> """["fixture-host","${delugeHostStatus()}","2.1"]"""
                         "daemon.get_method_list" -> """["core.add_torrent_magnet","core.remove_torrent","core.get_torrents_status"]"""
                         "core.get_config_value" -> """"/data""""
-                        "core.get_torrent_status" -> requireNotNull(fileWire)
-                        "core.get_torrents_status" -> if (duplicateWireKeys)
+                        "core.get_torrent_status" -> sourceWire?.invoke(method) ?: requireNotNull(fileWire)
+                        "core.get_torrents_status" -> sourceWire?.invoke(method) ?: if (duplicateWireKeys)
                             """{"$hash":{"name":"one"},"$hash":{"name":"two","state":"Paused","save_path":"/data"}}"""
                             else JSONObject().apply {
                                 queue.removeFirst().forEach { put(it, JSONObject().put("name", "fixture")
@@ -137,6 +140,73 @@ class ExactProtocolReadTest {
 
     private val kinds = listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.QBITTORRENT, TorrentClientKind.DELUGE)
     private val invalid = listOf(listOf(other), listOf(hash, other), listOf(hash, hash.uppercase()), listOf("bad"))
+
+    @Test fun magnetFallbackAndTrackerRulesRequireAnExplicitPublicBoolean() = runBlocking {
+        val tracker = "https://tracker.invalid/announce"
+        val magnet = "magnet:?xt=urn:btih:$hash&tr=$tracker"
+        for (kind in kinds) for (privacy in listOf(null, JSONObject.NULL, 0, "false", true, false)) {
+            val calls = mutableListOf<String>()
+            val f = fixture(kind, emptyList(), beforeReply = { calls += it }, sourceWire = { method ->
+                val trackers = JSONArray().put(JSONObject()
+                    .put(if (kind == TorrentClientKind.TRANSMISSION) "announce" else "url", tracker))
+                val row = JSONObject().put("trackers", trackers)
+                    .put(if (kind == TorrentClientKind.TRANSMISSION) "isPrivate" else "private", privacy)
+                when (kind) {
+                    TorrentClientKind.TRANSMISSION -> JSONObject().put("torrents", JSONArray()
+                        .put(row.put("hashString", hash).put("magnetLink", magnet))).toString()
+                    TorrentClientKind.DELUGE ->
+                        if (method == "core.get_torrent_status") row.toString()
+                        else JSONObject().put(hash, row).toString()
+                    TorrentClientKind.QBITTORRENT -> when (method) {
+                        "torrents/properties" -> "{}"
+                        "torrents/trackers" -> trackers.toString()
+                        else -> JSONArray().put(row.put("hash", hash).put("magnet_uri", magnet)).toString()
+                    }
+                    else -> error("Unexpected adapter")
+                }
+            })
+            val exported = f.client.transferSource(hash)
+            val facts = requireNotNull(f.client.seedingFacts(hash))
+            // The one documented carve-out: qBittorrent's explicit JSON null means "no metadata yet".
+            // It may copy identity and name only; no announce URL may travel with unknown privacy.
+            val hashOnly = kind == TorrentClientKind.QBITTORRENT && privacy === JSONObject.NULL
+            assertEquals(privacy == false || hashOnly, exported is ClientAddSource.Magnet)
+            if (hashOnly) {
+                val uri = (exported as ClientAddSource.Magnet).uri
+                assertEquals(hash, exported.infoHash)
+                assertFalse("No tracker with unknown privacy", uri.contains("tr=") || uri.contains("tracker.invalid"))
+            }
+            assertEquals(privacy as? Boolean, facts.isPrivate)
+            assertEquals(if (privacy == false) listOf(tracker) else null, facts.publicTrackerUrls)
+            if (kind == TorrentClientKind.QBITTORRENT) {
+                assertEquals(privacy === null, "torrents/properties" in calls)
+                assertEquals(privacy == false, "torrents/trackers" in calls)
+            }
+            assertEquals(0, f.writes())
+        }
+    }
+
+    @Test fun trackerReplyCannotCoerceAPreviouslyPublicFlag() = runBlocking {
+        for (kind in listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.DELUGE)) {
+            var count = 0
+            val f = fixture(kind, emptyList(), sourceWire = {
+                val privacy: Any = if (++count == 1) false else "false"
+                val row = JSONObject().put("isPrivate", privacy).put("private", privacy)
+                    .put("trackers", JSONArray().put(JSONObject()
+                        .put("announce", "https://tracker.invalid").put("url", "https://tracker.invalid")))
+                when (kind) {
+                    TorrentClientKind.TRANSMISSION -> JSONObject().put("torrents", JSONArray()
+                        .put(row.put("hashString", hash))).toString()
+                    else -> JSONObject().put(hash, row).toString()
+                }
+            })
+            val facts = requireNotNull(f.client.seedingFacts(hash))
+            assertEquals(2, count)
+            assertEquals(false, facts.isPrivate)
+            assertNull(facts.publicTrackerUrls)
+            assertEquals(0, f.writes())
+        }
+    }
 
     @Test fun ambiguousAddAcknowledgmentRemainsUncertainEvenWhenTheJobWouldBeVisible() = runBlocking {
         val bad = listOf<Pair<TorrentClientKind, (Int) -> String>>(
