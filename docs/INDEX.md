@@ -21,7 +21,7 @@
 **Owner-approved Add/environment polish (2026-11-13):** [Add destination and outcome UX](design/ADD-DESTINATION-AND-OUTCOME.md) binds compact Local/named-connection Add chips, short-name-only status, one in-place operation outcome, matched transfer stripe/label/dot colours and contextual rather than permanent remote folder explanations. Integrate with existing R1 UX work; implementation and installed acceptance remain pending.
 # Chunks documentation index
 
-> **Forensic follow-through (2026-11-23):** [Source-pinned audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) (historical evidence), [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) (active dispositions), #687 (tracking index). Domain contracts remain normative; atlas is future scope only.
+> **Forensic follow-through (2026-11-23):** [Source-pinned audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) (historical evidence), [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) (active dispositions), #687 (tracking index). **Pass 2 (2026-11-25):** [engineering audit](audits/ENGINEERING-AUDIT-2026-11-25.md), executable as [R0 pass-2 dispositions](WORK-QUEUE.md#r0-audit-pass-2-dispositions-2026-11-25). Domain contracts remain normative; atlas is future scope only.
 
 **Approved Transfers redesign (2026-11-13):** [Compact list-first Transfers UI contract](design/TRANSFERS-COMPACT-LIST-FIRST.md) binds screen hierarchy, conditional All/individual count chips, search/filter/sort/batch compactness, above-list live summary, removal of bottom dashboard and placement of environment colours under Connections/Options. Design approved; implementation and Pixel acceptance remain pending. The ranked work is integrated into [WORK-QUEUE](WORK-QUEUE.md), not a separate backlog.
 
