@@ -7,20 +7,37 @@ inputs:
   github-token:
     description: Read-only Actions token for this repository
     required: true
+  same-run:
+    description: Download a dependency artifact from this workflow run
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
     - name: Verify producer run identity
+      if: inputs.same-run != 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         APK_RUN_ID: ${{ inputs.run-id }}
       run: bash tools/reuse_installed_apks.sh verify-run
     - uses: actions/download-artifact@v4
+      if: inputs.same-run != 'true'
       with:
         name: chunks-protocol-apks
         run-id: ${{ inputs.run-id }}
         github-token: ${{ inputs.github-token }}
+        path: ${{ runner.temp }}/shared-installed-apks
+    - name: Require current workflow run for shared dependency
+      if: inputs.same-run == 'true'
+      shell: bash
+      env:
+        APK_RUN_ID: ${{ inputs.run-id }}
+      run: test "$APK_RUN_ID" = "$GITHUB_RUN_ID"
+    - uses: actions/download-artifact@v4
+      if: inputs.same-run == 'true'
+      with:
+        name: chunks-protocol-apks
         path: ${{ runner.temp }}/shared-installed-apks
     - name: Verify and stage exact APK pair
       shell: bash
