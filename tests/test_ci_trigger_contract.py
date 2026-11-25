@@ -7,9 +7,19 @@ from pathlib import Path
 import re
 import unittest
 from fnmatch import fnmatchcase
+from tools.ci_shared_debug_routes import (
+    LANES, choose, load_routes, matches_ordered, pr_paths, route_patterns, select_paths, union_patterns,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github/workflows/android-check.yml"
+
+
+def shared_route_source(lane: str) -> str:
+    """Model the per-job route, not the wider shared workflow admission filter."""
+    paths = route_patterns(load_routes(), lane)
+    return ("on:\n  pull_request:\n    branches: [main]\n    paths:\n" +
+            "".join(f'      - "{pattern}"\n' for pattern in paths))
 
 
 def pull_request_paths(source: str) -> set[str]:
@@ -115,15 +125,14 @@ class AndroidCiTriggerContract(unittest.TestCase):
         exempt = source.index('      - "!app/src/androidTest/**"')
         self.assertLess(broad, exempt)
         self.assertIn("!app/src/androidTest/**", pull_request_paths(source))
-        native = (ROOT / ".github/workflows/native-add-instrumentation.yml"
-                  ).read_text(encoding="utf-8")
+        native = shared_route_source("native")
         self.assertIn("app/src/androidTest/**", pull_request_paths(native))
         self.assertIn("app/src/main/**", pull_request_paths(native))
         # An app change alongside a test does not match the exclusion.
         self.assertIn("app/**", pull_request_paths(source))
 
     def test_dedicated_real_fixture_test_edits_do_not_duplicate_native_add(self):
-        native = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        native = shared_route_source("native")
         own_journeys = (
             ("CombinedTwoRealServersInstrumentedTest.kt",
              ".github/workflows/installed-combined-two-servers.yml"),
@@ -136,7 +145,9 @@ class AndroidCiTriggerContract(unittest.TestCase):
         )
         for filename, owning_workflow in own_journeys:
             changed_test = "app/src/androidTest/java/io/github/gamesbyian/chunks/" + filename
-            owner = (ROOT / owning_workflow).read_text()
+            owner = (shared_route_source("protocol") if owning_workflow.endswith("installed-protocol-client.yml")
+                     else shared_route_source("combined") if owning_workflow.endswith("installed-combined-two-servers.yml")
+                     else (ROOT / owning_workflow).read_text())
             with self.subTest(filename=filename):
                 self.assertTrue(dispatches_for_changed_paths(owner, (changed_test,)))
                 self.assertFalse(dispatches_for_changed_paths(native, (changed_test,)))
@@ -153,7 +164,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             docs, (".github/workflows/native-add-instrumentation.yml",)))
 
     def test_combined_catalog_ordering_selects_real_installed_campaign(self):
-        combined = (ROOT / ".github/workflows/installed-combined-two-servers.yml").read_text()
+        combined = shared_route_source("combined")
         for name in ("UnifiedTransferCatalog.kt", "TransferSortOrdering.kt"):
             with self.subTest(name=name):
                 self.assertTrue(dispatches_for_changed_paths(combined, (
@@ -173,9 +184,11 @@ class AndroidCiTriggerContract(unittest.TestCase):
             "native-add-instrumentation.yml",
         ):
             with self.subTest(workflow=workflow):
-                source = (ROOT / ".github/workflows" / workflow).read_text()
+                source = (shared_route_source("protocol") if workflow == "installed-protocol-client.yml"
+                          else shared_route_source("native") if workflow == "native-add-instrumentation.yml"
+                          else (ROOT / ".github/workflows" / workflow).read_text())
                 self.assertTrue(dispatches_for_changed_paths(source, (helper,)))
-        protocol = (ROOT / ".github/workflows/installed-protocol-client.yml").read_text()
+        protocol = shared_route_source("protocol")
         self.assertFalse(dispatches_for_changed_paths(protocol, (
             "app/src/sharedTest/java/io/github/gamesbyian/chunks/UnrelatedFixture.kt",)),
             "The route is intentionally limited to the executed helper")
@@ -257,8 +270,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         android = WORKFLOW.read_text(encoding="utf-8")
         docs = (ROOT / ".github/workflows/documentation-validation.yml"
                 ).read_text(encoding="utf-8")
-        api35 = (ROOT / ".github/workflows/native-add-instrumentation.yml"
-                 ).read_text(encoding="utf-8")
+        api35 = shared_route_source("native")
         cases = (
             (("docs/CI-POLICY.md",), (False, True, False)),
             (("app/src/androidTest/java/ExampleInstrumentedTest.kt",),
@@ -452,27 +464,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertNotIn("continue-on-error: true", source)
 
     def test_disposable_installed_workflows_defer_draft_but_resume_on_ready(self):
-        # Preserve complete expensive real-daemon acceptance when a PR is ready;
-        # experimental draft edits and conversions must stay cost-free.
-        for filename, job, script in (
-            ("installed-remote-delete-data.yml", "remote-delete-data",
+        caller = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        self.assertIn("types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]", caller)
+        self.assertIn("if: github.event_name != 'pull_request' || !github.event.pull_request.draft", caller)
+        for lane, filename, job, script in (
+            ("remove", "installed-remote-delete-data.yml", "remote-delete-data",
              "tools/installed_remote_delete_data.sh"),
-            ("installed-combined-two-servers.yml", "two-server-combined",
+            ("combined", "installed-combined-two-servers.yml", "two-server-combined",
              "tools/installed_combined_two_servers.sh"),
         ):
             with self.subTest(workflow=filename):
                 source = (ROOT / ".github/workflows" / filename).read_text()
-                self.assertIn(
-                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
-                    source)
-                self.assertIn(
-                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
-                    source)
-                self.assertIn(f"  {job}:", source)
+                self.assertNotIn("  pull_request:", source)
+                self.assertIn("workflow_call:", source)
                 self.assertIn("workflow_dispatch:", source)
                 self.assertIn("cancel-in-progress: true", source)
+                self.assertIn(f"  {job}:", source)
                 self.assertIn(script, source)
                 self.assertNotIn("continue-on-error: true", source)
+                self.assertIn(f"uses: ./.github/workflows/{filename}", caller)
+                self.assertIn(f"needs.select.outputs.{lane} == 'true'", caller)
+                self.assertIn("needs.build-once.result == 'skipped'", caller)
+                self.assertIn("same_run_apks: ${{ needs.build-once.result == 'success' }}", caller)
+                self.assertIn("tools/reuse_installed_apks.sh", (ROOT / ".github/actions/reuse-installed-apks/action.yml").read_text())
 
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
         source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
@@ -488,7 +502,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
 
     def test_transactional_resume_changes_keep_both_android_runtime_tiers(self):
         api29 = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text()
-        api35 = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        api35 = shared_route_source("native")
         for filename in ("LocalResumeDatabase.kt", "LocalResumeStore.kt"):
             changed = (f"app/src/main/java/io/github/gamesbyian/chunks/engine/{filename}",)
             with self.subTest(filename=filename):
@@ -546,6 +560,82 @@ class AndroidCiTriggerContract(unittest.TestCase):
             "python3 -m unittest discover -s tests -p test_ci_trigger_contract.py",
             source,
         )
+
+
+class SharedDebugRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.routes = load_routes()
+        self.head = "a" * 40
+        self.base = "b" * 40
+
+    def event(self, count=1):
+        return {"number": 42, "pull_request": {
+            "head": {"sha": self.head}, "base": {"sha": self.base}, "changed_files": count}}
+
+    def test_union_admits_exactly_all_lane_patterns_and_witnesses(self):
+        source = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        match = re.search(r"(?m)^    paths:\s*\n((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source)
+        self.assertIsNotNone(match)
+        actual = [line.strip()[2:].strip("'\\\"") for line in match.group(1).splitlines()
+                  if line.strip().startswith("- ")]
+        self.assertEqual(union_patterns(self.routes), actual)
+        for pattern in actual:
+            witness = pattern.removeprefix("!")
+            if witness.endswith("/**"):
+                witness = witness[:-2] + "nested/example.kt"
+            with self.subTest(path=witness):
+                selected = select_paths(self.routes, (witness,))
+                self.assertEqual(bool(selected), matches_ordered(actual, (witness,)))
+                for lane in LANES:
+                    self.assertEqual(lane in selected,
+                        dispatches_for_changed_paths(shared_route_source(lane), (witness,)))
+
+    def test_exact_lane_isolation_and_mixed_changes(self):
+        native = "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+        protocol = "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
+        self.assertEqual({"native", "combined", "remove"}, select_paths(self.routes, [native]))
+        self.assertEqual({"protocol"}, select_paths(self.routes, [protocol]))
+        self.assertEqual(set(LANES), select_paths(self.routes, [native, protocol]))
+        self.assertEqual({"protocol"}, select_paths(self.routes, ["tools/interop/start_local_clients.sh"]))
+        self.assertEqual({"combined"}, select_paths(self.routes, ["tools/interop/disposable_snapshot_folder_listing.py"]))
+        self.assertEqual(set(), select_paths(self.routes, ["docs/CI-POLICY.md"]))
+        self.assertEqual(set(LANES), select_paths(self.routes, ["tools/ci_shared_debug_routes.py"]))
+
+    def test_complete_rename_and_pagination(self):
+        event = self.event(101)
+        paths = [{"filename": f"docs/{i}.md"} for i in range(100)]
+        old = "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+        paths.append({"filename": "docs/moved.kt", "previous_filename": old})
+        def fetch(path):
+            if path.endswith("page=1"):
+                return paths[:100]
+            if path.endswith("page=2"):
+                return paths[100:]
+            return event["pull_request"]
+        self.assertIn(old, pr_paths("fixture/repo", event, fetch))
+        self.assertEqual(({"native", "combined", "remove"}, "exact-pr-files"),
+                         choose(self.routes, "pull_request", "", event, "fixture/repo", fetch))
+
+    def test_incomplete_or_changed_metadata_selects_all(self):
+        event = self.event()
+        for payload in ([], [{"filename": "docs/readme.md"}, {"filename": "docs/extra.md"}]):
+            def fetch(path):
+                return payload if "/files?" in path else event["pull_request"]
+            self.assertEqual(set(LANES),
+                             choose(self.routes, "pull_request", "", event, "fixture/repo", fetch)[0])
+        changed = self.event()
+        changed["pull_request"]["head"]["sha"] = "c" * 40
+        self.assertEqual(set(LANES),
+                         choose(self.routes, "pull_request", "", event, "fixture/repo",
+                                lambda _: changed["pull_request"])[0])
+
+    def test_manual_scope(self):
+        for scope, expected in (("native", {"native"}), ("protocol", {"protocol"}),
+                                ("both", {"native", "protocol"}), ("combined", {"combined"}),
+                                ("remove", {"remove"}), ("all", set(LANES))):
+            self.assertEqual((expected, "manual"), choose(self.routes, "workflow_dispatch", scope))
+        with self.assertRaises(ValueError):
+            choose(self.routes, "workflow_dispatch", "unknown")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,53 @@
+name: Verify and stage exact installed Universal Add APKs
+description: Reuse a successful same-commit manual disposable Universal Add build
+inputs:
+  run-id:
+    description: Exact successful manual Universal Add producer run ID
+    required: true
+  github-token:
+    description: Read-only Actions token for this repository
+    required: true
+  same-run:
+    description: Download a dependency artifact from this workflow run
+    required: false
+    default: 'false'
+  artifact-name:
+    description: Exact attempt-scoped artifact name from the same-run build dependency
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Verify producer run identity
+      if: inputs.same-run != 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        APK_RUN_ID: ${{ inputs.run-id }}
+      run: bash tools/reuse_installed_apks.sh verify-run
+    - uses: actions/download-artifact@v4
+      if: inputs.same-run != 'true'
+      with:
+        name: chunks-protocol-apks
+        run-id: ${{ inputs.run-id }}
+        github-token: ${{ inputs.github-token }}
+        path: ${{ runner.temp }}/shared-installed-apks
+    - name: Require current workflow run for shared dependency
+      if: inputs.same-run == 'true'
+      shell: bash
+      env:
+        APK_RUN_ID: ${{ inputs.run-id }}
+        APK_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      run: |
+        test "$APK_RUN_ID" = "$GITHUB_RUN_ID"
+        [[ "$APK_ARTIFACT_NAME" =~ ^chunks-shared-debug-apks-attempt-[1-9][0-9]*$ ]]
+    - uses: actions/download-artifact@v4
+      if: inputs.same-run == 'true'
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/shared-installed-apks
+    - name: Verify and stage exact APK pair
+      shell: bash
+      env:
+        APK_RUN_ID: ${{ inputs.run-id }}
+      run: bash tools/reuse_installed_apks.sh stage

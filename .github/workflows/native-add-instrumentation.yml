@@ -4,46 +4,26 @@ on:
   pull_request:
     branches: [main]
     paths:
-      # Production sources too: instrumented fakes and UI tests assert exact
-      # RPC calls and labels, so main-only changes (#460, #463) broke them
-      # without this suite ever running on those PRs.
+      # Ordered admission union only; the checked manifest selects each lane independently.
       - "app/src/main/**"
       - "app/src/androidTest/**"
       - "app/src/sharedTest/**"
-      # These two opt-in real-fixture journeys are skipped by the native Add
-      # shards. Their own installed workflows select them and execute their
-      # complete assertions; compiling skipped methods here costs two more
-      # emulator shards without exercising the changed test.
-      # Ordered per-file exclusions do not suppress any concurrent production
-      # change (or other instrumented test) that requires this native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
-      # Helper-only edits run in the dedicated real-peer installed lifecycle
-      # through SeedhostAndroidAddUiInstrumentedTest. There is no @Test in this
-      # helper to execute in the native Add shards. Concurrent production or
-      # any other AndroidTest changes still select the full native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
-      # Test-only edits to these source files are exercised by their dedicated
-      # installed workflow. Mixed changes to production or shared test code
-      # retain the full native Add gate via its positive path patterns.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
-      # Opt-in Doze instrumentation executes in Android public peer swarm.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidPublicSwarmDozeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidPublicSwarmNetworkFlapInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalPartialResumeProcessDeathInstrumentedTest.kt"
-      # This opt-in class is skipped by native Add; its explicit public-provider
-      # workflow owns both installed phases, source digest and zero-request proof.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAutomaticPublicMediaInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
-      # Manual public-provider remote artwork proof owns this opt-in class.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRemotePublicMediaInstrumentedTest.kt"
-      # Protected manual existing-transfer Stop/Start owns this opt-in class.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SeedhostExistingTransferStopStartInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
@@ -52,16 +32,12 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/build.gradle.kts"
-      # Changes to the test command or required pinned SDK image must rerun.
       - "tools/install_android35_image_retry.sh"
       - "tests/test_ci_android35_image_retry.py"
       - "tools/native_add_review.sh"
-      # The screenshot classification manifest and its offline contract decide which
-      # captures are mandatory evidence; changing either must re-run the gate.
       - "tools/native_atlas_manifest.json"
       - "tools/check_native_atlas_contract.py"
       - "tests/test_native_atlas_contract.py"
-      # Shared immutable APK pair + source-bound AndroidJUnitRunner evidence.
       - "tools/native_add_prebuilt.sh"
       - "tools/installed_second_add_media_consent.sh"
       - "tools/installed_media_consent_fixture.py"
@@ -70,14 +46,80 @@ on:
       - "tools/verify_native_add_shards.py"
       - "tools/select_native_add_attempts.py"
       - "tests/test_native_add_attempts.py"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolConnect.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAttemptOwner.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolCombinedProfiles.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CombinedReadOnlyProtocolSources.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
+      - "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddDestinationPicker.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RTorrentInstalledAddResponseFaultTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt"
+      - "tools/installed_protocol_client.sh"
+      - "tools/verify_installed_protocol_lanes.py"
+      - "tests/test_installed_protocol_lanes.py"
+      - "tools/installed_external_document_process_loss.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalSourceSenderActivity.java"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalTorrentTestProvider.java"
+      - "tools/verify_installed_apk_bytes.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledUniversalAddJourney.kt"
+      - "app/src/sharedTest/java/io/github/gamesbyian/chunks/LazyComposeActions.kt"
+      - "tools/interop/**"
+      - "!tools/interop/disposable_snapshot_folder_listing.py"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
+      - "tools/preload_combined_two_servers.py"
+      - "tools/installed_combined_two_servers.sh"
+      - "tools/combined_fault_controller.py"
+      - "tools/interop/disposable_snapshot_folder_listing.py"
+      - ".github/workflows/installed-combined-two-servers.yml"
+      - ".github/actions/reuse-installed-apks/action.yml"
+      - "tools/reuse_installed_apks.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddSession.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/OriginalTorrentHandlingUi.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
+      - "tools/installed_remote_delete_data.sh"
+      - "tools/stage_disposable_rutorrent_adapter_delete.py"
+      - ".github/workflows/installed-remote-delete-data.yml"
+      - "tools/ci_shared_debug_routes.json"
+      - "tools/ci_shared_debug_routes.py"
     # Drafts are implementation batches; run this costly acceptance only when
     # marked ready, then on every subsequent change. Converting back to draft
     # cancels obsolete in-flight work through the PR concurrency group.
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Select installed debug journeys
+        type: choice
+        options: [native, protocol, both, combined, remove, all]
+        default: native
 
 permissions:
   contents: read
+  pull-requests: read
+  actions: read
+
+env:
+  CHUNKS_SOURCE_SHA: ${{ github.sha }}
 
 concurrency:
   group: chunks-add-instrument-${{ github.event.pull_request.number || github.run_id }}
@@ -85,19 +127,50 @@ concurrency:
 
 
 jobs:
-  build-once:
+  select:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      native: ${{ steps.routes.outputs.native }}
+      protocol: ${{ steps.routes.outputs.protocol }}
+      combined: ${{ steps.routes.outputs.combined }}
+      remove: ${{ steps.routes.outputs.remove }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve complete PR file selection or conservatively select all
+        id: routes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHUNKS_SCOPE: ${{ inputs.scope || 'native' }}
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
+          python3 tools/ci_shared_debug_routes.py
+
+  build-once:
+    needs: select
+    if: needs.select.outputs.native == 'true' || needs.select.outputs.protocol == 'true'
+    runs-on: ubuntu-latest
     timeout-minutes: 18
+    outputs:
+      artifact-name: ${{ steps.freeze.outputs.artifact-name }}
     steps:
       - uses: actions/checkout@v4
       - name: Check required native atlas captures and parser before SDK allocation
+        if: needs.select.outputs.native == 'true'
         run: |
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_attempts.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_android35_image_retry.py
+      - name: Validate installed harness syntax before heavy setup
+        if: needs.select.outputs.protocol == 'true'
+        run: |
+          bash -n tools/installed_protocol_client.sh
+          bash -n tools/installed_external_document_process_loss.sh
+          bash -n tools/interop/start_local_clients.sh
+          python3 -m unittest discover -s tests -p test_installed_protocol_lanes.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -111,26 +184,28 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Compile immutable native Add app/test APK pair once
-        env:
-          CHUNKS_SOURCE_SHA: ${{ github.sha }}
+      - name: Compile immutable installed debug app/test APK pair once
+        id: freeze
         run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
-          mkdir -p "$RUNNER_TEMP/chunks-prebuilt"
-          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-prebuilt/chunks-app.apk"
-          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/chunks-prebuilt/chunks-test.apk"
-          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/chunks-prebuilt/source-sha"
-          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+          mkdir -p "$RUNNER_TEMP/shared-debug-apks"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/shared-debug-apks/app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/shared-debug-apks/test.apk"
+          git rev-parse HEAD > "$RUNNER_TEMP/shared-debug-apks/source-sha"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/shared-debug-apks/source-tree"
+          (cd "$RUNNER_TEMP/shared-debug-apks" && sha256sum app.apk test.apk > SHA256SUMS && sha256sum --strict --check SHA256SUMS)
+          echo "artifact-name=chunks-shared-debug-apks-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: chunks-prebuilt-native-add-apk-pair
-          path: ${{ runner.temp }}/chunks-prebuilt/
+          name: ${{ steps.freeze.outputs.artifact-name }}
+          path: ${{ runner.temp }}/shared-debug-apks/
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 14
 
   add-review-device-test:
-    needs: build-once
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    needs: [select, build-once]
+    if: needs.select.outputs.native == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -144,12 +219,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: chunks-prebuilt-native-add-apk-pair
+          name: ${{ needs.build-once.outputs.artifact-name }}
           path: ${{ runner.temp }}/chunks-prebuilt
       - name: Reject stale SHA or changed app/test APK bytes
         run: |
           test "$(cat "$RUNNER_TEMP/chunks-prebuilt/source-sha")" = "$GITHUB_SHA"
-          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum -c SHA256SUMS)
+          test "$(cat "$RUNNER_TEMP/chunks-prebuilt/source-tree")" = "$(git rev-parse HEAD^{tree})"
+          test "$(awk '{print $2}' "$RUNNER_TEMP/chunks-prebuilt/SHA256SUMS")" = $'app.apk\ntest.apk'
+          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum --strict --check SHA256SUMS)
+          ln "$RUNNER_TEMP/chunks-prebuilt/app.apk" "$RUNNER_TEMP/chunks-prebuilt/chunks-app.apk"
+          ln "$RUNNER_TEMP/chunks-prebuilt/test.apk" "$RUNNER_TEMP/chunks-prebuilt/chunks-test.apk"
       - name: Reclaim unrelated toolchains before emulator allocation
         run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
       - name: Enable Android emulator KVM
@@ -237,8 +316,8 @@ jobs:
           retention-days: 14
 
   verify-complete-native-add:
-    needs: add-review-device-test
-    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
+    needs: [select, add-review-device-test]
+    if: always() && needs.select.outputs.native == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -265,3 +344,30 @@ jobs:
           path: ${{ runner.temp }}/chunks-native-add-shards/native-add-acceptance.json
           retention-days: 14
           if-no-files-found: error
+
+  protocol:
+    needs: [select, build-once]
+    if: needs.select.outputs.protocol == 'true'
+    uses: ./.github/workflows/installed-protocol-client.yml
+    with:
+      artifact_name: ${{ needs.build-once.outputs.artifact-name }}
+
+  combined:
+    needs: [select, build-once]
+    # Do not create a new producer solely for these relatively short journeys.
+    # If an Add build was selected, a failed build must never fall back silently.
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.combined == 'true' && (needs.build-once.result == 'success' || (needs.build-once.result == 'skipped' && needs.select.outputs.native != 'true' && needs.select.outputs.protocol != 'true')) }}
+    uses: ./.github/workflows/installed-combined-two-servers.yml
+    with:
+      same_run_apks: ${{ needs.build-once.result == 'success' }}
+      artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}
+
+  remove:
+    needs: [select, build-once]
+    # Do not create a new producer solely for these relatively short journeys.
+    # If an Add build was selected, a failed build must never fall back silently.
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.remove == 'true' && (needs.build-once.result == 'success' || (needs.build-once.result == 'skipped' && needs.select.outputs.native != 'true' && needs.select.outputs.protocol != 'true')) }}
+    uses: ./.github/workflows/installed-remote-delete-data.yml
+    with:
+      same_run_apks: ${{ needs.build-once.result == 'success' }}
+      artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}

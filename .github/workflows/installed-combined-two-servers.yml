@@ -4,28 +4,7 @@ name: Installed Combined two real rTorrent servers
 # no protected host. Fixtures and exact app mutations stay on the runner's
 # own stopped registrations.
 on:
-  pull_request:
-    branches: [main]
-    # Draft iterations must not launch disposable daemons, Gradle or emulators.
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
-    paths:
-      - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt"
-      # Navigation and remote header changes can break these real journeys.
-      - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
-      - "tools/preload_combined_two_servers.py"
-      - "tools/installed_combined_two_servers.sh"
-      - "tools/combined_fault_controller.py"
-      - "tools/interop/disposable_snapshot_folder_listing.py"
-      - ".github/workflows/installed-combined-two-servers.yml"
+  # Automatic PR selection is centralized in native-add-instrumentation.yml.
   workflow_dispatch:
     inputs:
       apk_run_id:
@@ -33,12 +12,21 @@ on:
         type: string
         required: false
 
+  workflow_call:
+    inputs:
+      same_run_apks:
+        type: boolean
+        required: true
+      artifact_name:
+        type: string
+        required: true
+
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: chunks-installed-combined-${{ github.event.pull_request.number || github.run_id }}
+  group: chunks-installed-combined-${{ inputs.same_run_apks && format('shared-{0}', github.run_id) || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -46,44 +34,23 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
-      - name: Verify the selected APK producer run
-        if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          APK_RUN_ID: ${{ inputs.apk_run_id }}
-        run: |
-          [[ "$APK_RUN_ID" =~ ^[0-9]{1,20}$ ]] || { echo "::error::Invalid APK producer run ID"; exit 1; }
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$APK_RUN_ID" |
-            jq -e --arg repo "$GITHUB_REPOSITORY" --arg sha "$GITHUB_SHA" '
-              .head_repository.full_name == $repo and
-              .head_sha == $sha and .event == "workflow_dispatch" and
-              .path == ".github/workflows/installed-protocol-client.yml" and
-              .status == "completed" and .conclusion == "success"' >/dev/null || {
-                echo "::error::APK producer is not a successful exact-source manual Installed Universal Add run"
-                exit 1
-              }
-      - uses: actions/download-artifact@v4
-        if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id != ''
+      - name: Reuse the exact installed Universal Add APK pair
+        if: inputs.same_run_apks || (github.event_name == 'workflow_dispatch' && inputs.apk_run_id)
+        uses: ./.github/actions/reuse-installed-apks
         with:
-          name: chunks-protocol-apks
-          run-id: ${{ inputs.apk_run_id }}
+          run-id: ${{ inputs.same_run_apks && github.run_id || inputs.apk_run_id }}
+          same-run: ${{ inputs.same_run_apks && 'true' || 'false' }}
+          artifact-name: ${{ inputs.artifact_name }}
           github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/combined-prebuilt-apks
-      - name: Verify and stage the exact app and instrumentation APK pair
-        if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id != ''
+      - name: Record Combined APK reuse
+        if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id
         env:
           APK_RUN_ID: ${{ inputs.apk_run_id }}
         run: |
-          input="$RUNNER_TEMP/combined-prebuilt-apks"
-          test "$(cat "$input/source-sha")" = "$(git rev-parse HEAD)"
-          test "$(cat "$input/source-tree")" = "$(git rev-parse HEAD^{tree})"
-          test "$(awk '{print $2}' "$input/SHA256SUMS")" = $'app.apk\ntest.apk'
-          (cd "$input" && sha256sum --strict --check SHA256SUMS)
-          mkdir -p app/build/outputs/apk/{debug,androidTest/debug}
-          cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
-          cp "$input/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           echo "CHUNKS_COMBINED_APK_REUSE: producer_run=$APK_RUN_ID source=$GITHUB_SHA build_skipped=true"
       - name: Start two disposable real rTorrent daemons behind SCGI proxies
         run: |
@@ -197,18 +164,18 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
-        if: github.event_name != 'workflow_dispatch' || inputs.apk_run_id == ''
+        if: ${{ !inputs.same_run_apks && (github.event_name != 'workflow_dispatch' || !inputs.apk_run_id) }}
         with:
           gradle-version: "9.3.1"
       - name: Install pinned compile SDK
-        if: github.event_name != 'workflow_dispatch' || inputs.apk_run_id == ''
+        if: ${{ !inputs.same_run_apks && (github.event_name != 'workflow_dispatch' || !inputs.apk_run_id) }}
         run: |
           printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
           if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
       - name: Build app and instrumentation APKs
-        if: github.event_name != 'workflow_dispatch' || inputs.apk_run_id == ''
+        if: ${{ !inputs.same_run_apks && (github.event_name != 'workflow_dispatch' || !inputs.apk_run_id) }}
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Prepare emulator
         run: |

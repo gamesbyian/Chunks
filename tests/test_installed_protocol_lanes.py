@@ -62,6 +62,12 @@ class LaneTests(unittest.TestCase):
         runner = (ROOT / "tools/installed_protocol_client.sh").read_text()
         self.assertEqual(1, workflow.count("gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest"))
         self.assertIn("fail-fast: false", workflow)
+        self.assertIn("if: inputs.artifact_name == ''", workflow)
+        self.assertIn("name: ${{ inputs.artifact_name || 'chunks-protocol-apks' }}", workflow)
+        self.assertIn("sha256sum --strict --check SHA256SUMS", workflow)
+        caller = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        self.assertIn("artifact_name: ${{ needs.build-once.outputs.artifact-name }}", caller)
+        self.assertIn("needs: [select, build-once]", caller)
         self.assertIn("needs: protocol-lane", workflow)
         self.assertIn("matrix.lane }}-attempt-", workflow)
         for lane in LANES:
