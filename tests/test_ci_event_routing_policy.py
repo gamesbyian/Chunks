@@ -47,8 +47,6 @@ OWNER_EXECUTION = {
 }
 LEGACY_PUSH_BRANCHES = {
     "documentation-validation.yml": "docs/reconcile-specs-main-20261029",
-    "svg-alternates-qa-refresh.yml": "feat/svg-font-independent-alternates-20261027",
-    "svg-outlined-alternates.yml": "feat/svg-font-independent-alternates-20261027",
 }
 
 

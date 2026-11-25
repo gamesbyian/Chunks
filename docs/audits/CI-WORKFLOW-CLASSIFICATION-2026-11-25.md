@@ -70,7 +70,7 @@ Columns: runs (all-time = 60 d) · success/failure/cancelled/skipped · last run
 | `p0-remote-start-preview.yml` | KEEP-gate | 10 | 4/0/6/0 | 2026-11-21 success | 2026-11-21 | Path-selected PR witness; recently executed. |
 | `pages-iconography-atlas.yml` | KEEP-manual | 2 | 2/0/0/0 | 2026-11-21 success | 2026-11-21 | Release/distribution or published page. |
 | `portable-agent-skills.yml` | KEEP-gate | 28 | 26/2/0/0 | 2026-11-21 success | 2026-11-21 | Path-selected PR witness; recently executed. |
-| `public-magnet-metadata-probe.yml` | ARCHIVE-candidate | 8 | 3/4/1/0 | 2026-11-21 failure | 2026-11-02 | Red since 2026-11-02 when triggered (3 success / 4 failure); no reference. Cause not diagnosed (public network dependency). |
+| `public-magnet-metadata-probe.yml` | ARCHIVE-candidate | 8 | 3/4/1/0 | 2026-11-21 failure | 2026-11-02 | Red when triggered; 2026-11-21 logs show both legacy/modern rTorrent jobs failing after real public-swarm metadata discovery (public network dependent; not diagnosed further). Keep as candidate; rerun alone before citing. |
 | `public-source-fixtures.yml` | KEEP-gate | 36 | 34/1/1/0 | 2026-11-21 success | 2026-11-21 | Path-selected PR witness; recently executed. |
 | `publish-debug-apk.yml` | KEEP-manual | 27 | 25/1/1/0 | 2026-11-16 success | 2026-11-16 | Release/distribution or published page. |
 | `real-client-interop.yml` | KEEP-gate | 210 | 143/8/36/23 | 2026-11-25 success | 2026-11-25 | Path-selected PR witness; recently executed. |
@@ -112,12 +112,12 @@ Columns: runs (all-time = 60 d) · success/failure/cancelled/skipped · last run
 | `seedhost-reconcile-readonly-once.yml` | KEEP-manual-protected | 1 | 1/0/0/0 | 2026-10-27 success | 2026-10-27 | Owner-authorized protected Seedhost evidence; trusted-main arming only. Consolidation needs owner review (A2611-03). |
 | `seedhost-remote-seeding-stop-once.yml` | KEEP-manual-protected | 1 | 1/0/0/0 | 2026-11-19 success | 2026-11-19 | Owner-authorized protected Seedhost evidence; trusted-main arming only. Consolidation needs owner review (A2611-03). |
 | `storage-owned-mediastore-documents.yml` | KEEP-gate | 88 | 40/6/41/0 | 2026-11-25 in_progress | 2026-11-24 | Path-selected PR witness; recently executed. |
-| `svg-alternates-qa-refresh.yml` | ARCHIVE-candidate | 1 | 1/0/0/0 | 2026-10-28 success | 2026-10-28 | One run 2026-10-28; push-triggered one-off; no reference. |
+| `svg-alternates-qa-refresh.yml` | **ARCHIVED** ([archive](../archive/workflows/README.md)) | 1 | 1/0/0/0 | 2026-10-28 success | 2026-10-28 | One run 2026-10-28; push-triggered one-off; no reference. |
 | `svg-complete-reference-assets.yml` | KEEP-design | 22 | 21/1/0/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-inventory-quality.yml` | KEEP-design | 8 | 7/1/0/0 | 2026-11-21 failure | 2026-10-29 | Repaired 2026-11-25: red only from hand-edited generated QUALITY-REVIEW.md ('Stale quality summary'); the generator now emits the owner notes and all steps pass. |
 | `svg-library-check.yml` | KEEP-design | 49 | 42/7/0/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-mixer.yml` | KEEP-design | 17 | 15/2/0/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
-| `svg-outlined-alternates.yml` | ARCHIVE-candidate | 1 | 1/0/0/0 | 2026-10-28 success | 2026-10-28 | One run 2026-10-28; push-triggered one-off; no reference. |
+| `svg-outlined-alternates.yml` | **ARCHIVED** ([archive](../archive/workflows/README.md)) | 1 | 1/0/0/0 | 2026-10-28 success | 2026-10-28 | One run 2026-10-28; push-triggered one-off; no reference. |
 | `svg-outlined-review.yml` | KEEP-design | 7 | 5/2/0/0 | 2026-11-21 failure | 2026-10-29 | Repaired 2026-11-25: red only from hand-edited generated QUALITY-REVIEW.md ('Stale quality summary'); the generator now emits the owner notes and all steps pass. |
 | `svg-palette-contrast.yml` | KEEP-design | 6 | 4/1/1/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-render-atlas.yml` | KEEP-design | 42 | 32/3/7/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
