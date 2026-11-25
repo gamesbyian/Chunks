@@ -3,6 +3,7 @@
 # part-way, then a fresh app process restores the engine-owned checkpoint.
 # Disposable app-private fixture only; no user Place, remote, tracker or DHT.
 set -euo pipefail
+source "$(dirname "$0")/instrumentation_result.sh"
 # Each installed invocation has its own deadline; a silent adb bridge must not consume
 # the entire hosted job. Timeout is a failure and existing receipt assertions remain.
 api="${1:-}"
@@ -51,7 +52,7 @@ timeout --signal=TERM --kill-after=15s 8m adb shell am instrument -w -r -e chunk
 status=$?
 set -e
 adb logcat -d -s ChunksResumeDeath > "$out/phase2-log.txt" 2>&1 || true
-if [[ "$status" -ne 0 ]] || ! grep -q '^OK (1 test)' "$out/phase2.txt" ||
+if [[ "$status" -ne 0 ]] || ! instrumentation_passed "$out/phase2.txt" 1 ||
    ! grep -q "CHUNKS_RESUME_DEATH: verified=true" "$out/phase2-log.txt"; then
   tail -80 "$out/phase2.txt"; echo "::error::Restore after process death failed on API $api"; exit 1
 fi

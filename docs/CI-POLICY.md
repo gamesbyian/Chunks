@@ -55,6 +55,7 @@ If the installed native Add shard reports `ClipboardUriIntakeInstrumentedTest.si
 - Identify exact tested SHA, workflow/run/attempt, stage, expected and executed case identity, last safe checkpoint and environmental preconditions. Distinguish checkout/build, emulator boot, fixture setup, assertions, network/auth/provider refusal and CI infrastructure faults.
 - Preserve the first genuine red and all retries in the ledger, even after a passing fix. Do not rerun indiscriminately: isolate failing proof, fix the cause and rerun the full required gate on the exact changed head.
 - If the runner never reached a new assertion, say so explicitly; do not classify that assertion passed or failed. No all-skipped or missing receipts accepted.
+- `am instrument` prints `OK (N tests)` even when a test was skipped by an assumption (status -4) or ignored (-3). Installed-journey scripts accept a run only through [`instrumentation_passed`](../tools/instrumentation_result.sh): exact executed count and no -3/-4. Positive `chunks_stage` markers remain required where a script already checks them.
 - Never print private credentials, tracker tokens, user paths or raw server errors in CI logs, artifacts, PR descriptions or public issue text.
 
 ## Test design and exact-commit acceptance

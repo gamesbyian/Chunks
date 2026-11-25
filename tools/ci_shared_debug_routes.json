@@ -62,6 +62,7 @@
       "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalInstalledAddProcessDeathTest.kt",
       "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAddResponseFault.kt",
       "tools/installed_protocol_client.sh",
+      "tools/instrumentation_result.sh",
       "tools/verify_installed_protocol_lanes.py",
       "tests/test_installed_protocol_lanes.py",
       "tools/installed_external_document_process_loss.sh",
@@ -87,6 +88,7 @@
       "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt",
       "tools/preload_combined_two_servers.py",
       "tools/installed_combined_two_servers.sh",
+      "tools/instrumentation_result.sh",
       "tools/combined_fault_controller.py",
       "tools/interop/disposable_snapshot_folder_listing.py",
       ".github/workflows/installed-combined-two-servers.yml",
@@ -106,6 +108,7 @@
       "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt",
       "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt",
       "tools/installed_remote_delete_data.sh",
+      "tools/instrumentation_result.sh",
       "tools/stage_disposable_rutorrent_adapter_delete.py",
       ".github/workflows/installed-remote-delete-data.yml",
       ".github/actions/reuse-installed-apks/action.yml",
@@ -158,6 +161,7 @@
       "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeStore.kt",
       "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalPartialResumeProcessDeathInstrumentedTest.kt",
       "tools/installed_partial_resume_death.sh",
+      "tools/instrumentation_result.sh",
       "tools/verify_installed_apk_bytes.sh",
       ".github/workflows/installed-partial-resume-death.yml"
     ]

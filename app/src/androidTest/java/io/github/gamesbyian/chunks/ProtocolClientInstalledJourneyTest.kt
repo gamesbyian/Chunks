@@ -181,8 +181,13 @@ class ProtocolClientInstalledJourneyTest {
                         ?.joinToString(" ") { it.text }.orEmpty()
                 }
         }.getOrDefault("unreadable")
+        // #2109: distinguish a retained receipt, an out-of-date list (a failed
+        // post-command refresh retries only after its 5 min backoff) and a
+        // failed session read; each disables Remove for a different reason.
         return "status=[" + status.take(240) + "] paused=" +
-            visible("Commands are paused until a read-only check.")
+            visible("Commands are paused until a read-only check.") +
+            " listOutOfDate=" + visible("The transfer list is out of date or locked") +
+            " sessionUnavailable=" + visible("Controls unavailable:")
     }
 
     /** One dispatch of a control, after polling only until it is enabled. */

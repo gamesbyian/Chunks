@@ -37,7 +37,8 @@ class RemoteInstalledDeadlineTest(unittest.TestCase):
         source = (ROOT / "tools/installed_combined_two_servers.sh").read_text()
         self.assertIn("RemoteSnapshotPriorityConfirmationInstrumentedTest", source)
         self.assertIn("snapshot-priority-consent.txt", source)
-        self.assertIn("grep -q '^OK (2 tests)'", source)
+        # Exactly two executed tests: an assumption skip or ignore is not a pass.
+        self.assertIn('instrumentation_passed "$out/snapshot-priority-consent.txt" 2', source)
         self.assertIn("CHUNKS_SNAPSHOT_REMOTE_PRIORITY_INSTALLED:", source)
         self.assertIn("::error::Installed remote snapshot priority consent", source)
 

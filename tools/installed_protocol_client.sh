@@ -66,6 +66,7 @@ abort_on_instrument_timeout() {
     exit 124
   fi
 }
+source "$(dirname "$0")/instrumentation_result.sh"
 run_one() {
   local kind=$1 url=$2 app_url=$3 user=$4 pass=$5 mode=$6
   local class=io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest
@@ -97,7 +98,7 @@ run_one() {
   set -e
   tr -d '\r' < "$raw" | grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' > "$stages" || true
   echo "CHUNKS_INSTALLED_PROTOCOL: $kind $mode finished after $((SECONDS - phase_started))s (instrumentation status=$status)"
-  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
+  if [ "$status" -ne 0 ] || ! instrumentation_passed "$raw" 1; then
     tail -80 "$raw"
     abort_on_instrument_timeout "$status" "$kind-$mode"
     echo "::error::Installed protocol-client $mode journey failed for $kind"
@@ -146,7 +147,7 @@ run_rtorrent_faults() {
     -e chunks_rtorrent_add_fault authorized \
     "$runner" > "$raw" 2>&1 || status=$?
   abort_on_instrument_timeout "$status" "RTORRENT-response-faults"
-  if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$raw"; then
+  if [ "$status" -ne 0 ] || ! instrumentation_passed "$raw" 1; then
     tail -80 "$raw"
     echo "::error::Installed rTorrent Add response fault journey failed"
     return 1
@@ -185,7 +186,7 @@ run_rtorrent_death() {
     -e chunks_rtorrent_add_fault authorized "$runner" > "$out/process-death-phase2.txt" 2>&1 || phase2_status=$?
   abort_on_instrument_timeout "$phase2_status" "RTORRENT-death-phase2"
   if [ "$phase2_status" -ne 0 ] ||
-    ! grep -q '^OK (1 test)' "$out/process-death-phase2.txt" ||
+    ! instrumentation_passed "$out/process-death-phase2.txt" 1 ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=process-death-no-replay-no-start-original-unchanged' "$out/process-death-phase2.txt"; then
     tail -80 "$out/process-death-phase2.txt"
     echo "::error::Fresh-process rTorrent Add safety verification failed"
@@ -228,7 +229,7 @@ run_transmission_stop_death() {
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r \
     -e class "$class#freshProcessKeepsStopUnknownUntilReadOnlyCheck" "${stop_args[@]}" "$runner" > "$after" 2>&1 || phase2_status=$?
   abort_on_instrument_timeout "$phase2_status" "TRANSMISSION-stop-death-phase2"
-  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after" ||
+  if [ "$phase2_status" -ne 0 ] || ! instrumentation_passed "$after" 1 ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=stop-unknown-retained-writes-blocked-no-replay' "$after" ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=stop-read-only-check-released-exact-receipt' "$after"; then
     tail -80 "$after"
@@ -270,7 +271,7 @@ run_transmission_remove_death() {
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r \
     -e class "$class#freshProcessReachesTheRemovedJobsReceiptFromTransfers" "${remove_args[@]}" "$runner" > "$after" 2>&1 || phase2_status=$?
   abort_on_instrument_timeout "$phase2_status" "TRANSMISSION-remove-death-phase2"
-  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after" ||
+  if [ "$phase2_status" -ne 0 ] || ! instrumentation_passed "$after" 1 ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=remove-unknown-reachable-without-a-row-no-replay' "$after" ||
     ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=remove-read-only-check-released-exact-receipt' "$after"; then
     tail -80 "$after"
@@ -304,7 +305,7 @@ run_local_add_death() {
   timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r -e class "$class#freshProcessCanReviewOriginalMagnetWithoutReplayingIt" \
     -e chunks_local_add_death authorized "$runner" > "$after" 2>&1 || phase2_status=$?
   abort_on_instrument_timeout "$phase2_status" "LOCAL-death-phase2"
-  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after"; then
+  if [ "$phase2_status" -ne 0 ] || ! instrumentation_passed "$after" 1; then
     tail -80 "$after"
     echo "::error::Fresh-process Local Add safety verification failed"
     return 1

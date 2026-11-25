@@ -65,6 +65,27 @@ class ProtocolOperationReceiptOwnerTest {
         assertNotNull(owner.begin(key, "g2", ProtocolOperationKind.FILE_PRIORITIES))
     }
 
+    @Test fun sameHashOnAnotherProfileIsCheckedAndReleasedSeparately() {
+        val owner = ProtocolOperationReceiptOwner()
+        fun unknown(k: ProtocolOperationReceiptOwner.Key): ProtocolOperationReceiptOwner.Ticket {
+            val t = requireNotNull(owner.begin(k, "g1", ProtocolOperationKind.REMOVE))
+            assertTrue(owner.possibleWrite(t))
+            owner.cancel(t)
+            return t
+        }
+        val onA = unknown(key)
+        val onB = unknown(sameHashOther)
+        assertEquals(listOf(key), owner.checkable(key.profileId).map { it.ticket.key })
+        assertEquals(listOf(sameHashOther), owner.checkable(sameHashOther.profileId).map { it.ticket.key })
+        // Reconciling the other profile's same hash never settles this profile's receipt.
+        assertTrue(owner.reconcile(onB, present = false))
+        assertEquals(phase, owner.receipt(key)?.phase)
+        assertEquals(listOf(key), owner.checkable(key.profileId).map { it.ticket.key })
+        assertFalse("a ticket only reconciles its own key", owner.reconcile(onB, present = false))
+        assertTrue(owner.reconcile(onA, present = true))
+        assertTrue(owner.checkable(key.profileId).isEmpty())
+    }
+
     @Test fun capacityNeverSilentlyEvictsUnresolvedReceipts() {
         val owner = ProtocolOperationReceiptOwner(capacity = 1)
         val ticket = requireNotNull(owner.begin(key, "generation-1", ProtocolOperationKind.START))

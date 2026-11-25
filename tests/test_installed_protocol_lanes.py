@@ -83,3 +83,37 @@ class LaneTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AssumptionSkipTests(unittest.TestCase):
+    """A skipped or ignored installed test still prints OK (N tests); it is never a pass."""
+    HELPER = ROOT / "tools" / "instrumentation_result.sh"
+    USERS = ("installed_protocol_client.sh", "installed_combined_two_servers.sh",
+             "installed_remote_delete_data.sh", "installed_partial_resume_death.sh")
+
+    def run_helper(self, codes, summary="OK (1 test)", count=1):
+        import subprocess
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as raw:
+            raw.write("".join(f"INSTRUMENTATION_STATUS_CODE: {c}\r\n" for c in codes) + f"\r\n{summary}\r\n")
+        self.addCleanup(Path(raw.name).unlink)
+        return subprocess.run(["bash", "-c", f'source "{self.HELPER}"; instrumentation_passed "{raw.name}" {count}']).returncode
+
+    def test_only_the_exact_executed_count_passes(self):
+        self.assertEqual(0, self.run_helper([1, 0]))
+        self.assertEqual(0, self.run_helper([1, 0, 1, 0], "OK (2 tests)", 2))
+        self.assertNotEqual(0, self.run_helper([1, -4]), "assumption skip")
+        self.assertNotEqual(0, self.run_helper([1, -3]), "ignored")
+        self.assertNotEqual(0, self.run_helper([1, 0], "OK (2 tests)", 1), "wrong count")
+        self.assertNotEqual(0, self.run_helper([1, 0], "OK (12 tests)", 1), "prefix count")
+        self.assertNotEqual(0, self.run_helper([1, -2], "FAILURES!!!"))
+
+    def test_installed_scripts_never_accept_a_bare_ok_summary(self):
+        import re
+        for name in self.USERS:
+            text = (ROOT / "tools" / name).read_text(encoding="utf-8")
+            self.assertIn('source "$(dirname "$0")/instrumentation_result.sh"', text, name)
+            self.assertIn("instrumentation_passed ", text, name)
+            # Only phase-1 kill checks may look for OK, and only as a failure signal.
+            for line in text.splitlines():
+                if re.search(r"grep -q '\^OK \(", line):
+                    self.assertNotIn("!", line.split("grep")[0], (name, line))
