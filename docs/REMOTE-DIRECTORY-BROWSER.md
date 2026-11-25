@@ -55,6 +55,8 @@ interface RemoteDirectoryProvider {
 
 ## New folder transaction
 
+Ambiguous JSON in the provider configuration, directory listing or creation reply cannot authorize creation or confirm its success. Require distinct decoded members, an explicit successful creation acknowledgment and both exact-parent readbacks. Report separately when readback finds a directory after an uncertain acknowledgment.
+
 1. Show `New folder` only for a *verified* create capability, **within the currently selected canonical parent**. Open a small input/dialog named **Create folder in [current folder]**. Never allow top-level filesystem mutation from a generic path input.
 2. Accept one nonempty child-name component only: no slash/backslash separators, `.`, `..`, NUL/control characters, empty/whitespace-only names, or provider-disallowed names/lengths. Preserve user names while rejecting dangerous normalization/case-folding ambiguities. The UI provides exact proposed path and **Create folder** affirmative action; Cancel writes nothing.
 3. Send a typed, narrowly permitted server operation tied to exact authenticated principal, parent, allowed-root authority, client intent ID and current capability revision. **Server side**, resolve parent/child atomically within the allowed root with symlink-resistant traversal and real permission checks. Do not accept a client-only lexical `startsWith` containment test; symlink/mount and TOCTOU attacks are real. Deny paths outside the authorized root, traversal, links/special files and unexpected mount/container translations.

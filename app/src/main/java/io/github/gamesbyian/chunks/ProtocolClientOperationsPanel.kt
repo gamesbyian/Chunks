@@ -139,9 +139,9 @@ internal fun ProtocolClientOperationsPanel(
     }
     DisposableEffect(inFlightReceipt) {
         onDispose {
-            // Retain a possible dispatch at the route boundary even while
-            // the transport or coroutine has not yet acknowledged cancellation.
-            inFlightReceipt.getAndSet(null)?.let(receiptOwner::cancel)
+            // Prevent a detached preflight from writing. A possible dispatch
+            // stays in flight until its coroutine actually unwinds.
+            inFlightReceipt.getAndSet(null)?.let(receiptOwner::abandonPreflight)
         }
     }
     val retained = receiptKey?.let(receiptOwner::receipt)
@@ -259,10 +259,8 @@ internal fun ProtocolClientOperationsPanel(
                 notice = ProtocolOperationText.describe(action, outcome, clientLabel)
                 if (isOwnerCurrent() && (moveOnly || currentOwner === operations || currentReadOwner === operations))
                     onChanged()
-            } catch (cancel: CancellationException) {
-                receiptOwner.cancel(ticket)
-                throw cancel
             } finally {
+                receiptOwner.cancel(ticket)
                 inFlightReceipt.compareAndSet(ticket, null)
                 busy = false
             }
@@ -487,10 +485,8 @@ internal fun ProtocolClientOperationsPanel(
                                 else -> notice = ProtocolOperationText.describe("Copy to ${target.label}", outcome, target.label)
                             }
                             if (ownerCurrent()) onChanged()
-                        } catch (cancel: CancellationException) {
-                            receiptOwner.cancel(ticket)
-                            throw cancel
                         } finally {
+                            receiptOwner.cancel(ticket)
                             inFlightReceipt.compareAndSet(ticket, null)
                             busy = false
                         }
@@ -671,11 +667,10 @@ internal fun ProtocolClientOperationsPanel(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
                     .testTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS))
         }
-        if (retained?.blocksWrites == true && retained.phase != ProtocolOperationReceiptOwner.Phase.POLICY_RUNNING) {
+        if (retained?.canReconcile == true) {
             Text("Commands are paused until a read-only check.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
-            if (retained.canReconcile) OutlinedButton(onClick = ::reconcile,
-                enabled = !busy && canReconcile,
+            OutlinedButton(onClick = ::reconcile, enabled = !busy && canReconcile,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Check this transfer without changing it")
             }

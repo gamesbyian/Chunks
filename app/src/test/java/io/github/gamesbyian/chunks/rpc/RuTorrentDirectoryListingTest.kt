@@ -47,6 +47,16 @@ class RuTorrentDirectoryListingTest {
         }
     }
 
+    @Test fun duplicateWireMembersCannotProveTheReviewedDirectory() {
+        for (body in listOf(
+            """{"path":"/other","p\u0061th":"/home/tenant","directories":[]}""",
+            """{"path":"/home/tenant","directories":["old"],"directories":[]}"""
+        )) {
+            assertEquals(RemoteDirectoryLookup.Unavailable(RemoteDirectoryLookup.Reason.INVALID_RESPONSE),
+                RuTorrentDirectoryListing.parse(body, "/home/tenant"))
+        }
+    }
+
     @Test fun legacyGetDirInfoSupportsReadOnlyListingWithoutTrustingSilentFallback() {
         val rpc = URI("https://example.invalid/tenant/rutorrent2/plugins/httprpc/action.php")
         assertEquals("/tenant/rutorrent2/plugins/_getdir/info.php",

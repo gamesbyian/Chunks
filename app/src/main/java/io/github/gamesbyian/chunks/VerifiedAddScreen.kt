@@ -101,11 +101,11 @@ internal fun VerifiedAddScreen(
     initialTorrent: ByteArray? = null,
     /** The person's own Android document behind [initialTorrent], if it came from one. */
     initialTorrentDocument: android.net.Uri? = null,
-    onInitialTorrentConsumed: () -> Unit = {},
+    claimInitialTorrent: () -> Boolean = { true },
     /** Acknowledging a terminal/observed prior Add starts a fresh source draft.
      * Retire only the exact old shared file, never a newer pending source.
      * No remote write authority is changed by this callback. */
-    onNextDraftStarted: (ByteArray?) -> Unit = {},
+    onNextDraftStarted: (PendingLocalAdd?) -> Unit = {},
     /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
     finishInOrderScope: String? = null,
     /** Exact server account and address this Add goes to, shown in the confirmation. */
@@ -146,7 +146,7 @@ internal fun VerifiedAddScreen(
      * A .torrent the person explicitly chose here (picker or HTTPS intake) becomes the app's
      * ONE reviewed document, so another Add target reviews the same newest file.
      */
-    onTorrentAdopted: (TorrentMetainfoPreview, ByteArray, android.net.Uri?) -> Unit = { _, _, _ -> },
+    onTorrentAdopted: (TorrentMetainfoPreview, ByteArray, android.net.Uri?, Boolean) -> Unit = { _, _, _, _ -> },
     /** Live Add route and exact authenticated transport that own this form. */
     isSourceOwnerCurrent: () -> Boolean = { true },
     /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
@@ -322,7 +322,7 @@ internal fun VerifiedAddScreen(
     LaunchedEffect(initialTorrent, alreadyAttempted) {
         val document = initialTorrent ?: return@LaunchedEffect
         if (!isSourceOwnerCurrent() || submitting || alreadyAttempted) return@LaunchedEffect
-        onInitialTorrentConsumed()
+        if (!claimInitialTorrent()) return@LaunchedEffect
         try {
             val bytes = document.copyOf()
             val preview = TorrentMetainfoReader.preview(bytes)
@@ -334,7 +334,7 @@ internal fun VerifiedAddScreen(
             fromLocal = true
             fileError = null
             awaitingConfirmation = false
-            onTorrentAdopted(preview, bytes, initialTorrentDocument)
+            onTorrentAdopted(preview, bytes, initialTorrentDocument, true)
         } catch (_: Exception) {
             fileError = "The local transfer's torrent definition is not supported v1 metainfo."
         }
@@ -383,7 +383,7 @@ internal fun VerifiedAddScreen(
                     fromLocal = false
                     useFile = true
                     onMagnet("")
-                    onTorrentAdopted(result.first, result.second, uri)
+                    onTorrentAdopted(result.first, result.second, uri, false)
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
@@ -575,7 +575,7 @@ internal fun VerifiedAddScreen(
                                     onMagnet("")
                                     // A fetched link has no deletable or archivable original.
                                     draft.bindOriginalDocument(null, null)
-                                    onTorrentAdopted(result.preview, result.bytes, null)
+                                    onTorrentAdopted(result.preview, result.bytes, null, false)
                                 }
                                 is TorrentLinkResult.Refused -> {
                                     // A refused old URL must not pollute a newer
@@ -642,7 +642,7 @@ internal fun VerifiedAddScreen(
                             draft.textAtFileSelection = ""
                             awaitingConfirmation = false
                             onMagnet("")
-                            onTorrentAdopted(preview, bytes, draft.originalDocumentFor(bytes))
+                            onTorrentAdopted(preview, bytes, draft.originalDocumentFor(bytes), false)
                         },
                         label = { Text(".torrent file") }
                     )
@@ -1271,7 +1271,7 @@ internal fun VerifiedAddScreen(
                     enabled = !submitting && !rechecking && !choosing && !linkFetching && !draft.originalDocumentStatus.deleting
                 ) {
                     val oldSource = draft.attemptSource
-                    val oldDocument = draft.selectedBytes
+                    val oldDocument = draft.selectedLocalReview()
                     val sameDraft = magnet == oldSource && initialTorrent == null
                     // The single explicit click acknowledges a confirmed session
                     // or finishes an attested Add. Unresolved write latches stay

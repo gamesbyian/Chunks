@@ -141,6 +141,8 @@ class RuTorrentFolderCreateHttpTest {
             JSONArray(names.map { JSONObject().put("name", it) })).toString()
         assertEquals(setOf("TV/", "notes.txt"), RuTorrentFileManager.directoryNames(
             list("TV/", "notes.txt")))
+        assertNull("duplicate escaped members are not a directory roster", RuTorrentFileManager.directoryNames(
+            """{"listing":[{"name":"real/","na\u006de":"different/"}]}"""))
         assertNull("duplicate typed folder is ambiguous", RuTorrentFileManager.directoryNames(
             list("TV/", "TV/")))
         assertNull("a file/directory duplicate is ambiguous", RuTorrentFileManager.directoryNames(
@@ -386,6 +388,8 @@ class RuTorrentFolderCreateHttpTest {
         for (receipt in listOf(
             JSONObject().put("error", true).toString(),
             JSONObject().put("errcode", 1).toString(),
+            """{"error":true,"err\u006fr":false}""",
+            """{"error":false,"errcode":1}""",
             "{}",
             "not-json"
         )) {
