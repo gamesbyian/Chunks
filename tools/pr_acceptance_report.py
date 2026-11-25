@@ -73,39 +73,61 @@ def evaluate(checks: list[dict], gates: list[str], config: dict, waivers: dict[s
     # match arbitrary suffixes or treat a successful coordinator as test proof.
     aliases = {"combined / two-server-combined": "two-server-combined",
                "remove / remote-delete-data": "remote-delete-data",
-               "protocol / installed-protocol-client": "installed-protocol-client"}
+               "protocol / installed-protocol-client": "installed-protocol-client",
+               "api29 / api29-downloads": "api29-downloads",
+               "resume / installed-resume-death (29)": "installed-resume-death (29)",
+               "resume / installed-resume-death (35)": "installed-resume-death (35)"}
     grouped: dict[str, list[dict]] = {}
     for check in checks:
         name = aliases.get(check["name"], check["name"])
         grouped.setdefault(name, []).append(check)
-    by_name = {}
-    for name, candidates in grouped.items():
-        # A late-reported job from an older draft can have a higher check ID
-        # than the ready run. Order Actions workflows first, then attempts
-        # within the same workflow. Preserve every newer negative or pending result.
+    # GitHub reports a wholly skipped reusable call under the caller job ID,
+    # with no child check (observed on draft runs 45565806452 and 45565309738).
+    # A newer such check must invalidate an older successful child. A caller
+    # summary is never positive execution evidence for its child.
+    parents = {"two-server-combined": "combined",
+               "remote-delete-data": "remove",
+               "installed-protocol-client": "protocol",
+               "api29-downloads": "api29",
+               "installed-resume-death (29)": "resume",
+               "installed-resume-death (35)": "resume"}
+
+    def newest(candidates):
+        if not candidates:
+            return None
         workflows = [
             re.fullmatch(r"https://github\.com/[^/]+/[^/]+/actions/runs/([0-9]+)/job/[0-9]+",
                          check.get("details_url") or "")
             for check in candidates
         ]
         if all(workflows):
-            _, by_name[name] = max(
-                zip(workflows, candidates),
-                key=lambda pair: (int(pair[0][1]), pair[1].get("id", 0)),
-            )
-        else:
-            by_name[name] = max(candidates, key=lambda check: check.get("id", 0))
+            return max(zip(workflows, candidates),
+                       key=lambda pair: (int(pair[0][1]), pair[1].get("id", 0)))[1]
+        return max(candidates, key=lambda check: check.get("id", 0))
+
+    by_name = {name: newest(candidates) for name, candidates in grouped.items()}
     rows, blockers = [], []
     for gate in gates:
         if gate in waivers:
             rows.append({"gate": gate, "state": "waived", "detail": waivers[gate]})
             continue
-        # A skipped matrix job is reported without its shard suffix, e.g. "name" not "name (0)".
-        check = by_name.get(gate) or by_name.get(re.sub(r" \(\d+\)$", "", gate))
+        # A skipped matrix job may appear without its numeric shard suffix.
+        # Compare exact child and parent checks by the same newest-run order,
+        # rather than letting a stale exact-name success hide a later skip.
+        parent_names = {parents.get(gate), re.sub(r" \(\d+\)$", "", gate)} - {None, gate}
+        candidates = [*grouped.get(gate, ())]
+        for parent in sorted(parent_names):
+            candidates.extend(grouped.get(parent, ()))
+        check = newest(candidates)
         if check is None:
             state, detail = NOT_REPORTED, "no check run with this name on this commit"
         else:
             state, detail = classify_check(check)
+            if aliases.get(check["name"], check["name"]) != gate:
+                if state == PASSED:
+                    state, detail = NOT_REPORTED, "caller or matrix summary succeeded without exact child execution"
+                else:
+                    detail += "; caller or matrix summary, no exact child execution"
             if state == FAILED:
                 detail += "; " + failure_class(check, config)
         rows.append({"gate": gate, "state": state, "detail": detail})
