@@ -172,15 +172,33 @@ class ProtocolClientInstalledJourneyTest {
     private val addJourney get() = InstalledUniversalAddJourney(rule)
     private fun receiptVerified() = addJourney.hasReceiptState("Verified")
 
+    /** Bounded, credential-free panel state for a control that never became enabled (#2109). */
+    private fun operationPanelState(): String {
+        val status = runCatching {
+            rule.onAllNodes(hasTestTag(ChunksSemantics.PROTOCOL_OPERATION_STATUS), useUnmergedTree = true)
+                .fetchSemanticsNodes().joinToString(" | ") { node ->
+                    node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                        ?.joinToString(" ") { it.text }.orEmpty()
+                }
+        }.getOrDefault("unreadable")
+        return "status=[" + status.take(240) + "] paused=" +
+            visible("Commands are paused until a read-only check.")
+    }
+
     /** One dispatch of a control, after polling only until it is enabled. */
     private fun clickOnce(tag: String, what: String, timeoutMs: Long = 30_000) {
         val matcher = hasTestTag(tag)
-        waitFor("enabled $what", timeoutMs) {
-            runCatching {
-                scrollToNode(matcher)
-                rule.onNode(matcher, useUnmergedTree = true).assertIsEnabled()
-                true
-            }.getOrDefault(false)
+        try {
+            waitFor("enabled $what", timeoutMs) {
+                runCatching {
+                    scrollToNode(matcher)
+                    rule.onNode(matcher, useUnmergedTree = true).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+        } catch (timeout: AssertionError) {
+            // Captured at the moment of the timeout, not before waiting.
+            throw AssertionError("${timeout.message}; ${operationPanelState()}", timeout)
         }
         // A lazy row can be disposed between the check and the tap (IME,
         // insets). "No node" fails BEFORE any click is dispatched, so
