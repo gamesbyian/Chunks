@@ -209,6 +209,36 @@ class RunnerCostTests(unittest.TestCase):
         self.assertEqual(1, report["by_workflow"]["API35"]["failed_jobs_across_attempts"])
         self.assertEqual(4, report["by_head_sha"]["f" * 40]["prior_attempt_runner_minutes"])
 
+    def test_retry_carries_successful_job_record_without_new_allocation(self):
+        built = dict(job(401, 1, 4), name="build-once", runner_id=123, run_attempt=1)
+        copied = dict(built, id=402, run_attempt=2)
+        failed = dict(job(403, 4, 5, "failure"), name="shard", runner_id=124, run_attempt=1)
+        retried = dict(job(404, 6, 9), name="shard", runner_id=125, run_attempt=2)
+        source = dict(run(100, "success", [copied, retried, built, failed]), run_attempt=2)
+        report = cost_report([source])
+        self.assertEqual(7, report["runner_minutes"])
+        self.assertEqual(1, report["carried_forward_job_records"])
+        self.assertEqual(3, report["carried_forward_minutes_excluded"])
+        self.assertEqual(4, report["prior_attempt_runner_minutes"])
+        self.assertEqual({"1": 4, "2": 3}, report["details"][0]["attempt_job_window_minutes"])
+        self.assertEqual(1, report["details"][0]["retry_idle_gap_minutes"])
+        self.assertEqual(3, report["by_workflow"]["API35"]["jobs"])
+        self.assertEqual(1, report["details"][0]["failed_jobs_across_attempts"])
+
+    def test_same_timestamp_different_runner_or_job_remains_distinct(self):
+        first = dict(job(411, 1, 4), name="build", runner_id=100, run_attempt=1)
+        second = dict(first, id=412, runner_id=101, run_attempt=2)
+        third = dict(first, id=413, name="another job", run_attempt=2)
+        source = dict(run(101, "success", [first, second, third]), run_attempt=2)
+        result = cost_report([source])
+        self.assertEqual(9, result["runner_minutes"])
+        self.assertEqual(0, result["carried_forward_job_records"])
+
+    def test_duplicate_execution_in_same_attempt_is_invalid(self):
+        first = dict(job(421, 1, 4), name="build", runner_id=100, run_attempt=1)
+        with self.assertRaisesRegex(ValueError, "Duplicate execution"):
+            cost_report([run(102, "success", [first, dict(first, id=422)])])
+
     def test_missing_run_attempt_job_metadata_is_explicitly_uncertain(self):
         only_second = job(212, 1, 3)
         only_second["run_attempt"] = 2
