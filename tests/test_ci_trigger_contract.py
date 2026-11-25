@@ -220,7 +220,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
 
     def test_local_startup_and_place_owners_select_shared_downloads_proof(self):
-        paths = pull_request_paths((ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text())
+        paths = pull_request_paths(shared_route_source("api29"))
         for name in ("LocalEngineScreen.kt", "LocalEngineHolder.kt", "LocalDownloadPlaces.kt"):
             self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
 
@@ -439,29 +439,25 @@ class AndroidCiTriggerContract(unittest.TestCase):
                       pull_request_paths(source))
 
     def test_foundation_and_api29_defer_drafts_but_recheck_on_ready(self):
-        # The selectors and real assertions stay intact; only costly draft
-        # scheduling is postponed, never a manual dispatch or ready PR.
-        for filename, job, must_keep in (
-            ("android-check.yml", "build",
-             (":app:testDebugUnitTest :app:assembleDebug", "app/**")),
-            ("android10-downloads-instrumentation.yml", "api29-downloads",
-             ("tools/android10_downloads_instrumentation.sh",
-              "app/src/main/AndroidManifest.xml")),
-        ):
-            with self.subTest(workflow=filename):
-                source = (ROOT / ".github/workflows" / filename).read_text()
-                self.assertIn(
-                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
-                    source)
-                self.assertIn("workflow_dispatch:", source)
-                self.assertIn(
-                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
-                    source)
-                self.assertIn(f"  {job}:", source)
-                self.assertIn("cancel-in-progress: true", source)
-                for retained in must_keep:
-                    self.assertIn(retained, source)
-                self.assertNotIn("continue-on-error: true", source)
+        foundation = (ROOT / ".github/workflows/android-check.yml").read_text()
+        caller = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        api29 = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text()
+        for source in (foundation, caller):
+            self.assertIn("types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]", source)
+            self.assertIn("if: github.event_name != 'pull_request' || !github.event.pull_request.draft", source)
+            self.assertIn("cancel-in-progress: true", source)
+        self.assertIn(":app:testDebugUnitTest :app:assembleDebug", foundation)
+        self.assertIn("app/**", foundation)
+        self.assertIn("app/src/main/AndroidManifest.xml", pull_request_paths(shared_route_source("api29")))
+        for source in (foundation, api29):
+            self.assertIn("workflow_dispatch:", source)
+            self.assertNotIn("continue-on-error: true", source)
+        self.assertIn("workflow_call:", api29)
+        self.assertNotIn("  pull_request:", api29)
+        self.assertIn("  api29-downloads:", api29)
+        self.assertIn("tools/android10_downloads_instrumentation.sh", api29)
+        self.assertIn("uses: ./.github/workflows/android10-downloads-instrumentation.yml", caller)
+        self.assertIn("needs.select.outputs.api29 == 'true'", caller)
 
     def test_disposable_installed_workflows_defer_draft_but_resume_on_ready(self):
         caller = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
@@ -489,8 +485,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn("tools/reuse_installed_apks.sh", (ROOT / ".github/actions/reuse-installed-apks/action.yml").read_text())
 
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
-        source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
-                  ).read_text(encoding="utf-8")
+        source = shared_route_source("api29")
         allowed = pull_request_paths(source)
         for path in (
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
@@ -501,7 +496,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn(path, allowed)
 
     def test_transactional_resume_changes_keep_both_android_runtime_tiers(self):
-        api29 = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text()
+        api29 = shared_route_source("api29")
         api35 = shared_route_source("native")
         for filename in ("LocalResumeDatabase.kt", "LocalResumeStore.kt"):
             changed = (f"app/src/main/java/io/github/gamesbyian/chunks/engine/{filename}",)
@@ -583,6 +578,8 @@ class SharedDebugRouteTests(unittest.TestCase):
             witness = pattern.removeprefix("!")
             if witness.endswith("/**"):
                 witness = witness[:-2] + "nested/example.kt"
+            elif "*" in witness:
+                witness = witness.replace("*", "Fixture")
             with self.subTest(path=witness):
                 selected = select_paths(self.routes, (witness,))
                 self.assertEqual(bool(selected), matches_ordered(actual, (witness,)))
@@ -595,11 +592,28 @@ class SharedDebugRouteTests(unittest.TestCase):
         protocol = "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
         self.assertEqual({"native", "combined", "remove"}, select_paths(self.routes, [native]))
         self.assertEqual({"protocol"}, select_paths(self.routes, [protocol]))
-        self.assertEqual(set(LANES), select_paths(self.routes, [native, protocol]))
+        self.assertEqual({"native", "protocol", "combined", "remove"}, select_paths(self.routes, [native, protocol]))
         self.assertEqual({"protocol"}, select_paths(self.routes, ["tools/interop/start_local_clients.sh"]))
         self.assertEqual({"combined"}, select_paths(self.routes, ["tools/interop/disposable_snapshot_folder_listing.py"]))
         self.assertEqual(set(), select_paths(self.routes, ["docs/CI-POLICY.md"]))
         self.assertEqual(set(LANES), select_paths(self.routes, ["tools/ci_shared_debug_routes.py"]))
+
+    def test_api29_and_resume_reuse_only_relevant_routes(self):
+        root = "app/src/main/java/io/github/gamesbyian/chunks/"
+        self.assertEqual({"native", "api29"}, select_paths(self.routes, [root + "LocalDownloadPlaceFixture.kt"]))
+        self.assertEqual({"native"}, select_paths(self.routes, [root + "LocalDownloadPlace/Nested.kt"]))
+        self.assertEqual({"native", "api29", "resume"}, select_paths(self.routes, [root + "engine/LocalResumeStore.kt"]))
+        self.assertEqual({"resume"}, select_paths(self.routes, ["tools/installed_partial_resume_death.sh"]))
+        self.assertEqual({"api29"}, select_paths(self.routes, ["tools/android10_downloads_revocation.sh"]))
+        caller = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        self.assertIn("if: needs.select.outputs.native == 'true' || needs.select.outputs.protocol == 'true'", caller)
+        resume = (ROOT / ".github/workflows/installed-partial-resume-death.yml").read_text()
+        self.assertIn("workflow_call:", resume)
+        self.assertNotIn("  pull_request:", resume)
+        self.assertIn("if: github.event_name == 'pull_request' && inputs.artifact_name != ''", resume)
+        self.assertIn("git diff --quiet FETCH_HEAD HEAD", resume)
+        self.assertIn("api: [29, 35]", resume)
+        self.assertIn("sha256sum --strict --check SHA256SUMS", resume)
 
     def test_complete_rename_and_pagination(self):
         event = self.event(101)
@@ -632,7 +646,7 @@ class SharedDebugRouteTests(unittest.TestCase):
     def test_manual_scope(self):
         for scope, expected in (("native", {"native"}), ("protocol", {"protocol"}),
                                 ("both", {"native", "protocol"}), ("combined", {"combined"}),
-                                ("remove", {"remove"}), ("all", set(LANES))):
+                                ("remove", {"remove"}), ("api29", {"api29"}), ("resume", {"resume"}), ("all", set(LANES))):
             self.assertEqual((expected, "manual"), choose(self.routes, "workflow_dispatch", scope))
         with self.assertRaises(ValueError):
             choose(self.routes, "workflow_dispatch", "unknown")
