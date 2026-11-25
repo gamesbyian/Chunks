@@ -2,6 +2,23 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-25 UTC — Retained settlement, exact source events and real resume baseline
+
+[#2070](https://github.com/gamesbyian/Chunks/pull/2070) qualifies typed Details and Copy destination receipts through transport settlement, strict Deluge and Transmission replies, selected Deluge daemon observations, and exact ruTorrent folder evidence. It includes [#2071](https://github.com/gamesbyian/Chunks/pull/2071) and [#2073](https://github.com/gamesbyian/Chunks/pull/2073) by ancestry. A newer identical Android document selection survives acknowledgment of an older rTorrent Add.
+
+Exact candidate `9383d411f70c27291270bfce85c209133a6a7479`, tested merge `5027a950f9deeff03ff93ebae768bc944de8e215`, tree `76e2e6373f9409d6ebfc896733c1053891b2313f`. Foundation [45513220131](https://github.com/gamesbyian/Chunks/actions/runs/45513220131) ran 3,023 JVM cases, 108 skips and zero failures. [Interop 45513219704](https://github.com/gamesbyian/Chunks/actions/runs/45513219704) independently observed payload deletion for disposable Deluge, qBittorrent and Transmission, and payload preservation after rTorrent job-only removal. Shipped typed adapters still distinguish registration absence from verified payload deletion. [Combined](https://github.com/gamesbyian/Chunks/actions/runs/45513219867), [remote deletion](https://github.com/gamesbyian/Chunks/actions/runs/45513219779), [real-peer magnet](https://github.com/gamesbyian/Chunks/actions/runs/45513219660), [R8](https://github.com/gamesbyian/Chunks/actions/runs/45513220064), [API29 Downloads](https://github.com/gamesbyian/Chunks/actions/runs/45513220251) and [docs](https://github.com/gamesbyian/Chunks/actions/runs/45513181308) passed.
+
+[Native Add 45513219642](https://github.com/gamesbyian/Chunks/actions/runs/45513219642) passed both shards on attempt 1 with 435 executed, zero failures, 53 skips and 25 real PNGs. [Installed five-client 45513219752](https://github.com/gamesbyian/Chunks/actions/runs/45513219752) passed all lanes and the aggregate. Main merged as `4b5354555ff6597069f911bf797ddf35c3f8f694` with the exact qualified tree. Only the owner-deferred atlas was waived.
+
+[Installed process death 45513219624](https://github.com/gamesbyian/Chunks/actions/runs/45513219624) passed API29 and API35 with one verified APK pair. Both preserved stopped state and checkpointed pieces after a real process kill, then completed the exact payload against an independent loopback seeder.
+
+| API | Saved native rows | SQLite resume payload | Cold engine start | Java heap before → after | PSS before → after |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 29 | 1 | 3,673 B | 201.963 ms | 2,693,240 → 2,922,984 B | 75,109 → 77,003 KiB |
+| 35 | 1 | 3,648 B | 43.135 ms | 4,879,376 → 5,115,024 B | 82,254 → 87,605 KiB |
+
+Startup timings include engine work beyond reading SQLite. Memory numbers are process samples before and after startup. The fixture measures one real job per emulator API. A representative multi-job profile remains necessary before changing resume persistence. Physical Pixel/provider/Doze/TalkBack, protected provider writes and signed release acceptance remain open. [#2072](https://github.com/gamesbyian/Chunks/issues/2072) tracks Deluge's remaining non-atomic shared Web UI routing.
+
 ## 2026-11-24 UTC — Prepared remote source provenance accepted
 
 [#2067](https://github.com/gamesbyian/Chunks/pull/2067) distinguishes a current reviewed Local source from transfer exports and archive entries at the retained Add owner. Exports must not inherit an earlier document URI or be replaced by an unrelated retained review. Candidate rejects stale identity/changed bytes and unfinished Local document handling before replacing the draft. Original head `3ba80337e37948b91d1e0457149d23336302578e`:
