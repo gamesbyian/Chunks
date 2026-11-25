@@ -272,27 +272,20 @@ internal fun ProtocolClientOperationsPanel(
     fun reconcile() {
         val receipt = retained ?: return
         if (busy || !canReconcile || !receipt.canReconcile || !isOwnerCurrent()) return
-        val policyEpoch = TransferPrivacyPolicyStore.revision
-        val lifecycleEpoch = TransferPrivacyRuntime.lifecycleRevision
-        val credentialEpoch = RemoteCredentialLock.capture()
         busy = true
         scope.launch {
             try {
-                val row = operations.client.torrent(hash)
-                if (currentReadOwner !== operations || !isOwnerCurrent() ||
-                    !RemoteCredentialLock.current(credentialEpoch) ||
-                    policyEpoch != TransferPrivacyPolicyStore.revision ||
-                    lifecycleEpoch != TransferPrivacyRuntime.lifecycleRevision) return@launch
-                if (row != null && !row.hash.equals(hash, ignoreCase = true))
-                    throw java.io.IOException("Wrong transfer identity")
-                if (receiptOwner.reconcile(receipt.ticket, row != null)) {
-                    notice = null
-                    onChanged()
+                when (checkRetainedProtocolReceipt(receiptOwner, receipt, operations) {
+                    currentReadOwner === operations && isOwnerCurrent()
+                }) {
+                    ProtocolReceiptCheck.RELEASED -> {
+                        notice = null
+                        onChanged()
+                    }
+                    ProtocolReceiptCheck.READ_FAILED ->
+                        notice = "Could not read this transfer. The previous request remains unresolved."
+                    ProtocolReceiptCheck.OWNER_CHANGED, ProtocolReceiptCheck.NOT_CHECKABLE -> Unit
                 }
-            } catch (cancel: CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
-                notice = "Could not read this transfer. The previous request remains unresolved."
             } finally {
                 busy = false
             }

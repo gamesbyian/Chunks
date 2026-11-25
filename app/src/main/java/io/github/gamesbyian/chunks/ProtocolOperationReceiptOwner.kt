@@ -71,6 +71,11 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
 
     @Synchronized fun receipt(key: Key): Receipt? = entries[key]
 
+    /** Unresolved receipts of one exact profile that only a read-only check may release, oldest first. */
+    @Synchronized fun checkable(profileId: String): List<Receipt> =
+        entries.values.filter { it.ticket.key.profileId == profileId && it.canReconcile }
+            .sortedBy { it.ticket.sequence }
+
     /** Restores unresolved receipts once per process; a request in flight at death becomes UNKNOWN. */
     @Synchronized fun attach(journal: Journal) {
         if (this.journal != null) return

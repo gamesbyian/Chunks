@@ -2013,6 +2013,25 @@ internal fun CombinedTransfersScreen(
                         quickControls = if (selecting) null else ({ quickControlsFor(row) }))
             }
         }
+        // #2026: retained typed-client receipts whose job is no longer listed
+        // cannot be reached from Details. Offer only their read-only check,
+        // and only from a privacy-visible, complete, current inventory.
+        val receiptSources = protocolProfiles.mapNotNull { profile ->
+            val create = profile.operations ?: return@mapNotNull null
+            if (profile.environment !in protocolAllowed) return@mapNotNull null
+            val snapshot = protocolSources.listings[profile.environment]
+                ?.takeIf { it.witness == profile.identityWitness }?.snapshot
+                ?.takeIf { it.canClaimCompleteLiveInventory } ?: return@mapNotNull null
+            ProtocolReceiptCheckSource(profile.id, profile.label, listedHashes(snapshot.transfers), create) {
+                protocolOwnerCurrent(profile)
+            }
+        }
+        if (receiptSources.any { absentJobReceipts(ProtocolOperationReceipts.owner, it.profileId, it.listedHashes).isNotEmpty() })
+            item(key = "protocol-absent-receipts") {
+                ProtocolAbsentReceiptsCard(receiptSources) { profileId ->
+                    protocolProfiles.firstOrNull { it.id == profileId }?.let { protocolSources.reload(it.environment) }
+                }
+            }
         // Detailed environment status is available after the inventory, rather
         // than charging every user a tall status panel before the first row.
         item {

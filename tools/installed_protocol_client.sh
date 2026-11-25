@@ -239,6 +239,48 @@ run_transmission_stop_death() {
   echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION typed Stop stayed UNKNOWN across process death, writes blocked, no replay, released only by read-only Check" |
     tee -a "$GITHUB_STEP_SUMMARY"
 }
+# #2026: the same, for a typed Remove whose job is then absent from every list.
+run_transmission_remove_death() {
+  local phase_started=$SECONDS
+  echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION typed-Remove process-death journey started"
+  [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || return 1
+  adb shell pm clear --user 0 "$pkg" >/dev/null || return 1
+  adb logcat -c || return 1
+  local class=io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest
+  local before="$out/remove-death-phase1.txt" after="$out/remove-death-phase2.txt"
+  local remove_args=(-e chunks_protocol_remove_death authorized
+    -e chunks_protocol_kind_b64 "$(b64 TRANSMISSION)"
+    -e chunks_protocol_url_b64 "$(b64 http://127.0.0.1:19091/transmission/rpc)"
+    -e chunks_protocol_app_url_b64 "$(b64 http://127.0.0.1:19191/transmission/rpc)"
+    -e chunks_protocol_user_b64 "$(b64 chunks)"
+    -e chunks_protocol_pass_b64 "$(b64 chunkspass)")
+  local phase1_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r \
+    -e class "$class#typedRemoveAckHeldThenKillTheAppProcess" "${remove_args[@]}" "$runner" > "$before" 2>&1 || phase1_status=$?
+  abort_on_instrument_timeout "$phase1_status" "TRANSMISSION-remove-death-phase1"
+  adb logcat -d -s ChunksRemoveDeath:I > "$out/remove-death-boundary.txt" || return 1
+  if ! grep -Fq 'process-death-remove-awaits-ack' "$out/remove-death-boundary.txt" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=remove-durable-possible-write-before-kill' "$before" ||
+    grep -q '^OK (' "$before" || adb shell pidof "$pkg" >/dev/null 2>&1; then
+    tail -80 "$before"
+    echo "::error::The installed app did not die with a durable possible Remove write"
+    return 1
+  fi
+  local phase2_status=0
+  timeout --signal=TERM --kill-after=15s 7m adb shell am instrument --user 0 -w -r \
+    -e class "$class#freshProcessReachesTheRemovedJobsReceiptFromTransfers" "${remove_args[@]}" "$runner" > "$after" 2>&1 || phase2_status=$?
+  abort_on_instrument_timeout "$phase2_status" "TRANSMISSION-remove-death-phase2"
+  if [ "$phase2_status" -ne 0 ] || ! grep -q '^OK (1 test)' "$after" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=remove-unknown-reachable-without-a-row-no-replay' "$after" ||
+    ! grep -q '^INSTRUMENTATION_STATUS: chunks_stage=remove-read-only-check-released-exact-receipt' "$after"; then
+    tail -80 "$after"
+    echo "::error::Fresh-process typed Remove receipt verification failed"
+    return 1
+  fi
+  echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION typed-Remove process-death journey finished after $((SECONDS - phase_started))s"
+  echo "CHUNKS_INSTALLED_PROTOCOL: TRANSMISSION removed job's UNKNOWN receipt stayed reachable without a row after process death, no replay, released only by read-only Check" |
+    tee -a "$GITHUB_STEP_SUMMARY"
+}
 run_local_add_death() {
   local phase_started=$SECONDS
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey started"
@@ -279,7 +321,8 @@ case "$lane" in
     run_pair TRANSMISSION http://127.0.0.1:19091/transmission/rpc http://127.0.0.1:19191/transmission/rpc chunks chunkspass || failed=1
     run_rtorrent_faults || failed=1
     run_rtorrent_death || failed=1
-    run_transmission_stop_death || failed=1 ;;
+    run_transmission_stop_death || failed=1
+    run_transmission_remove_death || failed=1 ;;
   qbittorrent-deluge)
     run_pair QBITTORRENT http://127.0.0.1:18080/ http://127.0.0.1:18180/ chunks chunkspass || failed=1
     # Deluge ignores username; nonempty placeholder preserves adb argument positions.

@@ -819,11 +819,14 @@ class ProtocolClientInstalledJourneyTest {
     // while a real, daemon-accepted Stop reply is withheld by the relay.
     private val receiptJournal get() = InstrumentationRegistry.getInstrumentation().targetContext
         .getSharedPreferences("chunks_protocol_receipts_v1", android.content.Context.MODE_PRIVATE)
-    private fun retainedStopEntry(hash: String): JSONObject? {
+    private fun retainedStopEntry(hash: String): JSONObject? = retainedEntry(hash, "STOP")
+    private fun retainedEntry(hash: String, kind: String): JSONObject? {
         val entries = org.json.JSONArray(receiptJournal.getString("entries", "[]") ?: "[]")
         return (0 until entries.length()).map { entries.getJSONObject(it) }
-            .singleOrNull { it.optString("h").equals(hash, ignoreCase = true) && it.optString("k") == "STOP" }
+            .singleOrNull { it.optString("h").equals(hash, ignoreCase = true) && it.optString("k") == kind }
     }
+    private val removeWitnessFile get() =
+        File(InstrumentationRegistry.getInstrumentation().targetContext.noBackupFilesDir, "chunks-remove-witness.json")
     // Instrumentation runs as the app UID; app data survives the kill (cleared only before phase 1).
     private val stopWitnessFile get() =
         File(InstrumentationRegistry.getInstrumentation().targetContext.noBackupFilesDir, "chunks-stop-witness.json")
@@ -964,6 +967,115 @@ class ProtocolClientInstalledJourneyTest {
         val removed = runBlocking { direct.remove(hash, deleteData = false) }
         assertNull("Disposable fixture job removed ($removed)", runBlocking { direct.client.torrent(hash) })
         stopWitnessFile.delete()
+    }
+
+    // ---- #2026 retained typed-Remove receipt for a job that is gone --------
+    @Test fun typedRemoveAckHeldThenKillTheAppProcess() {
+        assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_remove_death") == "authorized")
+        val kind = RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
+        assumeTrue("The relay faults only Transmission's typed Remove", kind == RemoteBackendKind.TRANSMISSION)
+        val appUrl = decoded("chunks_protocol_app_url_b64")
+        val user = decoded("chunks_protocol_user_b64")
+        val pass = decoded("chunks_protocol_pass_b64")
+        val credentials = RemoteCredentials(decoded("chunks_protocol_url_b64"), user, pass)
+        suspend fun independentRead(hash: String) = RemoteTorrentClients.create(kind, credentials, null).torrent(hash)
+        val relay = InstalledAddResponseFault(appUrl)
+
+        val preload = fixture("remove-death")
+        val name = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(preload.torrent).name
+        val hash = preload.infoHashV1
+        val added = runBlocking {
+            ClientOperations(RemoteTorrentClients.create(kind, credentials, null), 40, 500)
+                .add(ClientAddRequest(ClientAddSource.TorrentFile(preload.torrent), null, startNow = false))
+        }
+        assertTrue("Fixture preload: $added", added is ClientOperationOutcome.Verified)
+        removeWitnessFile.writeText(JSONObject().put("hash", hash).put("name", name).toString())
+        stage("remove-death-fixture-stopped")
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            connect(kind, appUrl, user, pass)
+            val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+            waitFor("durable exact-client profile") {
+                profiles.list().any { it.backend == kind && it.credentials.endpoint == appUrl }
+            }
+            waitFor("fixture row in canonical Transfers", 90_000) {
+                runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
+            }
+            val details = hasContentDescription("Details for $name", substring = true)
+            waitFor("Details control") { runCatching { scrollToNode(details); true }.getOrDefault(false) }
+            rule.onAllNodes(details).onFirst().performClick()
+            clickOnce(ChunksSemantics.PROTOCOL_REMOVE, "Remove…", 60_000)
+            relay.arm("hold-remove")
+            clickOnce(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM, "Remove, keep files")
+            stage("remove-dispatched-once")
+            rule.waitUntil(10_000) { relay.hasWithheldReply() }
+            waitFor("daemon no longer lists the removed job", 10_000) {
+                runBlocking { independentRead(hash) } == null
+            }
+            stage("remove-executed-by-daemon-reply-withheld")
+            val entry = requireNotNull(retainedEntry(hash, "REMOVE")) { "No durable Remove receipt before the kill" }
+            assertTrue("Durable possible write, credential-free: $entry",
+                entry.optString("s") in setOf("POSSIBLE_WRITE", "UNKNOWN") && !entry.toString().contains(pass))
+            stage("remove-durable-possible-write-before-kill")
+            android.util.Log.i("ChunksRemoveDeath", "process-death-remove-awaits-ack")
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }
+    }
+
+    @Test fun freshProcessReachesTheRemovedJobsReceiptFromTransfers() {
+        assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_remove_death") == "authorized")
+        val kind = RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
+        assumeTrue("The relay faults only Transmission's typed Remove", kind == RemoteBackendKind.TRANSMISSION)
+        val appUrl = decoded("chunks_protocol_app_url_b64")
+        val credentials = RemoteCredentials(decoded("chunks_protocol_url_b64"),
+            decoded("chunks_protocol_user_b64"), decoded("chunks_protocol_pass_b64"))
+        val direct = ClientOperations(RemoteTorrentClients.create(kind, credentials, null), 40, 500)
+        val relay = InstalledAddResponseFault(appUrl)
+        val saved = JSONObject(removeWitnessFile.readText())
+        val hash = saved.getString("hash")
+        val name = saved.getString("name")
+        val profileId = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext)
+            .list().single { it.backend == kind && it.credentials.endpoint == appUrl }.id
+
+        relay.requireOneRemoveAndNoReplay()
+        assertNull("The job is really gone from the daemon", runBlocking { direct.client.torrent(hash) })
+        assertTrue("The retained Remove receipt survived process death",
+            retainedEntry(hash, "REMOVE")?.optString("s") in setOf("POSSIBLE_WRITE", "UNKNOWN"))
+        stage("remove-receipt-survived-process-death")
+
+        ActivityScenario.launch(MainActivity::class.java).use {
+            rule.waitForIdle()
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+            val viewExactProfile = hasTestTag("protocol-profile-view-$profileId") and isEnabled()
+            waitFor("exact remembered typed profile is offered", 90_000) {
+                runCatching { scrollToNode(hasTestTag("protocol-profile-view-$profileId")); true }
+                    .getOrDefault(false) && rule.onAllNodes(viewExactProfile).fetchSemanticsNodes().isNotEmpty()
+            }
+            LazyComposeActions.activateOnce(rule, viewExactProfile)
+            val card = hasTestTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPTS)
+            waitFor("Transfers offers the removed job's receipt", 90_000) {
+                runCatching { scrollToNode(card); true }.getOrDefault(false)
+            }
+            assertTrue("The removed job has no row to open", !visible(name))
+            assertTrue(visible("Remove: the previous request may have reached this client"))
+            assertEquals("UNKNOWN", retainedEntry(hash, "REMOVE")?.optString("s"))
+            relay.requireOneRemoveAndNoReplay()
+            stage("remove-unknown-reachable-without-a-row-no-replay")
+
+            val check = hasTestTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_CHECK + "." + hash)
+            waitFor("read-only Check offered") { runCatching { scrollToNode(check); true }.getOrDefault(false) }
+            LazyComposeActions.activateOnce(rule, check)
+            val result = hasTestTag(ChunksSemantics.PROTOCOL_ABSENT_RECEIPT_RESULT + "." + hash)
+            waitFor("read-only Check reconciles the exact receipt", 60_000) {
+                runCatching { scrollToNode(result); true }.getOrDefault(false) &&
+                    visible("read-only check found the transfer not registered")
+            }
+            assertNull("Only this exact receipt is released", retainedEntry(hash, "REMOVE"))
+            relay.requireOneRemoveAndNoReplay()
+            assertNull("Still absent; nothing was re-added", runBlocking { direct.client.torrent(hash) })
+            stage("remove-read-only-check-released-exact-receipt")
+        }
+        removeWitnessFile.delete()
     }
 
     @Test fun installedAddAfterTheDaemonResponseIsWithheld() {

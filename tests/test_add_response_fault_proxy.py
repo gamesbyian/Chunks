@@ -8,7 +8,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "interop"))
-from add_response_fault_proxy import FaultState, STOP, accepted_stop, rtorrent_view_mutation
+from add_response_fault_proxy import FaultState, REMOVE, STOP, accepted_stop, rtorrent_view_mutation
 
 
 def rpc(method, nested=()):
@@ -69,6 +69,18 @@ class RTorrentViewMutationRelayTests(unittest.TestCase):
         self.assertEqual((None, None), state.begin(False, False, False, True))
         self.assertEqual({"torrent-stop"}, STOP["transmission"])
         self.assertFalse(STOP["qbittorrent"] | STOP["deluge"] | STOP["rtorrent"])
+
+    def test_hold_remove_faults_only_the_typed_remove(self):
+        state = FaultState()
+        state.arm("hold-remove")
+        self.assertEqual((None, None), state.begin(False, False, False, True, False))
+        mode, _ = state.begin(False, False, False, False, True)
+        self.assertEqual("hold-remove", mode)
+        counts = state.report()
+        self.assertEqual((1, 1, 0), (counts["removes"], counts["stops"], counts["adds"]))
+        state.arm("hold-stop")
+        self.assertEqual((None, None), state.begin(False, False, False, False, True))
+        self.assertEqual({"torrent-remove"}, REMOVE["transmission"])
 
     def test_only_an_executed_transmission_stop_is_withheld(self):
         self.assertTrue(accepted_stop("transmission", 200, b'{"result":"success","arguments":{}}'))

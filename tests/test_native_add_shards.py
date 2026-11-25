@@ -275,6 +275,8 @@ class ShardedNativeAddTests(unittest.TestCase):
                 ("CredentialUpgradeVerifyInstrumentedTest", "recordsSealedByPreviousReleaseOpenAfterUpgrade"),
                 ("ProtocolClientInstalledJourneyTest", "typedStopAckHeldThenKillTheAppProcess"),
                 ("ProtocolClientInstalledJourneyTest", "freshProcessKeepsStopUnknownUntilReadOnlyCheck"),
+                ("ProtocolClientInstalledJourneyTest", "typedRemoveAckHeldThenKillTheAppProcess"),
+                ("ProtocolClientInstalledJourneyTest", "freshProcessReachesTheRemovedJobsReceiptFromTransfers"),
             )
         }
         expected.update(installed_fault_ids)

@@ -70,6 +70,16 @@ internal class InstalledAddResponseFault(appUrl: String) {
         assertEquals("No Add during the Stop witness", 0, counters.getInt("adds"))
     }
 
+    /** #2026: exactly one typed Remove reached the daemon with its reply withheld; nothing else was written. */
+    fun requireOneRemoveAndNoReplay() {
+        val counters = counts()
+        assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))
+        assertEquals("Exactly one Remove passed through the relay ($counters)", 1, counters.getInt("removes"))
+        assertEquals("Only one accepted Remove reply was withheld", 1, counters.getInt("acknowledgments_withheld"))
+        assertEquals("No re-Add of the removed job", 0, counters.getInt("adds"))
+        assertEquals("No Start", 0, counters.getInt("starts"))
+    }
+
     fun requireOneWriteAndNoStart() {
         val counters = counts()
         assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))
