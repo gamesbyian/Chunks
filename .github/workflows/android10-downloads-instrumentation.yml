@@ -3,55 +3,13 @@ name: Android 10 shared Downloads instrumentation
 # API 29 is the one Android version where shared Downloads needs legacy
 # storage plus a runtime grant; the regular suite runs on API 35 only.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "app/src/main/AndroidManifest.xml"
-      - "app/src/main/java/io/github/gamesbyian/chunks/SharedTorrentDocument.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledOpenWithHandoffInstrumentedTest.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlace*.kt"
-      # API 33-only stream reads crashed remote features on API 29-32 (#1779).
-      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/BoundedRead.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDirectoryListing.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/rpc/RemoteBoundedReadsInstrumentedTest.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalPlaceWriteProbe.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalAddDestinationContinuityInstrumentedTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
-      - "tools/android10_downloads_revocation.sh"
-      - "tools/test_android10_downloads_revocation_mock.sh"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalIntakeJourneyInstrumentedTest.kt"
-      - "tools/local_intake_journey.sh"
-      - "tools/test_local_intake_journey.sh"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineHolder.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlaces.kt"
-      - "tools/android10_downloads_instrumentation.sh"
-      - "tools/test_android10_downloads_instrumentation_mock.sh"
-      # Checked Add/Start, path reservations and native collision surveys
-      # directly guard user-visible shared Downloads bytes. Exercise API29
-      # when their production logic changes even if androidTest stays untouched.
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt"
-      # Native resume reader changes must exercise the API29 real backing,
-      # restart, and fresh-peer seeding journey, not only host JVM tests.
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStore.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeStore.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalRestoreDiscovery.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStoreInstrumentedTest.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
-      - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReaderTest.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalService*.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceInstrumentedTest.kt"
-      - ".github/workflows/android10-downloads-instrumentation.yml"
-    # Keep the real API29 acceptance suite for review-ready PRs and manual runs.
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+  # Automatic route ownership is in native-add-instrumentation.yml.
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      artifact_name:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -65,6 +23,8 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - name: Reject misleading API29 install and test evidence (offline)
@@ -73,20 +33,32 @@ jobs:
         run: bash tools/test_android10_downloads_revocation_mock.sh
       - name: Reject forged Share/magnet intake, skipped tests and non-emulator cleanup (offline)
         run: bash tools/test_local_intake_journey.sh
+      - name: Reuse exact shared debug APK pair
+        if: inputs.artifact_name != ''
+        uses: ./.github/actions/reuse-installed-apks
+        with:
+          run-id: ${{ github.run_id }}
+          same-run: 'true'
+          artifact-name: ${{ inputs.artifact_name }}
+          github-token: ${{ github.token }}
       - uses: actions/setup-java@v4
+        if: inputs.artifact_name == ''
         with:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+        if: inputs.artifact_name == ''
         with:
           gradle-version: "9.3.1"
       - name: Install pinned Android compile toolchain
+        if: inputs.artifact_name == ''
         run: |
           printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
       - name: Compile app and instrumented tests
+        if: inputs.artifact_name == ''
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Enable Android emulator KVM
         run: |

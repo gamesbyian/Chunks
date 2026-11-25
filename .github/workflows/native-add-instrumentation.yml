@@ -99,6 +99,46 @@ on:
       - "tools/installed_remote_delete_data.sh"
       - "tools/stage_disposable_rutorrent_adapter_delete.py"
       - ".github/workflows/installed-remote-delete-data.yml"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/java/io/github/gamesbyian/chunks/SharedTorrentDocument.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledOpenWithHandoffInstrumentedTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlace*.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/BoundedRead.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDirectoryListing.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/rpc/RemoteBoundedReadsInstrumentedTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalPlaceWriteProbe.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalAddDestinationContinuityInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
+      - "tools/android10_downloads_revocation.sh"
+      - "tools/test_android10_downloads_revocation_mock.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalIntakeJourneyInstrumentedTest.kt"
+      - "tools/local_intake_journey.sh"
+      - "tools/test_local_intake_journey.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineHolder.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlaces.kt"
+      - "tools/android10_downloads_instrumentation.sh"
+      - "tools/test_android10_downloads_instrumentation_mock.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStore.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeStore.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalRestoreDiscovery.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStoreInstrumentedTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReaderTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalService*.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceInstrumentedTest.kt"
+      - ".github/workflows/android10-downloads-instrumentation.yml"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalPartialResumeProcessDeathInstrumentedTest.kt"
+      - "tools/installed_partial_resume_death.sh"
+      - ".github/workflows/installed-partial-resume-death.yml"
       - "tools/ci_shared_debug_routes.json"
       - "tools/ci_shared_debug_routes.py"
     # Drafts are implementation batches; run this costly acceptance only when
@@ -110,7 +150,7 @@ on:
       scope:
         description: Select installed debug journeys
         type: choice
-        options: [native, protocol, both, combined, remove, all]
+        options: [native, protocol, both, combined, remove, api29, resume, all]
         default: native
 
 permissions:
@@ -136,6 +176,8 @@ jobs:
       protocol: ${{ steps.routes.outputs.protocol }}
       combined: ${{ steps.routes.outputs.combined }}
       remove: ${{ steps.routes.outputs.remove }}
+      api29: ${{ steps.routes.outputs.api29 }}
+      resume: ${{ steps.routes.outputs.resume }}
     steps:
       - uses: actions/checkout@v4
       - name: Resolve complete PR file selection or conservatively select all
@@ -370,4 +412,18 @@ jobs:
     uses: ./.github/workflows/installed-remote-delete-data.yml
     with:
       same_run_apks: ${{ needs.build-once.result == 'success' }}
+      artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}
+
+  api29:
+    needs: [select, build-once]
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.api29 == 'true' && (needs.build-once.result == 'success' || (needs.build-once.result == 'skipped' && needs.select.outputs.native != 'true' && needs.select.outputs.protocol != 'true')) }}
+    uses: ./.github/workflows/android10-downloads-instrumentation.yml
+    with:
+      artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}
+
+  resume:
+    needs: [select, build-once]
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.resume == 'true' && (needs.build-once.result == 'success' || (needs.build-once.result == 'skipped' && needs.select.outputs.native != 'true' && needs.select.outputs.protocol != 'true')) }}
+    uses: ./.github/workflows/installed-partial-resume-death.yml
+    with:
       artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}

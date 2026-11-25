@@ -29,7 +29,8 @@ Native and Universal Add together were 49.0% of observed allocation. Cancellatio
 - #2089 [45562913789](https://github.com/gamesbyian/Chunks/actions/runs/45562913789): same APK pair passed Combined (260s) and Remove (177s); common build 308s. Independent baselines [45562913808](https://github.com/gamesbyian/Chunks/actions/runs/45562913808) and [45562913820](https://github.com/gamesbyian/Chunks/actions/runs/45562913820) passed at 396s and 367s. A new standalone producer saved only 18 aggregate runner-seconds (745 versus 763), while reusing an already-required producer would save 326 incremental runner-seconds on the two consumers (437 versus 763). Critical path may lengthen with serialization.
 - #2091 [45563820394](https://github.com/gamesbyian/Chunks/actions/runs/45563820394): one producer, two native shards and three protocol lanes plus both complete verifiers passed; 2454 runner-seconds, 862s job activity window. Producer 251s; selection 8s.
 - #2094 merged `d76e99ca`. [45565403407](https://github.com/gamesbyian/Chunks/actions/runs/45565403407), reviewed head `abc7d392`, synthetic merge `ae6fdd96`: seven installed execution jobs and both aggregate verifiers passed from one APK pair. Native verifier 488 reported, 435 executed, 53 explicit exclusions, zero failed, 25 real PNGs. Combined and Remove independently verified identical installed app digest. 2959 runner-seconds, 793s job activity window. No dedicated producer for Combined/Remove-only work; direct independent build path retained. Manual cross-run artifact contract retained.
-- #2095 extends to API29 Downloads and two resume-death device lanes; [45567238922](https://github.com/gamesbyian/Chunks/actions/runs/45567238922) selected all six families. Offline tests passed; installed qualification is separate and must be recorded before integration.
+- #2095 merged `fcd0484e`. [45567238922](https://github.com/gamesbyian/Chunks/actions/runs/45567238922) passed all ten installed jobs and both final aggregate verifiers on attempt 1 from one APK pair. Reviewed head `a4f51cb7`, synthetic merge `9294fd73`, exact tree `9e2d0b964172d9bf362bab58088da0d39f20e201`. 3606 runner-seconds, 799s activity window, 201s producer, 7s selector. Protocol and resume standalone producers correctly skipped. Both resume lanes checked the actual installed APK bytes and reviewed tree.
+- #2097 [45567849539](https://github.com/gamesbyian/Chunks/actions/runs/45567849539) qualified the Combined-only path: 8s selector, 474s direct-build installed job, all unrelated lanes and common producer skipped. Temporary comment-only PR closed without merging.
 
 ### Observed final-head co-trigger opportunity
 
@@ -43,6 +44,9 @@ The earlier successful exact-head campaigns below had all six families independe
 |---|---:|---:|---:|
 | #2074 | 4540 | 844 | 1156 |
 | #2070 | 4490 | 876 | 1049 |
+| #2095 (shared) | 3606 | 799 | 201 (one build job) |
+
+Observed allocation decreased 19.7–20.6%, activity window 5.3–8.8%. Build-job time is not exactly the same metric as historical compile-step time; the comparisons are observational, not causal same-source benchmarks.
 
 Run IDs in family order (Native, Universal, Combined, Remove, API29, Resume): #2074: 45514678277, 45514678272, 45514678418, 45514678185, 45514678416, 45514678236. #2070: 45513219642, 45513219752, 45513219867, 45513219779, 45513220251, 45513219624.
 

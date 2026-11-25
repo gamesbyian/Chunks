@@ -154,7 +154,9 @@ class CiDispatchRelevance(unittest.TestCase):
                 self.assertFalse(dispatches_for_changed_paths(native, (path,)))
                 owner = workflow(owner_name)
                 route = {"installed-combined-two-servers.yml": "combined",
-                         "installed-remote-delete-data.yml": "remove"}.get(owner_name)
+                         "installed-remote-delete-data.yml": "remove",
+                         "android10-downloads-instrumentation.yml": "api29",
+                         "installed-partial-resume-death.yml": "resume"}.get(owner_name)
                 self.assertTrue(dispatches_for_changed_paths(shared_route_source(route) if route else owner, (path,)))
                 self.assertIn("android-emulator-runner@v2", owner)
                 executable = OWNER_EXECUTION[filename]

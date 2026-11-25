@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 import unittest
 
-from test_ci_trigger_contract import dispatches_for_changed_paths
+from test_ci_trigger_contract import dispatches_for_changed_paths, shared_route_source
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = "tools/local_intake_journey.sh"
@@ -17,7 +17,8 @@ class LocalIntakeDispatchTest(unittest.TestCase):
             text = (ROOT / ".github/workflows" / name).read_text()
             for path in (HARNESS, MOCK, FIXTURE):
                 with self.subTest(workflow=name, path=path):
-                    self.assertTrue(dispatches_for_changed_paths(text, (path,)))
+                    route = shared_route_source("api29") if name == "android10-downloads-instrumentation.yml" else text
+                    self.assertTrue(dispatches_for_changed_paths(route, (path,)))
             self.assertIn(f"bash {HARNESS}", text)
             self.assertIn(f"bash {MOCK}", text)
             jobs = text.split("\njobs:\n", 1)[1]
