@@ -14,6 +14,8 @@ Follow the queue, not historical PR numbers. In particular, finish installed pro
 
 Use [CI policy](CI-POLICY.md) and [real transfer acceptance](REAL-TRANSFER-ACCEPTANCE.md). Exact-source installed debug routing now shares APK pairs across six compatible families; independent R8, foundation and protected gates remain. Use applicable offline preflights before Android. Disposable rig: `tools/interop/start_local_clients.sh build/interop && source tools/interop/local_env.sh build/interop`; use pinned Gradle 9.3.1 and actual daemon versions. Follow [Compose virtualization contract](TEST-ARCHITECTURE.md#compose-lazy-containers-virtualization-contract) and the existing LazyComposeActions; re-find controls and do not blindly repeat writes. [Release checklist](RELEASE-ACCEPTANCE.md) defines assembled acceptance.
 
+**Local first:** an agent container can run the CI-equivalent JVM suite and the real-daemon interop selection before hosted CI ([BUILD local toolchain](BUILD.md#local-jvm-toolchain-for-agent-containers): JDK 17, UTF-8 locale, 429 retries). Without `/dev/kvm` the emulator tiers stay hosted. Credential storage changes trigger `credential-upgrade-witness.yml`; dispatch it with an older `base_ref` at release. Before citing a rarely run probe, see the [workflow classification](audits/CI-WORKFLOW-CLASSIFICATION-2026-11-25.md); several are red from runner drift.
+
 ## 3. Stop and report
 
 Owning PR/issue holds the exact source, actual tests, outcomes, failure/recovery evidence, remaining tiers and next action. Only update the queue if task disposition changes; change this card only when the orientation procedure changes. Use [evidence index](QUALITY-LEDGER.md), not repeated historical paragraphs.

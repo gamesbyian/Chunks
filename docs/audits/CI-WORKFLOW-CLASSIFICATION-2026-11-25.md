@@ -1,6 +1,6 @@
 # CI workflow classification — 2026-11-25
 
-**Status:** Evidence for [WORK-QUEUE](../WORK-QUEUE.md) row A2611-03, not a policy. Source: `main` at `3c7e3b58` (102 workflow files) and the complete Actions run history of the repository (21,218 runs, oldest 2026-10-24, collected 2026-11-25 through the GitHub API; the 60-day window therefore covers every run). Static fields come from `tools/ci_workflow_inventory.py`. Classes: **KEEP-gate** (path-selected PR witness recently executed), **KEEP-manual / KEEP-manual-protected** (dispatch evidence; protected Seedhost needs trusted-main arming), **KEEP-font-lab / KEEP-design** (owner asset contracts), **KEEP-deferred** (visual atlas), **ARCHIVE-candidate** (move to `docs/archive/workflows/` with its last passing run id, only after the per-row check below).
+**Status:** Evidence for [WORK-QUEUE](../WORK-QUEUE.md) row A2611-03, not a policy. Source: `main` at `3c7e3b58` (102 workflow files) and the complete Actions run history of the repository (21,218 runs, oldest 2026-10-24, collected 2026-11-25 through the GitHub API; the 60-day window therefore covers every run). Static fields come from `tools/ci_workflow_inventory.py`. Classes: **KEEP-gate** (path-selected PR witness recently executed), **KEEP-manual / KEEP-manual-protected** (dispatch evidence; protected Seedhost needs trusted-main arming), **KEEP-font-lab / KEEP-design** (owner asset contracts), **KEEP-deferred** (visual atlas), **ARCHIVE-candidate** (move to `docs/archive/workflows/` with its last passing run id, only after the per-row check below); **ARCHIVED** rows have moved.
 
 Counts: ARCHIVE-candidate 11, KEEP-deferred 1, KEEP-design 6, KEEP-font-lab 17, KEEP-gate 34, KEEP-manual 6, KEEP-manual-protected 27.
 
@@ -55,7 +55,7 @@ Columns: runs (all-time = 60 d) · success/failure/cancelled/skipped · last run
 | `local-engine-public-webseed.yml` | KEEP-gate | 21 | 12/3/6/0 | 2026-11-21 failure | 2026-11-12 | Path-selected PR witness; recently executed. |
 | `minified-smoke.yml` | KEEP-gate | 2766 | 1182/38/830/715 | 2026-11-25 in_progress | 2026-11-25 | Path-selected PR witness; recently executed. |
 | `native-add-instrumentation.yml` | KEEP-gate | 3523 | 1206/362/1168/785 | 2026-11-25 in_progress | 2026-11-25 | Path-selected PR witness; recently executed. |
-| `native-add-shared-build-experiment.yml` | ARCHIVE-candidate | 2 | 1/0/0/1 | 2026-11-03 success | 2026-11-03 | Superseded by build-once native Add sharing (#2094/#2095); 2 runs, none since 2026-11-03. |
+| `native-add-shared-build-experiment.yml` | **ARCHIVED** ([archive](../archive/workflows/README.md)) | 2 | 1/0/0/1 | 2026-11-03 success | 2026-11-03 | Superseded by build-once native Add sharing (#2094/#2095); 2 runs, none since 2026-11-03. |
 | `native-delete-boundary-research.yml` | KEEP-gate | 65 | 36/5/22/2 | 2026-11-24 success | 2026-11-24 | Path-selected PR witness; recently executed. |
 | `native-mediastore-owned-fd-probe.yml` | KEEP-gate | 9 | 4/2/3/0 | 2026-11-21 success | 2026-11-21 | Path-selected PR witness; recently executed. |
 | `native-owned-android-link.yml` | KEEP-gate | 27 | 23/3/1/0 | 2026-11-21 success | 2026-11-21 | Path-selected PR witness; recently executed. |
@@ -122,4 +122,4 @@ Columns: runs (all-time = 60 d) · success/failure/cancelled/skipped · last run
 | `svg-palette-contrast.yml` | KEEP-design | 6 | 4/1/1/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-render-atlas.yml` | KEEP-design | 42 | 32/3/7/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-small-size.yml` | KEEP-design | 28 | 26/1/1/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
-| `svg-workbench-mobile.yml` | ARCHIVE-candidate | 8 | 2/5/1/0 | 2026-11-21 failure | 2026-10-28 | Red since 2026-10-28; last failure: pinned Playwright 1.56.1 cannot install on ubuntu-latest 26.04 (run 44950386815). No active doc/test/tool reference. |
+| `svg-workbench-mobile.yml` | **ARCHIVED** ([archive](../archive/workflows/README.md)) | 8 | 2/5/1/0 | 2026-11-21 failure | 2026-10-28 | Red since 2026-10-28; last failure: pinned Playwright 1.56.1 cannot install on ubuntu-latest 26.04 (run 44950386815). No active doc/test/tool reference. |
