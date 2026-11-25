@@ -320,7 +320,7 @@ class ShardedNativeAddTests(unittest.TestCase):
             source,
         )
         self.assertIn(
-            "if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)",
+            "if: always() && needs.select.outputs.native == 'true'",
             source,
         )
         # Keep the same two emulators, JUnit receipts, screenshot evidence and
@@ -334,12 +334,14 @@ class ShardedNativeAddTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
         runner = (ROOT / "tools/native_add_prebuilt.sh").read_text()
         self.assertIn("  build-once:", workflow)
-        self.assertIn("  add-review-device-test:\n    needs: build-once", workflow)
-        self.assertIn("  verify-complete-native-add:\n    needs: add-review-device-test", workflow)
+        self.assertIn("  add-review-device-test:\n    needs: [select, build-once]", workflow)
+        self.assertIn("  verify-complete-native-add:\n    needs: [select, add-review-device-test]", workflow)
         self.assertEqual(workflow.count(":app:assembleDebug :app:assembleDebugAndroidTest"), 1)
         self.assertNotIn("connectedDebugAndroidTest", workflow)
         for expected in (
-            "chunks-prebuilt-native-add-apk-pair",
+            "chunks-shared-debug-apks-attempt-",
+            "needs.build-once.outputs.artifact-name",
+            "source-tree",
             "sha256sum -c SHA256SUMS",
             "script: bash tools/native_add_prebuilt.sh",
             "check_native_atlas_contract.py",
