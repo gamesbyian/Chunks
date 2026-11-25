@@ -27,6 +27,8 @@ class DelugeReadOnlyRpcTest {
     private fun hosts() = result(2, """[["$daemon","127.0.0.1",58846,"localclient"]]""")
     private fun status(state: String = "Online") = result(3, """["$daemon","$state","2.1.1"]""")
     private fun connected() = result(4, """["core.get_torrents_status","core.add_torrent_magnet"]""")
+    private fun active(state: String = "Connected", host: String = daemon) =
+        result(5, """["$host","$state","2.1.1"]""")
     private fun update() = result(6, """{"torrents":{"$hash":{"name":"Linux","state":"Downloading","total_size":100,"total_done":30,"download_payload_rate":5,"upload_payload_rate":2,"save_path":"/home/seed"}}}""")
 
     private class Scripted(vararg responses: DelugeReadOnlyRpc.Response) : DelugeReadOnlyRpc.Wire {
@@ -78,7 +80,7 @@ class DelugeReadOnlyRpcTest {
     }
 
     @Test fun exactRegisteredDaemonMustBeVerifiedBeforeSessionConnectAndInventoryRead() = runBlocking {
-        val script = Scripted(login(), hosts(), status(), connected(), result(5, "true"), update())
+        val script = Scripted(login(), hosts(), status(), connected(), active(), update())
         val snapshot = client(script).inspect()
         assertEquals(daemon, snapshot.selectedDaemonId)
         assertEquals("2.1.1", snapshot.daemonVersion)
@@ -87,7 +89,7 @@ class DelugeReadOnlyRpcTest {
         assertEquals(30L, snapshot.torrents.single().completedBytes)
         assertEquals(5L, snapshot.torrents.single().downloadBytesPerSecond)
         assertEquals(listOf("auth.login", "web.get_hosts", "web.get_host_status",
-            "web.connect", "web.connected", "web.update_ui"),
+            "web.connect", "web.get_host_status", "web.update_ui"),
             script.calls.map { org.json.JSONObject(it.body.toString(Charsets.UTF_8)).getString("method") })
         assertTrue(script.calls.all { it.endpoint.toString() == endpoint })
         assertNull(script.calls[0].sessionCookie)
@@ -134,9 +136,11 @@ class DelugeReadOnlyRpcTest {
     }
 
     @Test fun failureToConnectOrUnexpectedDaemonStatusNeverReadsInventory() = runBlocking {
-        val session = Scripted(login(), hosts(), status(), connected(), result(5, "false"))
-        try { client(session).inspect(); fail("Disconnected daemon accepted") }
-        catch (expected: IOException) { assertEquals(5, session.calls.size) }
+        for (witness in listOf(active("Online"), active(host = "another-daemon"), result(5, "true"))) {
+            val session = Scripted(login(), hosts(), status(), connected(), witness)
+            try { client(session).inspect(); fail("An exact connected daemon was not verified") }
+            catch (expected: IOException) { assertEquals(5, session.calls.size) }
+        }
         val wrongHost = Scripted(login(), hosts(), result(3, """["another-daemon","Online","2.1"]"""))
         try { client(wrongHost).inspect(); fail("Cross-daemon status accepted") }
         catch (expected: IOException) { assertEquals(3, wrongHost.calls.size) }
@@ -151,14 +155,14 @@ class DelugeReadOnlyRpcTest {
             result(7, """{"torrents":{}}""")
         )
         for (body in cases) {
-            val script = Scripted(login(), hosts(), status(), connected(), result(5, "true"), body)
+            val script = Scripted(login(), hosts(), status(), connected(), active(), body)
             try { client(script).inspect(); fail("Malformed Deluge snapshot accepted") }
             catch (expected: IOException) { assertEquals(6, script.calls.size) }
         }
     }
 
     @Test fun metadataPendingCanHaveUnknownCountersAndNoSavePath() = runBlocking {
-        val script = Scripted(login(), hosts(), status(), connected(), result(5, "true"),
+        val script = Scripted(login(), hosts(), status(), connected(), active(),
             result(6, """{"torrents":{"$hash":{"name":"Pending","state":"Downloading"}}}"""))
         val row = client(script).inspect().torrents.single()
         assertNull(row.totalSizeBytes)

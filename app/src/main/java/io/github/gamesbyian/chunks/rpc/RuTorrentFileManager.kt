@@ -162,11 +162,11 @@ internal object RuTorrentFileManager {
             else -> RemoteFolderCreateCapability.Reason.CANNOT_VERIFY
         }
         if (reason != null) return Configuration.Rejected(reason)
-        val response = runCatching { JSONObject(result.body) }.getOrNull()
+        val response = runCatching { ExactRpcJson.objectBody(result.body) }.getOrNull()
             ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
         if (response.has("error") || response.has("errcode"))
             return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
-        val fileRoot = RuTorrentDirectoryListing.canonical(response.optString("homedir"))
+        val fileRoot = (response.opt("homedir") as? String)?.let(RuTorrentDirectoryListing::canonical)
             ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
         // ruTorrent _getdir may start at rTorrent's current download directory,
         // below File Manager's configured homedir. Only accept this ancestry
@@ -272,7 +272,7 @@ internal object RuTorrentFileManager {
     internal fun directoryNames(body: String): Set<String>? = try {
         if (body.length !in 2..MAX_RESPONSE_BYTES) null
         else {
-            val json = JSONObject(body)
+            val json = ExactRpcJson.objectBody(body)
             if (json.has("error") || json.has("errcode")) null
             else {
                 val entries = json.getJSONArray("listing")
@@ -432,26 +432,21 @@ internal object RuTorrentFileManager {
             if (response.code == 200) directoryNames(response.body) else null
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) { null }
-        val bothServicesSeeDirectory = after is RemoteDirectoryLookup.Ready &&
+        val bothServicesSeeDirectory = after is RemoteDirectoryLookup.Ready && after.page.path == parent &&
             name in after.page.folders && typedAfter?.contains(name + "/") == true
         // A folder observed after a lost/failed acknowledgment might have been
         // created by a different actor. Two readbacks prove presence, but not
         // that this one write succeeded. Require an explicit successful receipt.
-        val acknowledged = reply?.takeIf { it.code == 200 }?.let { response ->
-            runCatching {
-                val json = JSONObject(response.body)
-                !json.has("errcode") && json.opt("error") == false
-            }.getOrDefault(false)
-        } == true
+        val receipt = reply?.takeIf { it.code == 200 }?.let { response ->
+            runCatching { ExactRpcJson.objectBody(response.body) }.getOrNull()
+        }
+        val error = receipt?.opt("error")
+        val acknowledged = error == false && receipt?.has("errcode") == false
         if (bothServicesSeeDirectory && acknowledged)
             return@withContext RemoteFolderCreateOutcome.Created(confirmedPath)
         // The write may have reached the provider. Never automatically replay it.
-        val explicitRefusal = reply?.takeIf { it.code == 200 }?.let { response ->
-            runCatching {
-                val json = JSONObject(response.body)
-                json.opt("error") == true || json.has("errcode")
-            }.getOrDefault(false)
-        } == true
+        val explicitRefusal = error == true ||
+            (error == null && exactWireInteger(receipt?.opt("errcode")) != null)
         if (explicitRefusal && !bothServicesSeeDirectory) RemoteFolderCreateOutcome.Refused
         else if (sent) RemoteFolderCreateOutcome.Uncertain
         else RemoteFolderCreateOutcome.Refused

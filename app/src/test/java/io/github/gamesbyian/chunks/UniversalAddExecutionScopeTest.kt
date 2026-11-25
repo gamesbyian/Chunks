@@ -65,18 +65,18 @@ class UniversalAddExecutionScopeTest {
             io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes), bytes.copyOf(), uri)
         owner.reviewedTorrent.value = review
         assertTrue(owner.stageRemoteTorrentHandoff(bytes, review))
-        org.junit.Assert.assertEquals(uri, owner.serverHandoffDocument.value)
-        org.junit.Assert.assertArrayEquals(bytes, owner.serverHandoffTorrent.value)
+        org.junit.Assert.assertEquals(uri, owner.serverHandoff?.originalDocument)
+        org.junit.Assert.assertArrayEquals(bytes, owner.serverHandoff?.bytes)
         // An export of identical bytes is a different source, not permission to
         // archive/delete the earlier Android document.
         assertTrue(owner.stageRemoteTorrentHandoff(bytes, null))
         org.junit.Assert.assertNull(owner.reviewedTorrent.value)
-        org.junit.Assert.assertNull(owner.serverHandoffDocument.value)
-        org.junit.Assert.assertArrayEquals(bytes, owner.serverHandoffTorrent.value)
-        val export = owner.serverHandoffTorrent.value
+        org.junit.Assert.assertNull(owner.serverHandoff?.originalDocument)
+        org.junit.Assert.assertArrayEquals(bytes, owner.serverHandoff?.bytes)
+        val export = owner.serverHandoff?.bytes
         assertFalse(owner.stageRemoteTorrentHandoff(bytes, review))
-        assertSame(export, owner.serverHandoffTorrent.value)
-        org.junit.Assert.assertNull(owner.serverHandoffDocument.value)
+        assertSame(export, owner.serverHandoff?.bytes)
+        org.junit.Assert.assertNull(owner.serverHandoff?.originalDocument)
         // A current review with changed bytes is refused without clearing text.
         owner.reviewedTorrent.value = review
         owner.sourceDraft.value = "new draft"
@@ -84,12 +84,48 @@ class UniversalAddExecutionScopeTest {
         org.junit.Assert.assertEquals("new draft", owner.sourceDraft.value)
         assertSame(review, owner.reviewedTorrent.value)
         assertTrue(owner.stageRemoteTorrentHandoff(otherBytes, null))
-        org.junit.Assert.assertArrayEquals(otherBytes, owner.serverHandoffTorrent.value)
+        org.junit.Assert.assertArrayEquals(otherBytes, owner.serverHandoff?.bytes)
         org.junit.Assert.assertNull(owner.reviewedTorrent.value)
-        org.junit.Assert.assertNull(owner.serverHandoffDocument.value)
+        org.junit.Assert.assertNull(owner.serverHandoff?.originalDocument)
         otherBytes[0] = 0
-        assertTrue(requireNotNull(owner.serverHandoffTorrent.value)[0] != 0.toByte())
+        assertTrue(requireNotNull(owner.serverHandoff?.bytes)[0] != 0.toByte())
         org.junit.Assert.assertNull(owner.session.attemptedTicket)
+    }
+
+    @Test fun oldRemoteAcknowledgmentAndClaimCannotConsumeANewerIdenticalDocumentReview() {
+        val owner = LocalAddAttemptOwner()
+        val bytes = ("d4:infod6:lengthi5e4:name8:test.txt" +
+            "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
+        val preview = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(bytes)
+        val uri = android.net.Uri.parse("content://fixture.documents/review.torrent")
+        val older = PendingLocalAdd(preview, bytes.copyOf(), uri)
+        val newer = PendingLocalAdd(preview, bytes.copyOf(), uri)
+        owner.adoptSharedDocument(older, forAuthenticatedRemote = true)
+        val staleHandoff = owner.serverHandoff
+        val remote = owner.remoteSessions.forAccount("reviewed-account")
+        remote.selectedBytes = bytes.copyOf()
+        remote.useFile = true
+        remote.associatedLocalReview = older
+
+        owner.adoptSharedDocument(newer, forAuthenticatedRemote = true)
+        val currentHandoff = owner.serverHandoff
+        assertFalse(owner.claimServerHandoff(staleHandoff))
+        owner.retireCompletedRemoteReview(remote.selectedLocalReview())
+        assertSame(newer, owner.reviewedTorrent.value)
+        assertSame(currentHandoff, owner.serverHandoff)
+        assertTrue(owner.claimServerHandoff(currentHandoff))
+        assertFalse(owner.claimServerHandoff(currentHandoff))
+
+        // A magnet attempt cannot retire even the older file selection.
+        remote.useFile = false
+        org.junit.Assert.assertNull(remote.selectedLocalReview())
+        owner.adoptSharedDocument(older, forAuthenticatedRemote = true)
+        owner.retireCompletedRemoteReview(remote.selectedLocalReview())
+        assertSame(older, owner.reviewedTorrent.value)
+        remote.useFile = true
+        owner.retireCompletedRemoteReview(remote.selectedLocalReview())
+        org.junit.Assert.assertNull(owner.reviewedTorrent.value)
+        org.junit.Assert.assertNull(owner.serverHandoff)
     }
 
     @Test fun standAlonePreviewUsesScreenScopeAndDoesNotCreateAnotherExecutor() {

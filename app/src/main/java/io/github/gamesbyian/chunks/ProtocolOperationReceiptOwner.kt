@@ -112,6 +112,12 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         }
     }
 
+    /** A departing screen can revoke preflight, but only the operation can settle an in-flight write. */
+    @Synchronized fun abandonPreflight(ticket: Ticket) {
+        val current = entries[ticket.key] ?: return
+        if (current.ticket === ticket && current.phase == Phase.PREFLIGHT) entries.remove(ticket.key)
+    }
+
     /** The caller must have just made an exact read through its still-current authenticated generation. */
     @Synchronized fun reconcile(ticket: Ticket, present: Boolean): Boolean {
         val current = entries[ticket.key] ?: return false

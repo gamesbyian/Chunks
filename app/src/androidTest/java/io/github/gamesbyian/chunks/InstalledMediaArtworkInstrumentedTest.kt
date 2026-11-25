@@ -9,12 +9,12 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.hasAnyDescendant
-import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -24,7 +24,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -137,19 +136,6 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.waitForIdle()
     }
 
-    /** A single semantic click on a lazily composed button; retries only failed lookups (pre-dispatch). */
-    private fun clickLazyButton(label: String) {
-        val target = hasClickAction() and (hasText(label) or hasAnyDescendant(hasText(label)))
-        for (attempt in 1..5) {
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label))
-            rule.waitForIdle()
-            if (rule.onAllNodes(target, useUnmergedTree = true).fetchSemanticsNodes().size != 1) continue
-            try { rule.onNode(target, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick); return }
-            catch (_: AssertionError) { }
-        }
-        throw AssertionError("$label was never composed and clicked")
-    }
-
     private fun waitForDescription(description: String, timeoutMs: Long = 20_000) {
         rule.waitUntil(timeoutMs) {
             rule.onAllNodes(hasContentDescription(description), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
@@ -202,14 +188,22 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.openConnectionFormIfNeeded(allowConnected = false)
         rule.openConnectionFormIfNeeded()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
+        LazyComposeActions.replaceText(rule,
+            hasText("Seedbox hostname, ruTorrent URL or RPC address") and hasSetTextAction(), endpoint)
         hideKeyboard()
-        clickLazyButton("Connect to rTorrent")
+        LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.CONNECTION_CONNECT))
         // Verified Connect acknowledges and stays on Connections (#1515); the saved
         // profile then opens the one canonical Transfers browser.
-        rule.waitUntil(60_000) {
-            rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+        try {
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (timeout: ComposeTimeoutException) {
+            val calls = synchronized(receivedMethods) { receivedMethods.toList() }
+            val version = calls.count { it == "system.client_version" }
+            val inventory = calls.count { it == "d.multicall2" }
+            throw AssertionError("No Connections acknowledgment after one action. " +
+                "Fixture version reads=$version and inventory reads=$inventory", timeout)
         }
         rule.onNodeWithText("Continue to Connections").performClick()
         rule.waitUntil(60_000) {

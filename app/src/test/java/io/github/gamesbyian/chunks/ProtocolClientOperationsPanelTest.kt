@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -25,6 +26,11 @@ import io.github.gamesbyian.chunks.rpc.TorrentClient
 import org.junit.Assert.assertEquals
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.assertTextContains
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -339,14 +345,14 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(1, destination.adds)
     }
 
-    private fun render(fake: Fake, current: Boolean = true) {
+    private fun render(fake: Fake, current: Boolean = true, reportedDirectory: String? = fake.dir) {
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = current, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(fake, 3, 1) },
-                    onChanged = {}
+                    onChanged = {}, observedDownloadDirectory = reportedDirectory
                 )
             }
         }
@@ -375,7 +381,17 @@ class ProtocolClientOperationsPanelTest {
 
     @Test fun cancelledDispatchedCommandSurvivesNavigationAndSameProfileReconnect() {
         val owner = ProtocolOperationReceiptOwner()
-        val fake = Fake().apply { afterStartWrite = { kotlinx.coroutines.awaitCancellation() } }
+        val transportHeld = CompletableDeferred<Unit>()
+        val releaseTransport = CompletableDeferred<Unit>()
+        val fake = Fake().apply {
+            afterStartWrite = {
+                withContext(NonCancellable) {
+                    transportHeld.complete(Unit)
+                    releaseTransport.await()
+                }
+                currentCoroutineContext().ensureActive()
+            }
+        }
         val factory = { ClientOperations(fake, 3, 1) }
         var show by mutableStateOf(true)
         var generation by mutableStateOf("g1")
@@ -392,16 +408,22 @@ class ProtocolClientOperationsPanelTest {
         }
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
-        rule.waitUntil(5_000) { fake.writes == 1 }
         val key = ProtocolOperationReceiptOwner.Key("profile-a", hash)
-        rule.runOnIdle {
+        try {
+            rule.waitUntil(5_000) { transportHeld.isCompleted }
+            rule.runOnIdle {
+                assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
+                show = false
+            }
+            rule.onNodeWithTag(ChunksSemantics.PROTOCOL_OPERATIONS).assertDoesNotExist()
+            rule.runOnIdle { generation = "g2"; show = true }
+            rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+            rule.onNodeWithText("Check this transfer without changing it").assertDoesNotExist()
             assertEquals(ProtocolOperationReceiptOwner.Phase.POSSIBLE_WRITE, owner.receipt(key)?.phase)
-            show = false
+        } finally {
+            releaseTransport.complete(Unit)
         }
-        rule.waitForIdle()
-        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, owner.receipt(key)?.phase)
-        rule.runOnIdle { generation = "g2"; show = true }
-        rule.waitForIdle()
+        rule.waitUntil(5_000) { owner.receipt(key)?.phase == ProtocolOperationReceiptOwner.Phase.UNKNOWN }
         rule.onNodeWithText("Commands are paused until a read-only check.").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
         rule.runOnIdle { profile = "profile-b" }
@@ -441,8 +463,9 @@ class ProtocolClientOperationsPanelTest {
 
     @Test fun removeKeepsFilesUnlessExplicitlyChosen() {
         val fake = Fake()
-        render(fake)
+        render(fake, reportedDirectory = null)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").assertDoesNotExist()
         rule.onNodeWithText("Remove, keep files").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
         rule.waitUntil(5_000) { !fake.present }
@@ -461,6 +484,22 @@ class ProtocolClientOperationsPanelTest {
         rule.onNodeWithText("Transfer removed from Seedbox qB. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server.").assertExists()
         rule.onNodeWithText("Remove and delete files: confirmed on Seedbox qB.").assertDoesNotExist()
         assertEquals(1, fake.writes)
+    }
+
+    @Test fun movingTheSameJobAfterReviewRefusesPayloadDeletionWithoutSendingAWrite() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithText("Folder on Seedbox qB: /d").assertExists()
+        rule.runOnIdle { fake.dir = "/other" }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText("no longer in the reviewed folder", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(0, fake.writes)
+        assertEquals(true, fake.present)
     }
 
     @Test fun staleListOffersNoCommands() {
