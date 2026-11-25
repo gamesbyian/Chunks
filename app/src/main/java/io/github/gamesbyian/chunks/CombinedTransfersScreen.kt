@@ -1293,6 +1293,8 @@ internal fun CombinedTransfersScreen(
                         focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
+                    onRefreshList = { protocolSources.reload(profile.environment) },
+                    listRefreshing = focusedProtocolListing?.loading == true,
                     moveTargets = protocolTargets,
                     moveConnections = moveConnections,
                     suggestedTarget = moveSuggestionFor(protocolTargets),
