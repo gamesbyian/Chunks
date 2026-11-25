@@ -23,9 +23,14 @@ trap cleanup EXIT
 
 adb shell am force-stop "$pkg"
 adb shell pm clear "$pkg" | grep -Fx Success
-device_path="$(adb shell pm path "$pkg" | tr -d '[:space:]' | grep '^package:' | head -1 | cut -d: -f2-)"
+# Capture whole outputs before filtering: under pipefail an early-exiting
+# reader (grep -m1, head) can SIGPIPE a still-writing producer and fail the
+# step with 141 depending on timing (#2117 attempt 2).
+pm_path="$(adb shell pm path "$pkg")"
+device_path="$(tr -d '[:space:]' <<<"$pm_path" | grep '^package:' | sed -n 1p | cut -d: -f2-)"
 aapt="${ANDROID_HOME:?}/build-tools/36.0.0/aapt"
-version="$("$aapt" dump badging "$candidate" | grep -m1 '^package:' | awk -F "versionName='" '{print $2}' | cut -d "'" -f1)"
+badging="$("$aapt" dump badging "$candidate")"
+version="$(grep -m1 '^package:' <<<"$badging" | awk -F "versionName='" '{print $2}' | cut -d "'" -f1)"
 test -n "$version"
 echo "CHUNKS_SECOND_ADD_MEDIA_SOURCE commit=$(git rev-parse HEAD) tree=$(git rev-parse HEAD^{tree})" | tee "$out/source.txt"
 echo "CHUNKS_SECOND_ADD_MEDIA_PACKAGE app_id=$pkg version=$version" | tee "$out/package.txt"
