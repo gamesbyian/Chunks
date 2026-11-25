@@ -2,6 +2,8 @@
 
 **Authority:** [CI engineering standard](CI-ENGINEERING-STANDARD.md), [CI policy](CI-POLICY.md), [Android evidence-first](../.agents/skills/android-evidence-first/SKILL.md), [work queue](WORK-QUEUE.md). This is a bounded experimental operating recipe, not an active work queue or app acceptance gate.
 
+**Owner update (2026-11-25):** Emulator snapshots are disposable after their intended tests finish. Temporary [PR #2090](https://github.com/gamesbyian/Chunks/pull/2090) measures local clean cold/generate/warm invocations on one isolated hosted runner without writing an Actions cache or uploading an AVD. It deletes its own temporary AVD in an always-run cleanup. The previous cross-run cache protocol remains historical/conditional until complete local and transfer measurements justify it. Existing repository-cache pressure must still be respected during any transient write; deleting a snapshot afterward does not undo evictions. No deletion of unrelated Gradle caches or privileged PR cleanup is authorized.
+
 ## Observed architecture and specific hypothesis
 
 Chunks already runs actual KVM-backed API29 storage and API35 installed instrumentation. Native Add builds one source-bound app/test APK pair and distributes it to two independent emulators. Those tests and evidence receipts remain mandatory.
