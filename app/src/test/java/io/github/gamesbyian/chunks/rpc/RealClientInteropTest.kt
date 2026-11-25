@@ -206,7 +206,16 @@ class RealClientInteropTest {
                 stage("payload_kept=independently_observed")
             }
         } else {
-        val removal = ops.remove(hash, deleteData = true)
+        val reviewedFolder = requireNotNull(client.torrent(hash)?.downloadDirectory)
+        val stale = ops.removeReviewedPayload(hash, reviewedFolder.trimEnd('/') + "/chunks-unreviewed-folder")
+        assertTrue("Stale reviewed folder must refuse data removal: $stale", stale is ClientOperationOutcome.Refused)
+        assertEquals("The reviewed job remains after the refusal", hash, client.torrent(hash)?.hash)
+        if (payloadRoot != null) {
+            assertTrue("Stale folder refusal preserves the actual payload",
+                fx.files.keys.all { File(finalDir, fx.name + "/" + it).isFile })
+        }
+        stage("remove_with_stale_folder=refused")
+        val removal = ops.removeReviewedPayload(hash, reviewedFolder)
         assertTrue("Remote ACK and job absence cannot certify payload deletion: $removal",
             removal is ClientOperationOutcome.Pending && removal.registrationAbsent)
         assertEquals("The exact job is independently absent", null, client.torrent(hash))

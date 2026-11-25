@@ -1299,6 +1299,7 @@ internal fun CombinedTransfersScreen(
                     sourceAliasScope = aliasScopes[focusedKey.environment],
                     sourceGeneration = profile.identityWitness,
                     canReconcile = focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true,
+                    observedDownloadDirectory = details.observation?.reportedSaveFolder,
                     isOwnerCurrent = { protocolOwnerCurrent(profile) }
                 )
             }
