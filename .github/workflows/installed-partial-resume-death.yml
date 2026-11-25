@@ -4,18 +4,13 @@ name: Installed local resume after process death
 # killed mid-transfer restores its engine-owned checkpoint in a fresh process.
 # Disposable app-private fixture only; no remote, tracker, DHT or user Place.
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
-    paths:
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeStore.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalPartialResumeProcessDeathInstrumentedTest.kt"
-      - "tools/installed_partial_resume_death.sh"
-      - "tools/verify_installed_apk_bytes.sh"
-      - ".github/workflows/installed-partial-resume-death.yml"
+  # Automatic route ownership is in native-add-instrumentation.yml.
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      artifact_name:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -26,9 +21,11 @@ concurrency:
 
 jobs:
   build-resume-apks:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    if: inputs.artifact_name == '' && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 18
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
     outputs:
       artifact-name: ${{ steps.freeze.outputs.artifact-name }}
     steps:
@@ -79,6 +76,7 @@ jobs:
 
   installed-resume-death:
     needs: build-resume-apks
+    if: ${{ !cancelled() && (inputs.artifact_name != '' || needs.build-resume-apks.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -87,15 +85,61 @@ jobs:
         api: [29, 35]
     steps:
       - uses: actions/checkout@v4
+      - name: Refuse a synthetic PR merge with an unreviewed source tree
+        if: github.event_name == 'pull_request' && inputs.artifact_name != ''
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$EXACT_HEAD"
+          git diff --quiet FETCH_HEAD HEAD || {
+            echo "::error::PR synthetic merge differs from exact reviewed head; reconcile before accepting evidence"
+            exit 1
+          }
+          echo "CHUNKS_RESUME_DEATH_SOURCE_TREE: exact head and installed checkout match"
+      - name: Validate shared dependency artifact name
+        if: inputs.artifact_name != ''
+        env:
+          APK_ARTIFACT_NAME: ${{ inputs.artifact_name }}
+        run: |
+          [[ "$APK_ARTIFACT_NAME" =~ ^chunks-shared-debug-apks-attempt-[1-9][0-9]*$ ]]
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-resume-apks.outputs.artifact-name }}
+          name: ${{ inputs.artifact_name || needs.build-resume-apks.outputs.artifact-name }}
           path: ${{ runner.temp }}/resume-death-apks/
       - name: Verify immutable APK pair and source checkout
         run: |
           input="$RUNNER_TEMP/resume-death-apks"
           test "$(cat "$input/source-sha")" = "$(git rev-parse HEAD)"
           test "$(cat "$input/source-tree")" = "$(git rev-parse HEAD^{tree})"
+          test "$(awk '{print $2}' "$input/SHA256SUMS")" = 
+          mkdir -p app/build/outputs/apk/debug app/build/outputs/apk/androidTest/debug
+          cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
+          cp "$input/test.apk" app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed kill mid-download, restore in a fresh process
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_partial_resume_death.sh ${{ matrix.api }}
+      - name: Upload installed resume-death evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-resume-death-api${{ matrix.api }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/chunks-resume-death-api${{ matrix.api }}/
+          retention-days: 14
+          if-no-files-found: warn
+app.apk\ntest.apk'
           (cd "$input" && sha256sum --strict --check SHA256SUMS)
           mkdir -p app/build/outputs/apk/debug app/build/outputs/apk/androidTest/debug
           cp "$input/app.apk" app/build/outputs/apk/debug/app-debug.apk
