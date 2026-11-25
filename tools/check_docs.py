@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import subprocess
 from collections import Counter
 from pathlib import Path
 import re
@@ -113,11 +115,61 @@ def verify(root: Path = ROOT, *, strict_anchors: bool = False) -> tuple[list[str
     return failures, warnings, count
 
 
+# Keep session entry points bounded; historical artifacts deliberately exempt.
+ENTRY_LIMITS = {"AGENTS.md": 7000, "docs/QUALITY-LEDGER.md": 12000,
+                "docs/NEXT-PUSH-HANDOFF-2026-11-08.md": 7000}
+STATUS_FILES = {"docs/WORK-QUEUE.md", "docs/SPEC-COVERAGE.md",
+                "docs/NEXT-PUSH-HANDOFF-2026-11-08.md", "docs/QUALITY-LEDGER.md",
+                "docs/TECHNICAL-COMPLETENESS-LEDGER.md"}
+LEDGER_ARCHIVE = "docs/QUALITY-LEDGER-HISTORY-2026-11-25.md"
+LEDGER_BLOB = "ea43be8dc3ac990f37f6f8ee6d97fe054b8e5b36"
+
+
+def governance(root: Path, changed: list[str] | None = None) -> list[str]:
+    failures = []
+    for path, limit in ENTRY_LIMITS.items():
+        target = root / path
+        if not target.is_file() or target.stat().st_size > limit:
+            failures.append(f"{path}: missing or exceeds {limit} byte active-entry limit")
+    archive = root / LEDGER_ARCHIVE
+    if not archive.is_file():
+        failures.append(f"{LEDGER_ARCHIVE}: missing immutable evidence archive")
+    else:
+        data = archive.read_bytes()
+        blob = hashlib.sha1(f"blob {len(data)}\0".encode() + data).hexdigest()
+        if blob != LEDGER_BLOB:
+            failures.append(f"{LEDGER_ARCHIVE}: original Git blob identity changed")
+    if changed is not None:
+        touched = set(changed)
+        feature = any(p.startswith("app/") or p.startswith("gradle/") or
+                      p.endswith(".gradle.kts") or p == "gradle.properties"
+                      for p in touched)
+        status = sorted(touched & STATUS_FILES)
+        if feature and len(status) > 1:
+            failures.append("Feature PR changes multiple status files; keep one status owner: " +
+                            ", ".join(status))
+    return failures
+
+
+def changed_paths(root: Path, base: str) -> list[str]:
+    # Explicit base only; CI supplies the exact synthetic merge's first parent.
+    if not re.fullmatch(r"[0-9a-f]{40}", base):
+        raise ValueError("base must be a full Git commit SHA")
+    raw = subprocess.check_output(
+        ["git", "diff", "--name-only", "-z", base, "HEAD", "--"], cwd=root)
+    return [p.decode("utf-8", errors="strict") for p in raw.split(b"\0") if p]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--strict-anchors", action="store_true")
+    parser.add_argument("--base", help="Exact base SHA for feature PR status-file policy")
     args = parser.parse_args()
     failures, warnings, checked = verify(strict_anchors=args.strict_anchors)
+    try:
+        failures.extend(governance(ROOT, changed_paths(ROOT, args.base) if args.base else None))
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
+        failures.append(f"Cannot establish governance diff: {type(exc).__name__}")
     for item in failures:
         print("ERROR:", item)
     for item in warnings:

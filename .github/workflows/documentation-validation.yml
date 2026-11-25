@@ -330,6 +330,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         id: checkout
+        with:
+          fetch-depth: 2
       - name: Parse all workflow and composite action YAML offline
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
@@ -445,7 +447,12 @@ jobs:
           python3 tools/check_docs_dispatch_contract.py
       - name: Validate repository-wide local documentation links
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
-        run: python3 tools/check_docs.py
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            python3 tools/check_docs.py --base "$(git rev-parse HEAD^1)"
+          else
+            python3 tools/check_docs.py
+          fi
       - name: Test documentation validator
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_docs_check.py'

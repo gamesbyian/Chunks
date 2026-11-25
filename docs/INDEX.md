@@ -32,14 +32,14 @@
 
 **Local Device terminology:** The app's built-in torrent environment is **Local Device** in the UI, `Local` in code, and `local` as its exact environment ID. Older **Phone** wording in dated evidence is historical. Current feature specs, navigation and engine APIs use the canonical identity; see [unified environments](UNIFIED-ENVIRONMENTS.md).
 
-**Current integration:** Determine live main and open PRs from GitHub, not a dated index entry. #1662 and #1663 supplied verified runtime advances; acceptance details, previous red CI and source SHA receipts live in [QUALITY-LEDGER](QUALITY-LEDGER.md). Active work and remaining experience acceptance are governed by [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md).
+**Current integration:** Inspect live main and open PRs. Owning PRs/issues and Actions hold current evidence; [QUALITY-LEDGER](QUALITY-LEDGER.md) indexes historical receipts. [WORK-QUEUE](WORK-QUEUE.md) owns work status and [SPEC-COVERAGE](SPEC-COVERAGE.md) owns gates.
 
 **New binding design and recovery contracts:** [Eight solid-colour Options cards](design/OPTIONS-SOLID-COLOUR-INDEX.md) and [Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md); [existing and foreign partial-data reuse](FOREIGN-PARTIAL-TORRENT-RECOVERY.md), [local collision policy](LOCAL-TORRENT-COLLISION-POLICY.md), and [existing-transfer file repair](TRANSFER-FILE-RECOVERY.md). These are planned product requirements, not implementation evidence.
 
-**Current completion:** [executable backend-first work queue](WORK-QUEUE.md) → [technical completeness ledger](TECHNICAL-COMPLETENESS-LEDGER.md) → [source/branch/issue/CI snapshot (2026-11-19)](archive/DAY-ONE-REPO-AUDIT-2026-11-19.md) → [release acceptance gate](RELEASE-ACCEPTANCE.md). Historical pre-audit work queue [preserved here](WORK-QUEUE-HISTORY-2026-11-19.md). [Next dispatch handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) gives environment-specific commands; [QUALITY-LEDGER](QUALITY-LEDGER.md) alone records executed test receipts.
+**Current completion:** [executable backend-first work queue](WORK-QUEUE.md) → [technical completeness ledger](TECHNICAL-COMPLETENESS-LEDGER.md) → [source/branch/issue/CI snapshot (2026-11-19)](archive/DAY-ONE-REPO-AUDIT-2026-11-19.md) → [release acceptance gate](RELEASE-ACCEPTANCE.md). Historical pre-audit work queue [preserved here](WORK-QUEUE-HISTORY-2026-11-19.md). [Next dispatch handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) gives environment-specific commands; [QUALITY-LEDGER](QUALITY-LEDGER.md) indexes evidence; owning PRs/issues record new receipts.
 
 
-**Start work in this order:** [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) → [dispatch coordination](AGENT-LANES.md) → [SPEC-COVERAGE](SPEC-COVERAGE.md). Consult [QUALITY-LEDGER](QUALITY-LEDGER.md) for evidence, **never as a second task queue**.
+**Start work:** [AGENTS](../AGENTS.md) → live source/PRs → [WORK-QUEUE](WORK-QUEUE.md). Read only task-relevant contracts and evidence. [Handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) is an orientation card, not another mandatory status read.
 
 **Branding:** [Android and full product naming contract](BRANDING-AND-APP-IDENTITY.md) covers the concise Android label, full store title, in-app wordmark and QA preview names.
 
@@ -142,8 +142,10 @@
 
 ## Where to put new information
 
-A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in QUALITY-LEDGER; missing test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
+A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in owning PR/run (QUALITY-LEDGER indexes archives); required test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
 
 - [Per-transfer home-screen widgets](PER-TRANSFER-HOME-WIDGETS.md): deferred P3, independent live indicator per transfer, launcher removal feasibility gate.
 
 - [Cross-media real-record/API verification](research/MEDIA-API-RECORD-EVIDENCE-2026-11-02.md): dated public credits and provider-specific API schema/quality caveats, with explicit gaps before live JSON and installed integration acceptance.
+
+**2026-11-25 governance archives:** [AGENTS prior snapshot](../AGENTS-HISTORY-2026-11-25.md), [complete evidence ledger](QUALITY-LEDGER-HISTORY-2026-11-25.md), [coverage snapshot](SPEC-COVERAGE-HISTORY-2026-11-25.md), [handoff snapshot](NEXT-PUSH-HANDOFF-HISTORY-2026-11-25.md), [technical capability snapshot](TECHNICAL-COMPLETENESS-LEDGER-HISTORY-2026-11-25.md). Historical only; active entry points supersede rolling status narration.

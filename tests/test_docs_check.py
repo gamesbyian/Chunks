@@ -31,6 +31,29 @@ class DocsCheckTests(unittest.TestCase):
             errors, _, count = mod.verify(root, strict_anchors=True)
             self.assertEqual((len(errors), count), (2, 1))
 
+    def test_status_budget_applies_only_to_feature_diff(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baseline = mod.governance(root)
+            self.assertEqual(baseline, mod.governance(root, ["docs/WORK-QUEUE.md", "docs/SPEC-COVERAGE.md"]))
+            self.assertEqual(baseline, mod.governance(root, ["app/src/main/A.kt", "docs/WORK-QUEUE.md"]))
+            errors = mod.governance(root, ["app/src/main/A.kt", "docs/WORK-QUEUE.md", "docs/SPEC-COVERAGE.md"])
+            self.assertEqual(len(baseline) + 1, len(errors))
+            self.assertIn("multiple status files", errors[-1])
+
+    def test_archive_and_size_fail_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path, limit in mod.ENTRY_LIMITS.items():
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b"x" * (limit + 1))
+            archive = root / mod.LEDGER_ARCHIVE
+            archive.write_text("not the original ledger")
+            failures = mod.governance(root)
+            self.assertEqual(len(mod.ENTRY_LIMITS) + 1, len(failures))
+            self.assertIn("blob identity changed", failures[-1])
+
     def test_fenced_examples_ignored(self):
         fence = chr(96) * 3
         src = "before\n" + fence + "\n[bad](missing.md)\n" + fence + "\nafter"

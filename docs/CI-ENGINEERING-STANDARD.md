@@ -2,7 +2,7 @@
 
 **Forensic efficiency (FE-14):** Optimize measured redundant work; report comparable phase timings, critical path AND total runner minutes. Build once and reuse verified immutable artifacts where compatible, retaining isolated engine/device observations, digest and negative witness. No speculative trigger pruning or weaker exact-source acceptance. [CI-POLICY](CI-POLICY.md) is executable authority.
 
-**Status:** normative engineering standard. **Scope:** all GitHub Actions, build/test automation, CI scripts, runners, caches, artifacts, and verification reporting in Chunks. **Authority:** [AGENTS](../AGENTS.md) governs agent conduct, [CI-POLICY](CI-POLICY.md) governs currently applicable selection and release gates, [WORK-QUEUE](WORK-QUEUE.md) orders active work, [QUALITY-LEDGER](QUALITY-LEDGER.md) records actual evidence. This standard governs how CI is audited, improved, and maintained; it does not claim that the desired mechanisms already exist or replace any product safety contract.
+**Status:** normative engineering standard. **Scope:** all GitHub Actions, build/test automation, CI scripts, runners, caches, artifacts, and verification reporting in Chunks. **Authority:** [AGENTS](../AGENTS.md) governs agent conduct, [CI-POLICY](CI-POLICY.md) governs currently applicable selection and release gates, [WORK-QUEUE](WORK-QUEUE.md) orders active work, [QUALITY-LEDGER](QUALITY-LEDGER.md) indexes actual evidence. This standard governs how CI is audited, improved, and maintained; it does not claim that the desired mechanisms already exist or replace any product safety contract.
 
 ## Objective and governing principle
 
@@ -81,7 +81,7 @@ Prioritize: **P0** truthful gates/security/selection; **P1** eliminate redundant
 
 This standard requires implementation, not a ceremonial audit. Inspect open CI PRs/issues first and avoid duplicate work. Establish baseline, rank improvements by cost/impact/risk, implement the smallest coherent foundations, test workflow syntax and event selection, exercise representative exact-head CI, inspect actual evidence, then reconcile and merge safely under existing review/branch rules. When blocked by a long-running job, progress another independent optimization within the session. Do not invent successful runs, waive gates, or create competing active queues.
 
-Each CI change must explain: what wasted work/diagnostic failure it corrects; baseline; affected event and trust boundaries; the new execution graph; impact on required contexts and test coverage; negative selector tests; measured tradeoffs; fallback/rollback. Update [CI-POLICY](CI-POLICY.md) for the **actual current** topology, [QUALITY-LEDGER](QUALITY-LEDGER.md) for observed evidence, [WORK-QUEUE](WORK-QUEUE.md) for active ranked work, and this document only when the durable standard changes. Preserve historical receipts as dated history, not current requirements.
+Each CI change must explain: what wasted work/diagnostic failure it corrects; baseline; affected event and trust boundaries; the new execution graph; impact on required contexts and test coverage; negative selector tests; measured tradeoffs; fallback/rollback. Record measured evidence in the owning PR/issue; update [CI-POLICY](CI-POLICY.md) only for a changed topology and [WORK-QUEUE](WORK-QUEUE.md) only for changed disposition. Update this document only when the durable standard changes. Preserve historical receipts as dated history, not current requirements.
 
 ## Completion and reporting
 
