@@ -7,9 +7,19 @@ from pathlib import Path
 import re
 import unittest
 from fnmatch import fnmatchcase
+from tools.ci_shared_debug_routes import (
+    choose, load_routes, matches_ordered, pr_paths, route_patterns, select_paths, union_patterns,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github/workflows/android-check.yml"
+
+
+def shared_route_source(lane: str) -> str:
+    """Model the per-job route, not the wider shared workflow admission filter."""
+    paths = route_patterns(load_routes(), lane)
+    return ("on:\n  pull_request:\n    branches: [main]\n    paths:\n" +
+            "".join(f'      - "{pattern}"\n' for pattern in paths))
 
 
 def pull_request_paths(source: str) -> set[str]:
@@ -115,15 +125,14 @@ class AndroidCiTriggerContract(unittest.TestCase):
         exempt = source.index('      - "!app/src/androidTest/**"')
         self.assertLess(broad, exempt)
         self.assertIn("!app/src/androidTest/**", pull_request_paths(source))
-        native = (ROOT / ".github/workflows/native-add-instrumentation.yml"
-                  ).read_text(encoding="utf-8")
+        native = shared_route_source("native")
         self.assertIn("app/src/androidTest/**", pull_request_paths(native))
         self.assertIn("app/src/main/**", pull_request_paths(native))
         # An app change alongside a test does not match the exclusion.
         self.assertIn("app/**", pull_request_paths(source))
 
     def test_dedicated_real_fixture_test_edits_do_not_duplicate_native_add(self):
-        native = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        native = shared_route_source("native")
         own_journeys = (
             ("CombinedTwoRealServersInstrumentedTest.kt",
              ".github/workflows/installed-combined-two-servers.yml"),
@@ -136,7 +145,8 @@ class AndroidCiTriggerContract(unittest.TestCase):
         )
         for filename, owning_workflow in own_journeys:
             changed_test = "app/src/androidTest/java/io/github/gamesbyian/chunks/" + filename
-            owner = (ROOT / owning_workflow).read_text()
+            owner = (shared_route_source("protocol") if owning_workflow.endswith("installed-protocol-client.yml")
+                     else (ROOT / owning_workflow).read_text())
             with self.subTest(filename=filename):
                 self.assertTrue(dispatches_for_changed_paths(owner, (changed_test,)))
                 self.assertFalse(dispatches_for_changed_paths(native, (changed_test,)))
@@ -173,9 +183,11 @@ class AndroidCiTriggerContract(unittest.TestCase):
             "native-add-instrumentation.yml",
         ):
             with self.subTest(workflow=workflow):
-                source = (ROOT / ".github/workflows" / workflow).read_text()
+                source = (shared_route_source("protocol") if workflow == "installed-protocol-client.yml"
+                          else shared_route_source("native") if workflow == "native-add-instrumentation.yml"
+                          else (ROOT / ".github/workflows" / workflow).read_text())
                 self.assertTrue(dispatches_for_changed_paths(source, (helper,)))
-        protocol = (ROOT / ".github/workflows/installed-protocol-client.yml").read_text()
+        protocol = shared_route_source("protocol")
         self.assertFalse(dispatches_for_changed_paths(protocol, (
             "app/src/sharedTest/java/io/github/gamesbyian/chunks/UnrelatedFixture.kt",)),
             "The route is intentionally limited to the executed helper")
@@ -257,8 +269,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         android = WORKFLOW.read_text(encoding="utf-8")
         docs = (ROOT / ".github/workflows/documentation-validation.yml"
                 ).read_text(encoding="utf-8")
-        api35 = (ROOT / ".github/workflows/native-add-instrumentation.yml"
-                 ).read_text(encoding="utf-8")
+        api35 = shared_route_source("native")
         cases = (
             (("docs/CI-POLICY.md",), (False, True, False)),
             (("app/src/androidTest/java/ExampleInstrumentedTest.kt",),
@@ -488,7 +499,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
 
     def test_transactional_resume_changes_keep_both_android_runtime_tiers(self):
         api29 = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text()
-        api35 = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        api35 = shared_route_source("native")
         for filename in ("LocalResumeDatabase.kt", "LocalResumeStore.kt"):
             changed = (f"app/src/main/java/io/github/gamesbyian/chunks/engine/{filename}",)
             with self.subTest(filename=filename):
@@ -546,6 +557,81 @@ class AndroidCiTriggerContract(unittest.TestCase):
             "python3 -m unittest discover -s tests -p test_ci_trigger_contract.py",
             source,
         )
+
+
+class SharedDebugRouteTests(unittest.TestCase):
+    def setUp(self):
+        self.routes = load_routes()
+        self.head = "a" * 40
+        self.base = "b" * 40
+
+    def event(self, count=1):
+        return {"number": 42, "pull_request": {
+            "head": {"sha": self.head}, "base": {"sha": self.base}, "changed_files": count}}
+
+    def test_union_admits_exactly_all_lane_patterns_and_witnesses(self):
+        source = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        match = re.search(r"(?m)^    paths:\s*\n((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source)
+        self.assertIsNotNone(match)
+        actual = [line.strip()[2:].strip("'\\\"") for line in match.group(1).splitlines()
+                  if line.strip().startswith("- ")]
+        self.assertEqual(union_patterns(self.routes), actual)
+        for pattern in actual:
+            witness = pattern.removeprefix("!")
+            if witness.endswith("/**"):
+                witness = witness[:-2] + "nested/example.kt"
+            with self.subTest(path=witness):
+                selected = select_paths(self.routes, (witness,))
+                self.assertEqual(bool(selected), matches_ordered(actual, (witness,)))
+                for lane in ("native", "protocol"):
+                    self.assertEqual(lane in selected,
+                        dispatches_for_changed_paths(shared_route_source(lane), (witness,)))
+
+    def test_exact_lane_isolation_and_mixed_changes(self):
+        native = "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+        protocol = "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
+        self.assertEqual({"native"}, select_paths(self.routes, [native]))
+        self.assertEqual({"protocol"}, select_paths(self.routes, [protocol]))
+        self.assertEqual({"native", "protocol"}, select_paths(self.routes, [native, protocol]))
+        self.assertEqual({"protocol"}, select_paths(self.routes, ["tools/interop/start_local_clients.sh"]))
+        self.assertEqual(set(), select_paths(self.routes, ["tools/interop/disposable_snapshot_folder_listing.py"]))
+        self.assertEqual(set(), select_paths(self.routes, ["docs/CI-POLICY.md"]))
+        self.assertEqual({"native", "protocol"}, select_paths(self.routes, ["tools/ci_shared_debug_routes.py"]))
+
+    def test_complete_rename_and_pagination(self):
+        event = self.event(101)
+        paths = [{"filename": f"docs/{i}.md"} for i in range(100)]
+        old = "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+        paths.append({"filename": "docs/moved.kt", "previous_filename": old})
+        def fetch(path):
+            if path.endswith("page=1"):
+                return paths[:100]
+            if path.endswith("page=2"):
+                return paths[100:]
+            return event["pull_request"]
+        self.assertIn(old, pr_paths("fixture/repo", event, fetch))
+        self.assertEqual(({"native"}, "exact-pr-files"),
+                         choose(self.routes, "pull_request", "", event, "fixture/repo", fetch))
+
+    def test_incomplete_or_changed_metadata_selects_both(self):
+        event = self.event()
+        for payload in ([], [{"filename": "docs/readme.md"}, {"filename": "docs/extra.md"}]):
+            def fetch(path):
+                return payload if "/files?" in path else event["pull_request"]
+            self.assertEqual({"native", "protocol"},
+                             choose(self.routes, "pull_request", "", event, "fixture/repo", fetch)[0])
+        changed = self.event()
+        changed["pull_request"]["head"]["sha"] = "c" * 40
+        self.assertEqual({"native", "protocol"},
+                         choose(self.routes, "pull_request", "", event, "fixture/repo",
+                                lambda _: changed["pull_request"])[0])
+
+    def test_manual_scope(self):
+        for scope, expected in (("native", {"native"}), ("protocol", {"protocol"}),
+                                ("both", {"native", "protocol"})):
+            self.assertEqual((expected, "manual"), choose(self.routes, "workflow_dispatch", scope))
+        with self.assertRaises(ValueError):
+            choose(self.routes, "workflow_dispatch", "unknown")
 
 
 if __name__ == "__main__":
