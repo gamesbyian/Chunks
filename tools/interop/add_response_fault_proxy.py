@@ -25,11 +25,13 @@ START = {
     "deluge": {"core.resume_torrent", "core.resume_torrents", "core.resume_all_torrents"},
     "rtorrent": {"d.start", "d.open", "d.resume", "load.start", "load.raw_start"},
 }
+# Only Transmission's typed Stop is faulted (#2026 retained-receipt witness).
+STOP = {"transmission": {"torrent-stop"}, "qbittorrent": set(), "deluge": set(), "rtorrent": set()}
 CONTROL = "/__chunks_add_response_fault/"
 HOP_HEADERS = {"connection", "keep-alive", "proxy-connection", "transfer-encoding",
                "upgrade", "trailer", "te", "content-length", "host"}
 COUNTERS = ("adds", "acknowledgments_withheld", "starts", "upstream_errors", "view_mutations",
-            "connect_reads_held")
+            "connect_reads_held", "stops")
 
 # All writes to rTorrent view membership/filter/order which the installed app
 # might send. The test's deliberate server-side hide uses the DIRECT 18090 RPC
@@ -102,13 +104,16 @@ class FaultState:
             self.connect_read_release.set()
             return True
 
-    def begin(self, is_add, is_start, is_view_mutation=False):
+    def begin(self, is_add, is_start, is_view_mutation=False, is_stop=False):
         with self.lock:
             if self.mode is not None:
                 self.counts["adds"] += int(is_add)
                 self.counts["starts"] += int(is_start)
                 self.counts["view_mutations"] += int(is_view_mutation)
-            return (self.mode, self.release_signal) if is_add else (None, None)
+                self.counts["stops"] += int(is_stop)
+            # "hold-stop" faults only the typed Stop; every other mode only Add.
+            faulted = is_stop if self.mode == "hold-stop" else is_add
+            return (self.mode, self.release_signal) if faulted else (None, None)
 
     def record(self, key, delta=1):
         with self.lock:
@@ -131,6 +136,13 @@ def rpc_method(kind, path, body):
     data = json.loads(body) if body else {}
     method = data.get("method") if isinstance(data, dict) else None
     return method if isinstance(method, str) else None
+
+
+def accepted_stop(kind, status, response):
+    """Transmission reports an executed torrent-stop as result=success."""
+    if kind != "transmission" or status != 200:
+        return False
+    return json.loads(response).get("result") == "success"
 
 
 def accepted_add(kind, status, response):
@@ -170,7 +182,7 @@ class FaultProxy(BaseHTTPRequestHandler):
         kind = self.server.kind
         if path.startswith(CONTROL):
             action = path.removeprefix(CONTROL)
-            if self.command == "POST" and action in {"delay", "drop", "timeout", "hold"}:
+            if self.command == "POST" and action in {"delay", "drop", "timeout", "hold", "hold-stop"}:
                 state.arm(action)
                 return self.respond(204)
             if self.command == "POST" and action == "release":
@@ -194,7 +206,7 @@ class FaultProxy(BaseHTTPRequestHandler):
         # directly by the disposable daemon or fixture bypass this counter.
         is_view_mutation = kind == "rtorrent" and rtorrent_view_mutation(path, body)
         mode, release = state.begin(method in ADD[kind], method in START[kind],
-                                    is_view_mutation)
+                                    is_view_mutation, method in STOP[kind])
         request_headers = {name: value for name, value in self.headers.items()
                            if name.lower() not in HOP_HEADERS | {"accept-encoding"}}
         # The relay examines the upstream acknowledgment before deciding how
@@ -207,7 +219,9 @@ class FaultProxy(BaseHTTPRequestHandler):
             upstream.request(self.command, self.path, body if length else None, request_headers)
             reply = upstream.getresponse()
             status, headers, response = reply.status, reply.getheaders(), reply.read()
-            accepted = mode is not None and accepted_add(kind, status, response)
+            accepted = mode is not None and (
+                accepted_stop(kind, status, response) if mode == "hold-stop"
+                else accepted_add(kind, status, response))
         except (OSError, http.client.HTTPException, ValueError, ElementTree.ParseError):
             if mode is not None:
                 state.record("upstream_errors")
@@ -224,7 +238,7 @@ class FaultProxy(BaseHTTPRequestHandler):
 
         # Transmission's CSRF challenge is issued before RPC dispatch.
         if mode is not None and kind == "transmission" and status == 409:
-            state.record("adds", -1)
+            state.record("stops" if mode == "hold-stop" else "adds", -1)
         if accepted:
             state.record("acknowledgments_withheld")
             if mode == "delay":
@@ -232,7 +246,7 @@ class FaultProxy(BaseHTTPRequestHandler):
                     return self.respond(status, response, headers)
                 state.record("upstream_errors")
                 return self.respond(503)
-            if mode in {"timeout", "hold"}:
+            if mode in {"timeout", "hold", "hold-stop"}:
                 # Exceeds the app's real 15 s HTTP read timeout. The reply is
                 # already received here, and other RPCs remain serviceable.
                 time.sleep(18 if mode == "timeout" else 45)

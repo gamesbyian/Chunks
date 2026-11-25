@@ -59,6 +59,17 @@ internal class InstalledAddResponseFault(appUrl: String) {
             0, counts().getInt("view_mutations"))
     }
 
+    /** #2026: exactly one typed Stop reached the daemon, its accepted reply was
+     * withheld, and nothing was replayed or started afterwards. */
+    fun requireOneStopAndNoReplay() {
+        val counters = counts()
+        assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))
+        assertEquals("Exactly one Stop passed through the relay ($counters)", 1, counters.getInt("stops"))
+        assertEquals("Only one accepted Stop reply was withheld", 1, counters.getInt("acknowledgments_withheld"))
+        assertEquals("No Start after the uncertain Stop", 0, counters.getInt("starts"))
+        assertEquals("No Add during the Stop witness", 0, counters.getInt("adds"))
+    }
+
     fun requireOneWriteAndNoStart() {
         val counters = counts()
         assertEquals("The daemon reply was readable before injection ($counters)", 0, counters.getInt("upstream_errors"))
