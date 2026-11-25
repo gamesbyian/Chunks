@@ -10,7 +10,7 @@
 
 ## First repair feature placement
 
-1. Remove `TransferAutomaticMetadataToggle` from `TransferMediaDetailSection.kt` for **active transfers**. Keep the full Details correction and manual artwork picker.
+1. Done: active Details no longer render a per-job automatic-lookup toggle, and the unreferenced `TransferAutomaticMetadataToggle` was deleted (D-A2611-04-COMPOSABLES-20261125). Keep the full Details correction and manual artwork picker.
 2. Put one default-checked “Automatically identify and fetch artwork & metadata” choice in the **single Universal Add** workflow, only when both global collection and display are enabled. Hide it when globally off. Reuse `AddArtworkChoice` and `TransferMediaController.prepareForAdd`; persist explicit exclusion *before admission* under exact `UnifiedTransferKey`.
 3. Make the **global artwork collection/display feature preference enabled by default** in Options, and sanitized online title lookup enabled by default for new installs, without an extra permission dialog. Respect explicitly saved OFF, privacy lock, provider configuration, network restrictions, sanitization and immediate revocation.
 4. Add phone/remote Add, Share/Open With, restore and rejection tests for checkbox placement, default, opt-out, commit failure and durable exact-job semantics.

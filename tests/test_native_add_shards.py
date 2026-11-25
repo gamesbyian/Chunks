@@ -271,6 +271,8 @@ class ShardedNativeAddTests(unittest.TestCase):
                 ("LocalInstalledAddProcessDeathTest", "killAfterRealLocalRegistrationWhileStartIsUnverified"),
                 ("LocalInstalledAddProcessDeathTest", "freshProcessCanReviewOriginalMagnetWithoutReplayingIt"),
                 ("ExternalDocumentProcessLossInstrumentedTest", "externalReviewTaskSurvivesProcessLossWithoutReplayingTheDocument"),
+                ("CredentialUpgradeSeedInstrumentedTest", "seedRecordsWithPreviousRelease"),
+                ("CredentialUpgradeVerifyInstrumentedTest", "recordsSealedByPreviousReleaseOpenAfterUpgrade"),
             )
         }
         expected.update(installed_fault_ids)

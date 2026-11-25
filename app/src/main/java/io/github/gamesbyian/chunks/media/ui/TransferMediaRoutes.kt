@@ -119,19 +119,6 @@ fun TransferMediaSummaryRoute(key: MediaTransferKey, originalName: String, files
     MediaMetadataSummary(state, onChange, modifier, showChangeAction = showChangeAction, onRequestPoster = { controller.requestPoster(key) })
 }
 
-/** Informed, revocable consent text shown before the first online lookup. */
-@Composable
-fun MediaLookupConsentDialog(providerNames: List<String>, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss,
-        title = { Text("Turn on online lookup?") },
-        text = { Text("Chunks will send a cleaned-up title, and a year, season or episode where known, to: " +
-            providerNames.joinToString(", ") + ". Torrent names, magnet links, trackers, file paths, server addresses and " +
-            "credentials are never sent. These services can see your network address. You can turn this off and clear " +
-            "all downloaded artwork and lookup history at any time in media settings. After consent, eligible transfers are identified automatically in the background.") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Turn on") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } })
-}
-
 /** Options → Media artwork & info, wired to [ChunksMedia]. */
 @Composable
 fun MediaSettingsRoute(modifier: Modifier = Modifier, showHeading: Boolean = true) {

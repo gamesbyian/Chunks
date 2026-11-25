@@ -192,20 +192,6 @@ internal fun LocalZipExtractionConfirm(
     }
 }
 
-@Composable
-internal fun LocalZipExtractionRunning(onCancel: () -> Unit, copy: Boolean = false) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (copy) "Copying and checking every file…" else "Extracting and checking every file…", fontWeight = FontWeight.Bold,
-                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-            Text("Files are written into a hidden partial folder and only appear under their final name when every byte has been checked.")
-            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text(if (copy) "Cancel copy" else "Cancel extraction")
-            }
-        }
-    }
-}
-
 internal fun extractionMessage(result: ZipExtractionResult, copy: Boolean = false): String =
     if (copy) copyMessage(result) else when (result.status) {
         ZipExtractionStatus.EXTRACTED -> if (result.writtenFiles == 0 && result.reason != null)

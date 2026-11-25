@@ -25,10 +25,27 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val resolver get() = context.contentResolver
 
+    /**
+     * Exact-row teardown that still fails the test when the row cannot be
+     * deleted, but never REPLACES an earlier assertion failure (#2104): the
+     * cleanup failure is attached to the primary failure as suppressed.
+     */
+    private fun deleteExactRow(primary: Throwable?, uri: android.net.Uri) {
+        val failure = try {
+            val deleted = resolver.delete(uri, null, null)
+            if (deleted == 1) null
+            else AssertionError("Exact test row cleanup deleted $deleted rows, expected 1: $uri")
+        } catch (cleanup: Throwable) { cleanup }
+        if (failure != null) {
+            if (primary != null) primary.addSuppressed(failure) else throw failure
+        }
+    }
+
     @Test fun createsFreshPendingRowThenPublishesOnlyAfterIndependentByteReadback() {
         val contents = ByteArray(513_029) { ((it * 37 + 13) % 251).toByte() }
         val created = OwnedMediaStoreDocumentPublication.publish(
             context, "storage-evidence.chunksnap", "application/octet-stream", contents)
+        var primary: Throwable? = null
         try {
             assertTrue(created.publishedName.startsWith("storage-evidence-"))
             assertTrue(created.publishedName.endsWith(".chunksnap"))
@@ -47,9 +64,12 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
                 assertEquals(Environment.DIRECTORY_DOWNLOADS + "/Chunks Exports/",
                     it.getString(2))
             }
+        } catch (failure: Throwable) {
+            primary = failure
+            throw failure
         } finally {
             // Emulator-owned, returned-id fixture ONLY, after positive proof.
-            assertEquals(1, resolver.delete(created.uri, null, null))
+            deleteExactRow(primary, created.uri)
         }
     }
 
@@ -105,6 +125,7 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
         val contents = ByteArray(151_411) { (it * 17 + 1).toByte() }
         val receipt = OwnedMediaStoreDocumentPublication.publish(context,
             "durable-journal-test.txt", "text/plain", contents)
+        var primary: Throwable? = null
         try {
             val created = root.toFile().list().orEmpty().toSet() - originalIds
             assertEquals("One exclusive new journal per publication", 1, created.size)
@@ -127,9 +148,12 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
             }
             assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
                 OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+        } catch (failure: Throwable) {
+            primary = failure
+            throw failure
         } finally {
             // Only the exact test-created row, never a guessed name/path.
-            assertEquals(1, resolver.delete(receipt.uri, null, null))
+            deleteExactRow(primary, receipt.uri)
         }
     }
 
