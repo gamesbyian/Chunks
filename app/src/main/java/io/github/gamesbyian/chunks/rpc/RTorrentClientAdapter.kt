@@ -20,6 +20,7 @@ internal class RTorrentClientAdapter(
     private val remote: RTorrentRemote
 ) : TorrentClient {
     override val kind = TorrentClientKind.RTORRENT
+    override val provesNoSharedPayloadBeforeDelete = true // RTorrentRemote refuses SHARED_FILES before ruTorrent erasedata
 
     override suspend fun session(): ClientSessionInfo {
         val version = remote.version()

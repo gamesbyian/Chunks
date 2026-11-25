@@ -17,6 +17,10 @@ class ClientOperationsTest {
     ) : TorrentClient {
         override val kind = TorrentClientKind.TRANSMISSION
         override var verifiesPayloadDeletionOnReturn = false
+        override var provesNoSharedPayloadBeforeDelete = false
+        /** Other jobs in the same client, each with the file list the client reports. */
+        var siblings: Map<ClientTorrent, List<ClientFile>> = emptyMap()
+        var failFilesFor: String? = null
         var writes = 0
         var failWrite: Exception? = null
         var applyWrite: (Fake) -> Unit = {}
@@ -25,7 +29,7 @@ class ClientOperationsTest {
             ClientFile(1, "b", 1, 0, ClientFilePriority.NORMAL))
 
         override suspend fun session() = ClientSessionInfo(kind, "1", "/d", caps, levels)
-        override suspend fun torrents() = listOfNotNull(present)
+        override suspend fun torrents() = listOfNotNull(present) + siblings.keys
         var fileReads = 0
         var onFiles: (Fake) -> Unit = {}
         var reads = 0
@@ -39,7 +43,8 @@ class ClientOperationsTest {
         override suspend fun files(hash: String): List<ClientFile> {
             fileReads++
             onFiles(this)
-            return files
+            if (hash == failFilesFor) throw IOException("files unavailable")
+            return siblings.entries.firstOrNull { it.key.hash == hash }?.value ?: files
         }
         private fun write() {
             writes++
@@ -148,6 +153,83 @@ class ClientOperationsTest {
         assertTrue((outcome as ClientOperationOutcome.Pending).registrationAbsent)
         assertEquals(1, fake.writes)
         assertEquals(2, fake.reads)
+    }
+
+    private val otherHash = "fedcba9876543210fedcba9876543210fedcba98"
+    private fun file(path: String, index: Int = 0) = ClientFile(index, path, 1, 0, ClientFilePriority.NORMAL)
+    private fun sibling(dir: String?, vararg paths: String) =
+        ClientTorrent(otherHash, "other", ClientRunState.STOPPED, 1, 0, 0, 0, dir) to paths.mapIndexed { i, p -> file(p, i) }
+
+    private fun sharedFake(vararg siblings: Pair<ClientTorrent, List<ClientFile>>) =
+        Fake(torrent(ClientRunState.STOPPED)).apply {
+            files = listOf(file("n/a.bin", 0), file("n/b.bin", 1))
+            this.siblings = siblings.toMap()
+            applyWrite = { it.present = null }
+        }
+
+    @Test fun reviewedPayloadDeletionRefusesWhenAnotherJobListsOneOfTheSameFiles() = runBlocking {
+        for (otherDir in listOf("/d", "/d/", "/d/n", "/")) {
+            val shared = when (otherDir) { "/d/n" -> "b.bin"; "/" -> "d/n/B.BIN"; else -> "n/B.BIN" }
+            val fake = sharedFake(sibling(otherDir, shared))
+            val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+            assertTrue("$otherDir: $outcome", outcome is ClientOperationOutcome.Refused)
+            assertEquals(ClientPayloadOverlap.SHARED, (outcome as ClientOperationOutcome.Refused).reason)
+            assertEquals(0, fake.writes)
+            assertEquals(hash, fake.present?.hash)
+        }
+    }
+
+    @Test fun reviewedPayloadDeletionProceedsOnceWhenSiblingsAreProvablyDisjoint() = runBlocking {
+        val elsewhere = ClientTorrent("22" + otherHash.drop(2), "elsewhere", ClientRunState.STOPPED, 1, 0, 0, 0,
+            "/elsewhere") to listOf(file("n/a.bin"))
+        val fake = sharedFake(sibling("/d", "n/other.bin"), elsewhere)
+        val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+        assertTrue(outcome.toString(), outcome is ClientOperationOutcome.Pending)
+        assertTrue((outcome as ClientOperationOutcome.Pending).registrationAbsent)
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun reviewedPayloadDeletionRefusesWhenAnySiblingCannotBeInterpreted() = runBlocking {
+        val cases = listOf<Pair<String, (Fake) -> Unit>>(
+            "unreported folder" to { it.siblings = mapOf(sibling(null, "x")) },
+            "relative folder" to { it.siblings = mapOf(sibling("downloads", "x")) },
+            "dot-segment folder" to { it.siblings = mapOf(sibling("/d/../x", "x")) },
+            "escaping file path" to { it.siblings = mapOf(sibling("/d", "../n/a.bin")) },
+            "absolute file path" to { it.siblings = mapOf(sibling("/d", "/n/a.bin")) },
+            "unreadable file list" to { it.siblings = mapOf(sibling("/d", "x")); it.failFilesFor = otherHash },
+            "unsafe target file" to { it.files = listOf(file("../x")) }
+        )
+        for ((label, arrange) in cases) {
+            val fake = sharedFake().apply(arrange)
+            val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+            assertTrue("$label: $outcome", outcome is ClientOperationOutcome.Refused)
+            assertEquals(label, ClientPayloadOverlap.UNREADABLE, (outcome as ClientOperationOutcome.Refused).reason)
+            assertEquals(label, 0, fake.writes)
+        }
+    }
+
+    @Test fun reviewedPayloadDeletionRefusesWhenTheInventoryChangesDuringTheCheck() = runBlocking {
+        val fake = sharedFake(sibling("/d", "n/other.bin"))
+        fake.onFiles = { f ->
+            // The sibling read is the second file read; a job appears before the confirming inventory read.
+            if (f.fileReads == 2) f.siblings = f.siblings + (
+                ClientTorrent("11" + otherHash.drop(2), "new", ClientRunState.STOPPED, 1, 0, 0, 0, "/d") to
+                    listOf(file("n/a.bin")))
+        }
+        val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+        assertTrue(outcome.toString(), outcome is ClientOperationOutcome.Refused)
+        assertEquals(ClientPayloadOverlap.CHANGED, (outcome as ClientOperationOutcome.Refused).reason)
+        assertEquals(0, fake.writes)
+    }
+
+    @Test fun adaptersThatProveNoSharingThemselvesAreNotReadTwiceAndJobOnlyRemovalNeverScans() = runBlocking {
+        val own = sharedFake(sibling("/d", "n/a.bin")).apply { provesNoSharedPayloadBeforeDelete = true }
+        assertTrue(ops(own).removeReviewedPayload(hash, "/d") is ClientOperationOutcome.Pending)
+        assertEquals(1, own.writes)
+        assertEquals(0, own.fileReads)
+        val jobOnly = sharedFake(sibling("/d", "n/a.bin"))
+        assertTrue(ops(jobOnly).remove(hash, deleteData = false) is ClientOperationOutcome.Verified)
+        assertEquals(0, jobOnly.fileReads)
     }
 
     @Test fun sessionOnlyOrIndependentlyVerifiedPayloadRemovalCanBeConfirmed() = runBlocking {
