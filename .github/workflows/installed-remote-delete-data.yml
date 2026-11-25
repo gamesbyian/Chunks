@@ -24,10 +24,17 @@ on:
       - "tools/installed_remote_delete_data.sh"
       - "tools/stage_disposable_rutorrent_adapter_delete.py"
       - ".github/workflows/installed-remote-delete-data.yml"
+      - ".github/actions/reuse-installed-apks/action.yml"
   workflow_dispatch:
+    inputs:
+      apk_run_id:
+        description: 'Optional successful Installed Universal Add run at this exact commit'
+        type: string
+        required: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: chunks-installed-remote-delete-${{ github.event.pull_request.number || github.run_id }}
@@ -47,6 +54,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate instrumentation harness syntax
         run: bash -n tools/installed_remote_delete_data.sh
+      - name: Reuse the exact installed Universal Add APK pair
+        if: github.event_name == 'workflow_dispatch' && inputs.apk_run_id != ''
+        uses: ./.github/actions/reuse-installed-apks
+        with:
+          run-id: ${{ inputs.apk_run_id }}
+          github-token: ${{ github.token }}
       # The runner context is unavailable in job-level env; export paths here.
       - name: Disposable paths
         run: |
@@ -107,15 +120,18 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+        if: github.event_name != 'workflow_dispatch' || inputs.apk_run_id == ''
         with:
           gradle-version: "9.3.1"
       - name: Install pinned compile SDK
+        if: github.event_name != 'workflow_dispatch' || inputs.apk_run_id == ''
         run: |
           printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
           if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
       - name: Build app and instrumentation APKs
+        if: github.event_name != 'workflow_dispatch' || inputs.apk_run_id == ''
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Prepare emulator
         run: |
