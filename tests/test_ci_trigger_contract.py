@@ -146,6 +146,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         for filename, owning_workflow in own_journeys:
             changed_test = "app/src/androidTest/java/io/github/gamesbyian/chunks/" + filename
             owner = (shared_route_source("protocol") if owning_workflow.endswith("installed-protocol-client.yml")
+                     else shared_route_source("combined") if owning_workflow.endswith("installed-combined-two-servers.yml")
                      else (ROOT / owning_workflow).read_text())
             with self.subTest(filename=filename):
                 self.assertTrue(dispatches_for_changed_paths(owner, (changed_test,)))
