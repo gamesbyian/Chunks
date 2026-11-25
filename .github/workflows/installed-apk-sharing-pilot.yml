@@ -1,0 +1,75 @@
+name: Chunks installed APK sharing qualification
+
+# Temporary PR qualification: compare same-run shared build against the
+# existing independent automatic consumers at the exact candidate source.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+    paths:
+      - ".github/workflows/installed-apk-sharing-pilot.yml"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: chunks-installed-apk-sharing-pilot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build-protocol-apks:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate installed harness syntax before heavy setup
+        run: |
+          bash -n tools/installed_protocol_client.sh
+          bash -n tools/installed_external_document_process_loss.sh
+          bash -n tools/interop/start_local_clients.sh
+          python3 -m unittest discover -s tests -p test_installed_protocol_lanes.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build app and instrumentation APKs
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Freeze source and APK pair
+        run: |
+          mkdir -p "$RUNNER_TEMP/protocol-apks"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/protocol-apks/app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/protocol-apks/test.apk"
+          git rev-parse HEAD > "$RUNNER_TEMP/protocol-apks/source-sha"
+          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/protocol-apks/source-tree"
+          (cd "$RUNNER_TEMP/protocol-apks" && sha256sum app.apk test.apk > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-protocol-apks
+          path: ${{ runner.temp }}/protocol-apks/
+          retention-days: 14
+          if-no-files-found: error
+
+  combined:
+    needs: build-protocol-apks
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    uses: ./.github/workflows/installed-combined-two-servers.yml
+    with:
+      same_run_apks: true
+
+  remote-remove:
+    needs: build-protocol-apks
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    uses: ./.github/workflows/installed-remote-delete-data.yml
+    with:
+      same_run_apks: true
