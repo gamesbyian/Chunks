@@ -1,7 +1,7 @@
 """Lexical cancellation inventory controls, not a Kotlin compiler or semantic proof."""
 import unittest
 
-from tools.check_coroutine_cancellation import candidates
+from tools.check_coroutine_cancellation import candidates, review_differences
 
 class CancellationInventoryTests(unittest.TestCase):
     def scan(self, source):
@@ -48,6 +48,25 @@ suspend fun f() {
 suspend fun f() = read()
 fun sync() = runCatching { localParse() }
 """))
+
+    def test_changed_literal_is_a_new_identity_and_is_redacted(self):
+        first = candidates('suspend fun f() = runCatching { read("one") }', "example.kt")[0]
+        second = candidates('suspend fun f() = runCatching { read("two") }', "example.kt")[0]
+        self.assertNotEqual(first["fingerprint"], second["fingerprint"])
+        self.assertNotIn('"one"', first["excerpt"])
+
+    def test_review_counts_reject_new_and_stale_entries(self):
+        row = candidates('suspend fun f() = runCatching { read() }', "example.kt")[0]
+        review = {key: row[key] for key in ("path", "kind", "fingerprint")}
+        review.update(count=1, reason="Reviewed synchronous parser boundary")
+        self.assertEqual([], review_differences([row], [review]))
+        self.assertEqual(2, review_differences([row, row], [review])[0]["actual"])
+        self.assertEqual(0, review_differences([], [review])[0]["actual"])
+        with self.assertRaises(ValueError):
+            review_differences([row], [review, review])
+        with self.assertRaises(ValueError):
+            review_differences([row], [{**review, "reason": ""}])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,7 @@ resolved. Findings are review candidates, never proof of swallowed cancellation.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from dataclasses import dataclass
 import hashlib
 import json
@@ -96,7 +97,7 @@ def lex(source: str) -> list[Token]:
             i = comment_end(i)
         elif ch in "\"'":
             i = quoted_end(i)
-            tokens.append(Token("<literal>", line))
+            tokens.append(Token("<literal:" + hashlib.sha256(source[start:i].encode()).hexdigest() + ">", line))
         elif ch == chr(96):
             end = source.find(chr(96), i + 1)
             if end < 0:
@@ -200,7 +201,7 @@ def candidates(source, path):
         identity = " ".join(v[first:last + 1])
         fingerprint = hashlib.sha256((path + "\0" + kind + "\0" + identity).encode()).hexdigest()[:24]
         found.append({"path": path, "line": tokens[at].line, "kind": kind,
-                      "fingerprint": fingerprint, "excerpt": identity[:200]})
+                      "fingerprint": fingerprint, "excerpt": re.sub(r"<literal:[0-9a-f]{64}>", "<literal>", identity)[:200]})
 
     for i, value in enumerate(v):
         if not in_region[i]:
@@ -259,9 +260,41 @@ def scan(root: Path):
     return out, errors
 
 
+def review_differences(findings, reviews):
+    """Require exact per-site counts, not a file-wide suppression.
+
+    A review is a human disposition, not an inference of safety from the lexer.
+    Reject stale, duplicated, malformed, and over-broad entries.
+    """
+    def key(row):
+        return (row["path"], row["kind"], row["fingerprint"])
+
+    actual = Counter(key(row) for row in findings)
+    expected = {}
+    for review in reviews:
+        if not isinstance(review, dict):
+            raise ValueError("review must be an object")
+        if not isinstance(review.get("reason"), str) or not review["reason"].strip():
+            raise ValueError("review requires a specific reason")
+        count = review.get("count")
+        if type(count) is not int or count < 1:
+            raise ValueError("review requires a positive integer count")
+        k = key(review)
+        if k in expected:
+            raise ValueError("duplicate review identity")
+        expected[k] = count
+    return [
+        {"path": k[0], "kind": k[1], "fingerprint": k[2],
+         "actual": actual[k], "reviewed": expected.get(k, 0)}
+        for k in sorted(actual.keys() | expected.keys())
+        if actual[k] != expected.get(k, 0)
+    ]
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--root", type=Path, default=ROOT)
+    p.add_argument("--reviews", type=Path, help="Enforce a reviewed JSON array of exact candidate identities and counts")
     args = p.parse_args()
     findings, errors = scan(args.root)
     for row in findings:
@@ -269,6 +302,18 @@ def main():
     for row in errors:
         print("CHUNKS_CANCELLATION_SCAN_ERROR " + json.dumps(row, ensure_ascii=True))
     print(f"Cancellation review: {len(findings)} candidates, {len(errors)} lexer errors; review only, no semantic proof.")
+    if args.reviews:
+        try:
+            reviews = json.loads(args.reviews.read_text(encoding="utf-8"))
+            if not isinstance(reviews, list):
+                raise ValueError("review file must be an array")
+            differences = review_differences(findings, reviews)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print(f"Invalid cancellation review file: {exc}")
+            return 1
+        for difference in differences:
+            print("CHUNKS_CANCELLATION_UNREVIEWED " + json.dumps(difference, ensure_ascii=True))
+        return 1 if errors or differences else 0
     return 1 if errors else 0
 
 
