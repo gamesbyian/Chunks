@@ -68,6 +68,20 @@ class AcceptanceReportTest(unittest.TestCase):
             with self.subTest(newer=newer):
                 self.assertFalse(r.evaluate([ready, draft, newer], ["build"], CONFIG, {})["acceptable"])
 
+    def test_reusable_installed_check_names_preserve_exact_gate_identity(self):
+        url = "https://github.com/gamesbyian/Chunks/actions/runs/"
+        for gate, alias in (("two-server-combined", "combined / two-server-combined"),
+                            ("remote-delete-data", "remove / remote-delete-data"),
+                            ("installed-protocol-client", "protocol / installed-protocol-client")):
+            with self.subTest(gate=gate):
+                old = dict(check(gate, "success"), id=10, details_url=url + "100/job/10")
+                good = dict(check(alias, "success"), id=20, details_url=url + "110/job/20")
+                bad = dict(check(alias, "failure"), id=21, details_url=url + "110/job/21")
+                self.assertTrue(r.evaluate([good], [gate], CONFIG, {})["acceptable"])
+                self.assertFalse(r.evaluate([old, bad], [gate], CONFIG, {})["acceptable"])
+                self.assertFalse(r.evaluate([check("unrelated / " + gate)], [gate], CONFIG, {})["acceptable"])
+                self.assertFalse(r.evaluate([check(alias, "skipped")], [gate], CONFIG, {})["acceptable"])
+
     def test_pending_is_not_a_pass(self):
         gates = r.profile_gates(CONFIG, "foundation")
         checks = [check(gates[0]), check(gates[1], None, "in_progress")]
