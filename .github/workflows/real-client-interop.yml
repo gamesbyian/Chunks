@@ -87,6 +87,7 @@ jobs:
             --tests io.github.gamesbyian.chunks.rpc.LocalClientInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.PendingMagnetInventoryInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.DelugeTwoDaemonInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientFinishInOrderInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.UniversalAddLifecycleInteropTest \
             --tests io.github.gamesbyian.chunks.RemoteSeedingInteropTest \
@@ -154,7 +155,9 @@ jobs:
                   # Deluge time Stop, qBittorrent and Transmission ratio Stops, Transmission time invariant.
                   ("TEST-io.github.gamesbyian.chunks.rpc.ProtocolSeedingInteropTest.xml", 4, "CHUNKS_PROTOCOL_SEEDING_INTEROP:"),
                   # Native per-transfer upload caps with independent readback on the three protocol daemons.
-                  ("TEST-io.github.gamesbyian.chunks.rpc.ProtocolUploadCapInteropTest.xml", 3, "CHUNKS_UPLOAD_CAP_INTEROP:")):
+                  ("TEST-io.github.gamesbyian.chunks.rpc.ProtocolUploadCapInteropTest.xml", 3, "CHUNKS_UPLOAD_CAP_INTEROP:"),
+                  # Two real Deluge daemons behind one Web UI: a switched slot is refused, never written through (#2072).
+                  ("TEST-io.github.gamesbyian.chunks.rpc.DelugeTwoDaemonInteropTest.xml", 1, "CHUNKS_DELUGE2:")):
               rpath = pathlib.Path("app/build/test-results/testDebugUnitTest") / receipt
               if not rpath.is_file():
                   print(f"CHUNKS_INTEROP: no receipt {receipt}"); sys.exit(1)
