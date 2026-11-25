@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import unittest
 
-from test_ci_trigger_contract import dispatches_for_changed_paths, pull_request_paths
+from test_ci_trigger_contract import dispatches_for_changed_paths, pull_request_paths, shared_route_source
 from tools.ci_workflow_inventory import block, event_block, collect
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,7 +116,7 @@ class CiDispatchRelevance(unittest.TestCase):
 
     def test_policy_only_changes_run_cheap_or_owning_workflows(self):
         foundation = workflow("android-check.yml")
-        native = workflow("native-add-instrumentation.yml")
+        native = shared_route_source("native")
         docs = workflow("documentation-validation.yml")
         skills = workflow("portable-agent-skills.yml")
         font = workflow("compose-system-font-200pct.yml")
@@ -146,7 +146,7 @@ class CiDispatchRelevance(unittest.TestCase):
         self.assertFalse(dispatches_for_changed_paths(foundation, ("README.md",)))
 
     def test_dedicated_instrumentation_is_never_left_unowned(self):
-        native = workflow("native-add-instrumentation.yml")
+        native = shared_route_source("native")
         for filename, owner_name in DEDICATED.items():
             path = APP_TEST_ROOT + filename
             with self.subTest(filename=filename):
@@ -184,7 +184,7 @@ class CiDispatchRelevance(unittest.TestCase):
 
     def test_manual_public_artwork_test_runs_only_in_its_explicit_installed_gate(self):
         path = APP_TEST_ROOT + "InstalledAutomaticPublicMediaInstrumentedTest.kt"
-        native = workflow("native-add-instrumentation.yml")
+        native = shared_route_source("native")
         owner = workflow("installed-public-auto-media-one-shot.yml")
         events = block(owner, "on")
         self.assertIn("  workflow_dispatch:", events)
@@ -210,14 +210,20 @@ class CiDispatchRelevance(unittest.TestCase):
         only_snapshot = ("tools/interop/disposable_snapshot_folder_listing.py",)
         for name in ("installed-protocol-client.yml", "real-client-interop.yml"):
             with self.subTest(workflow=name):
-                source = workflow(name)
+                actual = workflow(name)
+                caller = workflow("native-add-instrumentation.yml") if name == "installed-protocol-client.yml" else actual
+                source = shared_route_source("protocol") if name == "installed-protocol-client.yml" else actual
                 self.assertIn(
                     "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
-                    source)
+                    caller)
                 self.assertIn(
                     "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
-                    source)
-                self.assertIn("  workflow_dispatch:", block(source, "on"))
+                    caller)
+                self.assertIn("  workflow_dispatch:", block(actual, "on"))
+                if name == "installed-protocol-client.yml":
+                    self.assertNotIn("  pull_request:", block(actual, "on"))
+                    self.assertIn("uses: ./.github/workflows/installed-protocol-client.yml", caller)
+                    self.assertIn("if: needs.select.outputs.protocol == 'true'", caller)
                 self.assertFalse(dispatches_for_changed_paths(source, only_snapshot))
                 self.assertTrue(dispatches_for_changed_paths(
                     source, ("tools/interop/start_local_clients.sh",)))
