@@ -4,46 +4,26 @@ on:
   pull_request:
     branches: [main]
     paths:
-      # Production sources too: instrumented fakes and UI tests assert exact
-      # RPC calls and labels, so main-only changes (#460, #463) broke them
-      # without this suite ever running on those PRs.
+      # Ordered admission union only; the checked manifest selects each lane independently.
       - "app/src/main/**"
       - "app/src/androidTest/**"
       - "app/src/sharedTest/**"
-      # These two opt-in real-fixture journeys are skipped by the native Add
-      # shards. Their own installed workflows select them and execute their
-      # complete assertions; compiling skipped methods here costs two more
-      # emulator shards without exercising the changed test.
-      # Ordered per-file exclusions do not suppress any concurrent production
-      # change (or other instrumented test) that requires this native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
-      # Helper-only edits run in the dedicated real-peer installed lifecycle
-      # through SeedhostAndroidAddUiInstrumentedTest. There is no @Test in this
-      # helper to execute in the native Add shards. Concurrent production or
-      # any other AndroidTest changes still select the full native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
-      # Test-only edits to these source files are exercised by their dedicated
-      # installed workflow. Mixed changes to production or shared test code
-      # retain the full native Add gate via its positive path patterns.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
-      # Opt-in Doze instrumentation executes in Android public peer swarm.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidPublicSwarmDozeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidPublicSwarmNetworkFlapInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalPartialResumeProcessDeathInstrumentedTest.kt"
-      # This opt-in class is skipped by native Add; its explicit public-provider
-      # workflow owns both installed phases, source digest and zero-request proof.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAutomaticPublicMediaInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
-      # Manual public-provider remote artwork proof owns this opt-in class.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRemotePublicMediaInstrumentedTest.kt"
-      # Protected manual existing-transfer Stop/Start owns this opt-in class.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SeedhostExistingTransferStopStartInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
@@ -52,16 +32,12 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/build.gradle.kts"
-      # Changes to the test command or required pinned SDK image must rerun.
       - "tools/install_android35_image_retry.sh"
       - "tests/test_ci_android35_image_retry.py"
       - "tools/native_add_review.sh"
-      # The screenshot classification manifest and its offline contract decide which
-      # captures are mandatory evidence; changing either must re-run the gate.
       - "tools/native_atlas_manifest.json"
       - "tools/check_native_atlas_contract.py"
       - "tests/test_native_atlas_contract.py"
-      # Shared immutable APK pair + source-bound AndroidJUnitRunner evidence.
       - "tools/native_add_prebuilt.sh"
       - "tools/installed_second_add_media_consent.sh"
       - "tools/installed_media_consent_fixture.py"
@@ -70,8 +46,6 @@ on:
       - "tools/verify_native_add_shards.py"
       - "tools/select_native_add_attempts.py"
       - "tests/test_native_add_attempts.py"
-      # Universal Add retains its independent job-level selector. These
-      # additional paths only admit the shared workflow; they do not run native shards.
       - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolConnect.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt"
@@ -95,6 +69,36 @@ on:
       - "app/src/sharedTest/java/io/github/gamesbyian/chunks/LazyComposeActions.kt"
       - "tools/interop/**"
       - "!tools/interop/disposable_snapshot_folder_listing.py"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotRestoreInstalledTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/snapshots/RemoteSnapshotSelectedPlaceInstalledTest.kt"
+      - "tools/preload_combined_two_servers.py"
+      - "tools/installed_combined_two_servers.sh"
+      - "tools/combined_fault_controller.py"
+      - "tools/interop/disposable_snapshot_folder_listing.py"
+      - ".github/workflows/installed-combined-two-servers.yml"
+      - ".github/actions/reuse-installed-apks/action.yml"
+      - "tools/reuse_installed_apks.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddSession.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/OriginalTorrentHandlingUi.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
+      - "tools/installed_remote_delete_data.sh"
+      - "tools/stage_disposable_rutorrent_adapter_delete.py"
+      - ".github/workflows/installed-remote-delete-data.yml"
       - "tools/ci_shared_debug_routes.json"
       - "tools/ci_shared_debug_routes.py"
     # Drafts are implementation batches; run this costly acceptance only when
@@ -106,12 +110,13 @@ on:
       scope:
         description: Select installed debug journeys
         type: choice
-        options: [native, protocol, both]
+        options: [native, protocol, both, combined, remove, all]
         default: native
 
 permissions:
   contents: read
   pull-requests: read
+  actions: read
 
 env:
   CHUNKS_SOURCE_SHA: ${{ github.sha }}
@@ -129,9 +134,11 @@ jobs:
     outputs:
       native: ${{ steps.routes.outputs.native }}
       protocol: ${{ steps.routes.outputs.protocol }}
+      combined: ${{ steps.routes.outputs.combined }}
+      remove: ${{ steps.routes.outputs.remove }}
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve complete PR file selection or conservatively select both
+      - name: Resolve complete PR file selection or conservatively select all
         id: routes
         env:
           GH_TOKEN: ${{ github.token }}
@@ -194,7 +201,7 @@ jobs:
           name: ${{ steps.freeze.outputs.artifact-name }}
           path: ${{ runner.temp }}/shared-debug-apks/
           if-no-files-found: error
-          retention-days: ${{ needs.select.outputs.protocol == 'true' && 14 || 1 }}
+          retention-days: 14
 
   add-review-device-test:
     needs: [select, build-once]
@@ -344,3 +351,23 @@ jobs:
     uses: ./.github/workflows/installed-protocol-client.yml
     with:
       artifact_name: ${{ needs.build-once.outputs.artifact-name }}
+
+  combined:
+    needs: [select, build-once]
+    # Do not create a new producer solely for these relatively short journeys.
+    # If an Add build was selected, a failed build must never fall back silently.
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.combined == 'true' && (needs.build-once.result == 'success' || (needs.build-once.result == 'skipped' && needs.select.outputs.native != 'true' && needs.select.outputs.protocol != 'true')) }}
+    uses: ./.github/workflows/installed-combined-two-servers.yml
+    with:
+      same_run_apks: ${{ needs.build-once.result == 'success' }}
+      artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}
+
+  remove:
+    needs: [select, build-once]
+    # Do not create a new producer solely for these relatively short journeys.
+    # If an Add build was selected, a failed build must never fall back silently.
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.remove == 'true' && (needs.build-once.result == 'success' || (needs.build-once.result == 'skipped' && needs.select.outputs.native != 'true' && needs.select.outputs.protocol != 'true')) }}
+    uses: ./.github/workflows/installed-remote-delete-data.yml
+    with:
+      same_run_apks: ${{ needs.build-once.result == 'success' }}
+      artifact_name: ${{ needs.build-once.outputs.artifact-name || '' }}
