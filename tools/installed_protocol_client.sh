@@ -19,7 +19,9 @@ runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 app_apk=app/build/outputs/apk/debug/app-debug.apk
 adb install -r "$app_apk" >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
-version="$(adb shell dumpsys package "$pkg" | sed -n 's/^[[:space:]]*versionName=//p' | tr -d '\r' | head -1)"
+# Whole output first: an early-exiting reader can SIGPIPE a producer (141).
+package_dump="$(adb shell dumpsys package "$pkg")"
+version="$(sed -n 's/^[[:space:]]*versionName=//p' <<<"$package_dump" | tr -d '\r' | sed -n 1p)"
 test "$version" = "0.1.0-dev+${source_sha:0:12}"
 installed="$(adb shell pm path "$pkg" | sed -n 's/^package://p' | tr -d '\r' | head -1)"
 {
@@ -310,7 +312,10 @@ run_local_add_death() {
     echo "::error::Fresh-process Local Add safety verification failed"
     return 1
   fi
-  adb logcat -d -s ChunksLocalAddDeath:I | grep -Fq 'fresh-review-without-replayed-add' || return 1
+  # grep -q exits at the first match and could SIGPIPE logcat: read it whole.
+  local death_log
+  death_log="$(adb logcat -d -s ChunksLocalAddDeath:I)" || return 1
+  grep -Fq 'fresh-review-without-replayed-add' <<<"$death_log" || return 1
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL process-death journey finished after $((SECONDS - phase_started))s"
   echo "CHUNKS_INSTALLED_PROTOCOL: LOCAL unresolved metadata observation did not replay on process restart" |
     tee -a "$GITHUB_STEP_SUMMARY"

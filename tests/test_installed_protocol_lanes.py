@@ -1,4 +1,5 @@
 """Offline controls for the sharded Universal Add acceptance contract."""
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -117,3 +118,27 @@ class AssumptionSkipTests(unittest.TestCase):
             for line in text.splitlines():
                 if re.search(r"grep -q '\^OK \(", line):
                     self.assertNotIn("!", line.split("grep")[0], (name, line))
+
+
+class EarlyExitPipeTests(unittest.TestCase):
+    """Under pipefail, a large producer piped straight into an early-exiting
+    reader (grep -m1/-q, head) fails with 141 whenever the reader exits first.
+    Installed scripts capture such output whole, then filter (#2117)."""
+    PRODUCERS = ("dumpsys", "dump badging", "logcat -d", "pm list")
+    READERS = re.compile(r"\|\s*(grep\s+-m\s*1|grep\s+-[a-zA-Z]*q|head\b)")
+
+    def test_no_large_producer_feeds_an_early_exit_reader(self):
+        offenders = []
+        for script in sorted((ROOT / "tools").glob("*.sh")):
+            text = script.read_text(encoding="utf-8")
+            if "pipefail" not in text:
+                continue
+            for number, line in enumerate(text.splitlines(), 1):
+                code = line.split("#", 1)[0]
+                if "|| true" in code or "<<<" in code:
+                    continue
+                if any(p in code for p in self.PRODUCERS) and self.READERS.search(code):
+                    first_pipe = code.index("|")
+                    if any(p in code[:first_pipe] for p in self.PRODUCERS):
+                        offenders.append(f"{script.name}:{number}: {line.strip()}")
+        self.assertEqual([], offenders)

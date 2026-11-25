@@ -15,7 +15,9 @@ adb uninstall "$pkg" >/dev/null 2>&1 || true
 adb uninstall "$pkg.test" >/dev/null 2>&1 || true
 adb install "$base"
 adb install -t "$tests"
-adb shell dumpsys package "$pkg" | grep -m1 versionCode | tee "$out/base-version.txt"
+# Whole output first: under pipefail, grep -m1 can SIGPIPE dumpsys (exit 141).
+dumpsys_out="$(adb shell dumpsys package "$pkg")"
+grep -m1 versionCode <<<"$dumpsys_out" | tee "$out/base-version.txt"
 
 phase() {
   local name="$1" class="$2"
@@ -34,5 +36,7 @@ phase() {
 phase seed CredentialUpgradeSeedInstrumentedTest
 # In-place upgrade: same package and signing key, higher versionCode, no uninstall.
 adb install -r "$candidate"
-adb shell dumpsys package "$pkg" | grep -m1 versionCode | tee "$out/candidate-version.txt"
+# Whole output first: under pipefail, grep -m1 can SIGPIPE dumpsys (exit 141).
+dumpsys_out="$(adb shell dumpsys package "$pkg")"
+grep -m1 versionCode <<<"$dumpsys_out" | tee "$out/candidate-version.txt"
 phase verify CredentialUpgradeVerifyInstrumentedTest

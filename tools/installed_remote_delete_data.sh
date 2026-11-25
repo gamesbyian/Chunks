@@ -19,7 +19,9 @@ adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 # Preserve the actual installed identity before any removal assertion can fail.
 # Reuse the shared path-free pull/hash gate; never retain the pulled APK.
 pkg=io.github.gamesbyian.chunks
-installed_version="$(adb shell dumpsys package "$pkg" | sed -n 's/^[[:space:]]*versionName=//p' | tr -d '\r' | head -1)"
+# Whole output first: an early-exiting reader can SIGPIPE a producer (141).
+package_dump="$(adb shell dumpsys package "$pkg")"
+installed_version="$(sed -n 's/^[[:space:]]*versionName=//p' <<<"$package_dump" | tr -d '\r' | sed -n 1p)"
 test "$installed_version" = "0.1.0-dev+${source_sha:0:12}" || {
   echo 'CHUNKS_REMOTE_DELETE_APK: unexpected-installed-version' >&2; exit 1;
 }
