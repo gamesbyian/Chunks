@@ -93,4 +93,58 @@ class ProtocolOperationReceiptOwnerTest {
         assertEquals(phase, owner.receipt(key)?.phase)
         assertTrue(owner.reconcile(active, present = false))
     }
+
+    private class MemoryJournal(var stored: List<ProtocolOperationReceiptOwner.Persisted> = emptyList(),
+                                var failSaves: Boolean = false) : ProtocolOperationReceiptOwner.Journal {
+        override fun load() = stored
+        override fun save(entries: List<ProtocolOperationReceiptOwner.Persisted>): Boolean {
+            if (failSaves) return false
+            stored = entries
+            return true
+        }
+    }
+
+    @Test fun possibleWriteSurvivesProcessDeathAsUnknownAndBlocksWrites() {
+        val journal = MemoryJournal()
+        val first = ProtocolOperationReceiptOwner().also { it.attach(journal) }
+        val ticket = requireNotNull(first.begin(key, "generation-1", ProtocolOperationKind.REMOVE_DATA))
+        assertTrue(first.possibleWrite(ticket))
+        assertEquals(listOf("POSSIBLE_WRITE"), journal.stored.map { it.phase })
+        assertFalse(journal.stored.toString().contains("generation"))
+
+        // New process: nothing in RAM, only the journal.
+        val second = ProtocolOperationReceiptOwner().also { it.attach(journal) }
+        val restored = requireNotNull(second.receipt(key))
+        assertEquals(ProtocolOperationReceiptOwner.Phase.UNKNOWN, restored.phase)
+        assertEquals(ProtocolOperationKind.REMOVE_DATA, restored.ticket.kind)
+        assertNull(second.begin(key, "generation-2", ProtocolOperationKind.REMOVE))
+        assertEquals(listOf("UNKNOWN"), journal.stored.map { it.phase })
+        // A same-hash receipt of another profile is independent.
+        assertNotNull(second.begin(sameHashOther, "generation-2", ProtocolOperationKind.START))
+
+        // Only an explicit exact read releases it, and the release is durable.
+        assertTrue(second.reconcile(restored.ticket, present = false))
+        assertEquals(emptyList<ProtocolOperationReceiptOwner.Persisted>(), journal.stored)
+        assertNotNull(second.begin(key, "generation-2", ProtocolOperationKind.REMOVE))
+    }
+
+    @Test fun writeIsRefusedWhenTheJournalCannotBeSaved() {
+        val owner = ProtocolOperationReceiptOwner().also { it.attach(MemoryJournal(failSaves = true)) }
+        val ticket = requireNotNull(owner.begin(key, "generation-1", ProtocolOperationKind.REMOVE_DATA))
+        assertFalse(owner.possibleWrite(ticket))
+        assertEquals(ProtocolOperationReceiptOwner.Phase.PREFLIGHT, owner.receipt(key)?.phase)
+    }
+
+    @Test fun verifiedOutcomeClearsTheJournalAndCorruptRecordsAreIgnored() {
+        val journal = MemoryJournal(listOf(
+            ProtocolOperationReceiptOwner.Persisted("p", "not-a-hash", "REMOVE", "UNKNOWN"),
+            ProtocolOperationReceiptOwner.Persisted("p", key.hash, "NOPE", "UNKNOWN"),
+            ProtocolOperationReceiptOwner.Persisted("p", key.hash, "REMOVE", "RECONCILED_ABSENT")))
+        val owner = ProtocolOperationReceiptOwner().also { it.attach(journal) }
+        assertNull(owner.receipt(ProtocolOperationReceiptOwner.Key("p", key.hash)))
+        val ticket = requireNotNull(owner.begin(key, "g", ProtocolOperationKind.STOP))
+        assertTrue(owner.possibleWrite(ticket))
+        owner.complete(ticket, ClientOperationOutcome.Verified(key.hash, null))
+        assertEquals(emptyList<ProtocolOperationReceiptOwner.Persisted>(), journal.stored)
+    }
 }

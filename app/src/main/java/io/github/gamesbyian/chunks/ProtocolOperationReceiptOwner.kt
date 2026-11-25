@@ -17,7 +17,10 @@ internal enum class ProtocolOperationKind(val label: String) {
  * authenticated generation. A same-principal reconnect does not erase the old
  * unresolved receipt, but only its own fresh read may reconcile it. No
  * credentials, callbacks, adapters, transfer names, paths or raw errors retained.
- * RAM only; not a durable process-death receipt or a new write executor.
+ * The live map is RAM. An attached [Journal] additionally records only the unresolved
+ * phases (profile id, hash, fixed command kind, phase) so a process death cannot erase
+ * a possible write: the journal is saved BEFORE a write is allowed to start, and a
+ * restored in-flight request becomes UNKNOWN. Not a new write executor.
  */
 internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
     data class Key(val profileId: String, val hash: String)
@@ -51,11 +54,52 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         }
     }
 
+    /** Credential-free durable record of one unresolved receipt. No generation, name, path or reply. */
+    data class Persisted(val profileId: String, val hash: String, val kind: String, val phase: String)
+
+    interface Journal {
+        fun load(): List<Persisted>
+        /** Must be durable on return; false means the record may be lost. */
+        fun save(entries: List<Persisted>): Boolean
+    }
+
     private val entries = mutableStateMapOf<Key, Receipt>()
     private var sequence = 0L
+    private var journal: Journal? = null
     private val v1Hash = Regex("[0-9a-f]{40}")
 
     @Synchronized fun receipt(key: Key): Receipt? = entries[key]
+
+    /** Restores unresolved receipts once per process; a request in flight at death becomes UNKNOWN. */
+    @Synchronized fun attach(journal: Journal) {
+        if (this.journal != null) return
+        this.journal = journal
+        val restored = runCatching { journal.load() }.getOrDefault(emptyList())
+        for (item in restored) {
+            val kind = ProtocolOperationKind.entries.firstOrNull { it.name == item.kind } ?: continue
+            val phase = Phase.entries.firstOrNull { it.name == item.phase } ?: continue
+            if (item.profileId.isBlank() || !v1Hash.matches(item.hash)) continue
+            val restoredPhase = when (phase) {
+                Phase.POSSIBLE_WRITE -> Phase.UNKNOWN
+                Phase.UNKNOWN, Phase.ACK_PENDING, Phase.REGISTRATION_ABSENT -> phase
+                else -> continue
+            }
+            val key = Key(item.profileId, item.hash)
+            if (key in entries || entries.size >= capacity) continue
+            entries[key] = Receipt(Ticket(key, null, kind, ++sequence), restoredPhase)
+        }
+        // Rewrite so a restored POSSIBLE_WRITE is stored as the UNKNOWN it now is.
+        saveJournal()
+    }
+
+    private fun saveJournal(): Boolean {
+        val target = journal ?: return true
+        val unresolved = entries.values.filter {
+            it.phase == Phase.POSSIBLE_WRITE || it.phase == Phase.UNKNOWN ||
+                it.phase == Phase.ACK_PENDING || it.phase == Phase.REGISTRATION_ABSENT
+        }.map { Persisted(it.ticket.key.profileId, it.ticket.key.hash, it.ticket.kind.name, it.phase.name) }
+        return runCatching { target.save(unresolved) }.getOrDefault(false)
+    }
 
     @Synchronized fun begin(key: Key, generation: String, kind: ProtocolOperationKind): Ticket? {
         require(generation.isNotBlank() && key.profileId.isNotBlank() && v1Hash.matches(key.hash))
@@ -84,6 +128,11 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         val current = entries[ticket.key] ?: return false
         if (current.ticket !== ticket || current.phase != Phase.PREFLIGHT) return false
         entries[ticket.key] = Receipt(ticket, Phase.POSSIBLE_WRITE)
+        // Journal first: without a durable record the write must not start.
+        if (!saveJournal()) {
+            entries[ticket.key] = current
+            return false
+        }
         return true
     }
 
@@ -100,6 +149,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         }
         if (phase == null) entries.remove(ticket.key)
         else entries[ticket.key] = Receipt(ticket, phase)
+        saveJournal()
     }
 
     @Synchronized fun cancel(ticket: Ticket) {
@@ -110,6 +160,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
             Phase.POSSIBLE_WRITE -> entries[ticket.key] = Receipt(ticket, Phase.UNKNOWN)
             else -> Unit
         }
+        saveJournal()
     }
 
     /** A departing screen can revoke preflight, but only the operation can settle an in-flight write. */
@@ -123,10 +174,40 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
         val current = entries[ticket.key] ?: return false
         if (current.ticket !== ticket || !current.canReconcile) return false
         entries[ticket.key] = Receipt(ticket, if (present) Phase.RECONCILED_PRESENT else Phase.RECONCILED_ABSENT)
+        saveJournal()
         return true
     }
 }
 
 internal object ProtocolOperationReceipts {
     val owner = ProtocolOperationReceiptOwner()
+
+    /** Idempotent; call from every entry point that can start a typed command in a fresh process. */
+    fun install(context: android.content.Context) =
+        owner.attach(SharedPreferencesReceiptJournal(context.applicationContext))
+}
+
+/** Device-local journal of unresolved typed-command receipts. Holds no credentials, names, paths or replies. */
+internal class SharedPreferencesReceiptJournal(context: android.content.Context) :
+    ProtocolOperationReceiptOwner.Journal {
+    private val preferences = context.getSharedPreferences("chunks_protocol_receipts_v1",
+        android.content.Context.MODE_PRIVATE)
+
+    override fun load(): List<ProtocolOperationReceiptOwner.Persisted> {
+        val raw = preferences.getString("entries", null) ?: return emptyList()
+        val array = org.json.JSONArray(raw)
+        return (0 until array.length()).mapNotNull { index ->
+            val row = array.optJSONObject(index) ?: return@mapNotNull null
+            ProtocolOperationReceiptOwner.Persisted(
+                row.optString("p"), row.optString("h"), row.optString("k"), row.optString("s"))
+        }
+    }
+
+    override fun save(entries: List<ProtocolOperationReceiptOwner.Persisted>): Boolean {
+        val array = org.json.JSONArray()
+        entries.forEach {
+            array.put(org.json.JSONObject().put("p", it.profileId).put("h", it.hash).put("k", it.kind).put("s", it.phase))
+        }
+        return preferences.edit().putString("entries", array.toString()).commit()
+    }
 }

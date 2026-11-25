@@ -17,6 +17,7 @@ internal suspend fun tickProtocolRemotePolicies(
     receipts: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
     operations: () -> ClientOperations
 ) = withContext(Dispatchers.IO + RemoteWriteOwnerFence(ownerCurrent)) {
+    ProtocolOperationReceipts.install(context)
     val scope = FinishInOrderScopes.protocol(profileId)
     val finishInOrder = policies.mayHaveWork(scope)
     val smartSeeding = RemoteSeeding.EnforcementSwitch(context)
