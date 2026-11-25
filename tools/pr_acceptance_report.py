@@ -69,9 +69,15 @@ def failure_class(check: dict, config: dict) -> str:
 
 def evaluate(checks: list[dict], gates: list[str], config: dict, waivers: dict[str, str],
              draft: bool = False) -> dict:
+    # Exact, explicitly enumerated aliases for reusable installed jobs. Do not
+    # match arbitrary suffixes or treat a successful coordinator as test proof.
+    aliases = {"combined / two-server-combined": "two-server-combined",
+               "remove / remote-delete-data": "remote-delete-data",
+               "protocol / installed-protocol-client": "installed-protocol-client"}
     grouped: dict[str, list[dict]] = {}
     for check in checks:
-        grouped.setdefault(check["name"], []).append(check)
+        name = aliases.get(check["name"], check["name"])
+        grouped.setdefault(name, []).append(check)
     by_name = {}
     for name, candidates in grouped.items():
         # A late-reported job from an older draft can have a higher check ID
