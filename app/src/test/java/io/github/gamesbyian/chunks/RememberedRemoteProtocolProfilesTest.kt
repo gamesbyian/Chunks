@@ -29,7 +29,7 @@ class RememberedRemoteProtocolProfilesTest {
     private val legacyPrefs get() = context.getSharedPreferences(
         "remembered-remote-login-v1", Context.MODE_PRIVATE)
 
-    private class TestKeys : RememberedRemoteProtocolProfiles.Keys {
+    private class TestKeys : SealingKeys {
         private var secret: SecretKey? = SecretKeySpec(ByteArray(32) { (it * 7 + 13).toByte() }, "AES")
         var erased = false
         override fun encryptionKey(): SecretKey = secret ?: throw IllegalStateException("Key erased")

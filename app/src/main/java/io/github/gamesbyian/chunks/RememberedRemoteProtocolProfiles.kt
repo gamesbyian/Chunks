@@ -1,8 +1,6 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import android.util.Base64
 import io.github.gamesbyian.chunks.model.CapabilityEvidence
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
@@ -13,11 +11,6 @@ import io.github.gamesbyian.chunks.model.RemoteBackendIdentity
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.net.URI
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -28,14 +21,8 @@ import org.json.JSONObject
  */
 internal class RememberedRemoteProtocolProfiles(
     context: Context,
-    private val keys: Keys = AndroidKeys
+    private val keys: SealingKeys = AndroidKeystoreSealingKeys(KEY_ALIAS)
 ) {
-    internal interface Keys {
-        fun encryptionKey(): SecretKey
-        fun decryptionKey(): SecretKey?
-        fun erase()
-    }
-
     internal data class Profile(
         val id: String,
         val backend: RemoteBackendKind,
@@ -48,9 +35,7 @@ internal class RememberedRemoteProtocolProfiles(
     }
 
     private val appContext = context.applicationContext
-    private val prefs = appContext.getSharedPreferences(
-        "chunks_other_remote_profiles_encrypted_v1", Context.MODE_PRIVATE
-    )
+    private val prefs = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     private var unreadableRoster = false
 
     companion object {
@@ -58,30 +43,13 @@ internal class RememberedRemoteProtocolProfiles(
         private const val MAX_ENCODED = 196_608
         private const val MAX_RAW = 100_000
         private const val FRESH_PROOF_MS = 120_000L
-        private const val KEY_ALIAS = "io.github.gamesbyian.chunks.other-remote-profile-roster-v1"
+        /** Persisted alias and preference file; changing either strands saved profiles. */
+        internal const val KEY_ALIAS = "io.github.gamesbyian.chunks.other-remote-profile-roster-v1"
+        internal const val PREFS = "chunks_other_remote_profiles_encrypted_v1"
         private val SHA_ID = Regex("[0-9a-f]{64}")
 
         internal fun validLabel(value: String): Boolean =
             value.length in 1..100 && value.none { it.isISOControl() }
-
-        private object AndroidKeys : Keys {
-            private fun store() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            override fun decryptionKey(): SecretKey? =
-                store().getKey(KEY_ALIAS, null) as? SecretKey
-            override fun encryptionKey(): SecretKey {
-                decryptionKey()?.let { return it }
-                val generator = KeyGenerator.getInstance(
-                    KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore"
-                )
-                generator.init(KeyGenParameterSpec.Builder(
-                    KEY_ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-                ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256).setRandomizedEncryptionRequired(true).build())
-                return generator.generateKey()
-            }
-            override fun erase() { store().deleteEntry(KEY_ALIAS) }
-        }
     }
 
     /** A damaged ciphertext or lost key must not turn into an empty writable roster. */
@@ -97,9 +65,7 @@ internal class RememberedRemoteProtocolProfiles(
             require(packed.size in 29..131_072)
             val key = keys.decryptionKey()
                 ?: throw IllegalArgumentException("Saved-client key unavailable")
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, packed, 0, 12))
-            val raw = cipher.doFinal(packed, 12, packed.size - 12)
+            val raw = SealedBlob.open(key, packed)
             require(raw.size in 2..MAX_RAW)
             val document = JSONArray(String(raw, Charsets.UTF_8))
             require(document.length() == 2 && document.optInt(0, -1) == 1)
@@ -222,9 +188,7 @@ internal class RememberedRemoteProtocolProfiles(
             }
             val raw = JSONArray().put(1).put(rows).toString().toByteArray(Charsets.UTF_8)
             require(raw.size <= MAX_RAW)
-            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, keys.encryptionKey())
-            val packed = cipher.iv + cipher.doFinal(raw)
+            val packed = SealedBlob.seal(keys.encryptionKey(), raw)
             require(packed.size <= 131_072)
             val encoded = Base64.encodeToString(packed, Base64.NO_WRAP)
             require(encoded.length <= MAX_ENCODED)
