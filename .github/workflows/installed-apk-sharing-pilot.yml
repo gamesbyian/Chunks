@@ -9,6 +9,9 @@ on:
     paths:
       - ".github/workflows/installed-apk-sharing-pilot.yml"
 
+env:
+  CHUNKS_SOURCE_SHA: ${{ github.sha }}
+
 permissions:
   contents: read
   actions: read
@@ -22,6 +25,8 @@ jobs:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 18
+    outputs:
+      artifact-name: ${{ steps.freeze.outputs.artifact-name }}
     steps:
       - uses: actions/checkout@v4
       - name: Validate installed harness syntax before heavy setup
@@ -46,6 +51,7 @@ jobs:
       - name: Build app and instrumentation APKs
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Freeze source and APK pair
+        id: freeze
         run: |
           mkdir -p "$RUNNER_TEMP/protocol-apks"
           cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/protocol-apks/app.apk"
@@ -53,9 +59,10 @@ jobs:
           git rev-parse HEAD > "$RUNNER_TEMP/protocol-apks/source-sha"
           git rev-parse HEAD^{tree} > "$RUNNER_TEMP/protocol-apks/source-tree"
           (cd "$RUNNER_TEMP/protocol-apks" && sha256sum app.apk test.apk > SHA256SUMS)
+          echo "artifact-name=chunks-protocol-apks-attempt-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: chunks-protocol-apks
+          name: ${{ steps.freeze.outputs.artifact-name }}
           path: ${{ runner.temp }}/protocol-apks/
           retention-days: 14
           if-no-files-found: error
@@ -66,6 +73,7 @@ jobs:
     uses: ./.github/workflows/installed-combined-two-servers.yml
     with:
       same_run_apks: true
+      artifact_name: ${{ needs.build-protocol-apks.outputs.artifact-name }}
 
   remote-remove:
     needs: build-protocol-apks
@@ -73,3 +81,4 @@ jobs:
     uses: ./.github/workflows/installed-remote-delete-data.yml
     with:
       same_run_apks: true
+      artifact_name: ${{ needs.build-protocol-apks.outputs.artifact-name }}
