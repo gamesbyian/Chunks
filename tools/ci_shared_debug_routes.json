@@ -53,6 +53,7 @@
       "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAttemptOwner.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolCombinedProfiles.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/CombinedReadOnlyProtocolSources.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/rpc/**",
