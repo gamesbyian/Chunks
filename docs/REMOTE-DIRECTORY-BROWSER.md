@@ -53,6 +53,8 @@ interface RemoteDirectoryProvider {
 - **Select** a folder only if the provider can justify its accessible/writable state (or explicitly identifies writeability as unknown and the ordinary Add preflight will verify). Resolve `Use this folder` to a concrete absolute parent. Revalidate at Add submission against current exact profile and existing per-Add destination/readback rules. Browser selection never itself starts, stops, moves, copies or removes a torrent.
 - Persist only deliberate scoped saved defaults and verified successful recents using existing storage; transient list caches expire and are in-memory/account-isolated, not synced/exported. Hide server paths while their profile is privacy-locked and redact paths, usernames, credentials, tenant IDs and secrets from logs/CI evidence.
 
+**2026-11-25 protected read-only receipt:** The exact main adapter at `4b535455` browsed the primary account successfully. File Manager returned `incomplete-parent` for the observed parent, so it provided no creation authority. The workflow made no folder mutation. [45515353874](https://github.com/gamesbyian/Chunks/actions/runs/45515353874)
+
 ## New folder transaction
 
 Ambiguous JSON in the provider configuration, directory listing or creation reply cannot authorize creation or confirm its success. Require distinct decoded members, an explicit successful creation acknowledgment and both exact-parent readbacks. Report separately when readback finds a directory after an uncertain acknowledgment.

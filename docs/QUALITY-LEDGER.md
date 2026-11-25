@@ -19,6 +19,12 @@ Exact candidate `9383d411f70c27291270bfce85c209133a6a7479`, tested merge `5027a9
 
 Startup timings include engine work beyond reading SQLite. Memory numbers are process samples before and after startup. The fixture measures one real job per emulator API. A representative multi-job profile remains necessary before changing resume persistence. Physical Pixel/provider/Doze/TalkBack, protected provider writes and signed release acceptance remain open. [#2072](https://github.com/gamesbyian/Chunks/issues/2072) tracks Deluge's remaining non-atomic shared Web UI routing.
 
+### Protected read-only and next-candidate evidence
+
+On exact main `4b535455`, [protected primary ruTorrent 45515353874](https://github.com/gamesbyian/Chunks/actions/runs/45515353874) passed authenticated version/inventory and browse with 270 children. File Manager returned `incomplete-parent`, so the parent did not qualify for creation. The workflow confirmed no mutation. This preserves the stricter capability refusal and leaves live mkdir and physical acceptance separate.
+
+[#2074](https://github.com/gamesbyian/Chunks/pull/2074) head `ee5ca3b3` freezes the approved delete folder and prevents an inactive rTorrent file review from replacing a newer Local source. [Real interop attempt 1](https://github.com/gamesbyian/Chunks/actions/runs/45514678262/attempts/1) compiled and ran 98 cases with one skip and six failures. All six involved Deluge. The first was a transport exception during seeding; later sessions and lifecycle operations refused. qBittorrent and Transmission each passed the stale-folder no-delete control and the separate positive with independent filesystem observations. Root cause of the Deluge failure is unverified. [Attempt 2](https://github.com/gamesbyian/Chunks/actions/runs/45514678262/attempts/2) is a targeted unchanged-source retry.
+
 ## 2026-11-24 UTC — Prepared remote source provenance accepted
 
 [#2067](https://github.com/gamesbyian/Chunks/pull/2067) distinguishes a current reviewed Local source from transfer exports and archive entries at the retained Add owner. Exports must not inherit an earlier document URI or be replaced by an unrelated retained review. Candidate rejects stale identity/changed bytes and unfinished Local document handling before replacing the draft. Original head `3ba80337e37948b91d1e0457149d23336302578e`:
