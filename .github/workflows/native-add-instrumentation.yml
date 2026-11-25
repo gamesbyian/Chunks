@@ -74,6 +74,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt"
