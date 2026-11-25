@@ -146,6 +146,7 @@ internal const val INTERRUPTED_DOCUMENT_REVIEW =
 class MainActivity : ComponentActivity() {
     // Retained across Activity recreation, never persisted on process death.
     private val localAddAttemptOwner: LocalAddAttemptOwner by viewModels()
+    private val remoteSessionOwner: RemoteSessionOwner by viewModels()
     private fun accept(intent: Intent?) {
         val create = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
         if (create != null) {
@@ -220,7 +221,7 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ChunksApp(localAddAttemptOwner)
+                    ChunksApp(localAddAttemptOwner, remoteSessionOwner)
                 }
                 }
                 }
@@ -317,7 +318,11 @@ private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Se
 )
 
 @Composable
-internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
+internal fun ChunksApp(
+    retainedAddOwner: LocalAddAttemptOwner,
+    /** Retained by the Activity; tests and previews default to a remembered, non-retained owner. */
+    remoteSession: RemoteSessionOwner = remember { RemoteSessionOwner() }
+) {
     val incomingDelivery = retainedAddOwner.incomingDelivery
     val incomingAdd = (incomingDelivery as? ExternalIntakeDelivery.Add)?.source
     val sharedMagnet = when (incomingAdd) {
@@ -345,8 +350,10 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     var chosenBackend by rememberSaveable { mutableStateOf(RemoteBackendKind.RTORRENT) }
     var delugeDaemonHostId by remember { mutableStateOf("") }
     var readOnlyBackendError by remember { mutableStateOf<String?>(null) }
-    var verifiedReadOnlyProfileId by remember { mutableStateOf<String?>(null) }
-    var transientReadOnlyProfile by remember { mutableStateOf<CombinedReadOnlyProtocolProfile?>(null) }
+    // The verified typed (Transmission/qBittorrent/Deluge) connection is
+    // retained with the rTorrent session through recreation (A2611-02).
+    var verifiedReadOnlyProfileId by remoteSession.verifiedProtocolProfileId
+    var transientReadOnlyProfile by remoteSession.transientProtocolProfile
     var readOnlyConnectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     val combinedProtocolProfiles = remember(savedProtocolProfiles, transientReadOnlyProfile) {
         RemoteProtocolCombinedProfiles.saved(savedProtocolProfiles) +
@@ -384,14 +391,16 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             savedProtocolProfiles.isNotEmpty())
     }
     var credentialNotice by remember { mutableStateOf<String?>(null) }
-    var server by remember { mutableStateOf<RTorrentRemote?>(null) }
-    var version by remember { mutableStateOf("") }
-    var transfers by remember { mutableStateOf<List<RemoteTransfer>>(emptyList()) }
+    // A2611-02: the authenticated session, its inventory, fences and readback
+    // gate are retained together through recreation (RemoteSessionOwner).
+    var server by remoteSession.server
+    var version by remoteSession.version
+    var transfers by remoteSession.transfers
     // Wall-clock time of the last accepted server list, for honest freshness in combined views.
-    var transfersObservedAt by remember { mutableStateOf<Long?>(null) }
+    var transfersObservedAt by remoteSession.transfersObservedAt
     // Advances ONLY when the server has delivered a fresh, accepted queue read.
     // The operation UI can then allow another separately confirmed lifecycle command.
-    var snapshotRevision by remember { mutableLongStateOf(0L) }
+    var snapshotRevision by remoteSession.snapshotRevision
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // The current refresh error is an observed login refusal (HTTP 401/403).
@@ -399,9 +408,9 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     var loginRefusedError by remember { mutableStateOf<String?>(null) }
     var connectDiagnostics by remember { mutableStateOf(ConnectionDiagnostics()) }
     var connectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    var stale by remember { mutableStateOf(false) }
-    var currentView by remember { mutableStateOf("main") }
-    var requestedView by remember { mutableStateOf("main") }
+    var stale by remoteSession.stale
+    var currentView by remoteSession.currentView
+    var requestedView by remoteSession.requestedView
     // Open the canonical catalog by default. A saved login can temporarily
     // delegate its one read-only reconnect to the existing Connections owner.
     var section by rememberSaveable(saver = SectionRestoreSaver) {
@@ -563,7 +572,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
     // A plain remembered map prevents getOrPut writes during composition from
     // being rolled back; each value has observable Compose state fields.
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
-    var aliasScope by remember { mutableStateOf("") }
+    var aliasScope by remoteSession.aliasScope
     // The selected source text, reviewed local metainfo, remote account session,
     // Place and Start remain parent-owned when Add changes its target in place.
     // Switching never authorizes or starts an engine operation.
@@ -690,9 +699,9 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
         query = value
         remoteContinuity.rememberQuery(aliasScope, value)
     }
-    val remoteFence = remember { RemoteUiRequestFence() }
-    val inspectionFence = remember { RemoteUiRequestFence() }
-    val mutationGate = remember { RemoteMutationReadbackGate() }
+    val remoteFence = remoteSession.remoteFence
+    val inspectionFence = remoteSession.inspectionFence
+    val mutationGate = remoteSession.mutationGate
     val savedAddReconnect = remember { SavedAddProfileReconnect() }
 
     // A profile switch is a read-only navigation/authentication choice, but
@@ -950,7 +959,11 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             )) section = Section.CREATE
     }
 
+    // The latest readback request a refresh() of THIS composition has covered:
+    // a call while loading queues one more read with a fresh ticket.
+    val servedReadback = remember { longArrayOf(-1L) }
     val refresh: () -> Unit = {
+        servedReadback[0] = remoteSession.readbackRequests.longValue
         val remote = server
         if (remote != null) {
             if (loading) {
@@ -986,6 +999,12 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                                 // cannot clear its safety latch or replace the queue.
                                 stale = true
                             }
+                        } catch (cancel: CancellationException) {
+                            // Recreation cancels this composition's read. The
+                            // session (and its stale flag) is retained, so a
+                            // cancelled read must not mark it stale after the
+                            // live composition has already checked it (A2611-02).
+                            throw cancel
                         } catch (failure: Exception) {
                             if (server === remote && remoteFence.current(ticket)) {
                                 stale = true
@@ -999,6 +1018,24 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                     if (server === remote) loading = false
                 }
             }
+        }
+    }
+    // A2611-02: a composition attaching to a retained stale session, or a
+    // mutation settled through a disposed composition's refresh (whose
+    // coroutine scope is gone), still gets a fresh read. A request already
+    // covered by this composition's refresh() is not read twice; one arriving
+    // during a read in flight is queued behind it (that read's ticket predates
+    // the settle and cannot release the latch).
+    // Observed inside the effect so a settle does not recompose all of ChunksApp.
+    // Also reads when a view switch was interrupted by recreation.
+    val latestRefresh by androidx.compose.runtime.rememberUpdatedState(refresh)
+    LaunchedEffect(server) {
+        if (server == null) return@LaunchedEffect
+        var attaching = true
+        androidx.compose.runtime.snapshotFlow { remoteSession.readbackRequests.longValue }.collect { requested ->
+            val interruptedViewSwitch = attaching && currentView != requestedView
+            attaching = false
+            if ((stale && requested > servedReadback[0]) || interruptedViewSwitch) latestRefresh()
         }
     }
 
@@ -1480,6 +1517,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             val settledRemoteMutation: () -> Unit = {
                 if (server === connectedRemote && aliasScope == exactScope) {
                     mutationGate.settled()
+                    remoteSession.requestReadback()
                     stale = true
                     refresh()
                 }
@@ -1647,11 +1685,17 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                     } catch (cancel: CancellationException) {
                         if (parentJob?.isActive != true || ownerCurrent()) throw cancel
                     } finally {
-                        if (tick == RemoteSeeding.Tick.NO_WRITE || tick == RemoteSeeding.Tick.NOT_RUN)
-                            mutationGate.abandonKnownNoWrite()
-                        else {
-                            mutationGate.settled()
-                            if (server === connectedRemote) { stale = true; refresh() }
+                        // The gate is shared with any later session: only this exact
+                        // session's admission may be settled (a reconnect reset it).
+                        if (server === connectedRemote) {
+                            if (tick == RemoteSeeding.Tick.NO_WRITE || tick == RemoteSeeding.Tick.NOT_RUN)
+                                mutationGate.abandonKnownNoWrite()
+                            else {
+                                mutationGate.settled()
+                                remoteSession.requestReadback()
+                                stale = true
+                                refresh()
+                            }
                         }
                     }
                 }
@@ -1678,10 +1722,16 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                     } catch (_: Exception) {
                         // A partial write retains the readback fence.
                     } finally {
-                        if (noWrite) mutationGate.abandonKnownNoWrite()
-                        else {
-                            mutationGate.settled()
-                            if (server === connectedRemote) { stale = true; refresh() }
+                        // The gate is shared with any later session: only this exact
+                        // session's admission may be settled (a reconnect reset it).
+                        if (server === connectedRemote) {
+                            if (noWrite) mutationGate.abandonKnownNoWrite()
+                            else {
+                                mutationGate.settled()
+                                remoteSession.requestReadback()
+                                stale = true
+                                refresh()
+                            }
                         }
                     }
                 }
@@ -1838,6 +1888,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
                             settled = {
                                 if (server === remote) {
                                     mutationGate.settled()
+                                    remoteSession.requestReadback()
                                     stale = true
                                     refresh()
                                 }
@@ -2611,6 +2662,7 @@ internal fun ChunksApp(retainedAddOwner: LocalAddAttemptOwner) {
             val settledRemoteMutation: () -> Unit = {
                 if (server === connectedRemote) {
                     mutationGate.settled()
+                    remoteSession.requestReadback()
                     stale = true
                     refresh()
                 }

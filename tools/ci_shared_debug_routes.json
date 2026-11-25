@@ -53,6 +53,7 @@
       "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAttemptOwner.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolCombinedProfiles.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/CombinedReadOnlyProtocolSources.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/rpc/**",
@@ -79,6 +80,7 @@
       "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt",
@@ -98,6 +100,7 @@
     "remove": [
       "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
