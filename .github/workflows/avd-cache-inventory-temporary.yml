@@ -1,0 +1,24 @@
+name: Temporary read-only AVD cache inventory
+# Remove before merging. No cache mutation, no emulator, no protected host.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/avd-cache-inventory-temporary.yml"
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Count and identify only old pilot-owned cache entries
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '{active_caches_count,active_caches_size_in_bytes}'
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/caches?key=chunks-avd-pilot-&per_page=100" |
+            jq -e '[.[].actions_caches[] | select(.key | startswith("chunks-avd-pilot-")) | {id,key,ref,size_in_bytes}] | {pilot_cache_count:length,pilot_cache_bytes:(map(.size_in_bytes)|add // 0),pilot_entries:.}'
