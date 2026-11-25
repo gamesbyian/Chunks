@@ -30,11 +30,31 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
      * deleted, but never REPLACES an earlier assertion failure (#2104): the
      * cleanup failure is attached to the primary failure as suppressed.
      */
+    /** #2104: what the provider still says about a row that cleanup could not delete. */
+    private fun rowState(uri: android.net.Uri): String = runCatching {
+        if (Build.VERSION.SDK_INT < 30) {
+            // API 29 has no trashed state or match arguments.
+            return@runCatching resolver.query(MediaStore.setIncludePending(uri),
+                arrayOf(MediaStore.MediaColumns.IS_PENDING), null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) "(row absent)" else "(isPending=${cursor.getInt(0)} rows=${cursor.count})"
+            } ?: "(query returned no cursor)"
+        }
+        val bundle = android.os.Bundle().apply {
+            putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+            putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE)
+        }
+        resolver.query(uri, arrayOf(MediaStore.MediaColumns.IS_PENDING, MediaStore.MediaColumns.IS_TRASHED),
+            bundle, null)?.use { cursor ->
+            if (!cursor.moveToFirst()) "(row absent)"
+            else "(isPending=${cursor.getInt(0)} isTrashed=${cursor.getInt(1)} rows=${cursor.count})"
+        } ?: "(query returned no cursor)"
+    }.getOrElse { "(state unreadable: ${it.javaClass.simpleName})" }
+
     private fun deleteExactRow(primary: Throwable?, uri: android.net.Uri) {
         val failure = try {
             val deleted = resolver.delete(uri, null, null)
             if (deleted == 1) null
-            else AssertionError("Exact test row cleanup deleted $deleted rows, expected 1: $uri")
+            else AssertionError("Exact test row cleanup deleted $deleted rows, expected 1: $uri " + rowState(uri))
         } catch (cleanup: Throwable) { cleanup }
         if (failure != null) {
             if (primary != null) primary.addSuppressed(failure) else throw failure
