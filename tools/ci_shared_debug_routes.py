@@ -2,7 +2,7 @@
 """Preserve existing per-lane PR paths inside one shared debug APK workflow.
 
 GitHub still applies the outer union path filter. Inside it, classify the
-complete PR file set; stale, incomplete or ambiguous metadata selects both
+complete PR file set; stale, incomplete or ambiguous metadata selects all
 lanes rather than skipping a required test. No API mutations.
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tools/ci_shared_debug_routes.json"
-LANES = ("native", "protocol")
+LANES = ("native", "protocol", "combined", "remove")
 
 
 def load_routes(path=MANIFEST):
@@ -68,7 +68,7 @@ def route_patterns(routes, lane):
 def union_patterns(routes):
     # Current per-lane negative globs do not mask a positive from the other
     # lane: the offline contract explicitly tests every literal/broad witness.
-    return [*routes["lanes"]["native"], *routes["lanes"]["protocol"], *routes["common"]]
+    return list(dict.fromkeys([*(p for lane in LANES for p in routes["lanes"][lane]), *routes["common"]]))
 
 
 def get_json(path):
@@ -121,9 +121,9 @@ def pr_paths(repo, event, fetch=get_json):
 
 def choose(routes, event_name, scope, event=None, repo=None, fetch=get_json):
     if event_name == "workflow_dispatch":
-        if scope not in ("native", "protocol", "both"):
+        if scope not in (*LANES, "both", "all"):
             raise ValueError("Invalid manual scope")
-        return (set(LANES) if scope == "both" else {scope}), "manual"
+        return (set(LANES) if scope == "all" else {"native", "protocol"} if scope == "both" else {scope}), "manual"
     if event_name != "pull_request":
         raise ValueError("Unexpected shared debug event")
     try:
