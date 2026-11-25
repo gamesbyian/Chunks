@@ -6,7 +6,7 @@ Counts: ARCHIVE-candidate 11, KEEP-deferred 1, KEEP-design 6, KEEP-font-lab 17, 
 
 ## Findings
 
-1. **Probes rot silently when they run rarely.** On 2026-11-21 one PR edited every workflow file and so triggered each self-path filter. Six non-gate probes ran red (`svg-workbench-mobile`, `svg-outlined-review`, `svg-inventory-quality`, `native-owned-debug-overlay-smoke`, `native-owned-writer-experiment`, `public-magnet-metadata-probe`), each with its last success weeks earlier. The one diagnosed cause is tooling drift: `ubuntu-latest` moved to 26.04 and the pinned Playwright 1.56.1 cannot install. A rarely run probe is not evidence until rerun.
+1. **Probes rot silently when they run rarely.** On 2026-11-21 one PR edited every workflow file and so triggered each self-path filter. Six non-gate probes ran red (two later repaired: generated-report drift, not rot) (`svg-workbench-mobile`, `svg-outlined-review`, `svg-inventory-quality`, `native-owned-debug-overlay-smoke`, `native-owned-writer-experiment`, `public-magnet-metadata-probe`), each with its last success weeks earlier. The one diagnosed cause is tooling drift: `ubuntu-latest` moved to 26.04 and the pinned Playwright 1.56.1 cannot install. A rarely run probe is not evidence until rerun.
 2. **External rate limits during fan-out are not product failures.** `local-engine-public-webseed` failed the same day on HTTP 429 from Wikimedia (run 44950386593) and keeps its product role; rerun it alone before citing it.
 3. **One workflow never ran** (`seedhost-copy-to-local-readonly.yml`), and two pilots are superseded by integrated work (`native-add-shared-build-experiment`, `avd-snapshot-pilot`).
 4. Runs from 33 workflow files no longer in the repository (~120 runs) show earlier retirements already happened; no action.
@@ -114,11 +114,11 @@ Columns: runs (all-time = 60 d) · success/failure/cancelled/skipped · last run
 | `storage-owned-mediastore-documents.yml` | KEEP-gate | 88 | 40/6/41/0 | 2026-11-25 in_progress | 2026-11-24 | Path-selected PR witness; recently executed. |
 | `svg-alternates-qa-refresh.yml` | ARCHIVE-candidate | 1 | 1/0/0/0 | 2026-10-28 success | 2026-10-28 | One run 2026-10-28; push-triggered one-off; no reference. |
 | `svg-complete-reference-assets.yml` | KEEP-design | 22 | 21/1/0/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
-| `svg-inventory-quality.yml` | ARCHIVE-candidate | 8 | 7/1/0/0 | 2026-11-21 failure | 2026-10-29 | Red since 2026-10-29 when triggered; only a historical doc reference. Cause not diagnosed. |
+| `svg-inventory-quality.yml` | KEEP-design | 8 | 7/1/0/0 | 2026-11-21 failure | 2026-10-29 | Repaired 2026-11-25: red only from hand-edited generated QUALITY-REVIEW.md ('Stale quality summary'); the generator now emits the owner notes and all steps pass. |
 | `svg-library-check.yml` | KEEP-design | 49 | 42/7/0/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-mixer.yml` | KEEP-design | 17 | 15/2/0/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-outlined-alternates.yml` | ARCHIVE-candidate | 1 | 1/0/0/0 | 2026-10-28 success | 2026-10-28 | One run 2026-10-28; push-triggered one-off; no reference. |
-| `svg-outlined-review.yml` | ARCHIVE-candidate | 7 | 5/2/0/0 | 2026-11-21 failure | 2026-10-29 | Red since 2026-10-29 when triggered; no active doc/test/tool reference. Cause not diagnosed; likely same runner-image tooling rot. |
+| `svg-outlined-review.yml` | KEEP-design | 7 | 5/2/0/0 | 2026-11-21 failure | 2026-10-29 | Repaired 2026-11-25: red only from hand-edited generated QUALITY-REVIEW.md ('Stale quality summary'); the generator now emits the owner notes and all steps pass. |
 | `svg-palette-contrast.yml` | KEEP-design | 6 | 4/1/1/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-render-atlas.yml` | KEEP-design | 42 | 32/3/7/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
 | `svg-small-size.yml` | KEEP-design | 28 | 26/1/1/0 | 2026-11-21 success | 2026-11-21 | Design-asset validation on SVG path changes; review after atlas reactivation. |
