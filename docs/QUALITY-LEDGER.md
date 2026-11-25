@@ -2,6 +2,12 @@
 
 # Chunks evidence and release gate ledger
 
+## 2026-11-25 UTC — Claude dispatch, two unaccepted candidates
+
+Main `0f1806dd2d8a747c41322947e8aabc830af891fc` includes #2076 documentation. [#2075](https://github.com/gamesbyian/Chunks/pull/2075) earlier exact-source pilot: wrong-source refusal 45513850479, producer 45513846243, regular Combined 45513849429 (494 runner-seconds), manual reuse 45515896369 (330 runner-seconds), exact installed APK match. Aggregate 1,784 vs 1,948 runner-seconds; serial 1,249 vs parallel 879 elapsed seconds. Earlier automatic [Combined 45517212774](https://github.com/gamesbyian/Chunks/actions/runs/45517212774) and docs 45517212816 green. Reconciled current main into `e9d7ffb61b3069b615de343c79bbe25ef82fa440`; only Combined workflow differs from main. Fresh qualification pending.
+
+[#2077](https://github.com/gamesbyian/Chunks/pull/2077) head `a97da6d28d32c0bd3623c873cd3c14781caa4d7d`: [foundation 45517927135](https://github.com/gamesbyian/Chunks/actions/runs/45517927135), native 45517927212, R8 45517927203, real interop 45517927221 green. [Installed 45517927099](https://github.com/gamesbyian/Chunks/actions/runs/45517927099) attempt 1 red. Local-document job 138884093481 first document review not visible; diagnostic process/task true, no app nodes, foreground launcher, focused/resumed Chunks, awake; independent Local process-death phase passed. qBittorrent-Deluge job 138884093639 qBittorrent positive timed out at job copied to This device (0 lazy scrollers); qBittorrent fault and both Deluge cases passed. Transmission/rTorrent lane green. Aggregate refused. Both red lanes and aggregate requested for failed-jobs-only retry; no root cause established and no waiver. Actual Copy is affected by privacy changes, so inspect export/fallback and installed UI evidence if red persists. Keep positive public Copy, private/unknown refusal, exact identity and zero-write negatives.
+
 ## 2026-11-25 UTC — Retained settlement, exact source events and real resume baseline
 
 [#2070](https://github.com/gamesbyian/Chunks/pull/2070) qualifies typed Details and Copy destination receipts through transport settlement, strict Deluge and Transmission replies, selected Deluge daemon observations, and exact ruTorrent folder evidence. It includes [#2071](https://github.com/gamesbyian/Chunks/pull/2071) and [#2073](https://github.com/gamesbyian/Chunks/pull/2073) by ancestry. A newer identical Android document selection survives acknowledgment of an older rTorrent Add.
