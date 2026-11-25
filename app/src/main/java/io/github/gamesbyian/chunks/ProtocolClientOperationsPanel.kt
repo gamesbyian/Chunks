@@ -125,6 +125,8 @@ internal fun ProtocolClientOperationsPanel(
     /** Privacy-visible, live exact client; the job itself may have disappeared. */
     canReconcile: Boolean = current,
     receiptOwner: ProtocolOperationReceiptOwner = ProtocolOperationReceipts.owner,
+    /** Last exact Details observation. The server reports it again immediately before payload deletion. */
+    observedDownloadDirectory: String? = null,
     isOwnerCurrent: () -> Boolean = { true }
 ) {
     val scope = rememberCoroutineScope()
@@ -150,7 +152,7 @@ internal fun ProtocolClientOperationsPanel(
     var busy by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     var notice by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<String?>(null) }
     val latched = retained?.blocksWrites == true
-    var confirmRemove by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
+    var removeReview by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<ProtocolRemoveReview?>(null) }
     var deleteData by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
     var files by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf<List<ClientFile>?>(null) }
     var showMove by remember(hash, sourceClientId, sourceGeneration) { mutableStateOf(false) }
@@ -388,10 +390,14 @@ internal fun ProtocolClientOperationsPanel(
                     .testTag(ChunksSemantics.PROTOCOL_SET_LOCATION)
             ) { Text(if (relocating) "Cancel" else "Change folder…") }
             if (ClientCapability.REMOVE in caps) OutlinedButton(
-                onClick = { confirmRemove = !confirmRemove; deleteData = false },
+                onClick = {
+                    removeReview = if (removeReview != null) null else ProtocolRemoveReview(
+                        observedDownloadDirectory?.let { runCatching { ClientHashes.requireDirectory(it) }.getOrNull() })
+                    deleteData = false
+                },
                 enabled = enabled, modifier = cell.heightIn(min = 48.dp)
                     .testTag(ChunksSemantics.PROTOCOL_REMOVE)
-            ) { Text(if (confirmRemove) "Cancel remove" else "Remove…") }
+            ) { Text(if (removeReview != null) "Cancel remove" else "Remove…") }
         }
         if (moveTargets.isNotEmpty() && (ClientCapability.EXPORT_JOB in caps || (moveOnly && session == null))) {
             OutlinedButton(onClick = { showMove = !showMove; sessionWanted = true },
@@ -636,10 +642,12 @@ internal fun ProtocolClientOperationsPanel(
                 Text(if (moveFiles) "Move files to this folder" else "Use this folder")
             }
         }
-        if (!moveOnly && confirmRemove) {
+        val removal = removeReview
+        if (!moveOnly && removal != null) {
             Text("Remove this transfer from $clientLabel? By default its downloaded files stay on the server.",
                 style = MaterialTheme.typography.bodySmall)
-            if (ClientCapability.REMOVE_WITH_DATA in caps) Row(
+            val reviewedFolder = removal.directory
+            if (ClientCapability.REMOVE_WITH_DATA in caps && reviewedFolder != null) Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                     value = deleteData, enabled = enabled, role = Role.Checkbox,
                     onValueChange = { deleteData = it }),
@@ -648,12 +656,19 @@ internal fun ProtocolClientOperationsPanel(
                 Checkbox(checked = deleteData, onCheckedChange = null)
                 Text("Also delete its downloaded files on the server", modifier = Modifier.padding(start = 8.dp))
             }
+            if (deleteData && reviewedFolder != null) {
+                Text("Folder on $clientLabel: $reviewedFolder", style = MaterialTheme.typography.bodySmall)
+            }
             Button(
                 onClick = {
                     val withData = deleteData
-                    confirmRemove = false
-                    run(if (withData) "Remove and delete files" else "Remove",
-                        if (withData) ProtocolOperationKind.REMOVE_DATA else ProtocolOperationKind.REMOVE) { operations.remove(hash, withData) }
+                    if (withData && reviewedFolder == null) return@Button
+                    removeReview = null
+                    if (withData) run("Remove and delete files", ProtocolOperationKind.REMOVE_DATA) {
+                        operations.removeReviewedPayload(hash, requireNotNull(reviewedFolder))
+                    } else run("Remove", ProtocolOperationKind.REMOVE) {
+                        operations.remove(hash, deleteData = false)
+                    }
                 },
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -677,6 +692,8 @@ internal fun ProtocolClientOperationsPanel(
         }
     }
 }
+
+private class ProtocolRemoveReview(val directory: String?)
 
 private fun priorityLabel(p: ClientFilePriority) = when (p) {
     ClientFilePriority.SKIP -> "Skip"

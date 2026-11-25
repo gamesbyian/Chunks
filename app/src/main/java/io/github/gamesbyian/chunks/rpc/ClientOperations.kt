@@ -224,6 +224,12 @@ internal class ClientOperations(
     suspend fun remove(hash: String, deleteData: Boolean): ClientOperationOutcome =
         removeChecked(hash, deleteData) { client.remove(hash, deleteData) }
 
+    /** Delete payload only while the exact job still points at the person's reviewed folder. */
+    suspend fun removeReviewedPayload(hash: String, reviewedDirectory: String): ClientOperationOutcome =
+        removeChecked(hash, deleteData = true, expectedDirectory = ClientHashes.requireDirectory(reviewedDirectory)) {
+            client.remove(hash, deleteData = true)
+        }
+
     suspend fun removeJob(hash: String, beforeWrite: () -> Unit): ClientOperationOutcome {
         val context = currentCoroutineContext()
         var dispatched = false
@@ -246,10 +252,13 @@ internal class ClientOperations(
     }
 
     private suspend fun removeChecked(
-        hash: String, deleteData: Boolean, dispatchInAdapter: Boolean = false, send: suspend () -> Unit
+        hash: String, deleteData: Boolean, dispatchInAdapter: Boolean = false,
+        expectedDirectory: String? = null, send: suspend () -> Unit
     ): ClientOperationOutcome {
         val result = mutateExisting(hash, if (deleteData) ClientCapability.REMOVE_WITH_DATA else ClientCapability.REMOVE,
-            send, dispatchInAdapter = dispatchInAdapter) { observed -> if (observed == null) null else "Still registered" }
+            send, expectedDirectory = expectedDirectory, dispatchInAdapter = dispatchInAdapter) { observed ->
+            if (observed == null) null else "Still registered"
+        }
         // Registration absence proves job removal, not filesystem cleanup.
         // Local's adapter independently verifies the exact payload before a
         // normal return. An ordinary remote ACK has no such authority.

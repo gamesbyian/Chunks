@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -344,14 +345,14 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(1, destination.adds)
     }
 
-    private fun render(fake: Fake, current: Boolean = true) {
+    private fun render(fake: Fake, current: Boolean = true, reportedDirectory: String? = fake.dir) {
         rule.setContent {
             ChunksTheme {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "Seedbox qB", sourceClientId = "source-qb", observedStarted = false,
                     current = current, sourceGeneration = "fixture-generation", receiptOwner = testReceipts,
                     createOperations = { ClientOperations(fake, 3, 1) },
-                    onChanged = {}
+                    onChanged = {}, observedDownloadDirectory = reportedDirectory
                 )
             }
         }
@@ -462,8 +463,9 @@ class ProtocolClientOperationsPanelTest {
 
     @Test fun removeKeepsFilesUnlessExplicitlyChosen() {
         val fake = Fake()
-        render(fake)
+        render(fake, reportedDirectory = null)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").assertDoesNotExist()
         rule.onNodeWithText("Remove, keep files").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
         rule.waitUntil(5_000) { !fake.present }
@@ -482,6 +484,22 @@ class ProtocolClientOperationsPanelTest {
         rule.onNodeWithText("Transfer removed from Seedbox qB. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server.").assertExists()
         rule.onNodeWithText("Remove and delete files: confirmed on Seedbox qB.").assertDoesNotExist()
         assertEquals(1, fake.writes)
+    }
+
+    @Test fun movingTheSameJobAfterReviewRefusesPayloadDeletionWithoutSendingAWrite() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithText("Folder on Seedbox qB: /d").assertExists()
+        rule.runOnIdle { fake.dir = "/other" }
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText("no longer in the reviewed folder", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(0, fake.writes)
+        assertEquals(true, fake.present)
     }
 
     @Test fun staleListOffersNoCommands() {
