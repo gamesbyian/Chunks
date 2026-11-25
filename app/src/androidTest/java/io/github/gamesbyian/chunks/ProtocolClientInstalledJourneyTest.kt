@@ -12,7 +12,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isEnabled
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -913,14 +912,14 @@ class ProtocolClientInstalledJourneyTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             rule.waitForIdle()
             rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
-            val exactProfile = hasTestTag("connection-profile-$profileId")
-            val connectedTransfers = hasTestTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS) and
-                hasAnyAncestor(exactProfile) and isEnabled()
-            waitFor("exact remembered profile reconnects", 90_000) {
-                rule.onAllNodes(connectedTransfers).fetchSemanticsNodes().isNotEmpty() ||
-                    visible(name)
+            // A remembered typed profile is offered on its own saved card after
+            // relaunch; viewing it reconnects that exact profile.
+            val viewExactProfile = hasTestTag("protocol-profile-view-$profileId") and isEnabled()
+            waitFor("exact remembered typed profile is offered", 90_000) {
+                runCatching { scrollToNode(hasTestTag("protocol-profile-view-$profileId")); true }
+                    .getOrDefault(false) && rule.onAllNodes(viewExactProfile).fetchSemanticsNodes().isNotEmpty()
             }
-            if (!visible(name)) LazyComposeActions.activateOnce(rule, connectedTransfers)
+            LazyComposeActions.activateOnce(rule, viewExactProfile)
             stage("stop-death-reconnected-exact-profile")
             waitFor("fixture row after relaunch", 90_000) {
                 runCatching { scrollToNode(hasText(name, substring = true)); true }.getOrDefault(false) && visible(name)
