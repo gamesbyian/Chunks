@@ -25,6 +25,7 @@ on:
       - "tools/stage_disposable_rutorrent_adapter_delete.py"
       - ".github/workflows/installed-remote-delete-data.yml"
       - ".github/actions/reuse-installed-apks/action.yml"
+      - "tools/reuse_installed_apks.sh"
   workflow_dispatch:
     inputs:
       apk_run_id:
