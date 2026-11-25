@@ -37,6 +37,15 @@ on:
       - 'tests/test_ci_event_routing_policy.py'
       - 'tests/test_installed_remote_delete_provenance.py'
       - 'tests/test_installed_apk_identity.py'
+      - 'tests/test_installed_apk_reuse.py'
+      - 'tools/check_ci_yaml.rb'
+      - 'tests/test_ci_yaml.py'
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'tools/reuse_installed_apks.sh'
+      - '.github/actions/reuse-installed-apks/action.yml'
+      - '.github/workflows/installed-combined-two-servers.yml'
+      - '.github/workflows/installed-remote-delete-data.yml'
       - 'tools/installed_remote_delete_data.sh'
       - 'tools/verify_installed_apk_bytes.sh'
       - '.github/workflows/portable-agent-skills.yml'
@@ -184,6 +193,15 @@ on:
       - 'tests/test_ci_event_routing_policy.py'
       - 'tests/test_installed_remote_delete_provenance.py'
       - 'tests/test_installed_apk_identity.py'
+      - 'tests/test_installed_apk_reuse.py'
+      - 'tools/check_ci_yaml.rb'
+      - 'tests/test_ci_yaml.py'
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'tools/reuse_installed_apks.sh'
+      - '.github/actions/reuse-installed-apks/action.yml'
+      - '.github/workflows/installed-combined-two-servers.yml'
+      - '.github/workflows/installed-remote-delete-data.yml'
       - 'tools/installed_remote_delete_data.sh'
       - 'tools/verify_installed_apk_bytes.sh'
       - '.github/workflows/portable-agent-skills.yml'
@@ -311,29 +329,44 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        id: checkout
+      - name: Parse all workflow and composite action YAML offline
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
+        run: |
+          ruby tools/check_ci_yaml.rb
+          python3 -m unittest discover -s tests -p test_ci_yaml.py
       - name: Validate physical APK preflight and trigger selection (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           bash tools/test_physical_android_preflight.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
       - name: Verify bounded real-peer preparation milestones (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_peer_preparation_progress.py
           python3 -m py_compile tools/peer_preparation_progress.py tools/real_magnet_peer.py
       - name: Verify fail-closed manual AVD pilot with mocked ADB (no emulator)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_avd_pilot_probe.py
       - name: Verify CI JVM fork experiment remains scoped and covered
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_jvm_parallelism.py
       - name: Verify SHA-512 Robolectric preflight and pinned SDK selection offline
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_robolectric_prefetch.py
       - name: Audit all workflow definitions and their dispatch metadata
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_workflow_inventory.py
           python3 tools/ci_workflow_inventory.py --output "$RUNNER_TEMP/chunks-workflow-inventory.json" --summary
       - name: Verify read-only Actions runner-time accounting (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_runner_cost_report.py
       - name: Verify pre-push active runner snapshot is read-only and explicit (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_active_runner_snapshot.py
       - name: Detect duplicate or overlapping open-PR patches offline (no GitHub API)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_pr_overlap_report.py
       - name: Retain machine-readable all-workflow inventory
         if: always()
@@ -344,43 +377,56 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
       - name: Refuse writable tokens in font verification and unreachable publish steps
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_font_permissions.py
       - name: Verify workflow routing and Compose capture contracts offline
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           python3 tools/check_compose_capture_contract.py --preflight
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_compose_capture_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_event_routing_policy.py
       - name: Verify explicit main-only debug publication and immutable actions
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_debug_publish_gate.py
       - name: Verify native superseded-run cancellation cannot cross PRs or manual runs
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_native_concurrency.py
       - name: Verify local intake harness negatives and existing Android dispatch (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           bash tools/test_local_intake_journey.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_local_intake.py
       - name: Guard foreign document task lifecycle and privacy-safe failure categories
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           bash -n tools/installed_external_document_process_loss.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_external_document_first_view_contract.py
       - name: Check bounded installed remote and storage instrumentation commands
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_remote_instrumentation_deadlines.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_protocol_lanes.py
       - name: Validate installed real-source magnet reporting without secrets or emulator
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
       - name: Verify protected Seedhost dispatch gates offline
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_seedhost_manual_gate.py
       - name: Validate read-only seeding capability matrix boundaries offline
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_seedhost_seeding_readonly_matrix.py
       - name: Test complete native Add sharding and CI evidence contracts offline
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_catalog_measurement.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_minified_smoke_digest.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_shards.py
       - name: Validate protected magnet test evidence receipts without credentials
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_magnet_peer_receipt.py
       - name: Validate native atlas names offline (no Android)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
@@ -390,34 +436,47 @@ jobs:
           bash -n tools/install_android35_image_retry.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_android35_image_retry.py
       - name: Respect owner-authorized torrent fixture policy without live tracker access
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_owner_torrent_fixture_policy.py
       - name: Guard documentation dispatch parity and existing path targets
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_docs_dispatch_contract.py
           python3 tools/check_docs_dispatch_contract.py
       - name: Validate repository-wide local documentation links
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 tools/check_docs.py
       - name: Test documentation validator
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_docs_check.py'
       - name: Preserve installed deletion APK provenance before failures (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           python3 -m unittest discover -s tests -p 'test_installed_apk_identity.py'
           python3 -m unittest discover -s tests -p 'test_installed_remote_delete_provenance.py'
+          python3 -m unittest discover -s tests -p 'test_installed_apk_reuse.py'
       - name: Verify release APK identity negative controls (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_verify_release_apk_identity.py'
       - name: Refuse stale, cancelled and mismatched PR CI receipts (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_check_pr_exact_head.py'
       - name: Refuse overwritten synthetic bytes in post-Stop native safety receipts (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_require_post_stop_nonclobber.py'
       - name: Refuse destructive checked-torrent restoration receipts (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_require_restore_nonclobber.py'
       - name: Refuse raw Add and deferred magnet native overwrite receipts (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: python3 -m unittest discover -s tests -p 'test_require_add_magnet_nonclobber.py'
       - name: Reject Gradle, JDK and native dependency pin drift (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           python3 tools/check_gradle_toolchain_pins.py
           python3 -m unittest discover -s tests -p 'test_check_gradle_toolchain_pins.py'
       - name: Test CI orchestration and agent failure digest (offline)
+        if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_orchestration.py
