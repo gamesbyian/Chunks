@@ -72,7 +72,10 @@ class AcceptanceReportTest(unittest.TestCase):
         url = "https://github.com/gamesbyian/Chunks/actions/runs/"
         for gate, alias in (("two-server-combined", "combined / two-server-combined"),
                             ("remote-delete-data", "remove / remote-delete-data"),
-                            ("installed-protocol-client", "protocol / installed-protocol-client")):
+                            ("installed-protocol-client", "protocol / installed-protocol-client"),
+                            ("api29-downloads", "api29 / api29-downloads"),
+                            ("installed-resume-death (29)", "resume / installed-resume-death (29)"),
+                            ("installed-resume-death (35)", "resume / installed-resume-death (35)")):
             with self.subTest(gate=gate):
                 old = dict(check(gate, "success"), id=10, details_url=url + "100/job/10")
                 good = dict(check(alias, "success"), id=20, details_url=url + "110/job/20")
