@@ -603,6 +603,33 @@
         "*OwnedMediaStorePublicationJournalTest",
         "*OwnedMediaStoreZipBatchJournal*"
       ]
+    },
+    {
+      "id": "remote-add-enabled-without-fresh-list",
+      "invariant": "The remote Add control needs a fresh confirmed server transfer list (mutation gate ready)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt",
+      "old": "!noFileChosen && mutationReady && validUniversalAddAlias(addAliasState?.value.orEmpty()),",
+      "new": "!noFileChosen && validUniversalAddAlias(addAliasState?.value.orEmpty()),",
+      "tests": [
+        "*VerifiedAdd*",
+        "*RemoteAdd*",
+        "*UniversalAddReviewControlsTest",
+        "*RemoteBinaryStoppedAddTest",
+        "*RemoteAddSubmitEnablementTest"
+      ]
+    },
+    {
+      "id": "remote-add-enabled-with-no-file-chosen",
+      "invariant": "Add is disabled when every file of the reviewed torrent is skipped",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt",
+      "old": "!noFileChosen && mutationReady",
+      "new": "mutationReady",
+      "tests": [
+        "*VerifiedAdd*",
+        "*RemoteAdd*",
+        "*UniversalAddReviewControlsTest",
+        "*RemoteBinaryStoppedAddTest"
+      ]
     }
   ]
 }
