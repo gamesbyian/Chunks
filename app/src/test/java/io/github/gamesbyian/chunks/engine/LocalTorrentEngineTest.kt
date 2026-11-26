@@ -1009,28 +1009,18 @@ class LocalTorrentEngineTest {
             seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING
         }
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
-        // #2114: under full-suite load this single connect sometimes produced
-        // no connection at all (both sides peers=0, leech stuck DOWNLOADING).
-        // Re-offer only this loopback seeder, at most every 5 s while the leech
-        // has no peer, as tracker/DHT discovery would. The exact-byte flush,
-        // readback and downloaded-byte bounds below are unchanged.
-        var lastOffer = System.currentTimeMillis()
-        var offers = 1
-        try {
-            waitFor {
-                val leeched = local.status(leech)
-                if (leeched?.peers == 0 && System.currentTimeMillis() - lastOffer >= 5_000) {
-                    local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort()))
-                    lastOffer = System.currentTimeMillis()
-                    offers++
-                }
-                leeched?.progressPpm == 1_000_000
-            }
-        } catch (timeout: AssertionError) {
+        // #2114: libtorrent keeps the peer entry of the seeder from when this
+        // job was complete but not as a connect candidate, and Start after a
+        // damaged payload used to leave it that way (load-dependent: it depends
+        // on whether libtorrent's connect pass ran while the job still counted
+        // as finished). Start now drops stale peer entries; no re-offer needed.
+        try { waitFor { local.status(leech)?.progressPpm == 1_000_000 } }
+        catch (timeout: AssertionError) {
             val leeched = local.status(leech)
             throw AssertionError("Truncated-payload fixture timed out at repaired-download-complete: " +
                 "leech state=${leeched?.state} progressPpm=${leeched?.progressPpm} peers=${leeched?.peers} " +
-                "seeder peers=${seeder.status(seed.infoHash)?.peers} offers=$offers", timeout)
+                "seeder peers=${seeder.status(seed.infoHash)?.peers} " +
+                "leech native=[${local.nativePeerDiagnostics(leech)}]", timeout)
         }
         try { requireFlushed(local, leech) }
         catch (timeout: AssertionError) {
