@@ -150,6 +150,39 @@ class RemoteSessionRecreationTest {
         assertEquals(null, owner.postAdd.latestFor(remote, scope))
     }
 
+    /**
+     * A2611-06 baseline: with no policy or seeding rule enabled, the connected app's
+     * 30-second policy ticks send no RPC at all. Five virtual minutes (ten ticks) leave the
+     * request log unchanged: the idle cost is local preference reads only.
+     */
+    @Test fun idlePolicyTicksSendNoRpcWhenNoRuleIsEnabled() {
+        val session = RemoteSessionOwner()
+        val restoration = StateRestorationTester(rule)
+        connect(restoration, session)
+        rule.waitForIdle()
+        val before = requests.toList()
+        assertTrue("the connection itself read the inventory", before.contains("d.multicall2"))
+        rule.mainClock.advanceTimeBy(300_000)
+        rule.waitForIdle()
+        assertEquals("ten idle policy ticks sent no RPC", before, requests.toList())
+    }
+
+    /** Positive control for the idle test: the same virtual ticks do act once a rule is enabled. */
+    @Test fun anEnabledSeedingRuleMakesTheSameTicksTalkToTheServer() {
+        val session = RemoteSessionOwner()
+        val restoration = StateRestorationTester(rule)
+        connect(restoration, session)
+        rule.waitForIdle()
+        val remote = requireNotNull(session.server.value)
+        val environment = requireNotNull(io.github.gamesbyian.chunks.seeding.RemoteSeeding.environmentOf(remote))
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        assertTrue(io.github.gamesbyian.chunks.seeding.RemoteSeeding.EnforcementSwitch(context).set(environment, true))
+        val before = requests.size
+        rule.mainClock.advanceTimeBy(65_000)
+        rule.waitUntil(15_000) { requests.size > before }
+        assertTrue("an enabled rule reads the server on its tick", requests.size > before)
+    }
+
     @Test fun uncertainWriteStaysLatchedAcrossRecreationUntilOneFreshRead() {
         val session = RemoteSessionOwner()
         val restoration = StateRestorationTester(rule)
