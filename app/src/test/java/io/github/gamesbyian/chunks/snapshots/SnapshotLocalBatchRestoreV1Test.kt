@@ -26,6 +26,7 @@ class SnapshotLocalBatchRestoreV1Test {
 
     private class Store : SnapshotRestoreJournalV1.Store {
         private val records = mutableMapOf<String, String>()
+        val writes get() = records.size
         override fun read(key: String): String? = records[key]
         override fun compareAndCommit(key: String, expected: String?, value: String): Boolean {
             if (records[key] != expected) return false
@@ -95,6 +96,20 @@ class SnapshotLocalBatchRestoreV1Test {
             assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
                 journal.entries().single().phase)
         }
+    }
+
+    /** Invariant control `snapshot-batch-restore-skips-place-check`. */
+    @Test fun aPlaceThatIsNotTheReviewedOneRefusesTheWholeBatchBeforeAnyJournalOrSubmission() {
+        val folder = temp.newFolder("reviewed")
+        val other = temp.newFolder("other")
+        val store = Store()
+        val target = FakeTarget(folder)
+        val originals = listOf(original("a"), original("b"))
+        val result = execute(originals, folder, store, target, fingerprint = placeFor(other))
+        assertFalse(result.complete)
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED, result.stop)
+        assertEquals("nothing was submitted", 0, target.calls)
+        assertEquals("no journal entry was created", 0, store.writes)
     }
 
     @Test fun reviewBuffersChangingAfterBatchFreezeCannotAlterSubmittedDefinitions() {

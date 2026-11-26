@@ -429,6 +429,30 @@
         "*PrivacyGate*",
         "*TransferPrivacy*"
       ]
+    },
+    {
+      "id": "snapshot-batch-restore-skips-place-check",
+      "invariant": "A batch snapshot restore refuses unless the chosen Place matches the reviewed Place fingerprint",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/snapshots/SnapshotLocalBatchRestoreV1.kt",
+      "old": "            !SnapshotRestoreOnceV1.reviewedPlaceMatches(chosenPlace, verifiedPlaceFingerprint))\n            return fail",
+      "new": "            false)\n            return fail",
+      "tests": [
+        "*SnapshotRestoreOnceV1Test",
+        "*SnapshotLocalBatchRestoreV1Test",
+        "*LocalSnapshotBatchStoppedRestoreReviewTest"
+      ]
+    },
+    {
+      "id": "snapshot-batch-restore-skips-approval",
+      "invariant": "A batch snapshot restore needs explicit user approval",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/snapshots/SnapshotLocalBatchRestoreV1.kt",
+      "old": "if (!userApproved || !mayContinue() ||",
+      "new": "if (!mayContinue() ||",
+      "tests": [
+        "*SnapshotRestoreOnceV1Test",
+        "*SnapshotLocalBatchRestoreV1Test",
+        "*LocalSnapshotBatchStoppedRestoreReviewTest"
+      ]
     }
   ]
 }
