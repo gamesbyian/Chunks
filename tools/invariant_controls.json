@@ -68,6 +68,69 @@
         "*RemoteSeedingControllerTest"
       ],
       "known_gap": "Survived on 2026-11-26: no JVM test changes the credential generation while a policy tick is in flight. Tracked in a follow-up issue; do not delete this control."
+    },
+    {
+      "id": "add-readback-accepts-other-hash",
+      "invariant": "Add readback accepts only the exact verified infohash",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddCoordinator.kt",
+      "old": "        if (!observation.infoHash.equals(expected, ignoreCase = true))\n            return Readback.NOT_OBSERVED",
+      "new": "        if (false)\n            return Readback.NOT_OBSERVED",
+      "tests": [
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "add-readback-accepts-stale-read",
+      "invariant": "Add readback refuses an observation older than the write",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddCoordinator.kt",
+      "old": "        if (isStaleReadback(ticket, observation.observedAtEpochMillis))\n            return Readback.NEEDS_FRESH_INVENTORY\n        val expected",
+      "new": "        val expected",
+      "tests": [
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "gate-accepts-old-ticket",
+      "invariant": "A read started before a write cannot satisfy that write's readback",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteMutationReadbackGate.kt",
+      "old": "!commandPending && ticket == generation",
+      "new": "!commandPending",
+      "tests": [
+        "*RemoteMutationReadbackGateTest"
+      ]
+    },
+    {
+      "id": "privacy-gate-always-open",
+      "invariant": "A locked privacy scope neither discloses nor allows interaction",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "return gate.mode == TransferLockMode.NEVER || gate.authorized",
+      "new": "return true",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*"
+      ]
+    },
+    {
+      "id": "delete-ignores-reviewed-folder",
+      "invariant": "Remove-with-data acts only while the exact job still points at the reviewed folder",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientOperations.kt",
+      "old": "                if (expectedDirectory != null &&\n                    !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))\n                    return",
+      "new": "                if (false &&\n                    !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))\n                    return",
+      "tests": [
+        "*ClientOperationsTest",
+        "*ProtocolClientOperationsPanelTest"
+      ]
+    },
+    {
+      "id": "delete-ignores-shared-payload",
+      "invariant": "Remove-with-data refuses while another job shares the payload",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientOperations.kt",
+      "old": "                if (sharedPayloadGuard)\n                    ClientPayloadOverlap",
+      "new": "                if (false)\n                    ClientPayloadOverlap",
+      "tests": [
+        "*ClientOperationsTest",
+        "*ClientPayloadOverlap*"
+      ]
     }
   ]
 }
