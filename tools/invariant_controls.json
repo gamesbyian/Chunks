@@ -253,6 +253,182 @@
         "*RemoteUniversalAddAdapterTest",
         "*RemoteAddStarterTest"
       ]
+    },
+    {
+      "id": "resume-write-after-removal",
+      "invariant": "A late save-resume alert cannot resurrect a removed torrent (write only while the originating handle is current)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeWriteFence.kt",
+      "old": "if (handles[key] != originatingHandle) false",
+      "new": "if (false) false",
+      "tests": [
+        "*LocalResumeWriteFence*",
+        "*LocalTorrentEngineTest"
+      ]
+    },
+    {
+      "id": "restart-guard-accepts-bad-verification",
+      "invariant": "A checked restart refuses missing or inconsistent per-file verification state",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedRestartGuard.kt",
+      "old": "verifiedFileBytes.size != nativePaths.size || maxPaths <= 0 ||",
+      "new": "maxPaths <= 0 ||",
+      "tests": [
+        "*LocalCheckedRestartGuard*",
+        "*LocalCheckedAddCollisionNativeTest",
+        "*LocalTorrentEngineTest"
+      ]
+    },
+    {
+      "id": "connect-allows-http-downgrade",
+      "invariant": "A remote address must be HTTPS (plain HTTP only on loopback)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteSmartConnect.kt",
+      "old": "(uri.scheme.equals(\"http\", true) &&\n                uri.host in setOf(\"localhost\", \"127.0.0.1\", \"[::1]\"))) {",
+      "new": "uri.scheme.equals(\"http\", true)) {",
+      "tests": [
+        "*RemoteSmartConnectSafetyTest",
+        "*RemoteSmartConnectTest"
+      ]
+    },
+    {
+      "id": "connect-allows-embedded-credentials",
+      "invariant": "An address with embedded credentials, query or fragment is refused",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteSmartConnect.kt",
+      "old": "uri.rawUserInfo == null &&\n            uri.rawQuery == null",
+      "new": "true &&\n            uri.rawQuery == null",
+      "tests": [
+        "*RemoteSmartConnectSafetyTest",
+        "*RemoteSmartConnectTest"
+      ]
+    },
+    {
+      "id": "seeding-replays-uncertain-stop",
+      "invariant": "An automatic Pause is attempted at most once; an attempted one is never replayed",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingController.kt",
+      "old": "assignment.stoppedByRule == null &&\n                assignment.stopAttemptedReason == null",
+      "new": "assignment.stoppedByRule == null",
+      "tests": [
+        "*SeedingController*",
+        "*RemoteSeedingTickTest",
+        "*LocalSeeding*"
+      ]
+    },
+    {
+      "id": "seeding-pauses-before-durable-commit",
+      "invariant": "The stop attempt is durably recorded BEFORE the engine is called",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingController.kt",
+      "old": "            if (!store.put(hash, attempted)) return\n",
+      "new": "            store.put(hash, attempted)\n",
+      "tests": [
+        "*SeedingController*",
+        "*RemoteSeedingTickTest",
+        "*LocalSeeding*"
+      ]
+    },
+    {
+      "id": "move-retires-unverified-copy",
+      "invariant": "Source retirement needs the exact verified Copy result object",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientJobTransfer.kt",
+      "old": "if (pendingRetirement !== confirmedCopy || confirmedCopy.hash != exact)",
+      "new": "if (confirmedCopy.hash != exact)",
+      "tests": [
+        "*ClientJobTransferTest",
+        "*BatchServerCopy*",
+        "*BatchLocalCopy*"
+      ]
+    },
+    {
+      "id": "move-retirement-replayable",
+      "invariant": "A Copy result authorizes at most one retirement attempt (consumed before any source write)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientJobTransfer.kt",
+      "old": "        pendingRetirement = null\n        val connectionChanged",
+      "new": "        val connectionChanged",
+      "tests": [
+        "*ClientJobTransferTest",
+        "*BatchServerCopy*",
+        "*BatchLocalCopy*"
+      ]
+    },
+    {
+      "id": "move-retires-when-target-gone",
+      "invariant": "The source is kept unless the target still shows the exact job",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientJobTransfer.kt",
+      "old": "        if (stillOnTarget?.hash?.equals(exact, ignoreCase = true) != true)\n            return@withLock",
+      "new": "        if (false)\n            return@withLock",
+      "tests": [
+        "*ClientJobTransferTest",
+        "*BatchServerCopy*",
+        "*BatchLocalCopy*"
+      ]
+    },
+    {
+      "id": "protocol-remove-data-skips-reviewed-folder",
+      "invariant": "Remove with data goes only through the reviewed-folder-bound operation",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+      "old": "operations.removeReviewedPayload(hash, requireNotNull(reviewedFolder))",
+      "new": "operations.remove(hash, deleteData = true)",
+      "tests": [
+        "*ProtocolClientOperationsPanelTest",
+        "*ProtocolClientRemove*"
+      ]
+    },
+    {
+      "id": "protocol-remove-review-keeps-earlier-delete-choice",
+      "invariant": "Opening a Remove review never inherits an earlier delete-files choice",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+      "old": "                    deleteData = false\n                },\n                enabled = enabled, modifier = cell.heightIn(min = 48.dp)\n                    .testTag(ChunksSemantics.PROTOCOL_REMOVE)",
+      "new": "                },\n                enabled = enabled, modifier = cell.heightIn(min = 48.dp)\n                    .testTag(ChunksSemantics.PROTOCOL_REMOVE)",
+      "tests": [
+        "*ProtocolClientOperationsPanelTest",
+        "*ProtocolClientRemove*"
+      ]
+    },
+    {
+      "id": "remove-review-survives-identity-change",
+      "invariant": "A Remove confirmation is revoked when the reviewed row identity changes",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
+      "old": "confirming && reviewedIdentity == currentReview &&",
+      "new": "confirming &&",
+      "tests": [
+        "*TransferSessionRemove*",
+        "*RemoteTransferRemove*",
+        "*SessionRemove*",
+        "*RemoteDeleteData*"
+      ]
+    },
+    {
+      "id": "privacy-policy-change-needs-fresh-auth",
+      "invariant": "Changing/disabling a lock policy needs a fresh device authentication, not a session unlock",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "return deviceAuthenticated && gate.authorized &&",
+      "new": "return gate.authorized &&",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*",
+        "*TransferPrivacy*"
+      ]
+    },
+    {
+      "id": "privacy-foreground-return-keeps-unlock",
+      "invariant": "EACH_FOREGROUND_RETURN locks on every background transition",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "                TransferLockMode.EACH_FOREGROUND_RETURN -> {\n                    gate.generation++\n                    gate.authorized = false",
+      "new": "                TransferLockMode.EACH_FOREGROUND_RETURN -> {\n                    gate.generation++",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*",
+        "*TransferPrivacy*"
+      ]
+    },
+    {
+      "id": "privacy-lock-now-keeps-unlock",
+      "invariant": "Lock now revokes the scope's authorization",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "        gate.generation++\n        gate.authorized = false\n        gate.challengeNonce = null\n        gate.policyChangeNonce = null\n        gate.leftBackgroundAt = null",
+      "new": "        gate.generation++\n        gate.challengeNonce = null\n        gate.policyChangeNonce = null\n        gate.leftBackgroundAt = null",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*",
+        "*TransferPrivacy*"
+      ]
     }
   ]
 }
