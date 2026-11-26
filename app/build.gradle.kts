@@ -70,10 +70,14 @@ android {
     }
     buildTypes {
         getByName("release") {
-            // Not shrunk until the qaMinified smoke (same rules, R8 full mode)
-            // has passed on an emulator: libtorrent4j is JNI and R8 mistakes
-            // only show up at runtime.
-            isMinifyEnabled = false
+            // Not shrunk by default until the assembled release candidate has passed the
+            // release-shrink smoke: libtorrent4j is JNI and R8 mistakes only show up at runtime.
+            // -Pchunks.releaseShrink=true builds the REAL release variant with its own R8
+            // configuration (obfuscation on, no QA keep rules) so that exact artifact can be
+            // measured and smoke-tested; qaMinified does not validate this shrink.
+            val releaseShrink = providers.gradleProperty("chunks.releaseShrink").orNull == "true"
+            isMinifyEnabled = releaseShrink
+            isShrinkResources = releaseShrink
             isDebuggable = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("release")
