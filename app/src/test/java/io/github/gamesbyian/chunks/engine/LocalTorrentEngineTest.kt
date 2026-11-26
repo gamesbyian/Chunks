@@ -245,6 +245,42 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    /** Invariant control `local-delete-ignores-shared-payload`: no deletion of a payload another job references. */
+    @Test fun removeWithDataRefusesWhileAnotherRegisteredTransferReferencesTheSamePayloadFiles() {
+        val first = fixture()
+        val otherParent = temp.newFolder("shared-delete-second")
+        val otherRoot = File(otherParent, "Chunks public fixture").apply { mkdirs() }
+        File(otherRoot, "episode.bin").writeBytes(ByteArray(1_300_000).also { Random(777).nextBytes(it) })
+        File(otherRoot, "extras/notes.txt").apply { parentFile.mkdirs(); writeText("different bytes, same declared path") }
+        val secondTorrent = TorrentBuilder().path(otherRoot).pieceSize(64 * 1024).generate().entry().bencode()
+        val destination = first.root.parentFile
+        val instance = engine()
+        val a = added(instance.addStopped(first.torrent, destination))
+        val b = instance.addStopped(secondTorrent, destination)
+        assertTrue("setup: a second job may reference the same declared files: $b", b is LocalAddResult.AddedStopped)
+        val status = requireNotNull(instance.status(a.infoHash))
+        val receipt = instance.removeWithDataIfMatching(status.infoHash, status.name, status.savePath, status.nativeReviewToken)
+        assertEquals("a shared payload is never deleted: ${receipt.reason}", LocalDeleteDataDispatch.REFUSED, receipt.dispatch)
+        assertNotNull("the job stays registered", instance.status(a.infoHash))
+        for ((name, bytes) in first.files) assertArrayEquals(name, bytes, File(first.root, name).readBytes())
+    }
+
+    /** Invariant control `local-delete-ignores-unsafe-path`: a payload path that cannot be proven contained is never deleted. */
+    @Test fun removeWithDataRefusesWhenAPayloadDirectoryWasSwappedForASymlinkAfterReview() {
+        val source = fixture()
+        val destination = source.root.parentFile
+        val instance = engine()
+        val added = added(instance.addStopped(source.torrent, destination))
+        val status = requireNotNull(instance.status(added.infoHash))
+        val moved = File(destination, "moved-away-payload")
+        assertTrue(source.root.renameTo(moved))
+        java.nio.file.Files.createSymbolicLink(source.root.toPath(), moved.toPath())
+        val receipt = instance.removeWithDataIfMatching(status.infoHash, status.name, status.savePath, status.nativeReviewToken)
+        assertEquals("an uncontained payload path is never deleted: ${receipt.reason}",
+            LocalDeleteDataDispatch.REFUSED, receipt.dispatch)
+        for ((name, bytes) in source.files) assertArrayEquals(name, bytes, File(moved, name).readBytes())
+    }
+
     @Test fun restoredStoppedTorrentReservesItsPayloadPathsBeforeAnotherCheckedAdd() {
         val fixture = fixture()
         val otherParent = temp.newFolder("restored-conflict-source")

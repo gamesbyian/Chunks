@@ -503,6 +503,45 @@
         "*UniversalAddCoordinatorTest",
         "*UniversalAddLifecycleTest"
       ]
+    },
+    {
+      "id": "local-delete-accepts-stale-review",
+      "invariant": "Local Remove-with-data acts only on the exact reviewed identity (name, save path, native review token)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+      "old": "            current.nativeReviewToken != expectedReviewToken)\n            return",
+      "new": "            false)\n            return",
+      "tests": [
+        "*LocalTorrentEngineTest",
+        "*LocalDetailsOperations*",
+        "*LocalDeleteData*",
+        "*LocalRemove*"
+      ]
+    },
+    {
+      "id": "local-delete-ignores-shared-payload",
+      "invariant": "Local Remove-with-data refuses when another registered transfer references the same payload file",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+      "old": "if (!otherInfo.padFileAt(i) && absolute(otherSave, otherInfo.filePath(i)) in selected)\n                        return",
+      "new": "if (false && absolute(otherSave, otherInfo.filePath(i)) in selected)\n                        return",
+      "tests": [
+        "*LocalTorrentEngineTest",
+        "*LocalDetailsOperations*",
+        "*LocalDeleteData*",
+        "*LocalRemove*"
+      ]
+    },
+    {
+      "id": "local-delete-ignores-unsafe-path",
+      "invariant": "Local Remove-with-data refuses a payload path survey that cannot prove containment",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+      "old": "if (LocalPayloadCollisionSurvey.inspect(root, relatives) is LocalPayloadCollisionSurvey.Result.Unknown)\n            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = \"Unsafe payload path\")",
+      "new": "",
+      "tests": [
+        "*LocalTorrentEngineTest",
+        "*LocalDetailsOperations*",
+        "*LocalDeleteData*",
+        "*LocalRemove*"
+      ]
     }
   ]
 }
