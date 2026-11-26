@@ -27,7 +27,17 @@ class DelugeTwoDaemonInteropTest {
         val aBefore = a.torrents().map { it.hash }
         println("CHUNKS_DELUGE2: bound_a_read=ok count=${aBefore.size}")
 
-        // Another session (B) takes the process-global slot.
+        // An actor OUTSIDE Chunks (its own Web UI session) takes the shared slot. Chunks' own B client
+        // can no longer stand in for it: since #2072 Chunks' own sessions are serialized and repair
+        // their own switches (DelugeRoutingInteropTest), so only an outside switch must stay refused.
+        val wire = DelugeReadOnlyRpc.HttpWire
+        val endpoint = java.net.URI(credentials.endpoint)
+        val login = wire.exchange(DelugeReadOnlyRpc.Request(endpoint,
+            """{"method":"auth.login","params":["${credentials.password}"],"id":1}""".toByteArray(), null))
+        val cookie = login.header("Set-Cookie").first().substringBefore(';')
+        val switched = wire.exchange(DelugeReadOnlyRpc.Request(endpoint,
+            """{"method":"web.connect","params":["${env("HOST_B")}"],"id":2}""".toByteArray(), cookie))
+        assertTrue("outside actor switched the slot to B", switched.body.contains("\"error\": null"))
         val bBefore = b.torrents().map { it.hash }
         println("CHUNKS_DELUGE2: switched_to_b count=${bBefore.size}")
 

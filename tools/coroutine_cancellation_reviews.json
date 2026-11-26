@@ -496,6 +496,14 @@
   "reason": "JSONObject(body) and ExactRpcJson.objectBody are plain parsing funs; the HTTP exchange is outside this try."
  },
  {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeReadOnlyRpc.kt",
+  "kind": "broad-catch",
+  "fingerprint": "c224e2fbbea77c6bade343cf",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "HttpWire worker lambda is a plain Runnable on a dedicated executor thread, not a coroutine; blockingExchange has no suspension point. The Throwable is forwarded with CompletableDeferred.completeExceptionally to the awaiting caller. Caller cancellation is handled in exchange(): flag, disconnect, then a NonCancellable wait for the worker to end, and the CancellationException is rethrown, never swallowed."
+ },
+ {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
   "kind": "broad-catch",
   "fingerprint": "f49d8a2d4ab7d482c996b425",

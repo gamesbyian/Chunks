@@ -53,20 +53,28 @@ counts="http://127.0.0.1:$host_port/counts"
 curl --fail --silent --max-time 3 "$counts" | grep -Fx '{}'
 
 run_phase() {
-  local method="$1" result=success
+  local method="$1" result=success parse_rc=0 digest_rc=0
   if ! timeout 240s adb shell am instrument -w -r -e class "$case_class#$method" \
       -e chunks_media_consent controlled -e chunks_media_cert "$cert" "$runner" \
       > "$scratch/$method.raw" 2>&1; then
     result=failure
   fi
   curl --fail --silent --max-time 3 "$counts" > "$out/$method-counts.json"
-  python3 tools/parse_instrumentation_stream.py --raw "$scratch/$method.raw" --junit "$out/$method.xml"
   # #2118: keep only the test's privacy-safe bounded diagnostic line (it never
   # names sources, URLs, hashes or provider content) beside the JUnit receipt.
+  # Capture it BEFORE the parser: the parser exits nonzero for a failed test, and
+  # under `set -e` that ended the script before this line was ever saved, so the
+  # first two recurrences produced no diagnostic at all.
   grep -oE 'Controlled first metadata request absent: [^[:cntrl:]]*' "$scratch/$method.raw" \
     > "$out/$method-assertion.txt" || true
+  python3 tools/parse_instrumentation_stream.py --raw "$scratch/$method.raw" --junit "$out/$method.xml" || parse_rc=$?
   python3 tools/ci_failure_digest.py --suite "installed-second-add-media-$method" --status "$result" \
-    --require-executed --glob "$out/$method.xml" --output "$out/$method-digest.json"
+    --require-executed --glob "$out/$method.xml" --output "$out/$method-digest.json" || digest_rc=$?
+  # Every receipt is saved first; a failed phase still fails the script.
+  if [[ "$result" != success || "$parse_rc" -ne 0 || "$digest_rc" -ne 0 ]]; then
+    echo "CHUNKS_SECOND_ADD_MEDIA_PHASE_FAILED method=$method run=$result parse=$parse_rc digest=$digest_rc"
+    exit 1
+  fi
 }
 
 run_phase sharedSignedLinkWaitsForReplacementAndExplicitFetch

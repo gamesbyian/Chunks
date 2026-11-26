@@ -21,7 +21,9 @@ import org.json.JSONObject
 internal class DelugeReadOnlyRpc(
     credentials: RemoteCredentials,
     private val daemonHostId: String,
-    private val wire: Wire = HttpWire
+    private val wire: Wire = HttpWire,
+    private val routing: DelugeRoutingOwner = DelugeRoutingOwner.forEndpoint(
+        validateEndpoint(credentials.endpoint))
 ) {
     private val auth = credentials
     private val endpoint = validateEndpoint(credentials.endpoint)
@@ -61,7 +63,13 @@ internal class DelugeReadOnlyRpc(
         val torrents: List<Torrent>
     )
 
-    suspend fun inspect(): Snapshot = withContext(Dispatchers.IO) {
+    /**
+     * One bind/read/post-check bracket, serialized with every other Chunks caller of the same Web UI
+     * through [DelugeRoutingOwner] (#2072). The owner is local serialization, not server atomicity.
+     */
+    suspend fun inspect(): Snapshot = routing.bracket(daemonHostId) { inspectBracketed() }
+
+    private suspend fun inspectBracketed(): Snapshot = withContext(Dispatchers.IO) {
         require(auth.password.isNotEmpty()) { "Deluge web password is required" }
         val (authenticated, cookie) = login()
         if (!authenticated) throw IOException("Deluge Web UI login refused")
@@ -113,6 +121,8 @@ internal class DelugeReadOnlyRpc(
             !(bound.opt(1) as? String).equals("connected", ignoreCase = true)) {
             throw IOException("Deluge Web UI is not connected to the selected daemon")
         }
+        // Only Chunks' own web.connect counts as where Chunks left the slot; an observation does not.
+        if (!alreadyBound) routing.noteBound(daemonHostId)
         val keys = JSONArray(listOf(
             "name", "state", "total_size", "total_done",
             "download_payload_rate", "upload_payload_rate", "save_path"
@@ -266,10 +276,73 @@ internal class DelugeReadOnlyRpc(
         }
     }
 
-    /** No redirect, auth cookie only to the exact supplied endpoint. */
+    /**
+     * No redirect, auth cookie only to the exact supplied endpoint.
+     *
+     * The blocking HttpURLConnection runs on a dedicated daemon thread while the caller suspends. When the
+     * caller is cancelled the socket is disconnected and a cancelled flag stops a request that has not been
+     * written yet (it is re-checked after an explicit connect and right before the body is written), and
+     * then [exchange] WAITS, shielded from the cancellation, until the worker thread has really ended,
+     * bounded by the 8 s connect / 15 s read timeouts and, as a last resort, a 25 s ceiling after which the
+     * lock is released anyway (a wedged blocked write, which has no timeout of its own, must not hold an
+     * endpoint forever; in that case the D1 guarantee is lost and the post-call checks are the safety net). A routing-owner bracket therefore never releases the
+     * endpoint lock while this call's I/O is still alive: a cancelled request cannot connect and send after
+     * the next holder has rebound the slot. A stalled read ends promptly (disconnect); a stalled connect is
+     * bounded by the connect timeout because a connect in progress cannot be aborted.
+     *
+     * LIMIT, stated plainly: once the body has been dispatched, cancellation does not undo it. After such a
+     * cancel the lock no longer covers the server-side execution, which may still happen later. The call
+     * surfaces only as CancellationException (never "refused" or "not written"), is uncertain by contract,
+     * and nothing here or in the callers replays it.
+     */
     internal object HttpWire : Wire {
-        override suspend fun exchange(request: Request): Response {
+        private val executor = java.util.concurrent.Executors.newCachedThreadPool { runnable ->
+            Thread(runnable, "chunks-deluge-wire").apply { isDaemon = true }
+        }
+        private val inFlightCount = java.util.concurrent.atomic.AtomicInteger()
+        /** 8 s connect + 15 s read + margin. A blocked body write has no socket timeout of its own. */
+        private const val WORKER_END_BOUND_MS = 25_000L
+
+        /** Worker threads whose I/O has not ended yet (observability for tests). */
+        val inFlight: Int get() = inFlightCount.get()
+
+        private class Call(val request: Request) {
             val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
+            @Volatile var cancelled = false
+            val result = kotlinx.coroutines.CompletableDeferred<Response>()
+            val ended = kotlinx.coroutines.CompletableDeferred<Unit>()
+        }
+
+        override suspend fun exchange(request: Request): Response {
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            val call = Call(request)
+            inFlightCount.incrementAndGet()
+            executor.execute {
+                try {
+                    call.result.complete(blockingExchange(call))
+                } catch (failure: Throwable) {
+                    call.result.completeExceptionally(failure)
+                } finally {
+                    inFlightCount.decrementAndGet()
+                    call.ended.complete(Unit)
+                }
+            }
+            try {
+                return call.result.await()
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                call.cancelled = true
+                call.connection.disconnect()
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    // Bounded: a worker wedged beyond the timeouts must not hold an endpoint lock forever.
+                    kotlinx.coroutines.withTimeoutOrNull(WORKER_END_BOUND_MS) { call.ended.await() }
+                }
+                throw cancel
+            }
+        }
+
+        private fun blockingExchange(call: Call): Response {
+            val connection = call.connection
+            val request = call.request
             connection.connectTimeout = 8_000
             connection.readTimeout = 15_000
             connection.instanceFollowRedirects = false
@@ -280,7 +353,10 @@ internal class DelugeReadOnlyRpc(
             connection.doOutput = true
             connection.setFixedLengthStreamingMode(request.body.size)
             try {
-                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (call.cancelled) throw IOException("Deluge RPC cancelled before dispatch")
+                connection.connect()
+                // A cancel that won while the connect was in progress must never send.
+                if (call.cancelled) throw IOException("Deluge RPC cancelled before dispatch")
                 connection.outputStream.use { it.write(request.body) }
                 val status = connection.responseCode
                 val headers = connection.headerFields.entries
@@ -299,8 +375,6 @@ internal class DelugeReadOnlyRpc(
                         builder.toString()
                     }
                 return Response(status, text, headers)
-            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                throw cancel
             } catch (_: IOException) {
                 throw IOException("Deluge RPC transport failed")
             } finally {
