@@ -146,6 +146,14 @@ internal class DelugeRoutingOwner {
      * daemon, and the call is still bracketed by the post-call bound check, so a write goes to the
      * selected daemon or is reported uncertain, never to another daemon. What is lost is only the
      * refusal an outside round trip would otherwise have earned.
+     *
+     * Investigated against real Deluge 2.1.2 (two deluged behind one deluge-web, #2127): nothing the Web
+     * UI exposes distinguishes the cases. After an outside A->B->A, `web.connected` is true, `web.get_host_status`
+     * for both daemons is identical to a slot never moved, `web.get_hosts` order is static, `auth.check_session`
+     * is session-scoped and unchanged, and `web.get_events` delivers no connection event (all 22 core event
+     * classes registered; none is emitted by a daemon reconnect). A marker would have to be WRITTEN to the
+     * daemon (a config key or label), which a read-only bind must not do. Therefore this stays undetectable
+     * and is not "fixed" by guessing.
      */
     suspend fun mayRebind(host: String, boundStatus: suspend (String) -> Boolean): Boolean {
         val last = lastOwnBind ?: return false

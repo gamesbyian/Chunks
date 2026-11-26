@@ -279,16 +279,17 @@ internal class DelugeReadOnlyRpc(
     /**
      * No redirect, auth cookie only to the exact supplied endpoint.
      *
-     * The blocking HttpURLConnection runs on a dedicated daemon thread while the caller suspends. When the
-     * caller is cancelled the socket is disconnected and a cancelled flag stops a request that has not been
-     * written yet (it is re-checked after an explicit connect and right before the body is written), and
-     * then [exchange] WAITS, shielded from the cancellation, until the worker thread has really ended,
-     * bounded by the 8 s connect / 15 s read timeouts and, as a last resort, a 25 s ceiling after which the
-     * lock is released anyway (a wedged blocked write, which has no timeout of its own, must not hold an
-     * endpoint forever; in that case the D1 guarantee is lost and the post-call checks are the safety net). A routing-owner bracket therefore never releases the
-     * endpoint lock while this call's I/O is still alive: a cancelled request cannot connect and send after
-     * the next holder has rebound the slot. A stalled read ends promptly (disconnect); a stalled connect is
-     * bounded by the connect timeout because a connect in progress cannot be aborted.
+     * Direct (non-proxied) calls run on an own Socket/SSLSocket on a dedicated daemon thread while the
+     * caller suspends. Cancellation and the deadlines CLOSE the real socket, so a blocked write or read ends
+     * at once: cancel is measured in milliseconds, a write that makes no progress for 15 s (HttpURLConnection
+     * has no write timeout) and a call older than 30 s are aborted by a watchdog. A connect in progress is
+     * deliberately not aborted (bounded by the 8 s connect timeout); a cancel that wins during connect never
+     * sends. [exchange] then WAITS, shielded from the cancellation, until the worker really ended, so a
+     * routing-owner bracket never releases the endpoint lock while this call's I/O is alive. TLS uses the
+     * platform default SSLSocketFactory with SNI and endpoint identification "HTTPS"; an https URL is never
+     * spoken in clear and redirects are never followed. Requests through a configured system proxy keep the
+     * previous HttpURLConnection path (the platform proxy logic is not reimplemented); only there the
+     * 25 s ceiling remains, after which the lock is released anyway and the post-call checks are the safety net.
      *
      * LIMIT, stated plainly: once the body has been dispatched, cancellation does not undo it. After such a
      * cancel the lock no longer covers the server-side execution, which may still happen later. The call
@@ -302,27 +303,69 @@ internal class DelugeReadOnlyRpc(
         private val inFlightCount = java.util.concurrent.atomic.AtomicInteger()
         /** 8 s connect + 15 s read + margin. A blocked body write has no socket timeout of its own. */
         private const val WORKER_END_BOUND_MS = 25_000L
+        private const val CONNECT_TIMEOUT_MS = 8_000
+        private const val READ_TIMEOUT_MS = 15_000
+        private const val STALL_MS = 15_000L
+        private const val CALL_DEADLINE_MS = 30_000L
+        private const val WRITE_CHUNK = 16 * 1024
 
         /** Worker threads whose I/O has not ended yet (observability for tests). */
         val inFlight: Int get() = inFlightCount.get()
 
         private class Call(val request: Request) {
-            val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
             @Volatile var cancelled = false
+            @Volatile var expired = false
             val result = kotlinx.coroutines.CompletableDeferred<Response>()
             val ended = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val startedNanos = System.nanoTime()
+            /** Last write/read progress, for the write-stall deadline. */
+            @Volatile var progressNanos = startedNanos
+            private val gate = Any()
+            private var abortable = false
+            private var closeables: List<java.io.Closeable> = emptyList()
+            /** Set only on the legacy (proxied) path. */
+            @Volatile var legacy: HttpURLConnection? = null
+
+            /** From here on [abort] may close the sockets; a connect in progress is never aborted. */
+            fun armAbort(vararg sockets: java.io.Closeable) {
+                synchronized(gate) {
+                    closeables = sockets.toList()
+                    abortable = true
+                    if (cancelled || expired) closeables.forEach { runCatching { it.close() } }
+                }
+                if (cancelled || expired) throw IOException("Deluge RPC aborted before dispatch")
+            }
+
+            fun abort(byCancel: Boolean) {
+                if (byCancel) cancelled = true else expired = true
+                synchronized(gate) { if (abortable) closeables.forEach { runCatching { it.close() } } }
+                legacy?.disconnect()
+            }
+
+            fun closeAll() { synchronized(gate) { closeables.forEach { runCatching { it.close() } } } }
+        }
+
+        private val watchdog = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "chunks-deluge-wire-watchdog").apply { isDaemon = true }
         }
 
         override suspend fun exchange(request: Request): Response {
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             val call = Call(request)
             inFlightCount.incrementAndGet()
+            val deadline = watchdog.scheduleWithFixedDelay({
+                val now = System.nanoTime()
+                val total = (now - call.startedNanos) / 1_000_000
+                val stalled = (now - call.progressNanos) / 1_000_000
+                if (total > CALL_DEADLINE_MS || stalled > STALL_MS) call.abort(byCancel = false)
+            }, 250, 250, java.util.concurrent.TimeUnit.MILLISECONDS)
             executor.execute {
                 try {
                     call.result.complete(blockingExchange(call))
                 } catch (failure: Throwable) {
                     call.result.completeExceptionally(failure)
                 } finally {
+                    deadline.cancel(false)
                     inFlightCount.decrementAndGet()
                     call.ended.complete(Unit)
                 }
@@ -330,10 +373,9 @@ internal class DelugeReadOnlyRpc(
             try {
                 return call.result.await()
             } catch (cancel: kotlinx.coroutines.CancellationException) {
-                call.cancelled = true
-                call.connection.disconnect()
+                call.abort(byCancel = true)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
-                    // Bounded: a worker wedged beyond the timeouts must not hold an endpoint lock forever.
+                    // Bounded: only an uninterruptible connect/DNS can outlive the abort, and the connect is timed.
                     kotlinx.coroutines.withTimeoutOrNull(WORKER_END_BOUND_MS) { call.ended.await() }
                 }
                 throw cancel
@@ -341,7 +383,195 @@ internal class DelugeReadOnlyRpc(
         }
 
         private fun blockingExchange(call: Call): Response {
-            val connection = call.connection
+            val uri = call.request.endpoint
+            val viaProxy = runCatching {
+                java.net.ProxySelector.getDefault()?.select(uri).orEmpty().any { it.type() != java.net.Proxy.Type.DIRECT }
+            }.getOrDefault(true)
+            return if (viaProxy) legacyExchange(call) else socketExchange(call)
+        }
+
+        /**
+         * Direct (non-proxied) path on an own Socket/SSLSocket so that cancellation and deadlines close the
+         * real socket: a blocked write or read ends at once, there is a write-stall timeout and a total-call
+         * deadline. TLS: platform default SSLSocketFactory, SNI from the host, platform trust manager and
+         * endpoint identification "HTTPS" (certificate must match the exact URL host). No redirect, no
+         * downgrade (an https endpoint is never spoken in clear), HTTP/1.1 with Connection: close.
+         */
+        private fun socketExchange(call: Call): Response {
+            val request = call.request
+            val uri = request.endpoint
+            val tls = uri.scheme.equals("https", true)
+            val host = uri.host.removePrefix("[").removeSuffix("]")
+            val port = if (uri.port >= 0) uri.port else if (tls) 443 else 80
+            var plain: java.net.Socket? = null
+            var secure: javax.net.ssl.SSLSocket? = null
+            try {
+                if (call.cancelled) throw IOException("Deluge RPC cancelled before dispatch")
+                val addresses = java.net.InetAddress.getAllByName(host)
+                var last: IOException? = null
+                for (address in addresses) {
+                    if (call.cancelled) throw IOException("Deluge RPC cancelled before dispatch")
+                    val candidate = java.net.Socket()
+                    try {
+                        candidate.tcpNoDelay = true
+                        candidate.connect(java.net.InetSocketAddress(address, port), CONNECT_TIMEOUT_MS)
+                        plain = candidate
+                        break
+                    } catch (failure: IOException) {
+                        runCatching { candidate.close() }
+                        last = failure
+                    }
+                }
+                val socket = plain ?: throw (last ?: IOException("no address"))
+                socket.soTimeout = READ_TIMEOUT_MS
+                // A cancel that won while the connect was in progress must never send.
+                call.armAbort(socket)
+                var closeable: java.net.Socket = socket
+                if (tls) {
+                    val layered = (javax.net.ssl.SSLSocketFactory.getDefault() as javax.net.ssl.SSLSocketFactory)
+                        .createSocket(socket, host, port, true) as javax.net.ssl.SSLSocket
+                    secure = layered
+                    closeable = layered
+                    val parameters = layered.sslParameters
+                    parameters.endpointIdentificationAlgorithm = "HTTPS"
+                    layered.sslParameters = parameters
+                    call.armAbort(layered)
+                    layered.startHandshake()
+                    call.progressNanos = System.nanoTime()
+                }
+                val hostHeader = (if (host.contains(':')) "[$host]" else host) +
+                    (if (uri.port >= 0) ":${uri.port}" else "")
+                val target = uri.rawPath.orEmpty().ifEmpty { "/" }
+                val head = StringBuilder()
+                    .append("POST ").append(target).append(" HTTP/1.1\r\n")
+                    .append("Host: ").append(hostHeader).append("\r\n")
+                    .append("Content-Type: application/json\r\n")
+                    .append("Accept: application/json\r\n")
+                    .append("Accept-Encoding: identity\r\n")
+                    .append("Connection: close\r\n")
+                    .append("Content-Length: ").append(request.body.size).append("\r\n")
+                request.sessionCookie?.let {
+                    require(it.none { c -> c == '\r' || c == '\n' }) { "bad cookie" }
+                    head.append("Cookie: ").append(it).append("\r\n")
+                }
+                head.append("\r\n")
+                if (call.cancelled) throw IOException("Deluge RPC cancelled before dispatch")
+                val out = closeable.getOutputStream()
+                out.write(head.toString().toByteArray(Charsets.ISO_8859_1))
+                var offset = 0
+                while (offset < request.body.size) {
+                    if (call.cancelled || call.expired) throw IOException("Deluge RPC aborted")
+                    val n = minOf(WRITE_CHUNK, request.body.size - offset)
+                    out.write(request.body, offset, n)
+                    offset += n
+                    call.progressNanos = System.nanoTime()
+                }
+                out.flush()
+                return readResponse(closeable.getInputStream(), call)
+            } catch (_: IOException) {
+                throw IOException("Deluge RPC transport failed")
+            } finally {
+                call.closeAll()
+                runCatching { secure?.close() }
+                runCatching { plain?.close() }
+            }
+        }
+
+        private fun readLine(input: java.io.InputStream, limit: Int): String {
+            val line = java.io.ByteArrayOutputStream()
+            while (true) {
+                val b = input.read()
+                if (b < 0) throw IOException("eof in header")
+                if (b == '\n'.code) break
+                if (b != '\r'.code) line.write(b)
+                if (line.size() > limit) throw IOException("header line too long")
+            }
+            return line.toString(Charsets.ISO_8859_1.name())
+        }
+
+        private fun readResponse(input: java.io.InputStream, call: Call): Response {
+            var status: Int
+            var headerBytes = 0
+            val headers = LinkedHashMap<String, MutableList<String>>()
+            var contentLength = -1L
+            var chunked = false
+            while (true) {
+                val statusLine = readLine(input, 8192)
+                val parts = statusLine.split(' ', limit = 3)
+                if (parts.size < 2 || !parts[0].startsWith("HTTP/1.")) throw IOException("bad status line")
+                status = parts[1].toIntOrNull() ?: throw IOException("bad status")
+                headers.clear(); contentLength = -1; chunked = false
+                while (true) {
+                    val line = readLine(input, 8192)
+                    if (line.isEmpty()) break
+                    headerBytes += line.length
+                    if (headerBytes > 65_536) throw IOException("headers too large")
+                    val colon = line.indexOf(':')
+                    if (colon <= 0) throw IOException("bad header")
+                    val name = line.substring(0, colon).trim()
+                    val value = line.substring(colon + 1).trim()
+                    when {
+                        name.equals("Set-Cookie", true) -> headers.getOrPut(name) { mutableListOf() }.add(value)
+                        name.equals("Content-Length", true) ->
+                            contentLength = value.toLongOrNull()?.takeIf { it >= 0 } ?: throw IOException("bad length")
+                        name.equals("Transfer-Encoding", true) ->
+                            if (value.equals("chunked", true)) chunked = true else throw IOException("unsupported encoding")
+                        name.equals("Content-Encoding", true) ->
+                            if (!value.equals("identity", true)) throw IOException("unsupported content encoding")
+                    }
+                }
+                if (status != 100) break
+            }
+            call.progressNanos = System.nanoTime()
+            if (status !in 200..299) return Response(status, "", headers)
+            val body = java.io.ByteArrayOutputStream()
+            fun take(count: Int) {
+                val buffer = ByteArray(minOf(count, 8192))
+                var left = count
+                while (left > 0) {
+                    val n = input.read(buffer, 0, minOf(left, buffer.size))
+                    if (n < 0) throw IOException("truncated body")
+                    body.write(buffer, 0, n); left -= n
+                    if (body.size() > MAX_BODY) throw IOException("Deluge reply too large")
+                    call.progressNanos = System.nanoTime()
+                }
+            }
+            when {
+                chunked -> while (true) {
+                    val size = readLine(input, 64).substringBefore(';').trim().toIntOrNull(16)
+                        ?.takeIf { it >= 0 } ?: throw IOException("bad chunk")
+                    if (size == 0) break
+                    if (size > MAX_BODY) throw IOException("Deluge reply too large")
+                    take(size)
+                    if (readLine(input, 8).isNotEmpty()) throw IOException("bad chunk end")
+                }
+                contentLength >= 0 -> {
+                    if (contentLength > MAX_BODY) throw IOException("Deluge reply too large")
+                    take(contentLength.toInt())
+                }
+                else -> {
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val n = input.read(buffer)
+                        if (n < 0) break
+                        body.write(buffer, 0, n)
+                        if (body.size() > MAX_BODY) throw IOException("Deluge reply too large")
+                        call.progressNanos = System.nanoTime()
+                    }
+                }
+            }
+            return Response(status, body.toString(Charsets.UTF_8.name()), headers)
+        }
+
+        /** Proxied path (the platform proxy logic is not reimplemented): HttpURLConnection, 25 s ceiling. */
+        private fun legacyExchange(call: Call): Response {
+            val connection = call.request.endpoint.toURL().openConnection() as HttpURLConnection
+            call.legacy = connection
+            if (call.cancelled) throw IOException("Deluge RPC cancelled before dispatch")
+            return legacyBlocking(call, connection)
+        }
+
+        private fun legacyBlocking(call: Call, connection: HttpURLConnection): Response {
             val request = call.request
             connection.connectTimeout = 8_000
             connection.readTimeout = 15_000
