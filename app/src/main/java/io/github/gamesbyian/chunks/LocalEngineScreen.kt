@@ -539,10 +539,22 @@ internal fun LocalEngineScreen(
     LaunchedEffect(pending?.preview?.infoHashV1) {
         if (pending != null) addExpanded = true
     }
-    LaunchedEffect(initialMagnet, busy, localAddAttemptSession?.attemptedTicket) {
+    LaunchedEffect(initialMagnet, busy, localAddAttemptSession?.attemptedTicket, sourceReading, initialTorrentUri) {
         if (busy || localAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
-        if (initialMagnet != null && reviewableLocalExternalText(initialMagnet)) {
-            selectTextSource(initialMagnet)
+        val handoff = initialMagnet ?: return@LaunchedEffect
+        // Exactly one outcome per handoff, so it can never wait unseen or replay later.
+        // An existing typed or reviewed source is the person's work: never replace it.
+        val occupied = (magnet.isNotBlank() && magnet != handoff) || pending != null ||
+            sourceReading || initialTorrentUri != null
+        if (occupied) {
+            message = "A source is already being reviewed here, so the server job's link was " +
+                "not copied. Finish or clear this source, then copy it again."
+            onPrefillConsumed()
+        } else if (!reviewableLocalExternalText(handoff)) {
+            message = "The server job's link could not be reviewed here. Nothing was added."
+            onPrefillConsumed()
+        } else {
+            selectTextSource(handoff)
             addExpanded = true
             onPrefillConsumed()
         }

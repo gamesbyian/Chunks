@@ -554,7 +554,8 @@ internal fun ChunksApp(
     // as a URI. A selected remote receives only locally validated metainfo bytes.
     val sharedTorrentReading = incomingDocumentRead != null
     var sharedTorrentError by retainedAddOwner.sharedTorrentError
-    var localHandoffMagnet by remember { mutableStateOf<String?>(null) }
+    // A server job's magnet waiting for the Local review: retained, single-claim, never an overwrite.
+    val localHandoff = retainedAddOwner.handoff.staged
     // A transfer opened from All environments: searched once on the local device list.
     var localSearchPrefill by remember { mutableStateOf<String?>(null) }
     // A local transfer's exported .torrent waiting for the server Add review.
@@ -691,10 +692,8 @@ internal fun ChunksApp(
     }
     // Process memory only: an exact verified hash, its account and the view
     // in force at Add. It never selects, expands or commands a transfer.
-    var remoteAdded by remember { mutableStateOf<RemoteAddedRecord?>(null) }
     // The most recent acknowledged Add from the local device or a server, for Combined.
     // A server key is re-checked against the current account when it is used.
-    var latestAdded by remember { mutableStateOf<io.github.gamesbyian.chunks.model.UnifiedTransferKey?>(null) }
     fun setRemoteQuery(value: String) {
         query = value
         remoteContinuity.rememberQuery(aliasScope, value)
@@ -843,8 +842,36 @@ internal fun ChunksApp(
         if (document != null) readSharedDocument(document)
         else if (text != null) {
             magnet = text
-            localHandoffMagnet = null
+            retainedAddOwner.handoff.drop()
             remoteAddSessions.selectMagnet(aliasScope)
+        }
+    }
+
+    // A server job's magnet is delivered to the Local review exactly once, never
+    // replayed after the person leaves it, and never outlives its server session
+    // or a privacy lock. The Local review itself refuses to replace an occupied source.
+    LaunchedEffect(server, aliasScope) {
+        retainedAddOwner.handoff.dropIfSessionChanged(server, aliasScope)
+        if (server == null) retainedAddOwner.postAdd.clearRemote()
+    }
+    LaunchedEffect(TransferPrivacyRuntime.lifecycleRevision, TransferPrivacyPolicyStore.revision) {
+        // Follow the privacy gate itself, not foreground/background counts: a rotation inside
+        // an unlocked window keeps the handoff and the focus; a lock or expiry revokes them.
+        val mayAct = { scope: String ->
+            RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(scope)
+                ?.let { TransferPrivacyRuntime.session.mayAct(it) } == true
+        }
+        retainedAddOwner.handoff.revokeIfLocked(mayAct)
+        retainedAddOwner.postAdd.revokeIfLocked(mayAct)
+    }
+    // The Local review is composed for Local, for Options, and for Add with Local selected.
+    val localReviewVisible = section == Section.LOCAL || section == Section.OPTIONS ||
+        (section == Section.ADD_CHOOSE && addDestination == UniversalAddRouteTarget.Local)
+    LaunchedEffect(localHandoff, localReviewVisible) {
+        if (retainedAddOwner.handoff.arbitrate(localReviewVisible) ==
+            AddHandoffState.Arbitration.NAVIGATE_TO_LOCAL) {
+            localFromCombined = false
+            section = Section.LOCAL
         }
     }
 
@@ -874,7 +901,7 @@ internal fun ChunksApp(
                     } else {
                         pendingSharedMagnet = null
                         magnet = sharedMagnet
-                        localHandoffMagnet = null
+                        retainedAddOwner.handoff.drop()
                         remoteAddSessions.selectMagnet(aliasScope)
                     }
                 }
@@ -1459,10 +1486,10 @@ internal fun ChunksApp(
                 onRemoteOrganize = if (localRemoteScope != null) ({ section = Section.ORGANIZE }) else null,
                 onRemoteNames = if (localRemoteScope != null) ({ section = Section.NAMES }) else null,
                 onRemoteSnapshot = if (localRemoteScope != null) ({ section = Section.SNAPSHOT }) else null,
-                initialMagnet = localHandoffMagnet,
+                initialMagnet = localHandoff?.magnet,
                 initialSearch = localSearchPrefill,
                 onSearchConsumed = { localSearchPrefill = null },
-                onAcknowledgedAdd = { hash -> latestAdded = localAddedKey(hash) },
+                onAcknowledgedAdd = { hash -> retainedAddOwner.postAdd.rememberLocal(localAddedKey(hash)) },
                 onViewAddTransfer = { hash ->
                     viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, hash)
                 },
@@ -1480,7 +1507,7 @@ internal fun ChunksApp(
                     else LocalMoveServer(aliasScope) { hash ->
                         TransferMoveObservations.server(connectedRemote, hash)
                     },
-                onPrefillConsumed = { localHandoffMagnet = null },
+                onPrefillConsumed = { retainedAddOwner.handoff.claim(localHandoff) },
                 onPrepareRemote = { draft ->
                     prepareRemoteMagnet(draft)
                     if (connectedRemote == null) section = Section.TRANSFERS
@@ -1592,9 +1619,8 @@ internal fun ChunksApp(
                 onComplete = refresh,
                 onVerifiedAdd = { hash ->
                     if (server === connectedRemote) {
-                        remoteAdded = RemoteAddedRecord(
-                            aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name))
-                        latestAdded = remoteAdded?.combinedKey(aliasScope)
+                        retainedAddOwner.postAdd.rememberRemote(connectedRemote, RemoteAddedRecord(
+                            aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name)))
                     }
                 },
                 onViewVerifiedTransfer = { hash ->
@@ -1870,10 +1896,7 @@ internal fun ChunksApp(
                 onManualSearchEdited = addTransferSearch::clear,
                 savedListingsState = combinedSavedListings,
                 // Only this session's positively verified Add on the current account.
-                recentlyAddedTransfer = latestAdded?.takeIf { key ->
-                    key.environment == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL ||
-                        (server != null && remoteAdded?.combinedKey(aliasScope) == key)
-                },
+                recentlyAddedTransfer = retainedAddOwner.postAdd.latestFor(server, aliasScope),
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
@@ -1936,7 +1959,7 @@ internal fun ChunksApp(
                         readSharedDocument(selectedDocument)
                     } else if (selectedDocument == null) {
                         pendingSharedMagnet?.let { source ->
-                            localHandoffMagnet = source
+                            retainedAddOwner.handoff.stage(source)
                             pendingSharedMagnet = null
                         }
                     }
@@ -2783,7 +2806,7 @@ internal fun ChunksApp(
                     }?.label?.takeIf { it.isNotBlank() } ?: "rTorrent",
                     snapshotRevision = snapshotRevision,
                     progressObservedAt = transfersObservedAt,
-                    addedRecord = remoteAdded,
+                    addedRecord = retainedAddOwner.postAdd.remoteFor(server, aliasScope),
                     query = query, onQuery = { setRemoteQuery(it) },
                     filter = filter, onFilter = { next ->
                         filter = next
@@ -2816,25 +2839,36 @@ internal fun ChunksApp(
                     onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                     onPrepareLocal = { source ->
                         val prepared = TorrentIdentityHandoff.prepare(source.hash, source.name)
-                        if (prepared != null) scope.launch {
-                            // Public trackers let the local device find peers even before the
-                            // server finishes. Private torrents: identity only, and their
-                            // passkey-bearing tracker URLs are never read.
-                            val trackers = try {
-                                (connectedRemote.readPublicTrackers(source.hash)
-                                    as? RTorrentRemote.PublicTrackers.Urls)?.urls.orEmpty()
-                            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                throw cancel
-                            } catch (_: Exception) { emptyList() }
-                            if (server === connectedRemote) {
-                                localHandoffMagnet = PublicTrackerHandoff.withTrackers(prepared, trackers)
-                                localFromCombined = false
-                                section = Section.LOCAL
+                        if (prepared != null) {
+                            // The lookup belongs to the app-owned scope and the exact live session,
+                            // not this composition: a configuration change keeps it, and
+                            // disconnect, forget, privacy lock or a different account retires it.
+                            retainedAddOwner.handoff.prepare(
+                                scope = retainedAddOwner.addAttemptScope,
+                                stamp = RemoteSessionStamp(connectedRemote, aliasScope),
+                                currentSession = { remoteSession.server.value to remoteSession.aliasScope.value },
+                                mayAct = { scope ->
+                                    RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(scope)
+                                        ?.let { TransferPrivacyRuntime.session.mayAct(it) } == true
+                                }
+                            ) {
+                                // Public trackers let the local device find peers even before the
+                                // server finishes. Private torrents: identity only, and their
+                                // passkey-bearing tracker URLs are never read. A failed lookup
+                                // still hands off the identity.
+                                val trackers = try {
+                                    (connectedRemote.readPublicTrackers(source.hash)
+                                        as? RTorrentRemote.PublicTrackers.Urls)?.urls.orEmpty()
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) { emptyList() }
+                                PublicTrackerHandoff.withTrackers(prepared, trackers)
                             }
                         }
                     },
                     onCopyToLocal = { magnet ->
-                        localHandoffMagnet = magnet
+                        retainedAddOwner.handoff.stage(
+                            magnet, RemoteSessionStamp(connectedRemote, aliasScope))
                         localFromCombined = false
                         section = Section.LOCAL
                     },

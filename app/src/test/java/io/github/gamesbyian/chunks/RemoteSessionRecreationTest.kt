@@ -68,8 +68,11 @@ class RemoteSessionRecreationTest {
 
     @After fun stopFixture() = fixture.stop(0)
 
-    private fun connect(restoration: StateRestorationTester, session: RemoteSessionOwner) {
-        val owner = LocalAddAttemptOwner()
+    private fun connect(
+        restoration: StateRestorationTester,
+        session: RemoteSessionOwner,
+        owner: LocalAddAttemptOwner = LocalAddAttemptOwner()
+    ) {
         restoration.setContent { ChunksTheme { ChunksApp(owner, session) } }
         rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
         rule.openConnectionFormIfNeeded(allowConnected = false)
@@ -97,6 +100,54 @@ class RemoteSessionRecreationTest {
         assertEquals(scope, session.aliasScope.value)
         assertEquals("no reconnect after recreation", connects, requests.count { it == "system.client_version" })
         rule.onNodeWithText("Finding secure rTorrent…").assertDoesNotExist()
+    }
+
+    @Test fun postAddFocusAndServerHandoffSurviveRotationInsideAnUnlockedWindow() {
+        val session = RemoteSessionOwner()
+        val owner = LocalAddAttemptOwner()
+        val restoration = StateRestorationTester(rule)
+        connect(restoration, session, owner)
+        val remote = requireNotNull(session.server.value)
+        val scope = session.aliasScope.value
+        val hash = "e".repeat(40)
+        val record = RemoteAddedRecord(scope, hash, "main|ALL")
+        rule.runOnIdle {
+            owner.postAdd.rememberRemote(remote, record)
+            owner.handoff.stage("magnet:?xt=urn:btih:$hash", RemoteSessionStamp(remote, scope))
+        }
+        // A real rotation also stops and restarts the Activity.
+        rule.runOnIdle {
+            io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime.onBackground()
+            io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime.onForeground()
+        }
+        restoration.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        assertEquals(record, owner.postAdd.remoteFor(session.server.value, session.aliasScope.value))
+        assertNotNull("the focused key is shown for this exact session",
+            owner.postAdd.latestFor(session.server.value, session.aliasScope.value))
+    }
+
+    @Test fun disconnectingClearsPostAddFocusAndTheServerHandoff() {
+        val session = RemoteSessionOwner()
+        val owner = LocalAddAttemptOwner()
+        val restoration = StateRestorationTester(rule)
+        connect(restoration, session, owner)
+        val remote = requireNotNull(session.server.value)
+        val scope = session.aliasScope.value
+        val hash = "e".repeat(40)
+        rule.runOnIdle {
+            owner.postAdd.rememberRemote(remote, RemoteAddedRecord(scope, hash, "main|ALL"))
+            owner.handoff.stage("magnet:?xt=urn:btih:$hash", RemoteSessionStamp(remote, scope))
+            // What Disconnect, Forget-then-disconnect and a profile switch all do to the owner.
+            session.server.value = null
+            session.aliasScope.value = ""
+        }
+        // A state change made outside a frame needs one frame to recompose here.
+        rule.mainClock.advanceTimeByFrame()
+        rule.waitForIdle()
+        rule.waitUntil(15_000) { owner.postAdd.remote == null }
+        rule.waitUntil(15_000) { owner.handoff.staged == null }
+        assertEquals(null, owner.postAdd.latestFor(remote, scope))
     }
 
     @Test fun uncertainWriteStaysLatchedAcrossRecreationUntilOneFreshRead() {

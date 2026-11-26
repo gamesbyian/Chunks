@@ -40,6 +40,10 @@ internal class LocalAddAttemptOwner : ViewModel() {
     var serverHandoff by mutableStateOf<PreparedRemoteTorrent?>(null)
         private set
     val remoteSessions = RemoteAddSessions()
+    /** The server-job magnet waiting for the Local Add review (RAM only; A2611-02). */
+    val handoff = AddHandoffState()
+    /** The last verified Add and the exact session it belongs to (RAM only). */
+    val postAdd = PostAddFocus()
     // One Transmission/qBittorrent/Deluge Add attempt; RAM only, never persisted.
     val protocolAttempt = ProtocolAddAttempt()
     // One process-only delivery slot. Identical shares are still distinct events.
