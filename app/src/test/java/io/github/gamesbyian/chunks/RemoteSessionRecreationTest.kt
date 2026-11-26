@@ -238,6 +238,7 @@ class RemoteSessionRecreationTest {
         holdNextRead = release
         readHeld = held
         val reads = requests.count { it == "d.multicall2" }
+        val revision = session.snapshotRevision.longValue
         // A write is dispatched; an unrelated read then starts and is held.
         rule.runOnIdle {
             assertTrue(gate.tryStart())
@@ -267,6 +268,30 @@ class RemoteSessionRecreationTest {
         assertEquals("the pre-settle read plus exactly one queued fresh read",
             reads + 2, requests.count { it == "d.multicall2" })
         assertFalse(session.stale.value)
+        assertEquals("only the fresh read replaced the queue; the pre-settle response was refused",
+            revision + 1, session.snapshotRevision.longValue)
+    }
+
+    /** Invariant control `inventory-ignores-session-identity`: a response never lands on another session. */
+    @Test fun aReadFinishingAfterTheSessionWasReplacedNeverReplacesTheQueue() {
+        val session = RemoteSessionOwner()
+        val restoration = StateRestorationTester(rule)
+        connect(restoration, session)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val held = java.util.concurrent.CountDownLatch(1)
+        holdNextRead = release
+        readHeld = held
+        val revision = session.snapshotRevision.longValue
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        assertTrue("a read is in flight", held.await(15, java.util.concurrent.TimeUnit.SECONDS))
+        // The session ends (disconnect, forget, profile switch) while the read is in flight.
+        rule.runOnIdle { session.server.value = null; session.aliasScope.value = "" }
+        release.countDown()
+        Thread.sleep(500)
+        rule.mainClock.advanceTimeByFrame()
+        rule.waitForIdle()
+        assertEquals("the late response of the old session replaced nothing",
+            revision, session.snapshotRevision.longValue)
     }
 
     @Test fun aReadCancelledByRecreationNeverMarksTheRetainedSessionStale() {

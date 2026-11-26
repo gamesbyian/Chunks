@@ -1,0 +1,73 @@
+{
+  "schema": "chunks.invariant-controls.v1",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. A control with known_gap is expected to SURVIVE until its witness exists.",
+  "controls": [
+    {
+      "id": "readback-gate-accepts-any-read",
+      "invariant": "A read that began before an uncertain write settled cannot clear the readback latch",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteInventoryReader.kt",
+      "old": "gate.acceptFreshRead(readbackTicket)",
+      "new": "(gate.acceptFreshRead(readbackTicket) || true)",
+      "tests": [
+        "*RemoteSessionRecreationTest",
+        "*RemoteMutationReadbackGate*"
+      ]
+    },
+    {
+      "id": "inventory-ignores-session-identity",
+      "invariant": "A response counts only for the live session object",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteInventoryReader.kt",
+      "old": "if (host.currentServer === remote && fence.current(ticket) &&\n                gate.acceptFreshRead(readbackTicket)) {",
+      "new": "if (fence.current(ticket) &&\n                gate.acceptFreshRead(readbackTicket)) {",
+      "tests": [
+        "*RemoteSessionRecreationTest",
+        "*RemoteUiRequestFenceTest",
+        "*ConnectAdvancedPathTest"
+      ]
+    },
+    {
+      "id": "handoff-replaces-typed-source",
+      "invariant": "A server-job handoff never replaces an existing typed source",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+      "old": "val occupied = (magnet.isNotBlank() && magnet != handoff) || pending != null ||",
+      "new": "val occupied = false && (magnet.isNotBlank() && magnet != handoff) || pending != null ||",
+      "tests": [
+        "*AddHandoffRecreationTest"
+      ]
+    },
+    {
+      "id": "post-add-focus-ignores-session",
+      "invariant": "A verified server Add is shown only for its own live session",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddHandoffState.kt",
+      "old": "currentSession != null && currentSession === remoteSession &&",
+      "new": "currentSession != null &&",
+      "tests": [
+        "*AddHandoffStateTest"
+      ]
+    },
+    {
+      "id": "handoff-survives-session-end",
+      "invariant": "A server-origin handoff never outlives its session",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddHandoffState.kt",
+      "old": "(waiting != null && !waiting.matches(currentSession, currentAliasScope))) drop()",
+      "new": "false) drop()",
+      "tests": [
+        "*AddHandoffStateTest",
+        "*RemoteSessionRecreationTest"
+      ]
+    },
+    {
+      "id": "policy-loop-ignores-owner-currency",
+      "invariant": "A policy tick acts only while its owner (session, credential generation, privacy) is current",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemotePolicyLoop.kt",
+      "old": "RemoteCredentialLock.current(generation) &&",
+      "new": "",
+      "tests": [
+        "*RemoteSeedingTickTest",
+        "*RemoteSessionRecreationTest",
+        "*RemoteSeedingControllerTest"
+      ],
+      "known_gap": "Survived on 2026-11-26: no JVM test changes the credential generation while a policy tick is in flight. Tracked in a follow-up issue; do not delete this control."
+    }
+  ]
+}
