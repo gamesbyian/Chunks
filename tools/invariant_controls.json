@@ -253,6 +253,51 @@
         "*RemoteUniversalAddAdapterTest",
         "*RemoteAddStarterTest"
       ]
+    },
+    {
+      "id": "resume-write-after-removal",
+      "invariant": "A late save-resume alert cannot resurrect a removed torrent (write only while the originating handle is current)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeWriteFence.kt",
+      "old": "if (handles[key] != originatingHandle) false",
+      "new": "if (false) false",
+      "tests": [
+        "*LocalResumeWriteFence*",
+        "*LocalTorrentEngineTest"
+      ]
+    },
+    {
+      "id": "restart-guard-accepts-bad-verification",
+      "invariant": "A checked restart refuses missing or inconsistent per-file verification state",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedRestartGuard.kt",
+      "old": "verifiedFileBytes.size != nativePaths.size || maxPaths <= 0 ||",
+      "new": "maxPaths <= 0 ||",
+      "tests": [
+        "*LocalCheckedRestartGuard*",
+        "*LocalCheckedAddCollisionNativeTest",
+        "*LocalTorrentEngineTest"
+      ]
+    },
+    {
+      "id": "connect-allows-http-downgrade",
+      "invariant": "A remote address must be HTTPS (plain HTTP only on loopback)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteSmartConnect.kt",
+      "old": "(uri.scheme.equals(\"http\", true) &&\n                uri.host in setOf(\"localhost\", \"127.0.0.1\", \"[::1]\"))) {",
+      "new": "uri.scheme.equals(\"http\", true)) {",
+      "tests": [
+        "*RemoteSmartConnectSafetyTest",
+        "*RemoteSmartConnectTest"
+      ]
+    },
+    {
+      "id": "connect-allows-embedded-credentials",
+      "invariant": "An address with embedded credentials, query or fragment is refused",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteSmartConnect.kt",
+      "old": "uri.rawUserInfo == null &&\n            uri.rawQuery == null",
+      "new": "true &&\n            uri.rawQuery == null",
+      "tests": [
+        "*RemoteSmartConnectSafetyTest",
+        "*RemoteSmartConnectTest"
+      ]
     }
   ]
 }
