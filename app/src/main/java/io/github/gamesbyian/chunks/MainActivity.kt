@@ -1000,53 +1000,41 @@ internal fun ChunksApp(
             } else {
                 loading = true
                 scope.launch {
-                    var again: Boolean
-                    do {
-                        val ticket = remoteFence.begin(requestedView)
-                        val readbackTicket = mutationGate.ticket()
-                        if (server === remote) error = null
-                        try {
-                            val snapshot = remote.listTransfersWithMetadata(ticket.view)
-                            if (server === remote && remoteFence.current(ticket) &&
-                                mutationGate.acceptFreshRead(readbackTicket)) {
-                                transfers = snapshot
-                                transfersObservedAt = System.currentTimeMillis()
-                                snapshotRevision++
-                                currentView = ticket.view
-                                stale = false
-                                // Previous file inspections belong to the OLD
-                                // snapshot and must not arrive after this one.
-                                inspectionFence.invalidate()
-                                expandedHash = null
-                                files = null
-                                filesError = null
-                                filesLoading = false
-                            } else if (server === remote && remoteFence.current(ticket)) {
-                                // A response from before/during an uncertain write
-                                // cannot clear its safety latch or replace the queue.
-                                stale = true
-                            }
-                        } catch (cancel: CancellationException) {
-                            // Recreation cancels this composition's read. The
-                            // session (and its stale flag) is retained, so a
-                            // cancelled read must not mark it stale after the
-                            // live composition has already checked it (A2611-02).
-                            throw cancel
-                        } catch (failure: Exception) {
-                            if (server === remote && remoteFence.current(ticket)) {
-                                stale = true
-                                error = readableFailure(failure)
-                                loginRefusedError = if (isLoginRefused(failure)) error else null
-                            }
+                    // The read loop lives in RemoteInventoryReader.kt; this host is current state.
+                    val host = object : RemoteInventoryHost {
+                        override val currentServer get() = server
+                        override val viewToRead get() = requestedView
+                        override var isLoading: Boolean
+                            get() = loading
+                            set(value) { loading = value }
+                        override fun clearError() { error = null }
+                        override fun accept(snapshot: List<io.github.gamesbyian.chunks.rpc.RemoteTransfer>, view: String) {
+                            transfers = snapshot
+                            transfersObservedAt = System.currentTimeMillis()
+                            snapshotRevision++
+                            currentView = view
+                            stale = false
+                            // Previous file inspections belong to the OLD
+                            // snapshot and must not arrive after this one.
+                            inspectionFence.invalidate()
+                            expandedHash = null
+                            files = null
+                            filesError = null
+                            filesLoading = false
                         }
-                        again = server === remote && remoteFence.current(ticket) &&
-                            remoteFence.consumeQueuedRefresh()
-                    } while (again)
-                    if (server === remote) loading = false
+                        override fun markStale() { stale = true }
+                        override fun failed(failure: Exception) {
+                            stale = true
+                            error = readableFailure(failure)
+                            loginRefusedError = if (isLoginRefused(failure)) error else null
+                        }
+                    }
+                    readRemoteInventory(host, remote, remoteFence, mutationGate)
                 }
             }
         }
     }
+
     // A2611-02: a composition attaching to a retained stale session, or a
     // mutation settled through a disposed composition's refresh (whose
     // coroutine scope is gone), still gets a fresh read. A request already
