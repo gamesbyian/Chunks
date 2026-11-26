@@ -49,13 +49,15 @@ internal suspend fun runRemotePolicyLoop(
     host: RemotePolicyHost,
     connectedRemote: RTorrentRemote,
     expectedScope: String,
-    privacyScope: String
+    privacyScope: String,
+    /** The tick period; tests shorten it. */
+    tickMillis: Long = 30_000L
 ): Nothing {
     val privacyStore = TransferPrivacyPolicyStore(context)
     val store = FinishInOrderStore(context, expectedScope)
     val parentJob = currentCoroutineContext()[Job]
     while (true) {
-        delay(30_000L)
+        delay(tickMillis)
         if (!host.mayRun()) continue
         val generation = RemoteCredentialLock.capture()
         val lifecycle = TransferPrivacyRuntime.lifecycleRevision

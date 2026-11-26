@@ -1,6 +1,6 @@
 {
   "schema": "chunks.invariant-controls.v1",
-  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. A control with known_gap is expected to SURVIVE until its witness exists.",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file.",
   "controls": [
     {
       "id": "readback-gate-accepts-any-read",
@@ -63,11 +63,9 @@
       "old": "RemoteCredentialLock.current(generation) &&",
       "new": "",
       "tests": [
-        "*RemoteSeedingTickTest",
-        "*RemoteSessionRecreationTest",
-        "*RemoteSeedingControllerTest"
-      ],
-      "known_gap": "Survived on 2026-11-26: no JVM test changes the credential generation while a policy tick is in flight. Tracked in a follow-up issue; do not delete this control."
+        "*RemotePolicyLoopTest",
+        "*RemoteSeedingTickTest"
+      ]
     },
     {
       "id": "add-readback-accepts-other-hash",
