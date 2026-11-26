@@ -1070,6 +1070,42 @@
         "*LocalUniversalAddScreenGateTest",
         "*LocalUniversalAddRealEngineTest"
       ]
+    },
+    {
+      "id": "local-delete-data-without-metadata",
+      "invariant": "Local Remove-with-data is unavailable while the file mapping is unknown (no metadata)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+      "old": "val dataRemovable = shown.metadataKnown && shown.infoHash.length == 40",
+      "new": "val dataRemovable = shown.infoHash.length == 40",
+      "tests": [
+        "*LocalDetailsOperationsTest",
+        "*LocalDetailsOperationsLargeTextTest",
+        "*LocalDetails*"
+      ]
+    },
+    {
+      "id": "local-delete-data-v2-hash",
+      "invariant": "Local Remove-with-data is unavailable for a non-v1 identity",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+      "old": "val dataRemovable = shown.metadataKnown && shown.infoHash.length == 40",
+      "new": "val dataRemovable = shown.metadataKnown",
+      "tests": [
+        "*LocalDetailsOperationsTest",
+        "*LocalDetailsOperationsLargeTextTest",
+        "*LocalDetails*"
+      ]
+    },
+    {
+      "id": "local-remove-skips-review",
+      "invariant": "Local Remove acts only on the reviewed exact identity (name, path, token)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalDetailsOperations.kt",
+      "old": "port.removeKeepingDataIfMatching(shown.infoHash, shown.name, shown.savePath, shown.nativeReviewToken)",
+      "new": "port.removeKeepingDataIfMatching(shown.infoHash, shown.name, shown.savePath, \"\")",
+      "tests": [
+        "*LocalDetailsOperationsTest",
+        "*LocalDetailsOperationsLargeTextTest",
+        "*LocalDetails*"
+      ]
     }
   ]
 }
