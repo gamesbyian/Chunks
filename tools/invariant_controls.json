@@ -1,6 +1,6 @@
 {
   "schema": "chunks.invariant-controls.v1",
-  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file.",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept.",
   "controls": [
     {
       "id": "readback-gate-accepts-any-read",
@@ -541,6 +541,67 @@
         "*LocalDetailsOperations*",
         "*LocalDeleteData*",
         "*LocalRemove*"
+      ]
+    },
+    {
+      "id": "zip-verifier-ignores-crc",
+      "invariant": "A ZIP member with a wrong CRC is never verified",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/ZipPayloadVerifier.kt",
+      "old": "                    if (crc.value != entry.crc)\n                        return@verification",
+      "new": "                    if (false)\n                        return@verification",
+      "tests": [
+        "*ZipPayloadVerifierTest",
+        "*ZipEntryPreflightTest",
+        "*ZipExtractorTest",
+        "*ZipArchiveInventoryTest"
+      ]
+    },
+    {
+      "id": "library-copy-follows-source-outside-root",
+      "invariant": "A library copy refuses a source whose real path lies outside the transfer's folder",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/LibraryCopy.kt",
+      "old": "if (!real.startsWith(root)) return \"A file lies outside the transfer's folder\"",
+      "new": "",
+      "tests": [
+        "*LibraryCopierTest",
+        "*LibraryCopyByteTotalsTest",
+        "*LibraryCopy*"
+      ]
+    },
+    {
+      "id": "library-copy-skips-destination-readback",
+      "invariant": "A library copy verifies the stored destination bytes, not just the write buffer",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/LibraryCopy.kt",
+      "old": "            if (!expectedDigest.contentEquals(sha256(file.source, buffer)))\n                return ZipExtractionStatus.FAILED_ROLLED_BACK to \"A file changed while it was being copied\"",
+      "new": "",
+      "tests": [
+        "*LibraryCopierTest",
+        "*LibraryCopyByteTotalsTest",
+        "*LibraryCopy*"
+      ]
+    },
+    {
+      "id": "library-copy-accepts-unfinished-source",
+      "invariant": "A library copy refuses a source that is not finished downloading",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/LibraryCopy.kt",
+      "old": "if (Files.size(real) != file.sizeBytes) return \"A file is not finished downloading\"",
+      "new": "",
+      "tests": [
+        "*LibraryCopierTest",
+        "*LibraryCopyByteTotalsTest",
+        "*LibraryCopy*"
+      ]
+    },
+    {
+      "id": "journal-creates-without-exclusivity",
+      "invariant": "A journal file is created exclusively; an existing file is never reopened for write",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/storage/ExclusiveFsyncJournal.kt",
+      "old": "val modes = setOf<OpenOption>(StandardOpenOption.CREATE_NEW,\n                StandardOpenOption.READ, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)",
+      "new": "val modes = setOf<OpenOption>(StandardOpenOption.CREATE,\n                StandardOpenOption.READ, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)",
+      "tests": [
+        "*ExclusiveFsyncJournalTest",
+        "*OwnedMediaStorePublicationJournalTest",
+        "*OwnedMediaStoreZipBatchJournal*"
       ]
     }
   ]
