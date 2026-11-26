@@ -23,7 +23,7 @@ internal class DelugeReadOnlyRpc(
     private val daemonHostId: String,
     private val wire: Wire = HttpWire,
     private val routing: DelugeRoutingOwner = DelugeRoutingOwner.forEndpoint(
-        validateEndpoint(credentials.endpoint), credentials)
+        validateEndpoint(credentials.endpoint))
 ) {
     private val auth = credentials
     private val endpoint = validateEndpoint(credentials.endpoint)
@@ -276,10 +276,44 @@ internal class DelugeReadOnlyRpc(
         }
     }
 
-    /** No redirect, auth cookie only to the exact supplied endpoint. */
+    /**
+     * No redirect, auth cookie only to the exact supplied endpoint.
+     *
+     * The blocking HttpURLConnection runs on a dedicated daemon thread and the caller suspends in a
+     * cancellable continuation. Cancelling the caller (a routing-owner holder, say) disconnects the socket
+     * and returns at once instead of waiting out the 8 s connect / 15 s read timeouts, so one stalled Web UI
+     * cannot hold its endpoint's queue. A request not yet sent when cancelled is never sent. Once the body
+     * may have reached the server, cancellation is a CancellationException, never a "nothing was written"
+     * claim; the callers' dispatch/uncertainty rules are unchanged and nothing here retries.
+     */
     internal object HttpWire : Wire {
+        private val executor = java.util.concurrent.Executors.newCachedThreadPool { runnable ->
+            Thread(runnable, "chunks-deluge-wire").apply { isDaemon = true }
+        }
+
         override suspend fun exchange(request: Request): Response {
-            val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
+            return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
+                val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
+                val task = executor.submit {
+                    val outcome = try {
+                        Result.success(blockingExchange(connection, request) { continuation.isActive })
+                    } catch (failure: Throwable) {
+                        Result.failure(failure)
+                    }
+                    // Ignored when the caller already cancelled.
+                    continuation.resumeWith(outcome)
+                }
+                continuation.invokeOnCancellation {
+                    connection.disconnect()
+                    task.cancel(true)
+                }
+            }
+        }
+
+        private fun blockingExchange(
+            connection: HttpURLConnection, request: Request, stillWanted: () -> Boolean
+        ): Response {
             connection.connectTimeout = 8_000
             connection.readTimeout = 15_000
             connection.instanceFollowRedirects = false
@@ -290,7 +324,7 @@ internal class DelugeReadOnlyRpc(
             connection.doOutput = true
             connection.setFixedLengthStreamingMode(request.body.size)
             try {
-                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (!stillWanted()) throw IOException("Deluge RPC cancelled before dispatch")
                 connection.outputStream.use { it.write(request.body) }
                 val status = connection.responseCode
                 val headers = connection.headerFields.entries
@@ -309,8 +343,6 @@ internal class DelugeReadOnlyRpc(
                         builder.toString()
                     }
                 return Response(status, text, headers)
-            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                throw cancel
             } catch (_: IOException) {
                 throw IOException("Deluge RPC transport failed")
             } finally {

@@ -33,7 +33,7 @@ internal class DelugeClient(
     daemonHostId: String,
     wire: DelugeReadOnlyRpc.Wire = DelugeReadOnlyRpc.HttpWire,
     private val routing: DelugeRoutingOwner = DelugeRoutingOwner.forEndpoint(
-        DelugeReadOnlyRpc.validateEndpoint(credentials.endpoint), credentials)
+        DelugeReadOnlyRpc.validateEndpoint(credentials.endpoint))
 ) : TorrentClient {
     private val core = DelugeClientCore(credentials, daemonHostId, wire, routing)
     private val host = daemonHostId

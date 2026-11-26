@@ -29,6 +29,11 @@ class DelugeSharedSlotRoutingTest {
     private val c = "cccc0000cccc0000cccc0000cccc0000"
     private val rounds = 12
 
+    private fun ownerOf(path: String) = DelugeRoutingOwner.forEndpoint(java.net.URI(creds(path).endpoint))
+    private suspend fun awaitQueued(owner: DelugeRoutingOwner, n: Int) {
+        withTimeout(10_000) { while (owner.queued != n) kotlinx.coroutines.delay(2) }
+    }
+
     private fun creds(path: String) = RemoteCredentials("http://127.0.0.1:18999/$path/json", "", "web-password-$path")
     private fun magnet(seed: Int) = "%040x".format(seed.toLong() * 7919L + 0xABCDEFL).let {
         ClientAddSource.Magnet("magnet:?xt=urn:btih:$it&dn=fixture")
@@ -198,11 +203,44 @@ class DelugeSharedSlotRoutingTest {
         val blocked = async(Dispatchers.IO) { c1.torrents() }
         ui1.gateEntered.await()
         withTimeout(5_000) { c2.torrents() } // a different Web UI is not held up
-        // Same origin and path but DIFFERENT credentials is a different tenant: conservative, not shared.
-        val c3 = DelugeClient(RemoteCredentials(creds("unrelated-1").endpoint, "", "another-password"), a, ui2)
-        withTimeout(5_000) { c3.torrents() }
         ui1.gateRelease.complete(Unit)
         blocked.await()
+    }
+
+    @Test fun sameEndpointWithDifferentCredentialsIntentionallySharesTheLock(): Unit = runBlocking {
+        // Deluge's Web UI is password-only and its daemon slot is global, so a second profile with other
+        // credentials behind the SAME endpoint must queue behind the first, not fight it over the slot.
+        val ui = FakeSharedSlotWebUi(listOf(a, b))
+        val first = DelugeClient(creds("shared-cred"), a, ui)
+        val other = DelugeClient(RemoteCredentials(creds("shared-cred").endpoint, "someone", "another-password"), b, ui)
+        first.torrents()
+        ui.gateNext("core.get_torrents_status")
+        val holder = async(Dispatchers.IO) { first.torrents() }
+        ui.gateEntered.await()
+        val queuedOne = async(Dispatchers.IO) { other.torrents() }
+        awaitQueued(ownerOf("shared-cred"), 1)
+        assertTrue("the other credential's profile waits for the lock", queuedOne.isActive)
+        ui.gateRelease.complete(Unit)
+        withTimeout(10_000) { holder.await(); queuedOne.await() }
+    }
+
+    @Test fun outsideRoundTripBackToTheLastBoundDaemonIsRebindNotRefusalButStillWritesOnlyToTheSelectedDaemon(): Unit = runBlocking {
+        // DOCUMENTED RESIDUAL (not closed): Chunks cannot tell a sibling Chunks bracket from an outside
+        // actor's round trip that ends on the daemon Chunks last bound. Here last own bind = B, an outside
+        // actor goes B -> C -> B, and A's write is accepted (rebind) instead of refused. It is still routed
+        // only to A and verified by the post-call bound check; B and C see nothing.
+        val ui = FakeSharedSlotWebUi(listOf(a, b, c))
+        val cr = creds("roundtrip")
+        val ca = DelugeClient(cr, a, ui); val cb = DelugeClient(cr, b, ui)
+        ca.torrents(); cb.torrents() // Chunks' last own web.connect: B
+        ui.slot = c; ui.slot = b // outside round trip, indistinguishable from a sibling bracket
+        val hashMagnet = magnet(31)
+        ca.add(ClientAddRequest(hashMagnet, null, false))
+        assertEquals("write executed on the selected daemon only", listOf(a), ui.writes.map { it.first })
+        assertEquals(1, ui.inventories.getValue(a).size)
+        assertTrue(ui.inventories.getValue(b).isEmpty() && ui.inventories.getValue(c).isEmpty())
+        assertEquals("verified readback through the post-call check", 1, ca.torrents().size)
+        assertEquals(a, ui.slot)
     }
 
     @Test fun cancelledWaiterLeavesTheRouteUsableAndNeverRunsItsWrite(): Unit = runBlocking {
@@ -215,8 +253,9 @@ class DelugeSharedSlotRoutingTest {
         ui.gateEntered.await()
         val writesBefore = ui.writes.size
         val queued = launch(Dispatchers.IO) { cb.add(ClientAddRequest(magnet(77), null, false)) }
-        kotlinx.coroutines.delay(100) // let it queue behind the holder
+        awaitQueued(ownerOf("cancel-queued"), 1) // really queued behind the holder
         queued.cancelAndJoin()
+        awaitQueued(ownerOf("cancel-queued"), 0)
         ui.gateRelease.complete(Unit)
         holder.await()
         assertEquals("cancelled queued write must not dispatch", writesBefore, ui.writes.size)
@@ -232,7 +271,7 @@ class DelugeSharedSlotRoutingTest {
         val holder = launch(Dispatchers.IO) { ca.torrents() }
         ui.gateEntered.await()
         val next = async(Dispatchers.IO) { cb.torrents() }
-        kotlinx.coroutines.delay(100)
+        awaitQueued(ownerOf("cancel-holder"), 1)
         holder.cancelAndJoin()
         assertTrue(holder.isCancelled)
         withTimeout(5_000) { next.await() }

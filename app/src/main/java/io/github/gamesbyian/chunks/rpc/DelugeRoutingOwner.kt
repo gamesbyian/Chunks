@@ -1,7 +1,6 @@
 package io.github.gamesbyian.chunks.rpc
 
 import java.net.URI
-import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
@@ -22,7 +21,7 @@ import kotlinx.coroutines.withContext
  * What this is NOT: server-side atomicity. Another browser, script or app can still switch the slot at
  * any time. The existing refusals stay the safety net: a client never trusts a pre-call status, the
  * post-call status must still name its daemon, a write whose bracket broke is uncertain and never
- * replayed, and a slot that was moved by anyone but Chunks is refused, not repaired ([mayRebind]).
+ * replayed, and a slot that was moved by anyone but Chunks is refused, not repaired, within the known limit documented on [mayRebind].
  *
  * Reentrancy: client operations call other operations, so the lock is held by a coroutine-context
  * element rather than by a plain Mutex. A nested [bracket] on the same owner runs inline. The element
@@ -62,6 +61,8 @@ internal class DelugeRoutingOwner {
     val acquisitions: Long get() = acquisitionCount.get()
     val contended: Long get() = contendedCount.get()
     val overtakes: Long get() = overtakeCount.get()
+    /** Number of callers currently queued behind the holder (not counting the holder). */
+    val queued: Int get() = synchronized(state) { queue.size }
     val isIdle: Boolean get() = synchronized(state) { !locked && queue.isEmpty() }
 
     suspend fun <T> bracket(host: String, block: suspend () -> T): T {
@@ -138,6 +139,13 @@ internal class DelugeRoutingOwner {
      * is on any other daemon was moved by somebody else (or the last position was this host's own
      * and was then moved away): that is refused and never repaired. [boundStatus] reads the Web UI's
      * live status of the given host and reports whether it is Connected.
+     *
+     * KNOWN LIMIT (not closed): this cannot tell a sibling Chunks bracket from an outside actor's round
+     * trip that ends back on the daemon Chunks last bound (last=B, outside B->C->B, then A rebinds). The
+     * outcome is bounded, not prevented: the rebind only ever binds THIS client's own verified, registered
+     * daemon, and the call is still bracketed by the post-call bound check, so a write goes to the
+     * selected daemon or is reported uncertain, never to another daemon. What is lost is only the
+     * refusal an outside round trip would otherwise have earned.
      */
     suspend fun mayRebind(host: String, boundStatus: suspend (String) -> Boolean): Boolean {
         val last = lastOwnBind ?: return false
@@ -147,34 +155,32 @@ internal class DelugeRoutingOwner {
 
     internal companion object {
         const val MAX_OVERTAKES = 8
-        private const val MAX_OWNERS = 256
-
-        private val owners = object : LinkedHashMap<String, DelugeRoutingOwner>(16, 0.75f, true) {}
+        private val owners = HashMap<String, java.lang.ref.WeakReference<DelugeRoutingOwner>>()
 
         /**
-         * One owner per Web UI endpoint and credential: scheme, host, effective port and path, plus a
-         * one-way digest of the web password. Different credentials or hosts never share an owner (the
-         * conservative reading of "tenant"); the digest is never logged or exposed.
+         * One owner per Web UI endpoint: scheme, host, effective port and path. Deliberately NOT keyed by
+         * username or password: Deluge's Web UI authenticates by password only and its daemon slot is
+         * process-global for the whole Web UI, so two profiles on one endpoint with different
+         * credentials still fight over the same slot. Over-sharing this LOCAL lock is the safe direction.
+         * The credential boundary stays where it lives: every client logs in and holds its own web
+         * session; the owner stores and exposes no credential, cookie or secret.
+         *
+         * Entries are weak: an owner stays registered while any client or in-flight bracket references
+         * it, so an endpoint can never be split into two locks for live clients, and dead entries are
+         * purged on insertion, so the registry is bounded by the owners actually in use.
          */
-        fun forEndpoint(endpoint: URI, credentials: RemoteCredentials): DelugeRoutingOwner {
+        fun forEndpoint(endpoint: URI): DelugeRoutingOwner {
             val scheme = endpoint.scheme.lowercase()
             val port = if (endpoint.port >= 0) endpoint.port else if (scheme == "https") 443 else 80
-            val digest = MessageDigest.getInstance("SHA-256")
-                .digest(("chunks-deluge-route\u0000" + credentials.username + "\u0000" + credentials.password)
-                    .toByteArray(Charsets.UTF_8))
-                .take(12).joinToString("") { "%02x".format(it) }
-            val key = "$scheme://${endpoint.host.lowercase()}:$port${endpoint.rawPath}#$digest"
+            val key = "$scheme://${endpoint.host.lowercase()}:$port${endpoint.rawPath}"
             synchronized(owners) {
-                owners[key]?.let { return it }
-                if (owners.size >= MAX_OWNERS) {
-                    val idle = owners.entries.firstOrNull { it.value.isIdle }
-                    if (idle != null) owners.remove(idle.key)
-                }
-                return DelugeRoutingOwner().also { owners[key] = it }
+                owners[key]?.get()?.let { return it }
+                owners.values.removeAll { it.get() == null }
+                return DelugeRoutingOwner().also { owners[key] = java.lang.ref.WeakReference(it) }
             }
         }
 
-        fun registrySize() = synchronized(owners) { owners.size }
+        fun registrySize() = synchronized(owners) { owners.values.count { it.get() != null } }
 
         fun clearForTest() = synchronized(owners) { owners.clear() }
     }

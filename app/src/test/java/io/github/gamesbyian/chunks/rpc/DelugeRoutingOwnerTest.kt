@@ -24,6 +24,11 @@ import org.junit.Test
 
 /** The routing owner itself: reentrancy, mutual exclusion, cancellation, affinity, endpoint scoping. */
 class DelugeRoutingOwnerTest {
+    /** Wait (bounded) until exactly [n] callers are queued, so cancel/overtake tests never pass vacuously. */
+    private suspend fun awaitQueued(owner: DelugeRoutingOwner, n: Int) {
+        withTimeout(10_000) { while (owner.queued != n) delay(2) }
+    }
+
     @Test fun nestedBracketsOnTheSameOwnerDoNotDeadlock(): Unit = runBlocking {
         val owner = DelugeRoutingOwner()
         val depth = withTimeout(5_000) {
@@ -67,7 +72,7 @@ class DelugeRoutingOwnerTest {
         val holder = launch(Dispatchers.Default) { owner.bracket("a") { entered.complete(Unit); gate.await() } }
         entered.await()
         val intruder = launch(Dispatchers.Default + leaked!!) { owner.bracket("a") {} }
-        delay(100)
+        awaitQueued(owner, 1)
         assertTrue("stale context must queue behind the real holder", intruder.isActive)
         gate.complete(Unit); holder.join(); withTimeout(5_000) { intruder.join() }
     }
@@ -79,9 +84,11 @@ class DelugeRoutingOwnerTest {
         val holder = launch(Dispatchers.Default) { owner.bracket("a") { entered.complete(Unit); gate.await() } }
         entered.await()
         val waiter = launch(Dispatchers.Default) { owner.bracket("b") { ran.incrementAndGet() } }
+        awaitQueued(owner, 1)
         val survivor = async(Dispatchers.Default) { owner.bracket("b") { ran.incrementAndGet(); "ok" } }
-        delay(100)
+        awaitQueued(owner, 2)
         waiter.cancelAndJoin()
+        awaitQueued(owner, 1)
         assertTrue(waiter.isCancelled)
         gate.complete(Unit); holder.join()
         assertEquals("ok", withTimeout(5_000) { survivor.await() })
@@ -95,7 +102,7 @@ class DelugeRoutingOwnerTest {
         val holder = launch(Dispatchers.Default) { owner.bracket("a") { entered.complete(Unit); delay(60_000) } }
         entered.await()
         val next = async(Dispatchers.Default) { owner.bracket("b") { "next" } }
-        delay(50)
+        awaitQueued(owner, 1)
         holder.cancelAndJoin()
         assertEquals("next", withTimeout(5_000) { next.await() })
         assertTrue(owner.isIdle)
@@ -124,12 +131,11 @@ class DelugeRoutingOwnerTest {
         // Queue: b0 (head), then a1..a20. With affinity, a's run while b0 is overtaken, but only MAX_OVERTAKES times.
         val waiters = mutableListOf<kotlinx.coroutines.Job>()
         waiters += launch(Dispatchers.Default) { owner.bracket("b") { order += "b0" } }
-        delay(20)
+        awaitQueued(owner, 1)
         (1..20).forEach { i ->
             waiters += launch(Dispatchers.Default) { owner.bracket("a") { order += "a$i" } }
-            delay(5)
+            awaitQueued(owner, i + 1)
         }
-        delay(50)
         gate.complete(Unit); holder.join(); withTimeout(10_000) { waiters.forEach { it.join() } }
         assertEquals(21, order.size)
         val b0 = order.indexOf("b0")
@@ -147,26 +153,29 @@ class DelugeRoutingOwnerTest {
         assertFalse("slot is no longer where Chunks left it", owner.mayRebind("a") { false })
     }
 
-    @Test fun ownersAreScopedToEndpointAndCredentials(): Unit = runBlocking {
+    @Test fun ownersAreScopedToEndpointOnlyAndIntentionallyOverShareAcrossCredentials(): Unit = runBlocking {
         DelugeRoutingOwner.clearForTest()
-        fun owner(url: String, pass: String = "pw", user: String = "") =
-            DelugeRoutingOwner.forEndpoint(URI(url), RemoteCredentials(url, user, pass))
+        fun owner(url: String) = DelugeRoutingOwner.forEndpoint(URI(url))
         val base = owner("http://127.0.0.1:8112/json")
         assertSame(base, owner("HTTP://127.0.0.1:8112/json"))
         assertSame(owner("https://box.example/a/json"), owner("https://BOX.example:443/a/json"))
-        assertNotSame("different password", base, owner("http://127.0.0.1:8112/json", pass = "other"))
+        // Credentials are not part of the key at all (Deluge's Web UI is password-only and its slot is global),
+        // so profiles with different passwords on one Web UI share the lock. Over-sharing is the safe direction.
         assertNotSame("different port", base, owner("http://127.0.0.1:8113/json"))
         assertNotSame("different path (another tenant behind a proxy)", owner("https://box.example/a/json"), owner("https://box.example/b/json"))
         assertNotSame("different host", base, owner("http://localhost:8112/json"))
         assertNotSame("different scheme and port", owner("https://box.example/a/json"), owner("http://box.example/a/json"))
     }
 
-    @Test fun registryDoesNotGrowWithoutBound(): Unit = runBlocking {
+    @Test fun aLiveOwnerIsNeverSplitAndAbandonedOnesAreCollected(): Unit = runBlocking {
         DelugeRoutingOwner.clearForTest()
-        repeat(1_000) { DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/p$it/json"), RemoteCredentials("x", "", "pw")) }
-        assertTrue("registry bounded: ${DelugeRoutingOwner.registrySize()}", DelugeRoutingOwner.registrySize() <= 256)
-        // Idle owners are evicted past the cap; a fresh lookup still returns a working owner.
-        val owner = DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/last/json"), RemoteCredentials("x", "", "pw"))
-        assertEquals(1, withTimeout(5_000) { owner.bracket("a") { 1 } })
+        val held = DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json"))
+        repeat(2_000) { DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/p$it/json")) }
+        // A client still references `held`, so every later lookup must return the very same lock.
+        repeat(5) { System.gc(); assertSame(held, DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json"))) }
+        // Owners nobody references are collected, so the registry is bounded by live owners.
+        withTimeout(20_000) { while (DelugeRoutingOwner.registrySize() > 200) { System.gc(); delay(20) } }
+        assertSame(held, DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json")))
+        assertEquals(1, withTimeout(5_000) { held.bracket("a") { 1 } })
     }
 }
