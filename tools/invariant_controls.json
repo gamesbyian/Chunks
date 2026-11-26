@@ -1,6 +1,6 @@
 {
   "schema": "chunks.invariant-controls.v1",
-  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept. Tier limit (2026-11-26): the Local Add enablement conditions in LocalEngineScreen used to survive every JVM control because the JVM harness always satisfied them; they now live in the pure LocalAddAvailability with a witness per condition, but the composable's wiring of the facts into it is witnessed only by installed journeys. Defensive-only branches that no reachable scenario can drive (e.g. the RemoteUniversalAddAdapter catch that maps a failure after the load boundary to a refusal-or-rethrow: RTorrentRemote already converts every post-dispatch failure to Uncertain) are pinned by a behavior test but not kept as controls.",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept. Tier limit (2026-11-26): the Local Add enablement conditions in LocalEngineScreen used to survive every JVM control because the JVM harness always satisfied them; they now live in the pure LocalAddAvailability with a witness per condition, but the composable's wiring of the facts into it is witnessed only by installed journeys. Defensive-only branches that no reachable scenario can drive (e.g. the RemoteUniversalAddAdapter catch that maps a failure after the load boundary to a refusal-or-rethrow: RTorrentRemote already converts every post-dispatch failure to Uncertain) are pinned by a behavior test but not kept as controls. Seed-copy exclusivity (CREATE_NEW) and free-space refusal survive the JVM tests (the acquisition-race test hooks a different layer; free space cannot be forced); both remain witnessed only by the real-engine and installed journeys.",
   "controls": [
     {
       "id": "readback-gate-accepts-any-read",
@@ -883,6 +883,192 @@
         "*MediaEnrichmentServiceTest",
         "*MediaInventory*",
         "*MediaAutomationPreferencesTest"
+      ]
+    },
+    {
+      "id": "seed-copy-replaces-existing",
+      "invariant": "A seed copy never replaces something already at the destination name",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/create/CreateSeedCopy.kt",
+      "old": "if (!Files.notExists(targetPath, LinkOption.NOFOLLOW_LINKS)) return Outcome.Refused(",
+      "new": "if (false) return Outcome.Refused(",
+      "tests": [
+        "*CreateSeedCopyTest",
+        "*CreateSeedCopyOwnershipTest",
+        "*CreateSeedCopyAcquisitionRaceTest"
+      ]
+    },
+    {
+      "id": "seed-copy-unsafe-segment",
+      "invariant": "A seed copy refuses unsafe path segments (no escape from the destination)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/create/CreateSeedCopy.kt",
+      "old": "value.none { it == '/' || it == '\\\\' || it.code < 32 || it.code == 127 }",
+      "new": "true",
+      "tests": [
+        "*CreateSeedCopyTest",
+        "*CreateSeedCopyOwnershipTest",
+        "*CreateSeedCopyAcquisitionRaceTest"
+      ]
+    },
+    {
+      "id": "seeding-stops-forever-policy",
+      "invariant": "A seed-forever policy never stops a transfer",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingEnforcement.kt",
+      "old": "        if (policy.seedsForever) return Decision.KeepSeeding\n",
+      "new": "",
+      "tests": [
+        "*SeedingEnforcementTest",
+        "*SeedingControllerTest"
+      ]
+    },
+    {
+      "id": "seeding-stops-before-min-time",
+      "invariant": "A transfer is not stopped before its minimum seeding time",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingEnforcement.kt",
+      "old": "if (seconds < policy.minSeedSeconds) return Decision.KeepSeeding",
+      "new": "",
+      "tests": [
+        "*SeedingEnforcementTest",
+        "*SeedingControllerTest"
+      ]
+    },
+    {
+      "id": "seeding-ratio-without-download",
+      "invariant": "A ratio goal never triggers when nothing was downloaded here",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingEnforcement.kt",
+      "old": "                BigDecimal(o.uploadedBytes) >= goal.multiply(BigDecimal(o.downloadedBytes))\n            else null",
+      "new": "                BigDecimal(o.uploadedBytes) >= goal.multiply(BigDecimal(o.downloadedBytes))\n            else true",
+      "tests": [
+        "*SeedingEnforcementTest",
+        "*SeedingControllerTest"
+      ]
+    },
+    {
+      "id": "seeding-time-limit-boundary",
+      "invariant": "The maximum seeding time triggers exactly when reached",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingEnforcement.kt",
+      "old": "o.seedingSeconds?.let { it >= max }",
+      "new": "o.seedingSeconds?.let { it > max }",
+      "tests": [
+        "*SeedingEnforcementTest",
+        "*SeedingControllerTest"
+      ]
+    },
+    {
+      "id": "seeding-invalid-counters",
+      "invariant": "Invalid engine counters never judge a policy",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingEnforcement.kt",
+      "old": "if (o.uploadedBytes < 0 || o.downloadedBytes < 0 || (o.seedingSeconds ?: 0) < 0)\n            return",
+      "new": "if (false)\n            return",
+      "tests": [
+        "*SeedingEnforcementTest",
+        "*SeedingControllerTest"
+      ]
+    },
+    {
+      "id": "seeding-stops-non-seeding",
+      "invariant": "A transfer that is not seeding is never stopped by a seeding policy",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingEnforcement.kt",
+      "old": "        if (!o.seeding) return Decision.KeepSeeding\n",
+      "new": "",
+      "tests": [
+        "*SeedingEnforcementTest",
+        "*SeedingControllerTest"
+      ]
+    },
+    {
+      "id": "routing-preselect-without-opt-in",
+      "invariant": "Smart Routing pre-selects only with the explicit opt-in",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/SmartRoutingAddSuggestion.kt",
+      "old": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&\n        !alreadySelected && !addInFlight",
+      "new": "    ): Boolean = suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&\n        !alreadySelected && !addInFlight",
+      "tests": [
+        "*SmartRoutingAddSuggestionTest",
+        "*SmartRoutingPreviewTest",
+        "*SmartRoutingPolicyStoreTest"
+      ]
+    },
+    {
+      "id": "routing-preselect-repeats",
+      "invariant": "A source is pre-selected at most once",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/SmartRoutingAddSuggestion.kt",
+      "old": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&\n        !alreadySelected && !addInFlight",
+      "new": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && personChoseTargetFor != sourceKey &&\n        !alreadySelected && !addInFlight",
+      "tests": [
+        "*SmartRoutingAddSuggestionTest",
+        "*SmartRoutingPreviewTest",
+        "*SmartRoutingPolicyStoreTest"
+      ]
+    },
+    {
+      "id": "routing-preselect-overrides-person",
+      "invariant": "A target the person chose is never overridden",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/SmartRoutingAddSuggestion.kt",
+      "old": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&\n        !alreadySelected && !addInFlight",
+      "new": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && \n        !alreadySelected && !addInFlight",
+      "tests": [
+        "*SmartRoutingAddSuggestionTest",
+        "*SmartRoutingPreviewTest",
+        "*SmartRoutingPolicyStoreTest"
+      ]
+    },
+    {
+      "id": "routing-preselect-during-add",
+      "invariant": "No pre-selection while an Add is in flight",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/SmartRoutingAddSuggestion.kt",
+      "old": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&\n        !alreadySelected && !addInFlight",
+      "new": "    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&\n        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&\n        !alreadySelected",
+      "tests": [
+        "*SmartRoutingAddSuggestionTest",
+        "*SmartRoutingPreviewTest",
+        "*SmartRoutingPolicyStoreTest"
+      ]
+    },
+    {
+      "id": "routing-rule-wins-ambiguous-ids",
+      "invariant": "Two candidates claiming one ID are never usable",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/SmartRoutingAddSuggestion.kt",
+      "old": "destinations.filter { (byId[it.environmentId]?.size ?: 0) == 1 }",
+      "new": "destinations",
+      "tests": [
+        "*SmartRoutingAddSuggestionTest",
+        "*SmartRoutingPreviewTest",
+        "*SmartRoutingPolicyStoreTest"
+      ]
+    },
+    {
+      "id": "routing-move-while-metadata-pending",
+      "invariant": "No Move suggestion while a job's metadata is pending",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/SmartRoutingAddSuggestion.kt",
+      "old": "if (metadataPending == true || originalName.isNullOrBlank() ||",
+      "new": "if (originalName.isNullOrBlank() ||",
+      "tests": [
+        "*SmartRoutingAddSuggestionTest",
+        "*SmartRoutingPreviewTest",
+        "*SmartRoutingPolicyStoreTest"
+      ]
+    },
+    {
+      "id": "local-add-place-identity-ignored",
+      "invariant": "A reviewed Local ticket never runs against a different verified Place",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalUniversalAddAdapter.kt",
+      "old": "reviewed.verifiedPlaceId == LocalAddPlacePolicy.identity(place) &&\n",
+      "new": "",
+      "tests": [
+        "*LocalUniversalAddAdapterTest",
+        "*LocalUniversalAddScreenGateTest",
+        "*LocalUniversalAddRealEngineTest"
+      ]
+    },
+    {
+      "id": "local-add-subfolder-ignored",
+      "invariant": "A reviewed Local ticket never runs against a different subfolder",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalUniversalAddAdapter.kt",
+      "old": "            reviewed.relativeSubfolder == LocalOwnedAddFolder.normalizedName(subfolder)",
+      "new": "            true",
+      "tests": [
+        "*LocalUniversalAddAdapterTest",
+        "*LocalUniversalAddScreenGateTest",
+        "*LocalUniversalAddRealEngineTest"
       ]
     }
   ]
