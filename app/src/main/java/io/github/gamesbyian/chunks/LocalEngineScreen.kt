@@ -1043,11 +1043,14 @@ internal fun LocalEngineScreen(
             val seedingPreview = remember(add?.preview?.infoHashV1) {
                 add?.preview?.let { localSeedingPreview(context, it) }
             }
-            val canAddTorrent = add != null && destination != null && !busy &&
-                localReviewedMetainfoIsCurrent(magnet, sourceReading) &&
-                validUniversalAddAlias(addAliasState?.value.orEmpty()) && addInventoryReady && !placeSaving &&
-                proposedAddDestination != null && localAddAttemptSession?.attemptedTicket == null &&
-                !originalAddDocument.deleting
+            val canAddTorrent = LocalAddAvailability.torrentReady(
+                hasReviewedTorrent = add != null, hasDestination = destination != null, busy = busy,
+                reviewedMetainfoCurrent = localReviewedMetainfoIsCurrent(magnet, sourceReading),
+                aliasValid = validUniversalAddAlias(addAliasState?.value.orEmpty()),
+                inventoryReady = addInventoryReady, placeSaving = placeSaving,
+                hasVerifiedPlace = proposedAddDestination != null,
+                previousAttemptUnresolved = localAddAttemptSession?.attemptedTicket != null,
+                originalDocumentDeleting = originalAddDocument.deleting)
             val addMagnet: () -> Unit = addMagnet@{
                 if (sourceReadJob != null) return@addMagnet
                 // Submitting closes the keyboard, so the form's collapse is not
@@ -1497,17 +1500,12 @@ internal fun LocalEngineScreen(
             }
             val hasMagnetDraft = magnet.isNotEmpty() && !isLink
             // Expose the actual admission prerequisite, not raw source, path or engine detail.
-            val magnetUnavailable = when {
-                busy -> "A local operation is in progress."
-                sourceReading -> "Waiting for source review."
-                !addInventoryReady -> "Waiting for a fresh confirmed local transfer list."
-                dhtSaving || placeSaving -> "Waiting for local settings to settle."
-                proposedAddDestination == null -> "Choose a verified local download location."
-                magnetCheck !is MagnetDraftCheck.Valid -> "Review a valid magnet."
-                !validUniversalAddAlias(addAliasState?.value.orEmpty()) -> "Review the display name."
-                localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
-                else -> null
-            }
+            val magnetUnavailable = LocalAddAvailability.magnetUnavailableReason(
+                busy = busy, sourceReading = sourceReading, inventoryReady = addInventoryReady,
+                settingsSaving = dhtSaving || placeSaving, hasVerifiedPlace = proposedAddDestination != null,
+                magnetValid = magnetCheck is MagnetDraftCheck.Valid,
+                aliasValid = validUniversalAddAlias(addAliasState?.value.orEmpty()),
+                previousAttemptUnresolved = localAddAttemptSession?.attemptedTicket != null)
             val disabledReason = when {
                 localAddAttemptSession?.attemptedTicket != null -> "Finish the previous Add before adding another."
                 isLink -> "Get the .torrent from this link first (Get torrent from link above)."

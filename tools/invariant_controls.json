@@ -1,6 +1,6 @@
 {
   "schema": "chunks.invariant-controls.v1",
-  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept.",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept. Tier limit (2026-11-26): the Local Add enablement conditions in LocalEngineScreen used to survive every JVM control because the JVM harness always satisfied them; they now live in the pure LocalAddAvailability with a witness per condition, but the composable's wiring of the facts into it is witnessed only by installed journeys.",
   "controls": [
     {
       "id": "readback-gate-accepts-any-read",
@@ -629,6 +629,56 @@
         "*RemoteAdd*",
         "*UniversalAddReviewControlsTest",
         "*RemoteBinaryStoppedAddTest"
+      ]
+    },
+    {
+      "id": "local-add-ignores-fresh-inventory",
+      "invariant": "Local Add waits for a fresh confirmed local transfer list",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAvailability.kt",
+      "old": "        !inventoryReady -> \"Waiting",
+      "new": "        false -> \"Waiting",
+      "tests": [
+        "*LocalAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "local-add-ignores-verified-place",
+      "invariant": "Local Add needs a verified local download location",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAvailability.kt",
+      "old": "        !hasVerifiedPlace -> \"Choose",
+      "new": "        false -> \"Choose",
+      "tests": [
+        "*LocalAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "local-add-ignores-unresolved-attempt",
+      "invariant": "Local Add is unavailable while a previous attempt is unresolved",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAvailability.kt",
+      "old": "        previousAttemptUnresolved -> \"Finish",
+      "new": "        false -> \"Finish",
+      "tests": [
+        "*LocalAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "local-torrent-add-ignores-source-change",
+      "invariant": "A reviewed .torrent whose source changed after review is not added",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAvailability.kt",
+      "old": "!busy && reviewedMetainfoCurrent &&",
+      "new": "!busy &&",
+      "tests": [
+        "*LocalAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "local-torrent-add-ignores-original-deletion",
+      "invariant": "No Add while the original document is being deleted",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAvailability.kt",
+      "old": "        !previousAttemptUnresolved && !originalDocumentDeleting",
+      "new": "        !previousAttemptUnresolved",
+      "tests": [
+        "*LocalAddAvailabilityTest"
       ]
     }
   ]
