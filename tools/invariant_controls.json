@@ -226,6 +226,35 @@
         "*RemoteOriginalTorrentHandlingTest",
         "*OriginalTorrentHandlingTest"
       ]
+    },
+    {
+      "id": "rtorrent-add-swallows-cancellation",
+      "invariant": "A cancelled rTorrent load propagates cancellation; it never becomes an outcome",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
+      "old": "            call(\"load.verbose\", params)\n        } catch (cancel: kotlinx.coroutines.CancellationException) {\n            throw cancel",
+      "new": "            call(\"load.verbose\", params)\n        } catch (cancel: kotlinx.coroutines.CancellationException) {\n            return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)",
+      "tests": [
+        "*RemoteHiddenDuplicateAddTest",
+        "*RemoteBinaryStoppedAddTest",
+        "*RemoteMalformedMutationAcknowledgementTest",
+        "*RemoteUniversalAddAdapterTest",
+        "*RemoteAddStarterTest",
+        "*RemoteAddCancellationTest"
+      ]
+    },
+    {
+      "id": "rtorrent-add-duplicates-existing-hash",
+      "invariant": "An Add whose exact hash is already registered sends no load",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
+      "old": "        if (lookupName(plan.expectedInfoHash) != null) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useServerDefault) listOf(\"\", plan.source)",
+      "new": "        if (false) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useServerDefault) listOf(\"\", plan.source)",
+      "tests": [
+        "*RemoteHiddenDuplicateAddTest",
+        "*RemoteBinaryStoppedAddTest",
+        "*RemoteMalformedMutationAcknowledgementTest",
+        "*RemoteUniversalAddAdapterTest",
+        "*RemoteAddStarterTest"
+      ]
     }
   ]
 }
