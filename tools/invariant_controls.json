@@ -131,6 +131,17 @@
         "*ClientOperationsTest",
         "*ClientPayloadOverlap*"
       ]
+    },
+    {
+      "id": "write-swallows-cancellation",
+      "invariant": "A cancelled typed-client write rethrows cancellation; it is never turned into an outcome or a retry",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientOperations.kt",
+      "old": "        send()\n        null\n    } catch (e: CancellationException) {\n        throw e\n    } catch (e: ClientPostWritePendingException) {",
+      "new": "        send()\n        null\n    } catch (e: CancellationException) {\n        ClientOperationOutcome.Uncertain(hash, \"swallowed\")\n    } catch (e: ClientPostWritePendingException) {",
+      "tests": [
+        "*ClientOperationsTest",
+        "*ProtocolClientOperationsPanelTest"
+      ]
     }
   ]
 }

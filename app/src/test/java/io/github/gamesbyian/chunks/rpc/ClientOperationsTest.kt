@@ -76,6 +76,21 @@ class ClientOperationsTest {
         assertEquals(1, fake.writes)
     }
 
+    /** Invariant control `write-swallows-cancellation`: cancellation is never turned into an outcome. */
+    @Test fun cancellationDuringAWriteIsRethrownNeverReportedAsAnOutcomeOrReplayed() {
+        val fake = Fake(torrent(ClientRunState.STOPPED)).apply {
+            failWrite = kotlinx.coroutines.CancellationException("cancelled after dispatch")
+        }
+        var outcome: ClientOperationOutcome? = null
+        val thrown = try {
+            runBlocking { outcome = ops(fake).setStarted(hash, true) }
+            null
+        } catch (cancel: kotlinx.coroutines.CancellationException) { cancel }
+        assertTrue("cancellation propagated: $outcome", thrown != null)
+        assertEquals("no outcome was produced for a cancelled write", null, outcome)
+        assertEquals("never replayed", 1, fake.writes)
+    }
+
     @Test fun anyUnexpectedWriteFailureIsUncertainNotRefused() = runBlocking {
         val fake = Fake(torrent(ClientRunState.STOPPED)).apply { failWrite = IOException("socket") }
         assertTrue(ops(fake).setStarted(hash, true) is ClientOperationOutcome.Uncertain)
