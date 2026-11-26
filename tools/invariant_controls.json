@@ -779,6 +779,41 @@
         "*RemoteDeleteData*",
         "*RuTorrentDelete*"
       ]
+    },
+    {
+      "id": "move-retirement-ignores-account",
+      "invariant": "Move retirement is confirmed only for the exact server account that recorded the Copy",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferMoveControl.kt",
+      "old": "    TransferMoveStore.scopeDigest(activeServerScope) == record.serverScopeDigest &&\n",
+      "new": "",
+      "tests": [
+        "*TransferMove*",
+        "*MoveControl*",
+        "*BatchServerCopy*"
+      ]
+    },
+    {
+      "id": "move-retirement-ignores-source-identity",
+      "invariant": "Move retirement requires the source job to still match its recorded identity",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferMoveControl.kt",
+      "old": "    TransferMove.sourceIdentityMatches(\n        record, currentName, currentSourceToken, currentSourceDirectory\n    )",
+      "new": "    true",
+      "tests": [
+        "*TransferMove*",
+        "*MoveControl*",
+        "*BatchServerCopy*"
+      ]
+    },
+    {
+      "id": "lifecycle-replays-after-attempt-without-fresh-read",
+      "invariant": "After an attempted Start/Stop, no second command until a fresh snapshot",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferLifecycleControl.kt",
+      "old": "val canOfferAction = !pending && (!attempted || freshAfterAttempt)",
+      "new": "val canOfferAction = !pending",
+      "tests": [
+        "*TransferLifecycleNoReplayTest",
+        "*TransferLifecycleControlLargeTextTest"
+      ]
     }
   ]
 }
