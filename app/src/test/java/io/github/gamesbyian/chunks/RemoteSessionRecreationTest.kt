@@ -148,6 +148,8 @@ class RemoteSessionRecreationTest {
         rule.waitUntil(15_000) { owner.postAdd.remote == null }
         rule.waitUntil(15_000) { owner.handoff.staged == null }
         assertEquals(null, owner.postAdd.latestFor(remote, scope))
+    }
+
     /**
      * A2611-06 baseline: with no policy or seeding rule enabled, the connected app's
      * 30-second policy ticks send no RPC at all. Five virtual minutes (ten ticks) leave the
