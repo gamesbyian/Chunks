@@ -167,15 +167,29 @@ class DelugeRoutingOwnerTest {
         assertNotSame("different scheme and port", owner("https://box.example/a/json"), owner("http://box.example/a/json"))
     }
 
-    @Test fun aLiveOwnerIsNeverSplitAndAbandonedOnesAreCollected(): Unit = runBlocking {
+    @Test fun aLiveOwnerIsNeverSplitAndClearedReferencesArePurgedDeterministically(): Unit = runBlocking {
         DelugeRoutingOwner.clearForTest()
-        val held = DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json"))
-        repeat(2_000) { DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/p$it/json")) }
-        // A client still references `held`, so every later lookup must return the very same lock.
-        repeat(5) { System.gc(); assertSame(held, DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json"))) }
-        // Owners nobody references are collected, so the registry is bounded by live owners.
-        withTimeout(20_000) { while (DelugeRoutingOwner.registrySize() > 200) { System.gc(); delay(20) } }
-        assertSame(held, DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json")))
-        assertEquals(1, withTimeout(5_000) { held.bracket("a") { 1 } })
+        val created = java.util.concurrent.CopyOnWriteArrayList<java.lang.ref.Reference<DelugeRoutingOwner>>()
+        DelugeRoutingOwner.referenceFactory = { owner -> java.lang.ref.WeakReference(owner).also { created += it } }
+        try {
+            val held = DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json"))
+            repeat(300) { DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/p$it/json")) }
+            // Structural property: while a strong reference exists every lookup returns the same lock.
+            assertSame(held, DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json")))
+            assertEquals(301, DelugeRoutingOwner.registrySize())
+            // Simulate the collector clearing every abandoned owner (the held one keeps its strong reference).
+            created.filter { it.get() !== held }.forEach { it.clear() }
+            assertEquals(1, DelugeRoutingOwner.registrySize())
+            DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/new/json")) // insertion purges the dead entries
+            assertEquals(2, DelugeRoutingOwner.registrySize())
+            assertSame(held, DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/held/json")))
+            assertEquals(1, withTimeout(5_000) { held.bracket("a") { 1 } })
+        } finally { DelugeRoutingOwner.clearForTest() }
+    }
+
+    @Test fun repeatedSlashesInThePathShareOneOwner(): Unit = runBlocking {
+        DelugeRoutingOwner.clearForTest()
+        assertSame(DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1/a/json")),
+            DelugeRoutingOwner.forEndpoint(URI("http://127.0.0.1:1//a///json")))
     }
 }

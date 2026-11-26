@@ -498,10 +498,10 @@
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeReadOnlyRpc.kt",
   "kind": "broad-catch",
-  "fingerprint": "594dc824d712bd49c3969552",
+  "fingerprint": "c224e2fbbea77c6bade343cf",
   "count": 1,
   "disposition": "SAFE-NONSUSPEND",
-  "reason": "HttpWire worker lambda runs on a dedicated executor thread, not in a coroutine; blockingExchange is a plain blocking fun with no suspension point. The Throwable is captured into a Result and delivered with continuation.resumeWith, which the cancelled continuation ignores; caller cancellation is handled by invokeOnCancellation (disconnect) and surfaces as CancellationException, never swallowed."
+  "reason": "HttpWire worker lambda is a plain Runnable on a dedicated executor thread, not a coroutine; blockingExchange has no suspension point. The Throwable is forwarded with CompletableDeferred.completeExceptionally to the awaiting caller. Caller cancellation is handled in exchange(): flag, disconnect, then a NonCancellable wait for the worker to end, and the CancellationException is rethrown, never swallowed."
  },
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",

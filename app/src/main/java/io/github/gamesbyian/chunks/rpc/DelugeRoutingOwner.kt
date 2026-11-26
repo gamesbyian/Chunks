@@ -155,7 +155,11 @@ internal class DelugeRoutingOwner {
 
     internal companion object {
         const val MAX_OVERTAKES = 8
-        private val owners = HashMap<String, java.lang.ref.WeakReference<DelugeRoutingOwner>>()
+        private val owners = HashMap<String, java.lang.ref.Reference<DelugeRoutingOwner>>()
+
+        /** Test seam: lets a test clear a reference exactly as the garbage collector would. */
+        internal var referenceFactory: (DelugeRoutingOwner) -> java.lang.ref.Reference<DelugeRoutingOwner> =
+            { java.lang.ref.WeakReference(it) }
 
         /**
          * One owner per Web UI endpoint: scheme, host, effective port and path. Deliberately NOT keyed by
@@ -165,6 +169,11 @@ internal class DelugeRoutingOwner {
          * The credential boundary stays where it lives: every client logs in and holds its own web
          * session; the owner stores and exposes no credential, cookie or secret.
          *
+         * SURFACE, not closed: this is a spelling, not a server identity. `localhost` vs `127.0.0.1`, a DNS
+         * alias or another name for the same Web UI get SEPARATE locks, which is the unsafe direction (the
+         * pre-call and post-call bound checks remain the only protection between them). Repeated `/` in the
+         * path are collapsed, over-sharing being the safe direction.
+         *
          * Entries are weak: an owner stays registered while any client or in-flight bracket references
          * it, so an endpoint can never be split into two locks for live clients, and dead entries are
          * purged on insertion, so the registry is bounded by the owners actually in use.
@@ -172,16 +181,19 @@ internal class DelugeRoutingOwner {
         fun forEndpoint(endpoint: URI): DelugeRoutingOwner {
             val scheme = endpoint.scheme.lowercase()
             val port = if (endpoint.port >= 0) endpoint.port else if (scheme == "https") 443 else 80
-            val key = "$scheme://${endpoint.host.lowercase()}:$port${endpoint.rawPath}"
+            val key = "$scheme://${endpoint.host.lowercase()}:$port${endpoint.rawPath.replace(Regex("/{2,}"), "/")}"
             synchronized(owners) {
                 owners[key]?.get()?.let { return it }
                 owners.values.removeAll { it.get() == null }
-                return DelugeRoutingOwner().also { owners[key] = java.lang.ref.WeakReference(it) }
+                return DelugeRoutingOwner().also { owners[key] = referenceFactory(it) }
             }
         }
 
         fun registrySize() = synchronized(owners) { owners.values.count { it.get() != null } }
 
-        fun clearForTest() = synchronized(owners) { owners.clear() }
+        fun clearForTest() = synchronized(owners) {
+            owners.clear()
+            referenceFactory = { java.lang.ref.WeakReference(it) }
+        }
     }
 }
