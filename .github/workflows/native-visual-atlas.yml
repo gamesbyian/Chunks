@@ -11,6 +11,7 @@ on:
       - "tools/native_atlas_launcher_anr.py"
       - "tests/test_native_atlas_launcher_anr.py"
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteScreens.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ChunksBrandHeader.kt"
       - "app/src/main/res/font/chunks_extrabold.otf"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
