@@ -204,6 +204,28 @@
       "tests": [
         "*LocalCheckedPayloadReservationsTest"
       ]
+    },
+    {
+      "id": "original-retired-without-verified-add",
+      "invariant": "The original .torrent is archived or offered for deletion only after a verified new transfer",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/OriginalSourceRetirement.kt",
+      "old": "        val verifiedNew = verifiedNewHash\n            ?: return Result(\"The original .torrent file was kept because this Add did not verify a new transfer.\", null)",
+      "new": "        val verifiedNew = verifiedNewHash ?: \"0\".repeat(40)",
+      "tests": [
+        "*RemoteOriginalTorrentHandlingTest",
+        "*OriginalTorrentHandlingTest"
+      ]
+    },
+    {
+      "id": "original-deletion-offered-when-not-deletable",
+      "invariant": "Deleting the original is requested only where its provider allows deletion",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/OriginalSourceRetirement.kt",
+      "old": "archived is SourceArchiveOutcome.ArchivedCopy && frozen.deletable)",
+      "new": "archived is SourceArchiveOutcome.ArchivedCopy)",
+      "tests": [
+        "*RemoteOriginalTorrentHandlingTest",
+        "*OriginalTorrentHandlingTest"
+      ]
     }
   ]
 }
