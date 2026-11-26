@@ -416,6 +416,22 @@
   "reason": "TransferAliasStore.carryVerifiedMoveAlias is a plain fun."
  },
  {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolPolicyLoop.kt",
+  "kind": "broad-catch",
+  "fingerprint": "79a1044f95fc3b4b2a382888",
+  "count": 1,
+  "disposition": "SAFE-RETHROWS",
+  "reason": "A preceding catch (cancel: CancellationException) { if (job?.isActive != true || ownerCurrent()) throw cancel } handles cancellation from tickProtocolRemotePolicies; the broad catch only drops an unreachable or refused profile with no immediate retry (moved unchanged from ChunksApp)."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/RemotePolicyLoop.kt",
+  "kind": "broad-catch",
+  "fingerprint": "fd0a21669bda38fef49ccd14",
+  "count": 1,
+  "disposition": "SAFE-RETHROWS",
+  "reason": "A preceding catch (cancel: CancellationException) { if (parentJob?.isActive != true || ownerCurrent()) throw cancel } handles cancellation from the Finish in Order step; the broad catch only keeps a partial write's readback fence (moved unchanged from ChunksApp)."
+ },
+ {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/TransferMoveControl.kt",
   "kind": "broad-catch",
   "fingerprint": "97a9d515d79a88d30c858c54",

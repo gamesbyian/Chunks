@@ -1676,145 +1676,43 @@ internal fun ChunksApp(
             credentialChanges.isSettled()
 
         // The authenticated rTorrent owner shares the manual mutation gate.
+        // The loop itself lives in RemotePolicyLoop.kt; this host exposes only current state.
         LaunchedEffect(server, aliasScope) {
             val connectedRemote = server ?: return@LaunchedEffect
             val expectedScope = aliasScope
             val privacyScope = RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(expectedScope)
                 ?: return@LaunchedEffect
-            val privacyStore = TransferPrivacyPolicyStore(context)
-            val store = FinishInOrderStore(context, expectedScope)
-            val parentJob = currentCoroutineContext()[Job]
-            while (true) {
-                delay(30_000L)
-                if (!policiesMayRun()) continue
-                val generation = RemoteCredentialLock.capture()
-                val lifecycle = TransferPrivacyRuntime.lifecycleRevision
-                val privacy = TransferPrivacyPolicyStore.revision
-                val privacySession = TransferPrivacyRuntime.session
-                if (!withContext(Dispatchers.IO) { privacyStore.loadInto(privacySession, privacyScope) }) continue
-                val ownerCurrent: () -> Boolean = {
-                    parentJob?.isActive == true && policiesMayRun() && connectJob?.isActive != true &&
-                        RemoteCredentialLock.current(generation) &&
-                        lifecycle == TransferPrivacyRuntime.lifecycleRevision &&
-                        privacy == TransferPrivacyPolicyStore.revision &&
-                        privacySession.mayAct(privacyScope) &&
-                        server === connectedRemote && aliasScope == expectedScope
-                }
-                if (!ownerCurrent() || loading || stale) continue
-                val seedingEnabled = withContext(Dispatchers.IO) { RemoteSeeding.enabledFor(context, connectedRemote) }
-                if (seedingEnabled && ownerCurrent() && !loading && !stale && mutationGate.tryStart()) {
-                    var tick: RemoteSeeding.Tick? = null
-                    try {
-                        tick = withContext(Dispatchers.IO) {
-                            RemoteSeeding.tick(context, connectedRemote, ownerCurrent = ownerCurrent)
-                        }
-                    } catch (cancel: CancellationException) {
-                        if (parentJob?.isActive != true || ownerCurrent()) throw cancel
-                    } finally {
-                        // The gate is shared with any later session: only this exact
-                        // session's admission may be settled (a reconnect reset it).
-                        if (server === connectedRemote) {
-                            if (tick == RemoteSeeding.Tick.NO_WRITE || tick == RemoteSeeding.Tick.NOT_RUN)
-                                mutationGate.abandonKnownNoWrite()
-                            else {
-                                mutationGate.settled()
-                                remoteSession.requestReadback()
-                                stale = true
-                                refresh()
-                            }
-                        }
-                    }
-                }
-                if (!ownerCurrent() || loading || stale) continue
-                val observedTransfers = transfers
-                val activeTransfers = withContext(Dispatchers.IO) {
-                    val policies = observedTransfers.mapNotNull { transfer ->
-                        store.get(transfer.hash)?.let { transfer to it }
-                    }
-                    store.rememberOwners(policies.map { it.first.hash }) { ownerCurrent() && !loading && !stale }
-                    policies.filter { (transfer, record) -> transfer.started && record.isScheduled() }
-                        .map { it.first }
-                }
-                for (transfer in activeTransfers) {
-                    if (!ownerCurrent() || loading || stale || !mutationGate.tryStart()) break
-                    var noWrite = false
-                    try {
-                        val step = withContext(Dispatchers.IO + RemoteWriteOwnerFence(ownerCurrent)) {
-                            stepRemoteFinishInOrder(connectedRemote, store, transfer.hash, ownerCurrent)
-                        }
-                        noWrite = step is FinishInOrderRunner.Step.Idle
-                    } catch (cancel: CancellationException) {
-                        if (parentJob?.isActive != true || ownerCurrent()) throw cancel
-                    } catch (_: Exception) {
-                        // A partial write retains the readback fence.
-                    } finally {
-                        // The gate is shared with any later session: only this exact
-                        // session's admission may be settled (a reconnect reset it).
-                        if (server === connectedRemote) {
-                            if (noWrite) mutationGate.abandonKnownNoWrite()
-                            else {
-                                mutationGate.settled()
-                                remoteSession.requestReadback()
-                                stale = true
-                                refresh()
-                            }
-                        }
-                    }
-                }
+            val host = object : RemotePolicyHost {
+                override val currentServer get() = server
+                override val currentAliasScope get() = aliasScope
+                override val isLoading get() = loading
+                override var isStale: Boolean
+                    get() = stale
+                    set(value) { stale = value }
+                override val currentTransfers get() = transfers
+                override val connectInFlight get() = connectJob?.isActive == true
+                override val mutationGate get() = remoteSession.mutationGate
+                override fun mayRun() = policiesMayRun()
+                override fun requestReadback() = remoteSession.requestReadback()
+                override fun refresh() = latestRefresh()
             }
+            runRemotePolicyLoop(context, host, connectedRemote, expectedScope, privacyScope)
         }
         // A typed policy session is reusable only for the exact roster and
-        // authentication generation that admitted it.
+        // authentication generation that admitted it. The loop lives in
+        // ProtocolPolicyLoop.kt; this host exposes only current state.
         LaunchedEffect(savedProtocolProfiles, transientReadOnlyProfile) {
-            val expectedSaved = savedProtocolProfiles.associateBy { it.id }
-            val expectedTransient = transientReadOnlyProfile
-            val clients = mutableMapOf<String, io.github.gamesbyian.chunks.rpc.ClientOperations>()
-            val privacyStore = TransferPrivacyPolicyStore(context)
-            var clientGeneration = RemoteCredentialLock.capture()
-            val job = currentCoroutineContext()[Job]
-            while (true) {
-                delay(30_000L)
-                if (!policiesMayRun() || combinedProtocolProfiles.isEmpty()) continue
-                val generation = RemoteCredentialLock.capture()
-                if (generation != clientGeneration) {
-                    clients.clear()
-                    clientGeneration = generation
-                }
-                val policies = withContext(Dispatchers.IO) { FinishInOrderStore.scheduledPolicies(context) }
-                for (profile in combinedProtocolProfiles) {
-                    val factory = profile.operations ?: continue
-                    val privacyScope = CombinedReadOnlyProtocolAdmission.privacyScope(profile) ?: continue
-                    val lifecycle = TransferPrivacyRuntime.lifecycleRevision
-                    val privacy = TransferPrivacyPolicyStore.revision
-                    val privacySession = TransferPrivacyRuntime.session
-                    if (!withContext(Dispatchers.IO) { privacyStore.loadInto(privacySession, privacyScope) }) continue
-                    val expected = expectedSaved[profile.id]
-                    val ownerCurrent: () -> Boolean = {
-                        job?.isActive == true && policiesMayRun() && readOnlyConnectJob?.isActive != true &&
-                            RemoteCredentialLock.current(generation) &&
-                            lifecycle == TransferPrivacyRuntime.lifecycleRevision &&
-                            privacy == TransferPrivacyPolicyStore.revision &&
-                            privacySession.mayAct(privacyScope) &&
-                            savedProtocolProfiles.firstOrNull { it.id == profile.id }.let { current ->
-                                if (expected != null) current == expected &&
-                                    profile.verifiedAtMillis == expected.lastVerifiedAtMillis
-                                else current == null && profile === expectedTransient &&
-                                    transientReadOnlyProfile === expectedTransient
-                            }
-                    }
-                    try {
-                        tickProtocolRemotePolicies(context, profile.id, policies, ownerCurrent) {
-                            clients.getOrPut(profile.id) { factory() }
-                        }
-                    } catch (cancel: CancellationException) {
-                        // An invalidated owner ends this profile's work. A cancelled
-                        // parent still owns the loop's termination.
-                        if (job?.isActive != true || ownerCurrent()) throw cancel
-                    } catch (_: Exception) {
-                        // Unreachable or refused: no immediate retry.
-                    }
-                }
+            val host = object : ProtocolPolicyHost {
+                override fun savedProfiles() = savedProtocolProfiles
+                override fun transientProfile() = transientReadOnlyProfile
+                override val connectInFlight get() = readOnlyConnectJob?.isActive == true
+                override fun mayRun() = policiesMayRun()
             }
+            runProtocolPolicyLoop(
+                context, host, combinedProtocolProfiles,
+                expectedSaved = savedProtocolProfiles.associateBy { it.id },
+                expectedTransient = transientReadOnlyProfile
+            )
         }
         if (section == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
