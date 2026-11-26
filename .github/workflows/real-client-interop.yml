@@ -13,6 +13,11 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/RemoteBackendIdentity.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RealClientInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/DelugeSameEndpointReceiptIsolationInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/DelugeConcurrentSessionInteropTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeReadOnlyRpc.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolOperationReceiptOwner.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolReceiptCheck.kt"
       - "tools/interop/**"
       - "!tools/interop/disposable_snapshot_folder_listing.py"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/LocalClientInteropTest.kt"
@@ -31,6 +36,11 @@ on:
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/**"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RealClientInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/DelugeSameEndpointReceiptIsolationInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/DelugeConcurrentSessionInteropTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeReadOnlyRpc.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolOperationReceiptOwner.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolReceiptCheck.kt"
       - "tools/interop/**"
       - "!tools/interop/disposable_snapshot_folder_listing.py"
   workflow_dispatch:
@@ -88,6 +98,8 @@ jobs:
             --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.PendingMagnetInventoryInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.DelugeTwoDaemonInteropTest \
+            --tests io.github.gamesbyian.chunks.DelugeSameEndpointReceiptIsolationInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.DelugeConcurrentSessionInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientFinishInOrderInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.UniversalAddLifecycleInteropTest \
             --tests io.github.gamesbyian.chunks.RemoteSeedingInteropTest \
@@ -157,7 +169,13 @@ jobs:
                   # Native per-transfer upload caps with independent readback on the three protocol daemons.
                   ("TEST-io.github.gamesbyian.chunks.rpc.ProtocolUploadCapInteropTest.xml", 3, "CHUNKS_UPLOAD_CAP_INTEROP:"),
                   # Two real Deluge daemons behind one Web UI: a switched slot is refused, never written through (#2072).
-                  ("TEST-io.github.gamesbyian.chunks.rpc.DelugeTwoDaemonInteropTest.xml", 1, "CHUNKS_DELUGE2:")):
+                  ("TEST-io.github.gamesbyian.chunks.rpc.DelugeTwoDaemonInteropTest.xml", 1, "CHUNKS_DELUGE2:"),
+                  # Same hash on two daemons of one Web UI keeps separate retained receipts (#2026).
+                  ("TEST-io.github.gamesbyian.chunks.DelugeSameEndpointReceiptIsolationInteropTest.xml", 1,
+                   "CHUNKS_SAME_ENDPOINT_RECEIPT:"),
+                  # Concurrent Chunks sessions on one Deluge Web UI never disrupt each other (#2109).
+                  ("TEST-io.github.gamesbyian.chunks.rpc.DelugeConcurrentSessionInteropTest.xml", 1,
+                   "CHUNKS_DELUGE_CONCURRENT:")):
               rpath = pathlib.Path("app/build/test-results/testDebugUnitTest") / receipt
               if not rpath.is_file():
                   print(f"CHUNKS_INTEROP: no receipt {receipt}"); sys.exit(1)
