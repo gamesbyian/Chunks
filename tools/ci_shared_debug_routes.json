@@ -137,6 +137,7 @@
       "tools/local_intake_journey.sh",
       "tools/test_local_intake_journey.sh",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineParts.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineHolder.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlaces.kt",
       "tools/android10_downloads_instrumentation.sh",

@@ -11,6 +11,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/SharedTorrentDocument.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalAddAttemptOwner.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineParts.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineHolder.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlaces.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
