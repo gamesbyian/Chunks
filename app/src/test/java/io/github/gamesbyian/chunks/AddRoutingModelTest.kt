@@ -87,6 +87,11 @@ class AddRoutingModelTest {
         assertEquals(Target.Protocol("t1"), AddRouting.targetFor("t1", "srv", profiles, false, null))
     }
 
+    @Test fun theConnectedRTorrentWinsOverAProtocolProfileWithTheSameId() {
+        assertEquals(Target.AuthenticatedRTorrent,
+            AddRouting.targetFor("same", "same", listOf(profile("same")), false, null))
+    }
+
     @Test fun aSuggestionNeverMovesTheDraftToAClientThatCannotTakeTheAdd() {
         val profiles = listOf(profile("t1"), profile("ro", writable = false))
         assertNull("read-only profile", AddRouting.targetFor("ro", null, profiles, false, null))
