@@ -380,6 +380,19 @@
         "*ProtocolClientOperationsPanelTest",
         "*ProtocolClientRemove*"
       ]
+    },
+    {
+      "id": "remove-review-survives-identity-change",
+      "invariant": "A Remove confirmation is revoked when the reviewed row identity changes",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
+      "old": "confirming && reviewedIdentity == currentReview &&",
+      "new": "confirming &&",
+      "tests": [
+        "*TransferSessionRemove*",
+        "*RemoteTransferRemove*",
+        "*SessionRemove*",
+        "*RemoteDeleteData*"
+      ]
     }
   ]
 }
