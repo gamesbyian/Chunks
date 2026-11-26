@@ -107,6 +107,26 @@ class LocalDetailsOperationsTest {
         settleFence()
     }
 
+    private fun assertDataRemovalUnavailable(unverifiable: LocalTransferStatus) {
+        val port = FakePort(unverifiable)
+        rule.setContent { ChunksTheme { LocalDetailsOperations(unverifiable.infoHash, current = true,
+            stale = false, engine = { port }) } }
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).performClick()
+        waitText("Remove from this device: Show S01")
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE_DATA).assertIsNotEnabled()
+        rule.onNodeWithText("Remove transfer and data (unavailable)").assertExists()
+        assertTrue("no write was sent", port.calls.isEmpty())
+        settleFence()
+    }
+
+    /** Invariant control `local-delete-data-without-metadata`. */
+    @Test fun removeWithDataIsUnavailableWhileTheFileMappingIsUnknown() =
+        assertDataRemovalUnavailable(status.copy(metadataKnown = false))
+
+    /** Invariant control `local-delete-data-v2-hash`. */
+    @Test fun removeWithDataIsUnavailableForANonV1Identity() =
+        assertDataRemovalUnavailable(status.copy(infoHash = "ab".repeat(32)))
+
     @Test fun aStaleListOrHeldLockWritesNothing() {
         val port = FakePort(status)
         show(port, stale = true)
