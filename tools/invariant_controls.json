@@ -429,6 +429,80 @@
         "*PrivacyGate*",
         "*TransferPrivacy*"
       ]
+    },
+    {
+      "id": "snapshot-batch-restore-skips-place-check",
+      "invariant": "A batch snapshot restore refuses unless the chosen Place matches the reviewed Place fingerprint",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/snapshots/SnapshotLocalBatchRestoreV1.kt",
+      "old": "            !SnapshotRestoreOnceV1.reviewedPlaceMatches(chosenPlace, verifiedPlaceFingerprint))\n            return fail",
+      "new": "            false)\n            return fail",
+      "tests": [
+        "*SnapshotRestoreOnceV1Test",
+        "*SnapshotLocalBatchRestoreV1Test",
+        "*LocalSnapshotBatchStoppedRestoreReviewTest"
+      ]
+    },
+    {
+      "id": "snapshot-batch-restore-skips-approval",
+      "invariant": "A batch snapshot restore needs explicit user approval",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/snapshots/SnapshotLocalBatchRestoreV1.kt",
+      "old": "if (!userApproved || !mayContinue() ||",
+      "new": "if (!mayContinue() ||",
+      "tests": [
+        "*SnapshotRestoreOnceV1Test",
+        "*SnapshotLocalBatchRestoreV1Test",
+        "*LocalSnapshotBatchStoppedRestoreReviewTest"
+      ]
+    },
+    {
+      "id": "finish-in-order-ignores-suspension",
+      "invariant": "A suspended Finish in Order policy never acts again until the person reviews it",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/FinishInOrderRunner.kt",
+      "old": "        if (current.suspendedReason != null) return Step.Suspended(current)\n",
+      "new": "",
+      "tests": [
+        "*FinishInOrderRunnerTest",
+        "*FinishInOrderPlannerTest",
+        "*RemoteFinishInOrder*",
+        "*ClientFinishInOrder*"
+      ]
+    },
+    {
+      "id": "finish-in-order-replays-interrupted-batch",
+      "invariant": "An interrupted priority batch is only observed, never replayed, when the file layout is ambiguous",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/FinishInOrderRunner.kt",
+      "old": "            if (identityProblem != null || !validPending) {",
+      "new": "            if (false) {",
+      "tests": [
+        "*FinishInOrderRunnerTest",
+        "*FinishInOrderPlannerTest",
+        "*RemoteFinishInOrder*",
+        "*ClientFinishInOrder*"
+      ]
+    },
+    {
+      "id": "add-admission-skips-review",
+      "invariant": "An Add that fails review (identity, capability, availability) is never admitted",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddAdmission.kt",
+      "old": "        if (!review.accepted)\n            return",
+      "new": "        if (false)\n            return",
+      "tests": [
+        "*UniversalAddAdmission*",
+        "*UniversalAddCoordinatorTest",
+        "*UniversalAddLifecycleTest"
+      ]
+    },
+    {
+      "id": "add-admission-skips-mutation-gate",
+      "invariant": "An Add acquires the shared mutation gate before dispatch",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddAdmission.kt",
+      "old": "        if (!acquireMutationGate())\n            return",
+      "new": "        acquireMutationGate()\n        if (false)\n            return",
+      "tests": [
+        "*UniversalAddAdmission*",
+        "*UniversalAddCoordinatorTest",
+        "*UniversalAddLifecycleTest"
+      ]
     }
   ]
 }
