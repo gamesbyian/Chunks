@@ -153,7 +153,34 @@ NG
   ${SUDO:-} nginx -c "$ROOT/rt/nginx.conf"
 fi
 
+# A Web UI that accepts a login proves nothing about the daemons behind it:
+# require every registered daemon to report Online/Connected through that UI,
+# or one missing deluged turns every Deluge interop test into a refusal.
+deluge_hosts_ready() { # $1 Web UI JSON URL, then the daemon host IDs it must list as up
+  local url=$1 jar status host
+  shift
+  jar="$(mktemp)"
+  if ! curl -s -o /dev/null -c "$jar" -H 'Content-Type: application/json' \
+      -d '{"method":"auth.login","params":["deluge"],"id":1}' "$url"; then
+    rm -f "$jar"; return 1
+  fi
+  for host in "$@"; do
+    status="$(curl -s -b "$jar" -H 'Content-Type: application/json' \
+      -d "{\"method\":\"web.get_host_status\",\"params\":[\"$host\"],\"id\":2}" "$url" || true)"
+    case "$status" in
+      *'"Online"'*|*'"Connected"'*) ;;
+      *) rm -f "$jar"; return 1 ;;
+    esac
+  done
+  rm -f "$jar"
+}
 for i in $(seq 1 30); do
+  de_hosts=ready
+  if [ -n "$PY" ]; then
+    deluge_hosts_ready http://127.0.0.1:18112/json c0ffee00c0ffee00c0ffee00c0ffee00 &&
+      deluge_hosts_ready http://127.0.0.1:18113/json c0ffee00c0ffee00c0ffee00c0ffee00 decaf000decaf000decaf000decaf000 ||
+      de_hosts=pending
+  fi
   tr=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:19091/transmission/rpc || true)
   qb=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ || true)
   de=$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
@@ -161,11 +188,12 @@ for i in $(seq 1 30); do
   rt=$(curl -s -o /dev/null -w '%{http_code}' -u chunks:chunkspass -H 'Content-Type: text/xml' \
        --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
        http://127.0.0.1:18090/RPC2 || true)
-  if [ "$tr" = 401 ] && [ "$qb" = 200 ] && { [ -z "$PY" ] || [ "$de" = 200 ]; } && { [ -z "$RT" ] || [ "$rt" = 200 ]; }; then
-    echo "interop: transmission=$tr qbittorrent=$qb deluge=${de:-absent} rtorrent=${rt:-absent} root=$ROOT"
+  if [ "$tr" = 401 ] && [ "$qb" = 200 ] && { [ -z "$PY" ] || { [ "$de" = 200 ] && [ "$de_hosts" = ready ]; }; } &&
+      { [ -z "$RT" ] || [ "$rt" = 200 ]; }; then
+    echo "interop: transmission=$tr qbittorrent=$qb deluge=${de:-absent} deluge_daemons=${PY:+$de_hosts} rtorrent=${rt:-absent} root=$ROOT"
     exit 0
   fi
   sleep 1
 done
-echo "interop: daemons did not become ready (tr=$tr qb=$qb de=$de)" >&2
+echo "interop: daemons did not become ready (tr=$tr qb=$qb de=$de deluge_daemons=$de_hosts)" >&2
 exit 1
