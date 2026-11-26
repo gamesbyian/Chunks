@@ -309,10 +309,13 @@ internal fun ProtocolAddScreen(
         it in io.github.gamesbyian.chunks.model.UniversalAddLifecycle.UNRESOLVED ||
             it == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
     }
-    val canSubmit = session != null && source != null && supported && folderValid && !attempt.busy && mine &&
-        validUniversalAddAlias(aliasState?.value.orEmpty()) &&
-        !unresolved && !externalSourceReading && !readingTorrent && !linkFetching &&
-        attempt.originalDeletion == null && !noFileChosen
+    val canSubmit = ProtocolAddAvailability.canSubmit(
+        hasSession = session != null, hasSource = source != null, supported = supported,
+        folderValid = folderValid, attemptBusy = attempt.busy, mine = mine,
+        aliasValid = validUniversalAddAlias(aliasState?.value.orEmpty()), unresolved = unresolved,
+        externalSourceReading = externalSourceReading, readingTorrent = readingTorrent,
+        linkFetching = linkFetching, originalDeletionPending = attempt.originalDeletion != null,
+        noFileChosen = noFileChosen)
 
     UniversalAddForm(
         capabilities = capabilities,

@@ -704,6 +704,56 @@
       "tests": [
         "*RemoteAddAvailabilityTest"
       ]
+    },
+    {
+      "id": "protocol-add-while-busy",
+      "invariant": "A typed-client Add is disabled while one is in flight",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddAvailability.kt",
+      "old": "!attemptBusy && mine",
+      "new": "mine",
+      "tests": [
+        "*ProtocolAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "protocol-add-other-profile-attempt",
+      "invariant": "A typed-client Add is disabled for another profile's attempt",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddAvailability.kt",
+      "old": "mine &&\n        aliasValid",
+      "new": "aliasValid",
+      "tests": [
+        "*ProtocolAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "protocol-add-unresolved-attempt",
+      "invariant": "A typed-client Add is disabled while an earlier attempt is unresolved",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddAvailability.kt",
+      "old": "aliasValid && !unresolved &&",
+      "new": "aliasValid &&",
+      "tests": [
+        "*ProtocolAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "protocol-add-original-deletion-pending",
+      "invariant": "A typed-client Add is disabled while original-document deletion is pending",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddAvailability.kt",
+      "old": "!originalDeletionPending && !noFileChosen",
+      "new": "!noFileChosen",
+      "tests": [
+        "*ProtocolAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "protocol-add-no-file-chosen",
+      "invariant": "A typed-client Add is disabled when every file is skipped",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddAvailability.kt",
+      "old": "!originalDeletionPending && !noFileChosen",
+      "new": "!originalDeletionPending",
+      "tests": [
+        "*ProtocolAddAvailabilityTest"
+      ]
     }
   ]
 }
