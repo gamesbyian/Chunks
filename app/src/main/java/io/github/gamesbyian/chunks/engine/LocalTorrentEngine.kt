@@ -1143,6 +1143,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (state.hasMetadata() && runCatching {
                     restoredPayloadIsShort(handle, handle.status(TorrentHandle.QUERY_PIECES).pieces())
                 }.getOrDefault(false)) {
+                // #2114: a seed peer remembered from when this job was complete
+                // is not a connect candidate while the torrent counts as
+                // finished, and libtorrent does not re-evaluate it when the
+                // recheck turns the job back into a download (the entry stays
+                // listed with no candidate, so neither tracker/DHT/manual
+                // re-adds nor connect_peer revive it). Drop the stale entries;
+                // peers are re-added fresh by the next announce or explicit add.
+                handle.swig().clear_peers()
                 handle.forceRecheck()
                 startPayloadRechecks += key
             }
@@ -2091,6 +2099,21 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
             Thread.sleep(25)
         }
+    }
+
+    /** Diagnostics only (#2114): raw native peer-list counters for one torrent. */
+    @Synchronized
+    internal fun nativePeerDiagnostics(infoHash: String): String {
+        val handle = handles[normal(infoHash)] ?: return "no handle"
+        val st = handle.swig().status()
+        return "num_peers=${st.num_peers} list_peers=${st.list_peers} " +
+            "connect_candidates=${st.connect_candidates} num_connections=${st.num_connections} " +
+            "flags=${handle.swig().flags().to_int()} errc=${st.errc.message()} " +
+            "peers=" + org.libtorrent4j.swig.peer_info_vector().also { handle.swig().get_peer_info(it) }
+                .joinToString(",", "[", "]") {
+                    val seed = it.flags.to_int() and org.libtorrent4j.swig.peer_info.seed.to_int() != 0
+                    "flags=${it.flags.to_int()} seed=$seed src=${it.source.to_int()}"
+                }
     }
 
     /** Ask libtorrent to connect to one explicit peer (tests and user-supplied peers). */
