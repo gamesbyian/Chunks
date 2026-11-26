@@ -34,6 +34,26 @@ class DigestTests(unittest.TestCase):
         self.assertNotIn("must-never-appear", str(d))
         self.assertNotIn("sensitive traceback", str(d))
 
+    def test_opt_in_safe_diagnostic_lines_pass_and_everything_else_stays_withheld(self):
+        message = ("java.lang.AssertionError: read-only check did not confirm\n"
+                   "CHUNKS_SAFE_DIAG phase=READBACK_REQUIRED gateway=[d.multicall2, load.start]\n"
+                   "CHUNKS_SAFE_DIAG url=https://seedbox.example/RPC2?token=abc\n"
+                   "CHUNKS_SAFE_DIAG user=alice@example.com\n"
+                   "must-never-appear")
+        self.path.write_text('<testsuite><testcase classname="C" name="fails">'
+                             f'<failure message="{message.splitlines()[0]}">{message}</failure>'
+                             '</testcase></testsuite>')
+        d = make_digest([str(self.path)], "failure", "unit", self.env)
+        self.assertEqual(["phase=READBACK_REQUIRED gateway=[d.multicall2, load.start]"], d["safe_diagnostics"])
+        self.assertNotIn("must-never-appear", str(d))
+        self.assertNotIn("seedbox.example", str(d))
+        self.assertNotIn("alice", str(d))
+
+    def test_a_green_run_carries_no_diagnostics(self):
+        self.path.write_text('<testsuite><testcase classname="C" name="works"/></testsuite>')
+        d = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertEqual([], d["safe_diagnostics"])
+
     def test_robolectric_runtime_fetch_signature_advisory_not_green(self):
         secret = "SEEDBOX-SECRET-NEVER-ECHO"
         self.path.write_text(

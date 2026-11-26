@@ -253,8 +253,9 @@ class RemoteAddSessionContinuityTest {
                 }
             } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
                 // #2138: no timeout change; report what the gateway saw and the phase reached.
-                throw AssertionError("read-only check did not confirm within 15 s: phase=${session.coordinator.phase} " +
-                    "gateway=${calls.map { it.first }}", timeout)
+                // Allowlisted by tools/ci_failure_digest.py: enum phase and RPC method names only.
+                throw AssertionError("read-only check did not confirm within 15 s\n" +
+                    "CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} gateway=${calls.map { it.first }}", timeout)
             }
             assertEquals("Recovered state cannot prove which client originally registered it", 0, verified)
             assertFalse("Late old completion must preserve the newer exclusion", artwork.value)
