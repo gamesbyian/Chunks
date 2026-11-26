@@ -21,7 +21,9 @@ import org.json.JSONObject
 internal class DelugeReadOnlyRpc(
     credentials: RemoteCredentials,
     private val daemonHostId: String,
-    private val wire: Wire = HttpWire
+    private val wire: Wire = HttpWire,
+    private val routing: DelugeRoutingOwner = DelugeRoutingOwner.forEndpoint(
+        validateEndpoint(credentials.endpoint), credentials)
 ) {
     private val auth = credentials
     private val endpoint = validateEndpoint(credentials.endpoint)
@@ -61,7 +63,13 @@ internal class DelugeReadOnlyRpc(
         val torrents: List<Torrent>
     )
 
-    suspend fun inspect(): Snapshot = withContext(Dispatchers.IO) {
+    /**
+     * One bind/read/post-check bracket, serialized with every other Chunks caller of the same Web UI
+     * through [DelugeRoutingOwner] (#2072). The owner is local serialization, not server atomicity.
+     */
+    suspend fun inspect(): Snapshot = routing.bracket(daemonHostId) { inspectBracketed() }
+
+    private suspend fun inspectBracketed(): Snapshot = withContext(Dispatchers.IO) {
         require(auth.password.isNotEmpty()) { "Deluge web password is required" }
         val (authenticated, cookie) = login()
         if (!authenticated) throw IOException("Deluge Web UI login refused")
@@ -113,6 +121,8 @@ internal class DelugeReadOnlyRpc(
             !(bound.opt(1) as? String).equals("connected", ignoreCase = true)) {
             throw IOException("Deluge Web UI is not connected to the selected daemon")
         }
+        // Only Chunks' own web.connect counts as where Chunks left the slot; an observation does not.
+        if (!alreadyBound) routing.noteBound(daemonHostId)
         val keys = JSONArray(listOf(
             "name", "state", "total_size", "total_done",
             "download_payload_rate", "upload_payload_rate", "save_path"
