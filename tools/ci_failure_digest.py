@@ -64,10 +64,35 @@ def junit_declared_count_conflicts(root):
     return False
 
 
+SAFE_DIAG_PREFIX = "CHUNKS_SAFE_DIAG "
+_SAFE_DIAG_LINE = re.compile(r"^CHUNKS_SAFE_DIAG ([A-Za-z0-9 _=.,:/\[\]-]{1,300})$")
+
+
+def safe_diagnostics(*texts: str, limit: int = 3) -> list[str]:
+    """Deliberately allowlisted diagnostic lines from a failing test (A2611-08).
+
+    The digest otherwise withholds every exception message. A test may opt in to a bounded
+    line that is safe by construction (phases, counters, RPC method names) by throwing a
+    message line that starts with CHUNKS_SAFE_DIAG. Only a restricted character set passes, and
+    anything URL-, credential- or query-shaped is refused here even if the test emitted it.
+    """
+    found: list[str] = []
+    for text in texts:
+        for line in (text or "").splitlines():
+            line = line.strip()
+            match = _SAFE_DIAG_LINE.match(line)
+            if match and "://" not in line:
+                found.append(match.group(1))
+            if len(found) >= limit:
+                return found
+    return found
+
+
 def make_digest(paths, status, suite, env=None):
     env = os.environ if env is None else env
     tests = failures = skipped = 0
     failed_cases = []
+    safe_lines: list[str] = []
     test_cases = []
     seen_test_ids = set()
     invalid = []
@@ -129,6 +154,9 @@ def make_digest(paths, status, suite, env=None):
                         if ("MavenArtifactFetcher" in trace and
                                 "java.net.SocketException" in trace):
                             robolectric_fetch_signature = True
+                    for line in safe_diagnostics(failing_node.get("message"), failing_node.text):
+                        if len(safe_lines) < 10:
+                            safe_lines.append(line)
                     if len(failed_cases) < 20:
                         # No exception text, output, paths or environment values.
                         failed_cases.append({
@@ -204,6 +232,7 @@ def make_digest(paths, status, suite, env=None):
         "junit": {"reports": reports, "tests": tests, "failed": failures,
                   "skipped": skipped, "executed": tests - skipped},
         "failed_cases": failed_cases,
+        "safe_diagnostics": safe_lines,
         "test_cases": test_cases,
         "test_identity_count": len(seen_test_ids),
         "test_identity_coverage_complete": len(test_cases) == tests,
@@ -270,6 +299,8 @@ def main():
     # GitHub step summaries and success-only artifacts are not always accessible
     # to an integrator; this is advisory, not acceptance or wall-clock evidence.
     print("CHUNKS_TEST_TIMING: " + json.dumps(digest["timing"], sort_keys=True))
+    for line in digest.get("safe_diagnostics", []):
+        print(SAFE_DIAG_PREFIX + line)
     if rejects_unverified_green(digest, args.status, args.require_executed):
         print("::error::Required JUnit evidence absent, invalid, all-skipped or failed")
         raise SystemExit(1)
