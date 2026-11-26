@@ -20,13 +20,59 @@ import org.json.JSONObject
  * reuses it when the selected host already reports Connected and otherwise
  * connects only the selected, registered, online host.
  *
+ * Every operation runs inside one [DelugeRoutingOwner] bracket for its Web UI
+ * (#2072), so Chunks' own sessions on other daemons behind the same Web UI never
+ * rebind the slot mid-bracket. That is local serialization only; the pre/post
+ * status checks below remain the safety net against anyone else.
+ *
  * Pre-execution failures (web session "Not authenticated", code 1) allow one
  * re-login. Errors after possible daemon dispatch leave a mutation uncertain.
  */
 internal class DelugeClient(
     credentials: RemoteCredentials,
+    daemonHostId: String,
+    wire: DelugeReadOnlyRpc.Wire = DelugeReadOnlyRpc.HttpWire,
+    private val routing: DelugeRoutingOwner = DelugeRoutingOwner.forEndpoint(
+        DelugeReadOnlyRpc.validateEndpoint(credentials.endpoint))
+) : TorrentClient {
+    private val core = DelugeClientCore(credentials, daemonHostId, wire, routing)
+    private val host = daemonHostId
+    override val kind = TorrentClientKind.DELUGE
+
+    private suspend fun <T> routed(block: suspend () -> T): T = routing.bracket(host, block)
+
+    override suspend fun session() = routed { core.session() }
+    override suspend fun transferSource(hash: String) = routed { core.transferSource(hash) }
+    override suspend fun torrents() = routed { core.torrents() }
+    override suspend fun torrent(hash: String) = routed { core.torrent(hash) }
+    override suspend fun files(hash: String) = routed { core.files(hash) }
+    override suspend fun add(request: ClientAddRequest) = routed { core.add(request) }
+    override suspend fun setStarted(hash: String, started: Boolean) = routed { core.setStarted(hash, started) }
+    override suspend fun remove(hash: String, deleteData: Boolean) = routed { core.remove(hash, deleteData) }
+    override suspend fun removeJob(hash: String, beforeWrite: () -> Unit) =
+        routed { core.removeJob(hash, beforeWrite) }
+    override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) =
+        routed { core.setFilePriorities(hash, priorities) }
+    override suspend fun setFilePriorities(
+        hash: String, priorities: Map<Int, ClientFilePriority>, validateSnapshot: (List<ClientFile>) -> Boolean
+    ) = routed { core.setFilePriorities(hash, priorities, validateSnapshot) }
+    override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) =
+        routed { core.setLocation(hash, directory, moveData) }
+    override suspend fun reannounce(hash: String) = routed { core.reannounce(hash) }
+    override suspend fun recheck(hash: String) = routed { core.recheck(hash) }
+    override suspend fun uploadCapStepBytes() = routed { core.uploadCapStepBytes() }
+    override suspend fun uploadCapBytesPerSecond(hash: String) = routed { core.uploadCapBytesPerSecond(hash) }
+    override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) =
+        routed { core.setUploadCapBytesPerSecond(hash, bytesPerSecond) }
+    override suspend fun seedingFacts(hash: String) = routed { core.seedingFacts(hash) }
+}
+
+/** The unrouted Deluge operations. Only [DelugeClient] constructs it; it brackets every wire call itself too. */
+internal class DelugeClientCore(
+    credentials: RemoteCredentials,
     private val daemonHostId: String,
-    private val wire: DelugeReadOnlyRpc.Wire = DelugeReadOnlyRpc.HttpWire
+    private val wire: DelugeReadOnlyRpc.Wire,
+    private val routing: DelugeRoutingOwner
 ) : TorrentClient {
     override val kind = TorrentClientKind.DELUGE
     private val auth = credentials
@@ -312,12 +358,26 @@ internal class DelugeClient(
     }
 
     /** Login (once), confirm the exact registered host, and connect only it. */
-    private suspend fun connect() {
+    private suspend fun connect(): Unit = routing.bracket(daemonHostId) {
         if (daemonMethods != null) {
             // Deluge's Web UI routes all core calls through one shared daemon
             // slot. A global `web.connected` does not identify its active host.
-            val bound = selectedHostStatus()
-            if ((bound.opt(1) as? String).equals("connected", ignoreCase = true)) return
+            if (isConnected(selectedHostStatus())) return@bracket
+            // The slot is elsewhere. Rebind ONLY when it still sits where Chunks itself last left it, i.e. a
+            // sibling Chunks bracket (another profile behind this Web UI) moved it. Anything else is an
+            // outside actor and stays refused; local serialization cannot make the shared slot atomic.
+            if (routing.mayRebind(daemonHostId) { other -> isConnected(selectedHostStatus(other)) }) {
+                val hosts = call("web.get_hosts", JSONArray()) as? JSONArray
+                    ?: throw IOException("Deluge did not return a host list")
+                if ((0 until hosts.length()).count { (hosts.opt(it) as? JSONArray)?.opt(0) == daemonHostId } != 1)
+                    throw ClientRefusedException("Deluge daemon ID is missing or ambiguous")
+                if (call("web.connect", JSONArray().put(daemonHostId)) !is JSONArray)
+                    throw IOException("Deluge daemon method list unavailable")
+                if (!isConnected(selectedHostStatus()))
+                    throw IOException("Deluge Web UI is not connected to the selected daemon")
+                routing.noteBound(daemonHostId)
+                return@bracket
+            }
             throw ClientRefusedException("The selected Deluge daemon is no longer connected")
         }
         val hosts = call("web.get_hosts", JSONArray()) as? JSONArray
@@ -332,8 +392,11 @@ internal class DelugeClient(
             "online" -> (call("web.connect", JSONArray().put(daemonHostId)) as? JSONArray)
             else -> throw ClientRefusedException("Selected Deluge daemon is unavailable")
         } ?: throw IOException("Deluge daemon method list unavailable")
-        if (!(selectedHostStatus().opt(1) as? String).equals("connected", ignoreCase = true))
+        if (!isConnected(selectedHostStatus()))
             throw IOException("Deluge Web UI is not connected to the selected daemon")
+        // Only Chunks' own web.connect counts as "where Chunks left the slot"; merely observing the slot on
+        // this daemon (it may have been put there by an outside actor) must not launder that move.
+        if (state == "online") routing.noteBound(daemonHostId)
         daemonMethods = (0 until methods.length()).mapNotNull { methods.opt(it) as? String }
             .map { if (it.contains('.')) it else "core.$it" }.toSet()
         if (daemonVersion == null) {
@@ -341,15 +404,21 @@ internal class DelugeClient(
         }
     }
 
-    private suspend fun selectedHostStatus(): JSONArray {
-        val status = call("web.get_host_status", JSONArray().put(daemonHostId)) as? JSONArray
+    private fun isConnected(status: JSONArray) = (status.opt(1) as? String).equals("connected", ignoreCase = true)
+
+    private suspend fun selectedHostStatus(host: String = daemonHostId): JSONArray {
+        val status = call("web.get_host_status", JSONArray().put(host)) as? JSONArray
             ?: throw IOException("Deluge daemon status unavailable")
-        if (status.opt(0) != daemonHostId) throw IOException("Deluge host status belonged to another daemon")
+        if (status.opt(0) != host) throw IOException("Deluge host status belonged to another daemon")
         return status
     }
 
     private suspend fun call(
         method: String, params: JSONArray, mutating: Boolean = false, beforeWrite: () -> Unit = {}
+    ): Any? = routing.bracket(daemonHostId) { callBracketed(method, params, mutating, beforeWrite) }
+
+    private suspend fun callBracketed(
+        method: String, params: JSONArray, mutating: Boolean, beforeWrite: () -> Unit
     ): Any? =
         withContext(Dispatchers.IO) {
             var relogged = false
