@@ -1,0 +1,231 @@
+{
+  "schema": "chunks.invariant-controls.v1",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. A control with known_gap is expected to SURVIVE until its witness exists.",
+  "controls": [
+    {
+      "id": "readback-gate-accepts-any-read",
+      "invariant": "A read that began before an uncertain write settled cannot clear the readback latch",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteInventoryReader.kt",
+      "old": "gate.acceptFreshRead(readbackTicket)",
+      "new": "(gate.acceptFreshRead(readbackTicket) || true)",
+      "tests": [
+        "*RemoteSessionRecreationTest",
+        "*RemoteMutationReadbackGate*"
+      ]
+    },
+    {
+      "id": "inventory-ignores-session-identity",
+      "invariant": "A response counts only for the live session object",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteInventoryReader.kt",
+      "old": "if (host.currentServer === remote && fence.current(ticket) &&\n                gate.acceptFreshRead(readbackTicket)) {",
+      "new": "if (fence.current(ticket) &&\n                gate.acceptFreshRead(readbackTicket)) {",
+      "tests": [
+        "*RemoteSessionRecreationTest",
+        "*RemoteUiRequestFenceTest",
+        "*ConnectAdvancedPathTest"
+      ]
+    },
+    {
+      "id": "handoff-replaces-typed-source",
+      "invariant": "A server-job handoff never replaces an existing typed source",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
+      "old": "val occupied = (magnet.isNotBlank() && magnet != handoff) || pending != null ||",
+      "new": "val occupied = false && (magnet.isNotBlank() && magnet != handoff) || pending != null ||",
+      "tests": [
+        "*AddHandoffRecreationTest"
+      ]
+    },
+    {
+      "id": "post-add-focus-ignores-session",
+      "invariant": "A verified server Add is shown only for its own live session",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddHandoffState.kt",
+      "old": "currentSession != null && currentSession === remoteSession &&",
+      "new": "currentSession != null &&",
+      "tests": [
+        "*AddHandoffStateTest"
+      ]
+    },
+    {
+      "id": "handoff-survives-session-end",
+      "invariant": "A server-origin handoff never outlives its session",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddHandoffState.kt",
+      "old": "(waiting != null && !waiting.matches(currentSession, currentAliasScope))) drop()",
+      "new": "false) drop()",
+      "tests": [
+        "*AddHandoffStateTest",
+        "*RemoteSessionRecreationTest"
+      ]
+    },
+    {
+      "id": "policy-loop-ignores-owner-currency",
+      "invariant": "A policy tick acts only while its owner (session, credential generation, privacy) is current",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemotePolicyLoop.kt",
+      "old": "RemoteCredentialLock.current(generation) &&",
+      "new": "",
+      "tests": [
+        "*RemoteSeedingTickTest",
+        "*RemoteSessionRecreationTest",
+        "*RemoteSeedingControllerTest"
+      ],
+      "known_gap": "Survived on 2026-11-26: no JVM test changes the credential generation while a policy tick is in flight. Tracked in a follow-up issue; do not delete this control."
+    },
+    {
+      "id": "add-readback-accepts-other-hash",
+      "invariant": "Add readback accepts only the exact verified infohash",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddCoordinator.kt",
+      "old": "        if (!observation.infoHash.equals(expected, ignoreCase = true))\n            return Readback.NOT_OBSERVED",
+      "new": "        if (false)\n            return Readback.NOT_OBSERVED",
+      "tests": [
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "add-readback-accepts-stale-read",
+      "invariant": "Add readback refuses an observation older than the write",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddCoordinator.kt",
+      "old": "        if (isStaleReadback(ticket, observation.observedAtEpochMillis))\n            return Readback.NEEDS_FRESH_INVENTORY\n        val expected",
+      "new": "        val expected",
+      "tests": [
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "gate-accepts-old-ticket",
+      "invariant": "A read started before a write cannot satisfy that write's readback",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteMutationReadbackGate.kt",
+      "old": "!commandPending && ticket == generation",
+      "new": "!commandPending",
+      "tests": [
+        "*RemoteMutationReadbackGateTest"
+      ]
+    },
+    {
+      "id": "privacy-gate-always-open",
+      "invariant": "A locked privacy scope neither discloses nor allows interaction",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "return gate.mode == TransferLockMode.NEVER || gate.authorized",
+      "new": "return true",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*"
+      ]
+    },
+    {
+      "id": "delete-ignores-reviewed-folder",
+      "invariant": "Remove-with-data acts only while the exact job still points at the reviewed folder",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientOperations.kt",
+      "old": "                if (expectedDirectory != null &&\n                    !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))\n                    return",
+      "new": "                if (false &&\n                    !ClientHashes.sameDirectory(pre.torrent.downloadDirectory, expectedDirectory))\n                    return",
+      "tests": [
+        "*ClientOperationsTest",
+        "*ProtocolClientOperationsPanelTest"
+      ]
+    },
+    {
+      "id": "delete-ignores-shared-payload",
+      "invariant": "Remove-with-data refuses while another job shares the payload",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientOperations.kt",
+      "old": "                if (sharedPayloadGuard)\n                    ClientPayloadOverlap",
+      "new": "                if (false)\n                    ClientPayloadOverlap",
+      "tests": [
+        "*ClientOperationsTest",
+        "*ClientPayloadOverlap*"
+      ]
+    },
+    {
+      "id": "write-swallows-cancellation",
+      "invariant": "A cancelled typed-client write rethrows cancellation; it is never turned into an outcome or a retry",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientOperations.kt",
+      "old": "        send()\n        null\n    } catch (e: CancellationException) {\n        throw e\n    } catch (e: ClientPostWritePendingException) {",
+      "new": "        send()\n        null\n    } catch (e: CancellationException) {\n        ClientOperationOutcome.Uncertain(hash, \"swallowed\")\n    } catch (e: ClientPostWritePendingException) {",
+      "tests": [
+        "*ClientOperationsTest",
+        "*ProtocolClientOperationsPanelTest"
+      ]
+    },
+    {
+      "id": "add-cancel-after-dispatch-skips-readback",
+      "invariant": "Cancelling an Add after the write boundary was entered requires a fresh readback and is never 'no write'",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt",
+      "old": "            runCatching { executor.recordInterrupted(ticket) }\n            coordinator.requireReadback(ticket)\n        } else",
+      "new": "            runCatching { executor.recordInterrupted(ticket) }\n        } else",
+      "tests": [
+        "*UniversalAddLifecycle*",
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "add-cancel-after-settle-skips-readback",
+      "invariant": "Cancelling while settling a dispatched Add still requires a fresh readback",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt",
+      "old": "        } catch (cancel: CancellationException) {\n            coordinator.requireReadback(ticket)\n            throw cancel",
+      "new": "        } catch (cancel: CancellationException) {\n            throw cancel",
+      "tests": [
+        "*UniversalAddLifecycle*",
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "reservation-allows-path-escape",
+      "invariant": "A torrent path containing .. can never be reserved (no path escape)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "relative.split('/').any { it.isBlank() || it == \".\" || it == \"..\" })",
+      "new": "relative.split('/').any { it.isBlank() || it == \".\" })",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "reservation-ignores-conflicts",
+      "invariant": "A second checked transfer cannot reserve paths another live transfer reserves",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "            if (conflictsWithReserved(path))\n                return",
+      "new": "            if (false)\n                return",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "reservation-no-case-folding",
+      "invariant": "Provider namespaces are compared case/Unicode-folded so aliases cannot slip past",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "Normalizer.normalize(path, Normalizer.Form.NFKC).lowercase(Locale.ROOT)",
+      "new": "path",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "reservation-allows-aliased-paths",
+      "invariant": "A torrent declaring two aliased backing paths is refused",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "            if (!paths.add(full))\n                return",
+      "new": "            paths.add(full)\n            if (false)\n                return",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "original-retired-without-verified-add",
+      "invariant": "The original .torrent is archived or offered for deletion only after a verified new transfer",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/OriginalSourceRetirement.kt",
+      "old": "        val verifiedNew = verifiedNewHash\n            ?: return Result(\"The original .torrent file was kept because this Add did not verify a new transfer.\", null)",
+      "new": "        val verifiedNew = verifiedNewHash ?: \"0\".repeat(40)",
+      "tests": [
+        "*RemoteOriginalTorrentHandlingTest",
+        "*OriginalTorrentHandlingTest"
+      ]
+    },
+    {
+      "id": "original-deletion-offered-when-not-deletable",
+      "invariant": "Deleting the original is requested only where its provider allows deletion",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/OriginalSourceRetirement.kt",
+      "old": "archived is SourceArchiveOutcome.ArchivedCopy && frozen.deletable)",
+      "new": "archived is SourceArchiveOutcome.ArchivedCopy)",
+      "tests": [
+        "*RemoteOriginalTorrentHandlingTest",
+        "*OriginalTorrentHandlingTest"
+      ]
+    }
+  ]
+}

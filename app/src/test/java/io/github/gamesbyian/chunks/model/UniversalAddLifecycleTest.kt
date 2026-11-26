@@ -126,6 +126,19 @@ class UniversalAddLifecycleTest {
         }
     }
 
+    /** Invariant control `add-cancel-after-settle-skips-readback`. */
+    @Test fun cancellationWhileSettlingADispatchedWriteKeepsTheFenceAndPropagates() = runBlocking {
+        for (target in targets) {
+            val (coordinator, ticket) = ticketFor(target)
+            try {
+                UniversalAddLifecycle.run(coordinator, ticket,
+                    Scripted(enter = true, settlement = { throw CancellationException("left while settling") }))
+                fail("cancellation must propagate")
+            } catch (_: CancellationException) { }
+            assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, coordinator.phase)
+        }
+    }
+
     @Test fun anUnclassifiableOrRefusedSettlementIsHandledConservatively() = runBlocking {
         val (thrown, thrownTicket) = ticketFor(targets[2])
         UniversalAddLifecycle.run(thrown, thrownTicket,
