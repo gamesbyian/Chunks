@@ -102,7 +102,8 @@ internal class DelugeReadOnlyRpc(
         // arbitrary nonempty method list is enough.
         if (supported.length() > 5000 || !(0 until supported.length()).any {
                 val method = supported.opt(it) as? String
-                method == "core.get_torrents_status" || method == "get_torrents_status"
+                // Only the daemon's own method list may omit the prefix.
+                method == "core.get_torrents_status" || (alreadyBound && method == "get_torrents_status")
             }) {
             throw IOException("Selected Deluge daemon lacks inventory capability")
         }

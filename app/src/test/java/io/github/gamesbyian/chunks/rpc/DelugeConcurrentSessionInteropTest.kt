@@ -31,29 +31,48 @@ class DelugeConcurrentSessionInteropTest {
         val reader = RemoteProtocolReadOnlyClient()
         val configuration = RemoteProtocolReadOnlyClient.Configuration(RemoteBackendKind.DELUGE, credentials, daemon)
         fun ops() = ClientOperations(RemoteTorrentClients.create(RemoteBackendKind.DELUGE, credentials, daemon))
-        val failures = mutableListOf<String>()
+        val failures = java.util.Collections.synchronizedList(mutableListOf<String>())
+        var overlapped = 0
         repeat(6) { round ->
             val name = "chunks-concurrent-$round-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
             val bytes = ByteArray(32 * 1024) { (it * 7 + round).toByte() }
             val fixture = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(name,
                 listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
                 trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
-            val added = ops().add(ClientAddRequest(ClientAddSource.TorrentFile(fixture.torrent), null, startNow = false))
-            assertTrue("fixture added: $added", added is ClientOperationOutcome.Verified)
-            coroutineScope {
-                val readers = (1..3).map {
-                    async(Dispatchers.IO) { runCatching { repeat(3) { reader.inspect(configuration) } } }
+            try {
+                val added = ops().add(ClientAddRequest(ClientAddSource.TorrentFile(fixture.torrent), null, startNow = false))
+                assertTrue("fixture added: $added", added is ClientOperationOutcome.Verified)
+                val startBegun = kotlinx.coroutines.CompletableDeferred<Unit>()
+                val startDone = java.util.concurrent.atomic.AtomicBoolean(false)
+                val duringStart = java.util.concurrent.atomic.AtomicInteger(0)
+                coroutineScope {
+                    // Readers keep reading from the moment the Start begins until it
+                    // completes, so their brackets genuinely overlap its bracket.
+                    val readers = (1..3).map {
+                        async(Dispatchers.IO) {
+                            startBegun.await()
+                            do {
+                                runCatching { reader.inspect(configuration) }.exceptionOrNull()
+                                    ?.let { failures += "round $round reader: ${it.message}" }
+                                if (!startDone.get()) duringStart.incrementAndGet()
+                            } while (!startDone.get())
+                        }
+                    }
+                    startBegun.complete(Unit)
+                    val started = try { ops().setStarted(fixture.infoHashV1, true) } finally { startDone.set(true) }
+                    if (started !is ClientOperationOutcome.Verified) failures += "round $round start=${started.javaClass.simpleName}"
+                    readers.forEach { it.await() }
+                    runCatching { reader.inspect(configuration) }.exceptionOrNull()
+                        ?.let { failures += "round $round post-start read: ${it.message}" }
                 }
-                val started = ops().setStarted(fixture.infoHashV1, true)
-                if (started !is ClientOperationOutcome.Verified) failures += "round $round start=${started.javaClass.simpleName}"
-                runCatching { reader.inspect(configuration) }.exceptionOrNull()
-                    ?.let { failures += "round $round post-start read: ${it.message}" }
-                readers.forEach { r -> r.await().exceptionOrNull()?.let { failures += "round $round reader: ${it.message}" } }
+                overlapped += duringStart.get()
+            } finally {
+                runCatching { ops().remove(fixture.infoHashV1, deleteData = false) }
             }
-            val removed = ops().remove(fixture.infoHashV1, deleteData = false)
-            assertTrue("fixture removed: $removed", removed is ClientOperationOutcome.Verified)
+            assertTrue("fixture removed", ops().client.torrent(fixture.infoHashV1) == null)
         }
-        println("CHUNKS_DELUGE_CONCURRENT: rounds=6 concurrent_readers=3 failures=${failures.size}")
+        assertTrue("readers overlapped the Start brackets", overlapped > 0)
+        println("CHUNKS_DELUGE_CONCURRENT: rounds=6 concurrent_readers=3 overlapping_reads=$overlapped failures=${failures.size}")
         assertEquals("concurrent Chunks sessions must not disrupt each other: $failures", emptyList<String>(), failures)
     }
 }
