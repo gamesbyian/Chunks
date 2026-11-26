@@ -246,9 +246,15 @@ class RemoteAddSessionContinuityTest {
             assertTrue(session.attemptTicket?.intent?.startWhenAdded == true)
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
             rule.onNodeWithText("Check server state (read only)").performClick()
-            rule.waitUntil(15_000) {
-                session.coordinator.phase ==
-                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+            try {
+                rule.waitUntil(15_000) {
+                    session.coordinator.phase ==
+                        io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+                }
+            } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+                // #2138: no timeout change; report what the gateway saw and the phase reached.
+                throw AssertionError("read-only check did not confirm within 15 s: phase=${session.coordinator.phase} " +
+                    "gateway=${calls.map { it.first }}", timeout)
             }
             assertEquals("Recovered state cannot prove which client originally registered it", 0, verified)
             assertFalse("Late old completion must preserve the newer exclusion", artwork.value)

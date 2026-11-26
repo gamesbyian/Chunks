@@ -393,6 +393,42 @@
         "*SessionRemove*",
         "*RemoteDeleteData*"
       ]
+    },
+    {
+      "id": "privacy-policy-change-needs-fresh-auth",
+      "invariant": "Changing/disabling a lock policy needs a fresh device authentication, not a session unlock",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "return deviceAuthenticated && gate.authorized &&",
+      "new": "return gate.authorized &&",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*",
+        "*TransferPrivacy*"
+      ]
+    },
+    {
+      "id": "privacy-foreground-return-keeps-unlock",
+      "invariant": "EACH_FOREGROUND_RETURN locks on every background transition",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "                TransferLockMode.EACH_FOREGROUND_RETURN -> {\n                    gate.generation++\n                    gate.authorized = false",
+      "new": "                TransferLockMode.EACH_FOREGROUND_RETURN -> {\n                    gate.generation++",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*",
+        "*TransferPrivacy*"
+      ]
+    },
+    {
+      "id": "privacy-lock-now-keeps-unlock",
+      "invariant": "Lock now revokes the scope's authorization",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "        gate.generation++\n        gate.authorized = false\n        gate.challengeNonce = null\n        gate.policyChangeNonce = null\n        gate.leftBackgroundAt = null",
+      "new": "        gate.generation++\n        gate.challengeNonce = null\n        gate.policyChangeNonce = null\n        gate.leftBackgroundAt = null",
+      "tests": [
+        "*TransferPrivacySession*",
+        "*PrivacyGate*",
+        "*TransferPrivacy*"
+      ]
     }
   ]
 }
