@@ -740,13 +740,14 @@ internal fun ChunksApp(
      * their explicit acknowledgement and no write is ever replayed.
      */
     fun releaseVerifiedAttemptsForNewSource() {
-        if (addDestination == UniversalAddRouteTarget.Local &&
-            activeLocalAddAttempt.attemptedTicket != null &&
-            localReviewedTorrent.value?.originalDocument == null &&
-            activeLocalAddAttempt.originalDocument.deletion == null &&
-            !activeLocalAddAttempt.originalDocument.deleting &&
-            activeLocalAddAttempt.coordinator.phase ==
-                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
+        if (AddSourceOccupancy.localVerifiedAttemptReleasable(
+                localSelected = addDestination == UniversalAddRouteTarget.Local,
+                attemptSubmitted = activeLocalAddAttempt.attemptedTicket != null,
+                newReviewedDocumentPresent = localReviewedTorrent.value?.originalDocument != null,
+                originalDocumentDeletionPending = activeLocalAddAttempt.originalDocument.deletion != null,
+                originalDocumentDeleting = activeLocalAddAttempt.originalDocument.deleting,
+                verified = activeLocalAddAttempt.coordinator.phase ==
+                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED) &&
             activeLocalAddAttempt.finishReviewedAttempt()) {
             // The finished source is one shared document: clear both of its halves.
             localReviewedTorrent.value = null
@@ -795,13 +796,16 @@ internal fun ChunksApp(
         val remoteDraft = selectedRemoteAddSession()
         // A first Android document being read is an occupied draft even
         // before the new .torrent metainfo is visible on the Add form.
-        return sharedTorrentReading ||
-            (magnet.isNotBlank() && magnet != incomingText) || localReviewedTorrent.value != null ||
-            serverHandoff() != null ||
-            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
-            activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true ||
-            (addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)
+        return AddSourceOccupancy.occupied(
+            sharedTorrentReading = sharedTorrentReading,
+            draftText = magnet, incomingText = incomingText,
+            localReviewedFilePresent = localReviewedTorrent.value != null,
+            serverHandoffPresent = serverHandoff() != null,
+            remoteFileChosen = remoteDraft?.useFile == true && remoteDraft.selectedBytes != null,
+            localAttemptSubmitted = activeLocalAddAttempt.attemptedTicket != null,
+            remoteAlreadyAttempted = remoteDraft?.alreadyAttempted == true,
+            protocolAttemptHeldForSelectedClient =
+                addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)
     }
 
     fun readSharedDocument(document: Uri) {

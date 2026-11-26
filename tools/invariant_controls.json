@@ -1186,6 +1186,26 @@
       "tests": [
         "io.github.gamesbyian.chunks.AddRoutingModelTest"
       ]
+    },
+    {
+      "id": "add-release-ignores-original-document-deletion",
+      "invariant": "A verified Local attempt's source is not released while its original-document deletion is pending",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddSourceOccupancy.kt",
+      "old": "!originalDocumentDeletionPending && !originalDocumentDeleting && verified",
+      "new": "!originalDocumentDeleting && verified",
+      "tests": [
+        "io.github.gamesbyian.chunks.AddSourceOccupancyTest"
+      ]
+    },
+    {
+      "id": "add-release-ignores-unverified-attempt",
+      "invariant": "An attempt that is not VERIFIED (uncertain or in flight) never releases its source for a new draft",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddSourceOccupancy.kt",
+      "old": "!originalDocumentDeletionPending && !originalDocumentDeleting && verified",
+      "new": "!originalDocumentDeletionPending && !originalDocumentDeleting",
+      "tests": [
+        "io.github.gamesbyian.chunks.AddSourceOccupancyTest"
+      ]
     }
   ]
 }
