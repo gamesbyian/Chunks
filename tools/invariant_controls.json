@@ -1,6 +1,6 @@
 {
   "schema": "chunks.invariant-controls.v1",
-  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept.",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. Controls whose mutation is masked by a second, redundant guard (equivalent mutants, e.g. '..' and absolute ZIP paths are also refused by the blank-segment and trailing-dot rules) are not kept. Known tier limit (2026-11-26): the Local Add enablement conditions in LocalEngineScreen (fresh confirmed local list, verified Place, previous attempt unresolved) survive JVM controls because the JVM harness always satisfies them; they are witnessed only by installed journeys, so a JVM-only change there is not qualified by this runner.",
   "controls": [
     {
       "id": "readback-gate-accepts-any-read",
