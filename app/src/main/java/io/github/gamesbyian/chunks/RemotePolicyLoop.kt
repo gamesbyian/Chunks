@@ -2,7 +2,6 @@ package io.github.gamesbyian.chunks
 
 import android.content.Context
 import io.github.gamesbyian.chunks.engine.FinishInOrderRunner
-import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
