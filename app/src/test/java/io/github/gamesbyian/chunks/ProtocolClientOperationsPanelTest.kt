@@ -505,6 +505,21 @@ class ProtocolClientOperationsPanelTest {
         rule.waitUntil(5_000) { fake.writes == 1 }
     }
 
+    /** Invariant control `protocol-controls-enabled-when-busy`: no second command while one is in flight. */
+    @Test fun everyControlIsDisabledWhileACommandIsInFlight() {
+        val gate = CompletableDeferred<Unit>()
+        val fake = Fake().apply { afterStartWrite = { gate.await() } }
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsEnabled().performClick()
+        rule.waitUntil(5_000) { fake.writes == 1 }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).assertIsNotEnabled()
+        rule.runOnIdle { gate.complete(Unit) }
+        rule.waitForIdle()
+        assertEquals("exactly one write", 1, fake.writes)
+    }
+
     @Test fun removeKeepsFilesUnlessExplicitlyChosen() {
         val fake = Fake()
         render(fake, reportedDirectory = null)

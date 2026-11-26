@@ -814,6 +814,28 @@
         "*TransferLifecycleNoReplayTest",
         "*TransferLifecycleControlLargeTextTest"
       ]
+    },
+    {
+      "id": "protocol-controls-enabled-when-stale",
+      "invariant": "Typed-client controls are disabled when the transfer list is out of date or locked",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+      "old": "val enabled = current && !busy && !latched && session != null",
+      "new": "val enabled = !busy && !latched && session != null",
+      "tests": [
+        "*ProtocolClientOperationsPanelTest",
+        "*ProtocolOperation*"
+      ]
+    },
+    {
+      "id": "protocol-controls-enabled-when-latched",
+      "invariant": "Typed-client controls stay disabled while an uncertain write is latched",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+      "old": "val enabled = current && !busy && !latched && session != null",
+      "new": "val enabled = current && !busy && session != null",
+      "tests": [
+        "*ProtocolClientOperationsPanelTest",
+        "*ProtocolOperation*"
+      ]
     }
   ]
 }
