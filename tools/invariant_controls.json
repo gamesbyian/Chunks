@@ -1116,6 +1116,66 @@
       "tests": [
         "*RememberedLoginPersistenceTest"
       ]
+    },
+    {
+      "id": "magnet-source-tostring-leaks",
+      "invariant": "A shared magnet's toString never prints the magnet (passkeys)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ExternalAddSource.kt",
+      "old": "\"ExternalAddSource.Magnet(private)\"",
+      "new": "\"ExternalAddSource.Magnet($value)\"",
+      "tests": [
+        "*ExternalAddSource*",
+        "*Redact*",
+        "*Private*",
+        "*Intake*",
+        "*UniversalAddCoordinatorTest",
+        "*RememberedRemoteProtocolProfilesTest"
+      ]
+    },
+    {
+      "id": "torrent-link-tostring-leaks",
+      "invariant": "A shared torrent link's toString never prints the link (tokens)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ExternalAddSource.kt",
+      "old": "\"ExternalAddSource.TorrentLink(private)\"",
+      "new": "\"ExternalAddSource.TorrentLink($value)\"",
+      "tests": [
+        "*ExternalAddSource*",
+        "*Redact*",
+        "*Private*",
+        "*Intake*",
+        "*UniversalAddCoordinatorTest",
+        "*RememberedRemoteProtocolProfilesTest"
+      ]
+    },
+    {
+      "id": "protocol-profile-tostring-leaks",
+      "invariant": "A typed remote profile's toString never prints its credentials",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProtocolProfiles.kt",
+      "old": "\"Typed remote profile (<redacted>)\"",
+      "new": "\"Typed remote profile (${credentials.password})\"",
+      "tests": [
+        "*ExternalAddSource*",
+        "*Redact*",
+        "*Private*",
+        "*Intake*",
+        "*UniversalAddCoordinatorTest",
+        "*RememberedRemoteProtocolProfilesTest"
+      ]
+    },
+    {
+      "id": "add-source-tostring-leaks",
+      "invariant": "An Add source's toString never prints its magnet or bytes",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddCoordinator.kt",
+      "old": "\"UniversalAddSource(kind=$kind, private)\"",
+      "new": "\"UniversalAddSource(kind=$kind, $magnet)\"",
+      "tests": [
+        "*ExternalAddSource*",
+        "*Redact*",
+        "*Private*",
+        "*Intake*",
+        "*UniversalAddCoordinatorTest",
+        "*RememberedRemoteProtocolProfilesTest"
+      ]
     }
   ]
 }
