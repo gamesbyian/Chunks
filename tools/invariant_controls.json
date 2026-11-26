@@ -142,6 +142,28 @@
         "*ClientOperationsTest",
         "*ProtocolClientOperationsPanelTest"
       ]
+    },
+    {
+      "id": "add-cancel-after-dispatch-skips-readback",
+      "invariant": "Cancelling an Add after the write boundary was entered requires a fresh readback and is never 'no write'",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt",
+      "old": "            runCatching { executor.recordInterrupted(ticket) }\n            coordinator.requireReadback(ticket)\n        } else",
+      "new": "            runCatching { executor.recordInterrupted(ticket) }\n        } else",
+      "tests": [
+        "*UniversalAddLifecycle*",
+        "*UniversalAddCoordinatorTest"
+      ]
+    },
+    {
+      "id": "add-cancel-after-settle-skips-readback",
+      "invariant": "Cancelling while settling a dispatched Add still requires a fresh readback",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/model/UniversalAddLifecycle.kt",
+      "old": "        } catch (cancel: CancellationException) {\n            coordinator.requireReadback(ticket)\n            throw cancel",
+      "new": "        } catch (cancel: CancellationException) {\n            throw cancel",
+      "tests": [
+        "*UniversalAddLifecycle*",
+        "*UniversalAddCoordinatorTest"
+      ]
     }
   ]
 }
