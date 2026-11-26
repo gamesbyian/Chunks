@@ -754,6 +754,31 @@
       "tests": [
         "*ProtocolAddAvailabilityTest"
       ]
+    },
+    {
+      "id": "remove-data-offered-on-stale-capability",
+      "invariant": "Remove-with-data is offered only on a capability read fresh for this exact account",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
+      "old": "it.isFresh(accountScope) && it.actionable",
+      "new": "it.actionable",
+      "tests": [
+        "*TransferSessionRemove*",
+        "*RemoteDeleteData*",
+        "*RuTorrentDelete*",
+        "*TransferSessionRemoveRevocationTest"
+      ]
+    },
+    {
+      "id": "remove-data-offered-when-not-actionable",
+      "invariant": "Remove-with-data is offered only when the discovered capability is actionable",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
+      "old": "it.isFresh(accountScope) && it.actionable",
+      "new": "it.isFresh(accountScope)",
+      "tests": [
+        "*TransferSessionRemove*",
+        "*RemoteDeleteData*",
+        "*RuTorrentDelete*"
+      ]
     }
   ]
 }

@@ -58,4 +58,25 @@ class TransferSessionRemoveRevocationTest {
     @Test fun aStaleSnapshotRevokesAnOpenRemoveConfirmation() = check { set -> set(true, true) }
 
     @Test fun leavingTheFullMainViewRevokesAnOpenRemoveConfirmation() = check { set -> set(false, false) }
+
+    /** Invariant control `remove-data-offered-on-stale-capability`. */
+    @Test fun aDataDeletionCapabilityDiscoveredForAnotherAccountIsNeverOffered() {
+        var dataCalls = 0
+        rule.setContent { ChunksTheme { Surface { Column {
+            TransferSessionRemoveControl(remote, transfer, false, true, { true }, {},
+                discoverDataDeletion = {
+                    io.github.gamesbyian.chunks.rpc.RemoteDeleteCapability(
+                        io.github.gamesbyian.chunks.rpc.RemoteCapabilityState.SUPPORTED,
+                        io.github.gamesbyian.chunks.rpc.RemoteDeleteAdapter.ERASEDATA_HTTP,
+                        "Capability of someone else", System.currentTimeMillis(), "https://other.example/RPC2\u0000other")
+                },
+                performDataErase = { hash, _, _ -> dataCalls++
+                    io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.QueuedForCleanup(hash) })
+        } } } }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Remove transfer and data (unavailable)").assertExists()
+        rule.onNodeWithText("Remove transfer and data").assertDoesNotExist()
+        assertEquals(0, dataCalls)
+    }
 }
