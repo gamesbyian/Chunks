@@ -164,6 +164,46 @@
         "*UniversalAddLifecycle*",
         "*UniversalAddCoordinatorTest"
       ]
+    },
+    {
+      "id": "reservation-allows-path-escape",
+      "invariant": "A torrent path containing .. can never be reserved (no path escape)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "relative.split('/').any { it.isBlank() || it == \".\" || it == \"..\" })",
+      "new": "relative.split('/').any { it.isBlank() || it == \".\" })",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "reservation-ignores-conflicts",
+      "invariant": "A second checked transfer cannot reserve paths another live transfer reserves",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "            if (conflictsWithReserved(path))\n                return",
+      "new": "            if (false)\n                return",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "reservation-no-case-folding",
+      "invariant": "Provider namespaces are compared case/Unicode-folded so aliases cannot slip past",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "Normalizer.normalize(path, Normalizer.Form.NFKC).lowercase(Locale.ROOT)",
+      "new": "path",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
+    },
+    {
+      "id": "reservation-allows-aliased-paths",
+      "invariant": "A torrent declaring two aliased backing paths is refused",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+      "old": "            if (!paths.add(full))\n                return",
+      "new": "            paths.add(full)\n            if (false)\n                return",
+      "tests": [
+        "*LocalCheckedPayloadReservationsTest"
+      ]
     }
   ]
 }

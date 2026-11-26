@@ -30,6 +30,16 @@ class LocalCheckedPayloadReservationsTest {
             index.reserve("hash-b", root, listOf("series/episode.mkv")))
     }
 
+    /** Invariant control `reservation-allows-aliased-paths`. */
+    @Test fun aTorrentDeclaringTwoAliasedBackingPathsIsRefusedAndReservesNothing() {
+        val root = temp.newFolder("aliased")
+        val index = LocalCheckedPayloadReservations()
+        val refused = index.reserve("a", root, listOf("Series/Episode.MKV", "series/episode.mkv"))
+        assertTrue("case-aliased names refer to one file on FAT/provider storage: $refused",
+            refused is LocalCheckedPayloadReservations.Result.Refused)
+        assertFalse("a refused admission leaves no reservation", index.hasReservation("a"))
+    }
+
     @Test fun oneConflictingFileRejectsAnEntireMultifileAdmission() {
         val root = temp.newFolder("multi")
         val index = LocalCheckedPayloadReservations()
