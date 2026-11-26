@@ -78,6 +78,24 @@ class CreateSeedCopyTest {
         assertTrue((changed as CreateSeedCopy.Outcome.Refused).reason.contains("changed"))
     }
 
+    /** Invariant control `seed-copy-unsafe-segment`: no path segment can escape or confuse the destination. */
+    @Test fun unsafeNamesAndPathSegmentsAreRefusedBeforeAnythingIsWritten() {
+        val created = TorrentMetainfoBuilder.build(request())
+        val root = temp.newFolder("unsafe")
+        fun unsafe(name: String, vararg path: String) = TorrentMetainfoBuilder.Request(name, listOf(
+            TorrentMetainfoBuilder.Entry(path.toList(), 3L) { ByteArrayInputStream(byteArrayOf(1, 2, 3)) }))
+        val cases = listOf(
+            unsafe("a/b", "a/b"),                 // separator inside the torrent name
+            unsafe("ok", "dir\\file.bin"),         // backslash inside a segment
+            unsafe("ok", "bad\u0001name.bin"),      // control character
+            unsafe("ok", "bad\u007fname.bin"))      // DEL
+        for (req in cases) {
+            val outcome = CreateSeedCopy.copyVerifyAndSeed(req, created, root, engine())
+            assertTrue("unsafe request must be refused: $outcome", outcome is CreateSeedCopy.Outcome.Refused)
+            assertTrue("nothing was written", root.list().isNullOrEmpty())
+        }
+    }
+
     @Test fun replacedEarlierFileCannotBeReadViaSymlinkDuringHashRebuild() {
         val req = request()
         val created = TorrentMetainfoBuilder.build(req)

@@ -17,6 +17,18 @@ class SeedingEnforcementTest {
         assertTrue("a seeded copy has no ratio", copy is Decision.CannotJudge)
     }
 
+    /** Invariant control `seeding-invalid-counters`: a nonsense counter can never stop a transfer. */
+    @Test fun invalidEngineCountersCannotJudgeAPolicyAndNeverStop() {
+        val policy = SeedingPolicy(ratioGoal = BigDecimal("1.00"), maxSeedSeconds = 10)
+        for (o in listOf(
+            SeedingObservation(uploadedBytes = -1, downloadedBytes = 10, seedingSeconds = 100, seeding = true),
+            SeedingObservation(uploadedBytes = 100, downloadedBytes = -1, seedingSeconds = 100, seeding = true),
+            SeedingObservation(uploadedBytes = 100, downloadedBytes = 10, seedingSeconds = -5, seeding = true))) {
+            val decision = SeedingEnforcement.decide(policy, o)
+            assertTrue("invalid counters must not stop: $decision", decision is Decision.CannotJudge)
+        }
+    }
+
     @Test fun foreverAndNotSeedingNeverStop() {
         assertEquals(Decision.KeepSeeding, SeedingEnforcement.decide(SeedingPolicy(), seen(10, 1)))
         assertEquals(Decision.KeepSeeding, SeedingEnforcement.decide(ratio1, seen(10, 1, seeding = false)))
