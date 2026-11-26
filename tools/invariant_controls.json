@@ -1,6 +1,6 @@
 {
   "schema": "chunks.invariant-controls.v1",
-  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file. A control with known_gap is expected to SURVIVE until its witness exists.",
+  "note": "Each control breaks one named safety invariant in a copy of the source and expects at least one of the listed JVM tests to FAIL. A control that survives is a witness gap, not a pass. Run locally with tools/invariant_controls.py; never commit a mutated file.",
   "controls": [
     {
       "id": "readback-gate-accepts-any-read",
@@ -63,11 +63,9 @@
       "old": "RemoteCredentialLock.current(generation) &&",
       "new": "",
       "tests": [
-        "*RemoteSeedingTickTest",
-        "*RemoteSessionRecreationTest",
-        "*RemoteSeedingControllerTest"
-      ],
-      "known_gap": "Survived on 2026-11-26: no JVM test changes the credential generation while a policy tick is in flight. Tracked in a follow-up issue; do not delete this control."
+        "*RemotePolicyLoopTest",
+        "*RemoteSeedingTickTest"
+      ]
     },
     {
       "id": "add-readback-accepts-other-hash",
@@ -225,6 +223,35 @@
       "tests": [
         "*RemoteOriginalTorrentHandlingTest",
         "*OriginalTorrentHandlingTest"
+      ]
+    },
+    {
+      "id": "rtorrent-add-swallows-cancellation",
+      "invariant": "A cancelled rTorrent load propagates cancellation; it never becomes an outcome",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
+      "old": "            call(\"load.verbose\", params)\n        } catch (cancel: kotlinx.coroutines.CancellationException) {\n            throw cancel",
+      "new": "            call(\"load.verbose\", params)\n        } catch (cancel: kotlinx.coroutines.CancellationException) {\n            return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)",
+      "tests": [
+        "*RemoteHiddenDuplicateAddTest",
+        "*RemoteBinaryStoppedAddTest",
+        "*RemoteMalformedMutationAcknowledgementTest",
+        "*RemoteUniversalAddAdapterTest",
+        "*RemoteAddStarterTest",
+        "*RemoteAddCancellationTest"
+      ]
+    },
+    {
+      "id": "rtorrent-add-duplicates-existing-hash",
+      "invariant": "An Add whose exact hash is already registered sends no load",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
+      "old": "        if (lookupName(plan.expectedInfoHash) != null) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useServerDefault) listOf(\"\", plan.source)",
+      "new": "        if (false) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useServerDefault) listOf(\"\", plan.source)",
+      "tests": [
+        "*RemoteHiddenDuplicateAddTest",
+        "*RemoteBinaryStoppedAddTest",
+        "*RemoteMalformedMutationAcknowledgementTest",
+        "*RemoteUniversalAddAdapterTest",
+        "*RemoteAddStarterTest"
       ]
     }
   ]

@@ -33,14 +33,16 @@ internal suspend fun runProtocolPolicyLoop(
     host: ProtocolPolicyHost,
     profiles: List<CombinedReadOnlyProtocolProfile>,
     expectedSaved: Map<String, RememberedRemoteProtocolProfiles.Profile>,
-    expectedTransient: CombinedReadOnlyProtocolProfile?
+    expectedTransient: CombinedReadOnlyProtocolProfile?,
+    /** The tick period; tests shorten it. */
+    tickMillis: Long = 30_000L
 ): Nothing {
     val clients = mutableMapOf<String, io.github.gamesbyian.chunks.rpc.ClientOperations>()
     val privacyStore = TransferPrivacyPolicyStore(context)
     var clientGeneration = RemoteCredentialLock.capture()
     val job = currentCoroutineContext()[Job]
     while (true) {
-        delay(30_000L)
+        delay(tickMillis)
         if (!host.mayRun() || profiles.isEmpty()) continue
         val generation = RemoteCredentialLock.capture()
         if (generation != clientGeneration) {
