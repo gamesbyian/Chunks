@@ -322,14 +322,6 @@
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
   "kind": "broad-catch",
-  "fingerprint": "a358b50235d77011ee13b020",
-  "count": 1,
-  "disposition": "SAFE-NONSUSPEND",
-  "reason": "TransferCollectionStore.addBatch and forTransfer are plain funs."
- },
- {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
-  "kind": "broad-catch",
   "fingerprint": "bb0ece60d4451a0159bde76c",
   "count": 1,
   "disposition": "SAFE-NONSUSPEND",
@@ -430,6 +422,14 @@
   "count": 1,
   "disposition": "SAFE-RETHROWS",
   "reason": "A preceding catch (cancel: CancellationException) { if (parentJob?.isActive != true || ownerCurrent()) throw cancel } handles cancellation from the Finish in Order step; the broad catch only keeps a partial write's readback fence (moved unchanged from ChunksApp)."
+ },
+ {
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/RemoteScreens.kt",
+  "kind": "broad-catch",
+  "fingerprint": "55195c92d99f2ec3d652cefc",
+  "count": 1,
+  "disposition": "SAFE-NONSUSPEND",
+  "reason": "TransferCollectionStore.addBatch and forTransfer are plain funs."
  },
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/TransferMoveControl.kt",

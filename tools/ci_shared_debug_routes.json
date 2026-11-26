@@ -81,6 +81,7 @@
       "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteScreens.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt",
@@ -101,6 +102,7 @@
     "remove": [
       "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/RemoteScreens.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/RemoteSessionOwner.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt",
