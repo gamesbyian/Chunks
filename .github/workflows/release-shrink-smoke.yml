@@ -5,17 +5,29 @@ name: Chunks release R8 shrink smoke
 # launch smoke on API35. It is release-candidate evidence for A2611-09; qaMinified does not
 # validate this shrink. It never signs with, or exposes, a release key and publishes nothing.
 on:
+  # Only the inputs of the release shrink itself; ordinary source changes are covered by
+  # qaMinified and are re-checked here at the release candidate by manual dispatch.
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/build.gradle.kts"
+      - "app/proguard-rules.pro"
+      - ".github/workflows/release-shrink-smoke.yml"
+      - "tools/release_shrink_smoke.sh"
+      - "tools/release_jni_witness.py"
+    types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: chunks-release-shrink-smoke-${{ github.run_id }}
+  group: chunks-release-shrink-smoke-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   release-shrink-smoke:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
