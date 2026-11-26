@@ -98,6 +98,7 @@ class RemoteUniversalAddAdapterTest {
         transientMissingHashOnce: Boolean = false,
         observedDirectoryAfterFirstRead: String? = null,
         reportedHash: String = hash,
+        failEverythingAfterLoad: Boolean = false,
         body: suspend (
             RemoteUniversalAddAdapter, UniversalAddCoordinator.Ticket,
             MutableList<String>, () -> RTorrentRemote
@@ -126,6 +127,10 @@ class RemoteUniversalAddAdapterTest {
                 (method == "d.hash" && (!loaded ||
                     (transientMissingHashOnce && hashReads == 1)))) {
                 absent(exchange)
+                return@createContext
+            }
+            if (failEverythingAfterLoad && loaded && method !in setOf("load.start", "load.verbose")) {
+                respond(exchange, "", 401)
                 return@createContext
             }
             if (method in setOf("load.start", "load.verbose")) {
@@ -232,6 +237,24 @@ class RemoteUniversalAddAdapterTest {
             assertEquals(1, methods.count { it == "load.start" })
             assertFalse(methods.any { it == "d.start" || it == "load.verbose" })
         }
+
+    /**
+     * Invariant controls `rtorrent-stopped-add-claims-no-write-after-load` and
+     * `rtorrent-started-add-claims-no-write-after-load`: once the load may have been sent, no
+     * failure is reported as a known pre-write refusal (that would release the fence and allow a replay).
+     */
+    @Test fun aFailureAfterTheLoadWasSentIsNeverAKnownPreWriteRefusal() {
+        for (start in listOf(false, true)) {
+            withFixture(start = start, failEverythingAfterLoad = true) { adapter, approved, methods, _ ->
+                var refusedBeforeWire = false
+                try { adapter.submit(approved) } catch (_: RemotePreWriteRefusal) { refusedBeforeWire = true }
+                catch (_: Exception) { }
+                assertFalse("start=$start: a load was sent, so this is not a known no-write refusal", refusedBeforeWire)
+                assertEquals("start=$start: the load is never replayed", 1,
+                    methods.count { it == "load.start" || it == "load.verbose" })
+            }
+        }
+    }
 
     @Test fun stoppedAddLostAcknowledgementReconcilesExactPlaceWithoutStart() =
         withFixture(start = false, lostAck = true) { adapter, approved, methods, reconnect ->
