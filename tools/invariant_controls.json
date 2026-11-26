@@ -836,6 +836,54 @@
         "*ProtocolClientOperationsPanelTest",
         "*ProtocolOperation*"
       ]
+    },
+    {
+      "id": "media-lookup-ignores-consent-off",
+      "invariant": "With online lookup consent off, no provider is contacted",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/media/MediaEnrichmentService.kt",
+      "old": "        if (!settings.onlineLookupConsent) return MediaLookupResult(",
+      "new": "        if (false) return MediaLookupResult(",
+      "tests": [
+        "*MediaEnrichmentServiceTest",
+        "*MediaInventory*",
+        "*MediaAutomationPreferencesTest"
+      ]
+    },
+    {
+      "id": "media-background-lookup-on-metered",
+      "invariant": "Automatic background lookup waits for an unmetered connection",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/media/MediaEnrichmentService.kt",
+      "old": "!settings.showArtwork || !settings.downloadArtwork ||\n                network.metered || network.powerSaver))",
+      "new": "!settings.showArtwork || !settings.downloadArtwork ||\n                network.powerSaver))",
+      "tests": [
+        "*MediaEnrichmentServiceTest",
+        "*MediaInventory*",
+        "*MediaAutomationPreferencesTest"
+      ]
+    },
+    {
+      "id": "media-background-lookup-in-power-saver",
+      "invariant": "Automatic background lookup is paused in power saver",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/media/MediaEnrichmentService.kt",
+      "old": "                network.metered || network.powerSaver))",
+      "new": "                network.metered))",
+      "tests": [
+        "*MediaEnrichmentServiceTest",
+        "*MediaInventory*",
+        "*MediaAutomationPreferencesTest"
+      ]
+    },
+    {
+      "id": "media-background-lookup-automatic-off",
+      "invariant": "Automatic lookup respects the automatic switch",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/media/MediaEnrichmentService.kt",
+      "old": "(!settings.automaticLookup || !settings.showArtwork",
+      "new": "(!settings.showArtwork",
+      "tests": [
+        "*MediaEnrichmentServiceTest",
+        "*MediaInventory*",
+        "*MediaAutomationPreferencesTest"
+      ]
     }
   ]
 }
