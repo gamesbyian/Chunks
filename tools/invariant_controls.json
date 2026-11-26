@@ -1176,6 +1176,16 @@
         "*UniversalAddCoordinatorTest",
         "*RememberedRemoteProtocolProfilesTest"
       ]
+    },
+    {
+      "id": "routing-suggestion-ignores-inflight-protocol-add",
+      "invariant": "A Smart Routing suggestion never moves the draft to another protocol client while a protocol Add is in flight",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/AddRoutingModel.kt",
+      "old": "(!protocolAddBusy || protocolAddProfileId == suggestedId) -> Target.Protocol(suggestedId)",
+      "new": "true -> Target.Protocol(suggestedId)",
+      "tests": [
+        "io.github.gamesbyian.chunks.AddRoutingModelTest"
+      ]
     }
   ]
 }

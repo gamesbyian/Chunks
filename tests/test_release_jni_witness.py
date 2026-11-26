@@ -78,5 +78,16 @@ class JniWitnessTests(unittest.TestCase):
         self.assertTrue(any("no org/libtorrent4j" in p for p in problems))
 
 
+    def test_exported_jni_symbols_resolve_to_their_class_and_are_checked(self):
+        self.assertEqual(witness.unmangle("Java_org_libtorrent4j_swig_libtorrent_1jni_foo_1bar"),
+                         "org.libtorrent4j.swig.libtorrent_jni.foo_bar")
+        sym = b"Java_org_libtorrent4j_swig_torrent_1handle_1jni_new_1x\x00"
+        mapping = ("org.libtorrent4j.swig.torrent_handle_jni -> a.c:\n")
+        _, problems = witness.check(self._build(sym), mapping, "", ["arm64-v8a", "x86_64"])
+        self.assertTrue(any("RENAMED" in p for p in problems), problems)
+        _, problems = witness.check(self._build(sym), "", "", ["arm64-v8a", "x86_64"])
+        self.assertTrue(any("owner not in mapping" in p for p in problems), problems)
+
+
 if __name__ == "__main__":
     unittest.main()

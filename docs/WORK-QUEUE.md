@@ -6,6 +6,15 @@
 
 **Current scope boundary (2026-11-23 owner update):** The visual specimen atlas is a saved future work plan, not a current R2/R4 task or an acceptance blocker. Do not trigger tall-screen screenshot campaigns, atlas coverage audits or discretionary visual specimen CI during technical completion. Keep functional/accessibility bug fixes independent. No owner PC/Desktop Commander; use the repo and GitHub-hosted checks.
 
+## Completion disposition (2026-11-26; classification of the rows below, not another backlog)
+
+- **Remaining implementation (bounded):** A2611-02 decomposition of the `LocalEngineScreen`/`CombinedTransfersScreen`/`ChunksApp` bodies (Add routing decisions are now `AddRouting`; next: Add callbacks, Details operations, navigation); A2611-06 conversion of blocking remote policy bridges, only where a measurement shows benefit; release shrink enablement (A2611-09).
+- **Implemented, needs acceptance only:** remote Add/Start/Stop/Remove, Finish in Order, Smart Seeding, Smart Routing suggestions, snapshots, remote New folder (ruTorrent File Manager), media/artwork. Remaining evidence is physical Pixel (#1786), OEM/VPN (#569), live Seedhost mkdir (#1680) and the assembled release candidate.
+- **Unsupported by design (truthful refusal, no work):** remote folder rename. The File Manager contract allows only the typed `newDirectory`; no rename is offered and manual path entry stays. Generic SAF writers and replace-in-place stay disabled until a capability-checked exact destination, readback and recovery proof exist (#809).
+- **Maintenance, not a prerequisite:** the settings registry stays a metadata catalog (see [SETTINGS-REGISTRY](SETTINGS-REGISTRY.md): a renderer or store only when a shipping journey shows duplication); test-only foundations in A2611-04 await the owner's wire/move/archive decision; invariant controls are added with each new safety invariant.
+- **Measured (A2611-06):** an idle Finish in Order rule costs 5 read RPCs per tick (10/min at the 30 s cadence) and an applied step 13 calls including one write (`RemoteFinishInOrderCostTest`); per-call cost is independent of other rules.
+- **Release infrastructure:** `-Pchunks.releaseShrink=true` builds the real `release` variant with R8; `tools/release_jni_witness.py` checks that libtorrent4j classes named by the native libraries survive unrenamed (local run on that APK: 38.9 MB, 0 problems). Still needed: installed launch/engine smoke on that APK (hosted), upgrade and credential witness at the RC, then flip the default.
+
 ## R0. Current ownership, safety and arbitration
 
 1. Re-fetch live main, open PR heads/diffs/checks and acceptance status at every dispatch. **2026-11-21 audit snapshot only:** `dd9f3985` was main and #1931 the sole open PR, with visible successful checks; these are not a standing ownership lock, merge authorization or current truth. #1934–#1939 improved workflow cancellation, deadlines, PR targeting and disposable rTorrent dependencies. Confirm the live state and unique unmerged work before choosing a scoped task.

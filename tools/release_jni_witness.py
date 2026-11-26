@@ -18,6 +18,40 @@ import sys
 import zipfile
 
 CLASS_RE = re.compile(rb"org/libtorrent4j/[A-Za-z0-9_/$]+")
+SYMBOL_RE = re.compile(rb"Java_org_libtorrent4j_[A-Za-z0-9_]+")
+
+
+def unmangle(symbol: str) -> str:
+    """JNI short-name symbol -> dotted `package.Class.method` (underscore escapes: _1 = _, _3 = [)."""
+    body = symbol[len("Java_"):]
+    out, i = [], 0
+    while i < len(body):
+        if body[i] == "_" and i + 1 < len(body) and body[i + 1] in "123":
+            out.append({"1": "_", "2": ";", "3": "["}[body[i + 1]])
+            i += 2
+        elif body[i] == "_":
+            out.append(".")
+            i += 1
+        else:
+            out.append(body[i])
+            i += 1
+    return "".join(out)
+
+
+def native_method_classes(apk: zipfile.ZipFile, abis: list[str], known: set[str]) -> tuple[set[str], list[str]]:
+    """Classes owning exported JNI symbols (longest known class prefix), plus unresolved symbols."""
+    classes: set[str] = set()
+    unresolved: list[str] = []
+    for abi in abis:
+        for lib in (n for n in apk.namelist() if n.startswith(f"lib/{abi}/") and n.endswith(".so")):
+            for raw in set(SYMBOL_RE.findall(apk.read(lib))):
+                dotted = unmangle(raw.decode("ascii"))
+                owner = max((k for k in known if dotted.startswith(k + ".")), key=len, default=None)
+                if owner:
+                    classes.add(owner)
+                else:
+                    unresolved.append(dotted)
+    return classes, sorted(set(unresolved))
 
 
 def native_class_references(apk: zipfile.ZipFile, abis: list[str]) -> tuple[dict[str, set[str]], list[str]]:
@@ -52,9 +86,13 @@ def removed_classes(text: str) -> set[str]:
 
 def check(apk_path: str, mapping_text: str, usage_text: str, abis: list[str]) -> tuple[int, list[str]]:
     """Return (referenced native class count, problems); problems empty means compatible."""
+    mapped = mapping_classes(mapping_text)
     with zipfile.ZipFile(apk_path) as apk:
         refs, missing = native_class_references(apk, abis)
-    mapped = mapping_classes(mapping_text)
+        owners, unresolved = native_method_classes(apk, abis, set(mapped))
+    for owner in owners:
+        refs.setdefault(owner, set())
+    problems_extra = [f"JNI symbol owner not in mapping: {u}" for u in unresolved]
     removed = removed_classes(usage_text)
     problems: list[str] = []
     if missing:
@@ -69,7 +107,7 @@ def check(apk_path: str, mapping_text: str, usage_text: str, abis: list[str]) ->
             problems.append(f"RENAMED by R8: {name} -> {mapped[name]}")
         elif name not in mapped:
             problems.append(f"not present in mapping (absent from the dex): {name}")
-    return len(refs), problems
+    return len(refs), problems + problems_extra
 
 
 def main() -> int:
