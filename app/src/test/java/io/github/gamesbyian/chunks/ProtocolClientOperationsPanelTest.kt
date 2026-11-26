@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -54,6 +55,7 @@ class ProtocolClientOperationsPanelTest {
         var afterRemoveWrite: suspend () -> Unit = {}
         var dir = "/d"
         var movedData: Boolean? = null
+        var lastRemoveDeleteData: Boolean? = null
         var sessions = 0
         var fileReads = 0
         override suspend fun session(): ClientSessionInfo {
@@ -79,6 +81,7 @@ class ProtocolClientOperationsPanelTest {
             afterStartWrite()
         }
         override suspend fun remove(hash: String, deleteData: Boolean) {
+            lastRemoveDeleteData = deleteData
             write { present = false }
             afterRemoveWrite()
         }
@@ -512,6 +515,35 @@ class ProtocolClientOperationsPanelTest {
         rule.waitUntil(5_000) { !fake.present }
         rule.waitForIdle()
         rule.onNodeWithText("Remove: confirmed on Seedbox qB.").assertExists()
+    }
+
+    /** Invariant control `protocol-remove-data-default-on`: deleting files is never pre-selected. */
+    @Test fun deletingFilesIsNotPreselectedEvenWhenTheFolderIsKnown() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").assertExists()
+        rule.onNodeWithText("Remove, keep files").assertExists()
+        rule.onAllNodesWithText("Remove and delete files").assertCountEquals(0)
+        rule.onNodeWithText("Folder on Seedbox qB: /d").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) { !fake.present }
+        assertEquals("the plain confirmation sent a keep-files removal", false, fake.lastRemoveDeleteData)
+    }
+
+    /** Invariant control `protocol-remove-review-keeps-earlier-delete-choice`. */
+    @Test fun reopeningTheRemoveReviewNeverCarriesAnEarlierDeleteFilesChoice() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithText("Remove and delete files").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick() // Cancel remove
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick() // review again
+        rule.onNodeWithText("Remove, keep files").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) { !fake.present }
+        assertEquals(false, fake.lastRemoveDeleteData)
     }
 
     @Test fun dataRemovalReportsRegistrationSeparatelyFromUnverifiedPayload() {

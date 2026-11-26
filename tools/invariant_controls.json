@@ -298,6 +298,88 @@
         "*RemoteSmartConnectSafetyTest",
         "*RemoteSmartConnectTest"
       ]
+    },
+    {
+      "id": "seeding-replays-uncertain-stop",
+      "invariant": "An automatic Pause is attempted at most once; an attempted one is never replayed",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingController.kt",
+      "old": "assignment.stoppedByRule == null &&\n                assignment.stopAttemptedReason == null",
+      "new": "assignment.stoppedByRule == null",
+      "tests": [
+        "*SeedingController*",
+        "*RemoteSeedingTickTest",
+        "*LocalSeeding*"
+      ]
+    },
+    {
+      "id": "seeding-pauses-before-durable-commit",
+      "invariant": "The stop attempt is durably recorded BEFORE the engine is called",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingController.kt",
+      "old": "            if (!store.put(hash, attempted)) return\n",
+      "new": "            store.put(hash, attempted)\n",
+      "tests": [
+        "*SeedingController*",
+        "*RemoteSeedingTickTest",
+        "*LocalSeeding*"
+      ]
+    },
+    {
+      "id": "move-retires-unverified-copy",
+      "invariant": "Source retirement needs the exact verified Copy result object",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientJobTransfer.kt",
+      "old": "if (pendingRetirement !== confirmedCopy || confirmedCopy.hash != exact)",
+      "new": "if (confirmedCopy.hash != exact)",
+      "tests": [
+        "*ClientJobTransferTest",
+        "*BatchServerCopy*",
+        "*BatchLocalCopy*"
+      ]
+    },
+    {
+      "id": "move-retirement-replayable",
+      "invariant": "A Copy result authorizes at most one retirement attempt (consumed before any source write)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientJobTransfer.kt",
+      "old": "        pendingRetirement = null\n        val connectionChanged",
+      "new": "        val connectionChanged",
+      "tests": [
+        "*ClientJobTransferTest",
+        "*BatchServerCopy*",
+        "*BatchLocalCopy*"
+      ]
+    },
+    {
+      "id": "move-retires-when-target-gone",
+      "invariant": "The source is kept unless the target still shows the exact job",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/ClientJobTransfer.kt",
+      "old": "        if (stillOnTarget?.hash?.equals(exact, ignoreCase = true) != true)\n            return@withLock",
+      "new": "        if (false)\n            return@withLock",
+      "tests": [
+        "*ClientJobTransferTest",
+        "*BatchServerCopy*",
+        "*BatchLocalCopy*"
+      ]
+    },
+    {
+      "id": "protocol-remove-data-skips-reviewed-folder",
+      "invariant": "Remove with data goes only through the reviewed-folder-bound operation",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+      "old": "operations.removeReviewedPayload(hash, requireNotNull(reviewedFolder))",
+      "new": "operations.remove(hash, deleteData = true)",
+      "tests": [
+        "*ProtocolClientOperationsPanelTest",
+        "*ProtocolClientRemove*"
+      ]
+    },
+    {
+      "id": "protocol-remove-review-keeps-earlier-delete-choice",
+      "invariant": "Opening a Remove review never inherits an earlier delete-files choice",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt",
+      "old": "                    deleteData = false\n                },\n                enabled = enabled, modifier = cell.heightIn(min = 48.dp)\n                    .testTag(ChunksSemantics.PROTOCOL_REMOVE)",
+      "new": "                },\n                enabled = enabled, modifier = cell.heightIn(min = 48.dp)\n                    .testTag(ChunksSemantics.PROTOCOL_REMOVE)",
+      "tests": [
+        "*ProtocolClientOperationsPanelTest",
+        "*ProtocolClientRemove*"
+      ]
     }
   ]
 }
