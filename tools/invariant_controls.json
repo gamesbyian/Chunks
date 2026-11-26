@@ -607,28 +607,22 @@
     {
       "id": "remote-add-enabled-without-fresh-list",
       "invariant": "The remote Add control needs a fresh confirmed server transfer list (mutation gate ready)",
-      "file": "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt",
-      "old": "!noFileChosen && mutationReady && validUniversalAddAlias(addAliasState?.value.orEmpty()),",
-      "new": "!noFileChosen && validUniversalAddAlias(addAliasState?.value.orEmpty()),",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddAvailability.kt",
+      "old": "!noFileChosen && mutationReady && aliasValid",
+      "new": "!noFileChosen && aliasValid",
       "tests": [
-        "*VerifiedAdd*",
-        "*RemoteAdd*",
-        "*UniversalAddReviewControlsTest",
-        "*RemoteBinaryStoppedAddTest",
+        "*RemoteAddAvailabilityTest",
         "*RemoteAddSubmitEnablementTest"
       ]
     },
     {
       "id": "remote-add-enabled-with-no-file-chosen",
       "invariant": "Add is disabled when every file of the reviewed torrent is skipped",
-      "file": "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt",
-      "old": "!noFileChosen && mutationReady",
-      "new": "mutationReady",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddAvailability.kt",
+      "old": "!externalSourceReading &&\n        !noFileChosen && mutationReady",
+      "new": "!externalSourceReading &&\n        mutationReady",
       "tests": [
-        "*VerifiedAdd*",
-        "*RemoteAdd*",
-        "*UniversalAddReviewControlsTest",
-        "*RemoteBinaryStoppedAddTest"
+        "*RemoteAddAvailabilityTest"
       ]
     },
     {
@@ -679,6 +673,36 @@
       "new": "        !previousAttemptUnresolved",
       "tests": [
         "*LocalAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "remote-add-enabled-while-submitting",
+      "invariant": "The remote Add control is disabled while a submission is in flight",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddAvailability.kt",
+      "old": "hasPlan && !submitting && !choosing",
+      "new": "hasPlan && !choosing",
+      "tests": [
+        "*RemoteAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "remote-add-enabled-while-reading-source",
+      "invariant": "The remote Add control is disabled while an external source is being read",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddAvailability.kt",
+      "old": "!choosing && !externalSourceReading &&",
+      "new": "!choosing &&",
+      "tests": [
+        "*RemoteAddAvailabilityTest"
+      ]
+    },
+    {
+      "id": "remote-add-enabled-with-invalid-alias",
+      "invariant": "The remote Add control needs a valid display name",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddAvailability.kt",
+      "old": "!noFileChosen && mutationReady && aliasValid",
+      "new": "!noFileChosen && mutationReady",
+      "tests": [
+        "*RemoteAddAvailabilityTest"
       ]
     }
   ]

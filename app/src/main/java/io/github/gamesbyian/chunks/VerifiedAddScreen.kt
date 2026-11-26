@@ -891,13 +891,12 @@ internal fun VerifiedAddScreen(
             }
         },
         submit = if (alreadyAttempted) null else UniversalAddAction(
-            enabled = plan != null && !submitting && !choosing && !externalSourceReading &&
-                !noFileChosen && mutationReady && validUniversalAddAlias(addAliasState?.value.orEmpty()),
-            unavailableReason = when {
-                plan == null -> addGuidance
-                !mutationReady -> "Waiting for a fresh confirmed server transfer list."
-                else -> null
-            },
+            enabled = RemoteAddAvailability.enabled(
+                hasPlan = plan != null, submitting = submitting, choosing = choosing,
+                externalSourceReading = externalSourceReading, noFileChosen = noFileChosen,
+                mutationReady = mutationReady,
+                aliasValid = validUniversalAddAlias(addAliasState?.value.orEmpty())),
+            unavailableReason = RemoteAddAvailability.unavailableReason(plan != null, mutationReady, addGuidance),
             onSubmit = addClick@{
                 if (externalSourceReading) return@addClick
                 val plan = plan ?: return@addClick
