@@ -1699,57 +1699,20 @@ internal fun ChunksApp(
             runRemotePolicyLoop(context, host, connectedRemote, expectedScope, privacyScope)
         }
         // A typed policy session is reusable only for the exact roster and
-        // authentication generation that admitted it.
+        // authentication generation that admitted it. The loop lives in
+        // ProtocolPolicyLoop.kt; this host exposes only current state.
         LaunchedEffect(savedProtocolProfiles, transientReadOnlyProfile) {
-            val expectedSaved = savedProtocolProfiles.associateBy { it.id }
-            val expectedTransient = transientReadOnlyProfile
-            val clients = mutableMapOf<String, io.github.gamesbyian.chunks.rpc.ClientOperations>()
-            val privacyStore = TransferPrivacyPolicyStore(context)
-            var clientGeneration = RemoteCredentialLock.capture()
-            val job = currentCoroutineContext()[Job]
-            while (true) {
-                delay(30_000L)
-                if (!policiesMayRun() || combinedProtocolProfiles.isEmpty()) continue
-                val generation = RemoteCredentialLock.capture()
-                if (generation != clientGeneration) {
-                    clients.clear()
-                    clientGeneration = generation
-                }
-                val policies = withContext(Dispatchers.IO) { FinishInOrderStore.scheduledPolicies(context) }
-                for (profile in combinedProtocolProfiles) {
-                    val factory = profile.operations ?: continue
-                    val privacyScope = CombinedReadOnlyProtocolAdmission.privacyScope(profile) ?: continue
-                    val lifecycle = TransferPrivacyRuntime.lifecycleRevision
-                    val privacy = TransferPrivacyPolicyStore.revision
-                    val privacySession = TransferPrivacyRuntime.session
-                    if (!withContext(Dispatchers.IO) { privacyStore.loadInto(privacySession, privacyScope) }) continue
-                    val expected = expectedSaved[profile.id]
-                    val ownerCurrent: () -> Boolean = {
-                        job?.isActive == true && policiesMayRun() && readOnlyConnectJob?.isActive != true &&
-                            RemoteCredentialLock.current(generation) &&
-                            lifecycle == TransferPrivacyRuntime.lifecycleRevision &&
-                            privacy == TransferPrivacyPolicyStore.revision &&
-                            privacySession.mayAct(privacyScope) &&
-                            savedProtocolProfiles.firstOrNull { it.id == profile.id }.let { current ->
-                                if (expected != null) current == expected &&
-                                    profile.verifiedAtMillis == expected.lastVerifiedAtMillis
-                                else current == null && profile === expectedTransient &&
-                                    transientReadOnlyProfile === expectedTransient
-                            }
-                    }
-                    try {
-                        tickProtocolRemotePolicies(context, profile.id, policies, ownerCurrent) {
-                            clients.getOrPut(profile.id) { factory() }
-                        }
-                    } catch (cancel: CancellationException) {
-                        // An invalidated owner ends this profile's work. A cancelled
-                        // parent still owns the loop's termination.
-                        if (job?.isActive != true || ownerCurrent()) throw cancel
-                    } catch (_: Exception) {
-                        // Unreachable or refused: no immediate retry.
-                    }
-                }
+            val host = object : ProtocolPolicyHost {
+                override fun savedProfiles() = savedProtocolProfiles
+                override fun transientProfile() = transientReadOnlyProfile
+                override val connectInFlight get() = readOnlyConnectJob?.isActive == true
+                override fun mayRun() = policiesMayRun()
             }
+            runProtocolPolicyLoop(
+                context, host, combinedProtocolProfiles,
+                expectedSaved = savedProtocolProfiles.associateBy { it.id },
+                expectedTransient = transientReadOnlyProfile
+            )
         }
         if (section == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
