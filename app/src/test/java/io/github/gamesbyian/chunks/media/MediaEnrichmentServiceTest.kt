@@ -48,6 +48,18 @@ class MediaEnrichmentServiceTest {
         assertTrue(http.requests.isEmpty())
     }
 
+    /** Invariant control `media-background-lookup-in-power-saver`. */
+    @Test fun backgroundLookupIsPausedInPowerSaverEvenOnAnUnmeteredNetwork() {
+        val http = FakeMediaHttp()
+        val s = service(http, TvMazeProvider())
+        val result = s.lookup(rec("Babylon.5.S02E07.mkv"), consent.copy(automaticLookup = true),
+            MediaNetworkState(online = true, metered = false, powerSaver = true),
+            MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+        assertEquals(MediaLookupStatus.BLOCKED_CONSENT, result.status)
+        assertEquals("Automatic identification is paused in power saver mode", result.message)
+        assertTrue("no provider was contacted", http.requests.isEmpty())
+    }
+
     @Test fun globallyDisabledArtworkNeverStartsAutomaticProviderRequests() {
         val http = FakeMediaHttp().on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
         val s = service(http, TvMazeProvider())
