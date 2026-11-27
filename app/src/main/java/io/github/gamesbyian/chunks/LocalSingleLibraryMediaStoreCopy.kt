@@ -148,17 +148,42 @@ internal object LocalSingleLibraryMediaStoreCopy {
         cancelled: () -> Boolean
     ): ByteArray {
         if (expectedLength !in 1..MAX_BYTES.toLong()) throw IOException("Unsafe source length")
+        return LocalPinnedPayloadRead.read(sourceRoot, file, expectedLength,
+            captureLimit = expectedLength.toInt(), cancelled = cancelled).captured
+    }
+}
+
+/**
+ * Shared read-only source boundary for library copies and independent checksums.
+ * Two complete passes over the SAME pinned descriptor must agree; a stable
+ * filename or an engine completion flag alone does not prove stable bytes.
+ * This is bounded observation, not protection against every external writer
+ * or permission to delete, publish or reattach files.
+ */
+internal object LocalPinnedPayloadRead {
+    const val MAX_BYTES = 64L * 1024 * 1024 * 1024
+    const val MAX_CAPTURE = LocalSingleLibraryMediaStoreCopy.MAX_BYTES
+
+    data class Result(val sha256: String, val captured: ByteArray)
+
+    fun read(
+        sourceRoot: File,
+        file: File,
+        expectedLength: Long,
+        captureLimit: Int,
+        cancelled: () -> Boolean,
+        onProgress: (Long) -> Unit = {}
+    ): Result {
+        if (expectedLength !in 0..MAX_BYTES || captureLimit !in 0..MAX_CAPTURE)
+            throw IOException("Unsafe source length or capture limit")
         val root = sourceRoot.toPath()
         val path = file.toPath()
         if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS) ||
             !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
             !path.toRealPath().startsWith(root.toRealPath()))
-            throw IOException("Untrusted library source path")
+            throw IOException("Untrusted source path")
 
-        // Pin ONE original file descriptor through both independent reads.
-        // Reopening the path for a second pass could read a substituted file
-        // whose name was the same but whose inode was unrelated.
-        val fd = openPinnedRegularSource(file)
+        val fd = LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(file)
         try {
             val before = android.system.Os.fstat(fd)
             val namedBefore = android.system.Os.lstat(file.absolutePath)
@@ -169,31 +194,40 @@ internal object LocalSingleLibraryMediaStoreCopy {
             if (!sameObject(before) || !sameObject(namedBefore))
                 throw IOException("Source file was substituted or did not have expected size")
             val buffer = ByteArray(64 * 1024)
-            val output = ByteArrayOutputStream(expectedLength.toInt())
+            val captureBytes = minOf(captureLimit.toLong(), expectedLength).toInt()
+            val output = ByteArrayOutputStream(captureBytes)
             val digestFirst = MessageDigest.getInstance("SHA-256")
             val digestSecond = MessageDigest.getInstance("SHA-256")
-            fun pass(hash: MessageDigest, saveBytes: Boolean) {
+            fun pass(hash: MessageDigest, capture: Boolean, base: Long) {
                 var offset = 0L
+                var lastProgress = 0L
                 while (offset < expectedLength) {
-                    if (cancelled()) throw IOException("Copy cancelled")
+                    if (cancelled()) throw IOException("Read cancelled")
                     val want = minOf(buffer.size.toLong(), expectedLength - offset).toInt()
                     val count = android.system.Os.pread(fd, buffer, 0, want, offset)
-                    if (count <= 0) throw IOException("Source stopped making progress")
+                    if (count <= 0 || count > want) throw IOException("Source stopped making progress")
                     hash.update(buffer, 0, count)
-                    if (saveBytes) output.write(buffer, 0, count)
+                    if (capture && output.size() < captureBytes)
+                        output.write(buffer, 0, minOf(count, captureBytes - output.size()))
                     offset += count
+                    if (offset - lastProgress >= 4L * 1024 * 1024 || offset == expectedLength) {
+                        lastProgress = offset
+                        onProgress(base + offset)
+                    }
                 }
                 if (android.system.Os.pread(fd, buffer, 0, 1, expectedLength) != 0)
-                    throw IOException("Source grew during copy")
+                    throw IOException("Source grew during read")
             }
-            pass(digestFirst, true)
-            pass(digestSecond, false)
+            pass(digestFirst, true, 0L)
+            pass(digestSecond, false, expectedLength)
+            val first = digestFirst.digest()
             val namedAfter = android.system.Os.lstat(file.absolutePath)
             val after = android.system.Os.fstat(fd)
             if (!sameObject(namedAfter) || !sameObject(after) ||
-                !MessageDigest.isEqual(digestFirst.digest(), digestSecond.digest()))
-                throw IOException("Source was replaced or changed during copy")
-            return output.toByteArray()
+                !MessageDigest.isEqual(first, digestSecond.digest()))
+                throw IOException("Source was replaced or changed during read")
+            return Result(first.joinToString("") { "%02x".format(it.toInt() and 0xff) },
+                output.toByteArray())
         } finally {
             android.system.Os.close(fd)
         }
