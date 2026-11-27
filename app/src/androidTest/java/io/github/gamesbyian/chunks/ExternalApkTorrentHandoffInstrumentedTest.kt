@@ -83,6 +83,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
         try {
             compose.waitUntil(60_000) {
                 var reviewed = false
+                lastState = "activityResumed=false"
                 val resumed = withResumed { activity, owner ->
                     val file = owner.reviewedTorrent.value
                     val alive = !activity.isFinishing
@@ -97,8 +98,14 @@ class ExternalApkTorrentHandoffInstrumentedTest {
                         "bytesMatch=$bytesMatch readGrant=$canRead noDispatch=$noDispatch"
                     reviewed = alive && nameMatches && uriMatches && bytesMatch && canRead && noDispatch
                 }
-                resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
-                    .fetchSemanticsNodes().isNotEmpty()
+                // The Activity and its retained review can be ready while the
+                // window is between Compose roots during Android task handoff.
+                // An empty tree is a pending poll; the visible-source assertion
+                // still has to succeed inside the original deadline.
+                val sourceVisible = resumed && reviewed && compose.onAllNodes(hasText(name, substring = true))
+                    .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
+                lastState += " sourceVisible=$sourceVisible"
+                sourceVisible
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
             // waitUntil throws ComposeTimeoutException, not AssertionError.
@@ -166,7 +173,7 @@ class ExternalApkTorrentHandoffInstrumentedTest {
                     owner.session.attemptedTicket == null
             }
             resumed && queued && compose.onAllNodes(hasText("Use new source", substring = true))
-                .fetchSemanticsNodes().isNotEmpty()
+                .fetchSemanticsNodes(atLeastOneRootRequired = false).isNotEmpty()
         }
 
         // The new external source cannot silently displace the first one.
