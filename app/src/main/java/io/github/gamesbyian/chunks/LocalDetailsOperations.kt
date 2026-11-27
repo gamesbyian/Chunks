@@ -53,7 +53,7 @@ internal interface LocalDetailsPort {
     fun dhtEnabled(): Boolean = false
     fun checksumReview(infoHash: String): LocalFileInspection.Review? = null
     fun inspectChecksum(review: LocalFileInspection.Review, file: LocalTransferFile,
-        cancelled: () -> Boolean, onProgress: (Long) -> Unit): LocalFileInspection.Outcome =
+        cancelled: () -> Boolean, includeLegacy: Boolean, onProgress: (Long) -> Unit): LocalFileInspection.Outcome =
         LocalFileInspection.Outcome.Refused("Independent inspection is unavailable for this client.")
 }
 
@@ -75,8 +75,8 @@ internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : 
     override fun dhtEnabled() = engine.isDhtEnabled()
     override fun checksumReview(infoHash: String) = LocalFileInspection.review(engine, infoHash)
     override fun inspectChecksum(review: LocalFileInspection.Review, file: LocalTransferFile,
-        cancelled: () -> Boolean, onProgress: (Long) -> Unit) =
-        LocalFileInspection.inspect(engine, review, file, cancelled, onProgress)
+        cancelled: () -> Boolean, includeLegacy: Boolean, onProgress: (Long) -> Unit) =
+        LocalFileInspection.inspect(engine, review, file, cancelled, includeLegacy, onProgress)
 }
 
 /**
