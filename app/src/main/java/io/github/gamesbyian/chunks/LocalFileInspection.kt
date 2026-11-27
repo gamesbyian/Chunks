@@ -73,7 +73,7 @@ internal object LocalFileInspection {
     ): Outcome {
         fun refused(reason: String) = Outcome.Refused(reason)
         fun stillReviewed(): Boolean {
-            val fresh = review(engine, review.infoHash) ?: return false
+            val fresh = LocalFileInspection.review(engine, review.infoHash) ?: return false
             return fresh.nativeToken == review.nativeToken && fresh.savePath == review.savePath &&
                 fresh.files.singleOrNull { it.index == file.index } == file
         }
