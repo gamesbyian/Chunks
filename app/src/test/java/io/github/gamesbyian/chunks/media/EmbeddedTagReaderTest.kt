@@ -74,12 +74,63 @@ class EmbeddedTagReaderTest {
                     override fun read(offset: Long, length: Int): ByteArray { read += length.coerceAtLeast(0); return ByteArrayMediaByteSource(bad).read(offset, length) }
                 }
                 EmbeddedTagReader.read(counting)
-                assertTrue("bounded reads for $name: $read", read <= 2L * EmbeddedTagReader.MAX_TAG_BYTES + 64L * 1024 * 1024)
+                assertTrue("bounded reads for $name: $read", read <= EmbeddedTagReader.READ_BUDGET)
             }
         }
         // A forged huge length must not allocate it.
         val huge = byteArrayOf('I'.code.toByte(), 'D'.code.toByte(), '3'.code.toByte(), 3, 0, 0, 0x7F, 0x7F, 0x7F, 0x7F)
         assertNull(EmbeddedTagReader.read(ByteArrayMediaByteSource(huge)))
+    }
+
+    @Test fun unconsumedMp4AtomsCannotForceBodyReadsOrHideLaterSupportedFields() {
+        fun box(type: String, body: ByteArray): ByteArray =
+            java.nio.ByteBuffer.allocate(8 + body.size).putInt(8 + body.size)
+                .put(type.toByteArray(Charsets.ISO_8859_1)).put(body).array()
+        fun data(body: ByteArray) = box("data", ByteArray(8) + body)
+        val unknown = (0..5).map { index ->
+            box("x00" + index, data(ByteArray(2 * 1024 * 1024)))
+        }.fold(ByteArray(0)) { acc, item -> acc + item }
+        val title = box("©nam", data("Bounded title".toByteArray()))
+        val file = box("ftyp", ByteArray(8)) + box("moov", box("udta",
+            box("meta", ByteArray(4) + box("ilst", unknown + title))))
+        var requested = 0L
+        val source = object : MediaByteSource {
+            override val size = file.size.toLong()
+            override fun read(offset: Long, length: Int): ByteArray {
+                requested += length
+                return ByteArrayMediaByteSource(file).read(offset, length)
+            }
+        }
+        val tags = requireNotNull(EmbeddedTagReader.read(source))
+        assertEquals("Bounded title", tags.title)
+        assertTrue("Unknown metadata body must not be read: " + requested, requested < 1024)
+    }
+
+    @Test fun budgetRejectsOversizedAndInvalidReadsBeforeDelegating() {
+        var calls = 0
+        val source = object : MediaByteSource {
+            override val size = Long.MAX_VALUE
+            override fun read(offset: Long, length: Int): ByteArray {
+                calls++
+                return ByteArray(length)
+            }
+        }
+        val bounded = io.github.gamesbyian.chunks.media.inspection.BudgetedMediaByteSource(source, 16)
+        assertEquals(12, bounded.read(0, 12).size)
+        assertTrue(runCatching { bounded.read(16, 5) }.isFailure)
+        assertTrue(runCatching { bounded.read(-1, 1) }.isFailure)
+        assertTrue(runCatching { bounded.read(0, -1) }.isFailure)
+        assertEquals(1, calls)
+        assertEquals(4, bounded.read(Long.MAX_VALUE - 4, 100).size)
+        assertTrue(runCatching { bounded.read(0, 1) }.isFailure)
+        assertEquals(2, calls)
+        val oversized = object : MediaByteSource {
+            override val size = 100L
+            override fun read(offset: Long, length: Int) = ByteArray(length + 1)
+        }
+        assertTrue(runCatching {
+            io.github.gamesbyian.chunks.media.inspection.BudgetedMediaByteSource(oversized, 16).read(0, 8)
+        }.isFailure)
     }
 
     @Test fun embeddedTagsRefineRecognitionWithoutTouchingRawName() {
