@@ -1226,6 +1226,26 @@
       "tests": [
         "io.github.gamesbyian.chunks.CombinedSecureWindowTest"
       ]
+    },
+    {
+      "id": "combined-typed-client-view-ungated",
+      "invariant": "Combined Transfers narrowed to one typed client sits behind that client's privacy gate",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt",
+      "old": "    val protocolGate = CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)",
+      "new": "    val protocolGate: CombinedProtocolGate.Gate? = null",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedProtocolPrivacyLockTest"
+      ]
+    },
+    {
+      "id": "protocol-gate-composes-locked-content",
+      "invariant": "The typed-client privacy gate never composes protected content while that client's scope is locked (the Add wiring in MainActivity has no separate witness yet)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "    TransferPrivacyGate(scope, onBack, \"$clientKind client\", \"$clientKind client\",",
+      "new": "    if (true) { content(); return }\n    TransferPrivacyGate(scope, onBack, \"$clientKind client\", \"$clientKind client\",",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
     }
   ]
 }

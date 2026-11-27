@@ -1663,6 +1663,10 @@ internal fun CombinedTransfersScreen(
             else -> environment in protocolAllowed
         }
     }
+    // A typed client's own view (exactly one typed client selected) is behind that client's
+    // privacy gate, which also hosts its Privacy & authentication controls.
+    val protocolGate = CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)
+    val screenBody: @Composable () -> Unit = {
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
         LazyColumn(Modifier.fillMaxSize().testTag(ChunksSemantics.TRANSFERS_SCREEN).semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
@@ -2200,6 +2204,11 @@ internal fun CombinedTransfersScreen(
         onConnections = onConnections,
         addDescription = "Choose where to add a torrent"
     )
-    } // measured footer + viewport
+    }
+    }
+    if (protocolGate == null) screenBody()
+    else io.github.gamesbyian.chunks.privacy.ProtocolTransferPrivacyGate(
+        scope = protocolGate.privacyScope, clientKind = protocolGate.clientKind,
+        onBack = { update(query.copy(scope = EnvironmentViewScope.All)) }) { screenBody() } // measured footer + viewport
     }
 }

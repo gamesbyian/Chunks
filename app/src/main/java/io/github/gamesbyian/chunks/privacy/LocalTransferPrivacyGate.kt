@@ -75,6 +75,24 @@ internal fun RemoteTransferPrivacyGate(
 }
 
 /**
+ * A typed Transmission/qBittorrent/Deluge client's own gate, for the exact
+ * client principal's privacy scope (`CombinedReadOnlyProtocolAdmission.privacyScope`).
+ * Same lock modes, OS authentication and secure-window rules as Local and rTorrent;
+ * unlocking it grants only that one client.
+ */
+@Composable
+internal fun ProtocolTransferPrivacyGate(
+    scope: String,
+    clientKind: String,
+    onBack: () -> Unit,
+    controlsInContent: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    TransferPrivacyGate(scope, onBack, "$clientKind client", "$clientKind client",
+        redactLocalService = false, controlsInContent = controlsInContent, content = content)
+}
+
+/**
  * The unlocked gate's Privacy & authentication controls, provided to content
  * that hosts them in its Options area instead of a row pinned above every
  * screen (UX: Options contains Privacy and authentication). Null outside a

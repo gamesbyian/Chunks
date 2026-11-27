@@ -116,6 +116,7 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.gamesbyian.chunks.privacy.LocalTransferPrivacyGate
+import io.github.gamesbyian.chunks.privacy.ProtocolTransferPrivacyGate
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyGate
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
@@ -1369,7 +1370,18 @@ internal fun ChunksApp(
     val protocolAddContent: (@Composable () -> Unit)? = if (protocolAddProfile == null) null else {
         val profile = protocolAddProfile
         val savedOwner = savedProtocolProfiles.firstOrNull { it.id == profile.id }
-        val content: @Composable () -> Unit = {
+        // The exact client principal's privacy scope; Add never composes for an
+        // unverifiable identity, and a locked client asks for authentication first.
+        val protocolPrivacyScope = CombinedReadOnlyProtocolAdmission.privacyScope(profile)
+        val content: @Composable () -> Unit = protocolAdd@{
+          if (protocolPrivacyScope == null) {
+            Text("Cannot verify which client this Add is for. Reconnect it from Connections.",
+                color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+            return@protocolAdd
+          }
+          ProtocolTransferPrivacyGate(scope = protocolPrivacyScope,
+              clientKind = RemoteProtocolLabels.kind(profile.backend),
+              onBack = ::returnFromAdd, controlsInContent = true) {
             ProtocolAddScreen(
                 profileId = profile.id,
                 clientLabel = profile.label,
@@ -1398,6 +1410,7 @@ internal fun ChunksApp(
                     viewAddedTransfer(io.github.gamesbyian.chunks.model.EnvironmentId(profile.id), hash)
                 }
             )
+          }
         }
         content
     }
