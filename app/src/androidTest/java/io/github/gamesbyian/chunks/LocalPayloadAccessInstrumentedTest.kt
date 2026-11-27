@@ -74,6 +74,19 @@ class LocalPayloadAccessInstrumentedTest {
                 assertEquals(count, Os.pread(descriptor.fileDescriptor, actual, 0, count, offset.toLong()))
                 return actual
             }
+            // A separate APK UID must fail without a grant and read only
+            // after the precise URI read permission is explicitly granted.
+            val testPackage = InstrumentationRegistry.getInstrumentation().context.packageName
+            assertNotEquals(context.packageName, testPackage)
+            assertEquals("refused", externalRead(uri, testPackage))
+            context.grantUriPermission(testPackage, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val expected = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(bytes.copyOfRange(8193, 8225))
+                .joinToString("") { "%02x".format(it.toInt() and 255) }
+            assertEquals(expected, externalRead(uri, testPackage))
+            context.revokeUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            assertEquals("refused", externalRead(uri, testPackage))
+
             val seek = requireNotNull(resolver.openFileDescriptor(uri, "r"))
             try {
                 val end = bytes.size - 19
@@ -117,6 +130,37 @@ class LocalPayloadAccessInstrumentedTest {
             engine.close()
             root.deleteRecursively()
         }
+    }
+
+    private fun externalRead(uri: Uri, testPackage: String): String {
+        val action = context.packageName + ".payload_test." + java.util.UUID.randomUUID().toString().replace("-", "")
+        val receipt = java.util.concurrent.atomic.AtomicReference<String>()
+        val uid = java.util.concurrent.atomic.AtomicInteger(-1)
+        val done = java.util.concurrent.CountDownLatch(1)
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(ctx: android.content.Context, intent: Intent) {
+                receipt.set(intent.getStringExtra("result"))
+                uid.set(intent.getIntExtra("uid", -1))
+                done.countDown()
+            }
+        }
+        androidx.core.content.ContextCompat.registerReceiver(context, receiver,
+            android.content.IntentFilter(action), androidx.core.content.ContextCompat.RECEIVER_EXPORTED)
+        try {
+            // Extras contain only a random opaque URI and a disposable result
+            // action. No grant flag is supplied by the shell launch.
+            val command = "am start -W -n " + testPackage +
+                "/io.github.gamesbyian.chunks.external.ExternalPayloadReaderActivity" +
+                " --es fixture_uri " + uri + " --es fixture_action " + action +
+                " --es fixture_target " + context.packageName
+            val output = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+            val launch = ParcelFileDescriptor.AutoCloseInputStream(output).bufferedReader().use { it.readText() }
+            assertTrue("Standalone reader did not start", launch.contains("Status: ok"))
+            assertTrue("No receipt from separate reader process", done.await(20, java.util.concurrent.TimeUnit.SECONDS))
+            assertTrue(uid.get() >= 0)
+            assertNotEquals(android.os.Process.myUid(), uid.get())
+            return requireNotNull(receipt.get())
+        } finally { context.unregisterReceiver(receiver) }
     }
 
     @Test fun chooserGrantsReadOnlyToExactOpaqueContentUri() {
