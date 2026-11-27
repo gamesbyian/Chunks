@@ -57,3 +57,7 @@
 | Foreign auxiliary state and recovery durability | Preserve .parts, piece_part.bc!, Tixati fragments, .aria2 and unfamiliar resume state when unsupported; no imported fragment can be trusted without exact-format/identity/offset validation; interruption leaves safe reconcilable state | Unsupported-sidecar non-destruction, optional versioned adapter tests, restart/crash/cancel, native-handle/resume generation fencing and fresh verified snapshot |
 
 Authoritative plan: [FOREIGN-PARTIAL-TORRENT-RECOVERY](FOREIGN-PARTIAL-TORRENT-RECOVERY.md). No implementation or device acceptance is claimed.
+
+### Archive extraction timing and multipart acceptance
+
+Apply [storage extraction contract](STORAGE-AND-EXTRACTION.md#archive-extraction-experience), #70/#809: installed Options switches both OFF on fresh/upgrade with absent values; explicit OFF persists; master OFF suppresses automatic starts even with subordinate saved ON; master ON/early OFF waits for verified whole torrent; early ON extracts independently verified complete archive sets before torrent completion; manual action independent. Exercise real modern and legacy multipart RAR4/RAR5 fixtures, missing/corrupt/mixed volumes, multiple sets, actual output bytes, destination safety and restart deduplication. Pending implementation/qualification; single-volume RAR or ZIP does not satisfy this gate.

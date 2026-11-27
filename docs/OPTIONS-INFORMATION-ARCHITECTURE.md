@@ -18,6 +18,10 @@
 
 **Owner direction: 2026-11-05. Status: approved organization of existing/spec'd capabilities, not authorization for new scope.** This focused contract extends [UX](UX.md) and [PRODUCT](PRODUCT.md). [WORK-QUEUE](WORK-QUEUE.md) alone orders implementation; existing rTorrent daily-use reliability and cohesive UX work outrank future backend adapters and advanced controls. Related contracts remain authoritative for functional semantics.
 
+## Archive extraction preferences (binding owner direction, 2026-11-27)
+
+Under **Options → Downloads & storage → Archive extraction**, place adjacent persistent switches **Auto-extract archives** (default OFF) and **Extract completed archives before torrent finishes** (default OFF). The subordinate switch is disabled when the master is OFF; show that it permits early extraction only of independently verified complete archive sets. With early extraction OFF, automatic extraction waits for the whole torrent to be verified complete. Use one canonical preference owner and retain manual extraction and existing scoped consent controls; see [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md#archive-extraction-experience) for exact effective authorization, safety and acceptance. Search aliases: RAR, multipart, archive, extract, unpack.
+
 ## Goal and boundary
 
 Options is the central, discoverable home for persistent user preferences, connection administration and configuration of existing rule systems. Transfers stays the ordinary landing screen; the footer retains Add / Transfers / Options. No parallel wizard, settings stack, or duplicate property storage. An individual transfer may override permitted defaults through Add or Details and link to the single authoritative global or environment-scoped configuration. Never require a settings visit before ordinary Add/Start/Stop when a verified default exists.
