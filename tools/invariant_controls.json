@@ -1286,6 +1286,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
       ]
+    },
+    {
+      "id": "options-alias-keyed-to-wrong-destination",
+      "invariant": "Options search aliases for Connections (endpoint, login, account) find the Connections destination",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "old": "        Section.SERVER -> \"connection connections endpoint",
+      "new": "        Section.SNAPSHOT -> \"connection connections endpoint",
+      "tests": [
+        "io.github.gamesbyian.chunks.OptionsDestinationSearchTest"
+      ]
     }
   ]
 }

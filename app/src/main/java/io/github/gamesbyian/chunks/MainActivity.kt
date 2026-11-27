@@ -290,22 +290,26 @@ internal enum class Section(val label: String) {
 internal fun remoteShownCount(shown: Int, loaded: Int): String =
     if (shown == loaded) "$shown shown" else "$shown of $loaded shown"
 
-/** Search the existing connected-server Options routes without new authority. */
-internal fun optionsDestinationMatches(label: String, rawQuery: String): Boolean {
+/**
+ * Search the existing Options destinations without new authority. Aliases are keyed by the
+ * [Section] itself, never by its label text, so a relabelled destination (Server → Connections,
+ * On this device → Transfers on this device) cannot silently lose its aliases.
+ */
+internal fun optionsDestinationMatches(section: Section, rawQuery: String): Boolean {
     val needle = rawQuery.trim().lowercase(java.util.Locale.ROOT)
     if (needle.isEmpty()) return true
-    val aliases = when (label) {
-        "Transfers" -> "torrent downloads active list search"
-        "On this device" -> "local local device downloads storage files"
-        "Places" -> "folder destination location save path"
-        "Organize" -> "collections categories organize grouping"
-        "Server" -> "connection connections endpoint profile account login settings remote client clients server"
-        "ZIP review" -> "zip archives compressed inspect"
-        "Create" -> "create torrent publish share new"
-        "Artwork & info" -> "artwork art poster cover image media metadata identify match provider tmdb lookup"
+    val aliases = when (section) {
+        Section.TRANSFERS -> "torrent downloads active list search"
+        Section.LOCAL -> "local local device downloads storage files"
+        Section.PLACES -> "folder destination location save path"
+        Section.ORGANIZE -> "collections categories organize grouping"
+        Section.SERVER -> "connection connections endpoint profile account login settings remote client clients server"
+        Section.ARCHIVES -> "zip archives compressed inspect"
+        Section.CREATE -> "create torrent publish share new"
+        Section.MEDIA -> "artwork art poster cover image media metadata identify match provider tmdb lookup"
         else -> ""
     }
-    val haystack = (label + " " + aliases).lowercase(java.util.Locale.ROOT)
+    val haystack = (section.label + " " + aliases).lowercase(java.util.Locale.ROOT)
     return needle.split(Regex("\\s+")).all { it in haystack }
 }
 
@@ -2585,7 +2589,7 @@ internal fun ChunksApp(
                     it != Section.COMBINED
             }
             val visibleDestinations = if (section == Section.TRANSFERS && optionsOpen)
-                optionsDestinations.filter { optionsDestinationMatches(it.label, optionsSearch) }
+                optionsDestinations.filter { optionsDestinationMatches(it, optionsSearch) }
             else optionsDestinations
             // Options (and every non-Transfers screen's destination list) is
             // height-bounded and scrolls vertically, so wrapped destinations and
