@@ -36,7 +36,7 @@ class CombinedAddAndFreshnessTest {
     private fun show(
         serverLabel: String?,
         onLocal: () -> Unit,
-        onServer: (() -> Unit)?,
+        onRemoteClient: (() -> Unit)?,
         otherSavedServers: Boolean = false,
         pendingSharedMagnet: Boolean = false,
         pendingSharedTorrent: Boolean = false,
@@ -47,7 +47,7 @@ class CombinedAddAndFreshnessTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme {
                     Surface {
-                        CombinedAddActions(serverLabel, onLocal, onServer,
+                        CombinedAddActions(serverLabel, onLocal, onRemoteClient,
                             hasOtherSavedServers = otherSavedServers,
                             pendingSharedMagnet = pendingSharedMagnet,
                             pendingSharedTorrent = pendingSharedTorrent,

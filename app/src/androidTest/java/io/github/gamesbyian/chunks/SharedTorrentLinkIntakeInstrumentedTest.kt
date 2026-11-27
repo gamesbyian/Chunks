@@ -100,7 +100,7 @@ class SharedTorrentLinkIntakeInstrumentedTest {
         rule.setContent {
             MaterialTheme {
                 CombinedAddActions(serverLabel = "Authenticated server",
-                    onOpenLocal = {}, onAddToServer = {},
+                    onOpenLocal = {}, onAddToRemoteClient = {},
                     pendingSharedMagnet = true, pendingSharedLink = true)
             }
         }

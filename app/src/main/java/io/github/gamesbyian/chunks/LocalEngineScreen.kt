@@ -1575,7 +1575,7 @@ internal fun LocalEngineScreen(
                             verifiedTorrentBytes = add.bytes,
                             localPlaceAvailable = destination != null,
                             enabled = !busy && !sourceReading && localAddAttemptSession?.attemptedTicket == null,
-                            onPrepareServerReview = prepare@{ original ->
+                            onPrepareRemoteReview = prepare@{ original ->
                                 if (sourceReadJob != null || pending !== add) return@prepare
                                 // The parent only enables this action for an authenticated,
                                 // independently privacy-gated remote target.

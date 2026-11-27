@@ -392,7 +392,7 @@ internal fun CombinedTransfersScreen(
     onOpenLocal: () -> Unit,
     onOpenServer: (() -> Unit)?,
     /** Opens the connected, verified server's existing Add review. Never targets a saved-only profile. */
-    onAddToServer: (() -> Unit)? = null,
+    onAddToRemoteClient: (() -> Unit)? = null,
     /** Opens this exact transfer in its own environment's list; only local and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit,
@@ -1733,7 +1733,7 @@ internal fun CombinedTransfersScreen(
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId } ||
                     protocolProfiles.isNotEmpty(),
                 onOpenLocal = onAddToLocal ?: onOpenLocal,
-                onAddToServer = onAddToServer,
+                onAddToRemoteClient = onAddToRemoteClient,
                 pendingSharedMagnet = pendingSharedMagnet,
                 pendingSharedLink = pendingSharedLink,
                 pendingSharedTorrent = pendingSharedTorrent,

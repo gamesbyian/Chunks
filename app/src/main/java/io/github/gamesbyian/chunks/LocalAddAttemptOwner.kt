@@ -37,7 +37,7 @@ internal class LocalAddAttemptOwner : ViewModel() {
     val routingPersonChoiceFor = mutableStateOf<String?>(null)
     val artworkExpanded = mutableStateOf(false)
     val sharedTorrentError = mutableStateOf<String?>(null)
-    var serverHandoff by mutableStateOf<PreparedRemoteTorrent?>(null)
+    var remoteHandoff by mutableStateOf<PreparedRemoteTorrent?>(null)
         private set
     val remoteSessions = RemoteAddSessions()
     /** The server-job magnet waiting for the Local Add review (RAM only; A2611-02). */
@@ -102,29 +102,29 @@ internal class LocalAddAttemptOwner : ViewModel() {
         remoteSessions.clearPendingSourceSelection()
         sourceDraft.value = ""
         if (reviewed == null) reviewedTorrent.value = null
-        serverHandoff = PreparedRemoteTorrent(bytes, reviewed)
+        remoteHandoff = PreparedRemoteTorrent(bytes, reviewed)
         return true
     }
 
     /** Redirect the current review as a whole, with no new document grant or Add authority. */
     fun prepareCurrentReviewForRemote() {
         val reviewed = reviewedTorrent.value ?: return
-        if (serverHandoff?.reviewed !== reviewed && reviewed.stillMatchesReviewedSource(reviewed.bytes)) {
-            serverHandoff = PreparedRemoteTorrent(reviewed.bytes, reviewed)
+        if (remoteHandoff?.reviewed !== reviewed && reviewed.stillMatchesReviewedSource(reviewed.bytes)) {
+            remoteHandoff = PreparedRemoteTorrent(reviewed.bytes, reviewed)
         }
     }
 
-    fun claimServerHandoff(expected: PreparedRemoteTorrent?): Boolean {
-        if (expected == null || serverHandoff !== expected) return false
-        clearServerHandoff()
+    fun claimRemoteHandoff(expected: PreparedRemoteTorrent?): Boolean {
+        if (expected == null || remoteHandoff !== expected) return false
+        clearRemoteHandoff()
         return expected.reviewed === reviewedTorrent.value
     }
 
-    fun clearServerHandoff() { serverHandoff = null }
+    fun clearRemoteHandoff() { remoteHandoff = null }
 
     fun adoptSharedDocument(reviewed: PendingLocalAdd, forAuthenticatedRemote: Boolean) {
         reviewedTorrent.value = reviewed
-        serverHandoff = if (forAuthenticatedRemote) PreparedRemoteTorrent(reviewed.bytes, reviewed) else null
+        remoteHandoff = if (forAuthenticatedRemote) PreparedRemoteTorrent(reviewed.bytes, reviewed) else null
         sourceDraft.value = ""
         remoteSessions.clearPendingSourceSelection()
     }
@@ -132,7 +132,7 @@ internal class LocalAddAttemptOwner : ViewModel() {
     fun retireCompletedRemoteReview(completed: PendingLocalAdd?) {
         if (completed == null) return
         if (reviewedTorrent.value === completed) reviewedTorrent.value = null
-        if (serverHandoff?.reviewed === completed) clearServerHandoff()
+        if (remoteHandoff?.reviewed === completed) clearRemoteHandoff()
     }
 
     fun hasDocumentReview(): Boolean =

@@ -10,9 +10,9 @@ class AddArtworkDraftChoicesTest {
     @Test fun localAndEachAuthenticatedRouteHaveIndependentDefaults() {
         val choices = AddArtworkDraftChoices()
         val local = choices.onLocal()
-        val first = choices.onServer("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice")
-        val second = choices.onServer("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000bob")
-        val numbered = choices.onServer("https://example.invalid/rutorrent2/plugins/httprpc/action.php\u0000alice")
+        val first = choices.onRemoteClient("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice")
+        val second = choices.onRemoteClient("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000bob")
+        val numbered = choices.onRemoteClient("https://example.invalid/rutorrent2/plugins/httprpc/action.php\u0000alice")
 
         assertTrue(local.value)
         assertTrue(first.value)
@@ -24,8 +24,8 @@ class AddArtworkDraftChoicesTest {
         first.value = false
         assertTrue(second.value)
         assertTrue(numbered.value)
-        assertSame(first, choices.onServer("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice"))
-        assertFalse(choices.onServer("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice").value)
+        assertSame(first, choices.onRemoteClient("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice"))
+        assertFalse(choices.onRemoteClient("https://example.invalid/rutorrent/plugins/httprpc/action.php\u0000alice").value)
     }
 
     @Test fun protocolProfilesKeepIndependentDefaultCheckedChoices() {
@@ -45,7 +45,7 @@ class AddArtworkDraftChoicesTest {
     @Test fun confirmedAddResetsOnlyItsOwnDraftChoice() {
         val choices = AddArtworkDraftChoices()
         val local = choices.onLocal()
-        val remote = choices.onServer("https://seed.invalid/RPC2\u0000exact-principal")
+        val remote = choices.onRemoteClient("https://seed.invalid/RPC2\u0000exact-principal")
         local.value = false
         remote.value = false
         remote.value = true // Existing Add screen resets the completed draft.
@@ -55,7 +55,7 @@ class AddArtworkDraftChoicesTest {
 
     @Test fun noServerIdentityCannotClaimArtworkChoice() {
         val choices = AddArtworkDraftChoices()
-        val refused = runCatching { choices.onServer("") }
+        val refused = runCatching { choices.onRemoteClient("") }
         assertTrue(refused.exceptionOrNull() is IllegalArgumentException)
         assertTrue(choices.onLocal().value)
     }
