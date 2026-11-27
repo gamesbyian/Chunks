@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.privacy.GatedProtocolAdd
@@ -119,6 +120,28 @@ class ProtocolTransferPrivacyGateTest {
         rule.runOnIdle { shown.value = false }
         rule.waitForIdle()
         assertFalse(session.mayView(scope))
+    }
+
+    @Test fun changingExactClientScopeDoesNotCarryOpenPrivacySettingsAcrossClients() {
+        policy(scope, TransferLockMode.NEVER)
+        policy(other, TransferLockMode.NEVER)
+        val selected = androidx.compose.runtime.mutableStateOf(scope)
+        rule.setContent {
+            ChunksTheme {
+                ProtocolTransferPrivacyGate(scope = selected.value, clientKind = "Deluge",
+                    onBack = {}) { Text("CLIENT-CONTENT") }
+            }
+        }
+        rule.onNodeWithText("Privacy & authentication").performClick()
+        rule.onNodeWithText("Deluge client privacy is off.", substring = true).assertExists()
+        rule.runOnIdle { selected.value = other }
+        rule.onNodeWithText("CLIENT-CONTENT").assertExists()
+        rule.onNodeWithText("Deluge client privacy is off.", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Privacy & authentication").performClick()
+        rule.onNodeWithText("Deluge client privacy is off.", substring = true).assertExists()
+        rule.runOnIdle { selected.value = scope }
+        rule.onNodeWithText("CLIENT-CONTENT").assertExists()
+        rule.onNodeWithText("Deluge client privacy is off.", substring = true).assertDoesNotExist()
     }
 
     @Test fun theLockedTextNamesTheTypedClientNotRTorrent() {
