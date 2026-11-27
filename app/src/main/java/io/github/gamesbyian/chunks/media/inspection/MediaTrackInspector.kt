@@ -45,10 +45,11 @@ object MediaTrackInspector {
     private const val MAX_ELEMENTS = 20_000
 
     fun inspect(src: MediaByteSource): MediaTechnicalInfo? = runCatching {
-        val head = src.read(0, 12)
+        val bounded = BudgetedMediaByteSource(src, READ_BUDGET)
+        val head = bounded.read(0, 12)
         when {
-            head.size >= 4 && head[0] == 0x1A.toByte() && head[1] == 0x45.toByte() && head[2] == 0xDF.toByte() && head[3] == 0xA3.toByte() -> mkv(src)
-            head.size >= 8 && String(head, 4, 4, Charsets.ISO_8859_1) in setOf("ftyp", "moov", "mdat", "free", "wide") -> mp4(src)
+            head.size >= 4 && head[0] == 0x1A.toByte() && head[1] == 0x45.toByte() && head[2] == 0xDF.toByte() && head[3] == 0xA3.toByte() -> mkv(bounded)
+            head.size >= 8 && String(head, 4, 4, Charsets.ISO_8859_1) in setOf("ftyp", "moov", "mdat", "free", "wide") -> mp4(bounded)
             else -> null
         }
     }.getOrNull()
@@ -186,13 +187,13 @@ object MediaTrackInspector {
         fun be(b: ByteArray, o: Int, n: Int): Long { var v = 0L; for (i in 0 until n) v = (v shl 8) or (b[o + i].toLong() and 0xFF); return v }
         fun boxes(start: Long, end: Long, f: (String, Long, Long) -> Unit) {
             var o = start
-            while (o + 8 <= end) {
+            while (o >= 0 && o <= end && end - o >= 8) {
                 if (++atoms > MAX_ELEMENTS) { partial = true; return }
-                val h = read(o, 16); if (h.size < 8) { partial = true; return }
+                val h = read(o, minOf(16L, end - o).toInt()); if (h.size < 8) { partial = true; return }
                 var size = be(h, 0, 4); val type = String(h, 4, 4, Charsets.ISO_8859_1); var hl = 8
                 if (size == 1L) { if (h.size < 16) { partial = true; return }; size = be(h, 8, 8); hl = 16 }
                 if (size == 0L) size = end - o
-                if (size < hl || o + size > end) { partial = true; return }
+                if (size < hl || size > end - o) { partial = true; return }
                 f(type, o + hl, o + size); o += size
             }
         }
@@ -202,9 +203,9 @@ object MediaTrackInspector {
             if (t != "moov") return@boxes
             boxes(s, e) { t2, s2, e2 ->
                 when (t2) {
-                    "mvhd" -> read(s2, 32).let { b -> if (b.size >= 20) {
+                    "mvhd" -> read(s2, minOf(32L, e2 - s2).toInt()).let { b -> if (b.size >= 20) {
                         val v1 = b[0].toInt() == 1
-                        val scale = if (v1) be(b, 20, 4) else be(b, 12, 4)
+                        val scale = if (v1) (if (b.size >= 24) be(b, 20, 4) else 0) else be(b, 12, 4)
                         val dur = if (v1) (if (b.size >= 32) be(b, 24, 8) else 0) else be(b, 16, 4)
                         if (scale > 0 && dur > 0) duration = dur * 1000 / scale } }
                     "trak" -> mp4Track(::read, ::be, ::boxes, s2, e2)?.let { tracks.add(it) }
@@ -220,10 +221,10 @@ object MediaTrackInspector {
         var w: Int? = null; var h: Int? = null; var ch: Int? = null; var rate: Int? = null
         boxes(s, e) { t, ts, te ->
             when (t) {
-                "tkhd" -> read(te - 8, 8).let { b -> if (b.size == 8) { w = (be(b, 0, 4) shr 16).toInt(); h = (be(b, 4, 4) shr 16).toInt() } }
+                "tkhd" -> read(maxOf(ts, te - 8), minOf(8L, te - ts).toInt()).let { b -> if (b.size == 8) { w = (be(b, 0, 4) shr 16).toInt(); h = (be(b, 4, 4) shr 16).toInt() } }
                 "mdia" -> boxes(ts, te) { m, ms, me ->
                     when (m) {
-                        "mdhd" -> read(ms, 32).let { b -> if (b.isNotEmpty()) {
+                        "mdhd" -> read(ms, minOf(32L, me - ms).toInt()).let { b -> if (b.isNotEmpty()) {
                             val o = if (b[0].toInt() == 1) 28 else 20
                             if (b.size >= o + 2) { val p = be(b, o, 2).toInt()
                                 val code = String(charArrayOf((((p shr 10) and 31) + 0x60).toChar(), (((p shr 5) and 31) + 0x60).toChar(), ((p and 31) + 0x60).toChar()))
