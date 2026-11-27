@@ -99,6 +99,12 @@ jobs:
               app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | sort | tail -60 || true
             exit 1
           fi
+      # D8 miscompiled a null check in a >256-register composable (#2163): the installed app
+      # crashed on launch while every JVM test passed. Scan the just-built debug dex offline.
+      - name: Witness no D8 null-check miscompile in app methods (offline dex scan)
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_dex_null_check_witness
+          python3 tools/dex_null_check_witness.py app/build/outputs/apk/debug/app-debug.apk
       - name: Emit agent-readable CI evidence (without test output or secrets)
         if: always()
         env:

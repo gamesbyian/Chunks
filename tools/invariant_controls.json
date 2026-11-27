@@ -1229,10 +1229,10 @@
     },
     {
       "id": "combined-typed-client-view-ungated",
-      "invariant": "Combined Transfers narrowed to one typed client sits behind that client's privacy gate",
+      "invariant": "Combined Transfers narrowed to one typed client shows that client's privacy gate (unlock and controls)",
       "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt",
-      "old": "    val protocolGate = CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)",
-      "new": "    val protocolGate: CombinedProtocolGate.Gate? = null",
+      "old": "        CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)?.let { gate ->",
+      "new": "        (null as CombinedProtocolGate.Gate?)?.let { gate ->",
       "tests": [
         "io.github.gamesbyian.chunks.CombinedProtocolPrivacyLockTest"
       ]
