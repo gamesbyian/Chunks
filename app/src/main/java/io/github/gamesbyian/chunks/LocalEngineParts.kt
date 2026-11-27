@@ -453,9 +453,7 @@ internal fun LocalTransferCard(
             // Presentation only, keyed by the exact local job; never reads or changes payload files.
             rememberLocalTransferKey(transfer.infoHash)?.let { key ->
                 // Files are listed only after the person opens them; until then no local evidence.
-                val localMedia = remember(transfer.savePath, files) {
-                    files?.let { LocalCompletedMediaFiles(transfer.savePath, it) }
-                }
+                val localMedia = files?.let { rememberLocalCompletedMediaFiles(transfer.savePath, it) }
                 TransferMediaDetailSection(key, transfer.name, localFiles = localMedia)
             }
             similar?.invoke()
@@ -567,7 +565,7 @@ internal fun LocalTransferCard(
             // On-demand container/track facts for the main completed media file; nothing is read
             // until "Inspect media" is tapped, and only through the verified completed-file gate.
             if (filesShown && files != null) {
-                val inspectable = remember(transfer.savePath, files) { LocalCompletedMediaFiles(transfer.savePath, files) }
+                val inspectable = rememberLocalCompletedMediaFiles(transfer.savePath, files)
                 inspectable.primaryInspectable?.let { hint ->
                     io.github.gamesbyian.chunks.media.ui.MediaTechnicalDetails(
                         fileName = hint.path.substringAfterLast('/'), open = { inspectable.open(hint) })
