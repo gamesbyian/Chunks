@@ -2,6 +2,7 @@
 """Black-box Local Add and independently hashed peer bytes on the installed R8 release APK."""
 import argparse
 import hashlib
+import secrets
 import re
 import shlex
 import subprocess
@@ -123,12 +124,16 @@ def tap_add(source):
 
 def seed(root):
     piece_size = 16 * 1024
-    payload = b"".join(hashlib.sha256(f"chunks release fixture piece {i}".encode()).digest()
-                       for i in range(2048))
+    # A fresh synthetic swarm per attempt, no public tracker or known hash.
+    # libtorrent's create_ut_metadata_plugin intentionally returns no plugin
+    # for a torrent with known private metadata (src/ut_metadata.cpp).
+    # The magnet witness must have a metadata-serving seed. Do not change
+    # Chunks or relax private torrent policy to make this test pass.
+    payload = secrets.token_bytes(64 * 1024)
     (root / PAYLOAD_NAME).write_bytes(payload)
     info = {b"length": len(payload), b"name": PAYLOAD_NAME.encode(), b"piece length": piece_size,
             b"pieces": b"".join(hashlib.sha1(payload[i:i + piece_size]).digest()
-                                for i in range(0, len(payload), piece_size)), b"private": 1}
+                                for i in range(0, len(payload), piece_size))}
     tracker = f"http://127.0.0.1:{TRACKER_PORT}/announce"
     session = lt.session({"listen_interfaces": f"127.0.0.1:{PEER_PORT}", "enable_dht": False,
                           "enable_lsd": False, "enable_upnp": False, "enable_natpmp": False,
@@ -162,7 +167,11 @@ def witness(root):
 
         def downloaded():
             try:
-                content = adb("exec-out", "cat " + shlex.quote(ANDROID_FILE))
+                # exec-out may combine cat errors with output and lose the remote
+                # exit status. Shell v2 without a PTY preserves binary bytes and
+                # checks the actual remote command exit status.
+                content = adb("shell", "-T", "test -f " + shlex.quote(ANDROID_FILE) +
+                              " && cat " + shlex.quote(ANDROID_FILE))
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
                 latest.update(file_bytes=-1, bytes_match=False, readable=False)
                 return False
