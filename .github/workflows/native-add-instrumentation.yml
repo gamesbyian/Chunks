@@ -72,6 +72,7 @@ on:
       - "tools/interop/**"
       - "!tools/interop/disposable_snapshot_folder_listing.py"
       - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CombinedDetailProbeOwner.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersParts.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/TransferSortOrdering.kt"
