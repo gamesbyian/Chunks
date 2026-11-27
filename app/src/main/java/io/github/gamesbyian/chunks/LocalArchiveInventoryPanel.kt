@@ -87,7 +87,7 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
                     color = MaterialTheme.colorScheme.error)
                 if (candidate.missingCount > 0) Text(
                     "Missing volume number " + candidate.firstMissing + " (" +
-                        candidate.missingCount + " gaps in listed numbering).",
+                        candidate.missingCount + (if (candidate.missingCount == 1) " gap" else " gaps") + " in listed numbering).",
                     color = MaterialTheme.colorScheme.error)
                 Text(candidate.listedCompleteCount.toString() + " of " + candidate.volumes.size +
                     " listed files report complete bytes.")
