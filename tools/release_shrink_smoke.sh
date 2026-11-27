@@ -17,12 +17,12 @@ installed="$(adb shell pm path "$pkg")" || fail_smoke "cannot resolve installed 
 installed="${installed//$'\r'/}"
 # This workflow installs a single universal APK. An unexpected split set is not equivalent.
 [[ "$installed" =~ ^package:/data/app/[^[:space:]]+/base\.apk$ ]] || fail_smoke "expected exactly one installed base APK"
-adb pull "${installed#package:}" "$tmp/base.apk" >/dev/null || fail_smoke "cannot pull installed APK"
-expected="$(sha256sum "$apk")" || fail_smoke "cannot hash candidate APK"
-actual="$(sha256sum "$tmp/base.apk")" || fail_smoke "cannot hash installed APK"
-expected="${expected%% *}"; actual="${actual%% *}"
-printf 'candidate_sha256=%s\ninstalled_sha256=%s\n' "$expected" "$actual" > "$out/release-installed-identity.txt"
-[ "$expected" = "$actual" ] || fail_smoke "installed APK hash differs from candidate"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)" || fail_smoke "cannot resolve smoke tools"
+if ! bash "$script_dir/verify_installed_apk_bytes.sh" "$apk" "${installed#package:}" "$tmp/base.apk" > "$out/release-installed-identity.txt" 2>&1; then
+    cat "$out/release-installed-identity.txt"
+    fail_smoke "installed APK identity not verified"
+fi
+cat "$out/release-installed-identity.txt"
 adb logcat -c || fail_smoke "cannot clear logcat"
 adb shell am start -W -n "$pkg/.MainActivity" || fail_smoke "launch failed"
 sleep 20
