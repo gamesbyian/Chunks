@@ -123,6 +123,11 @@ class LocalFileInspectionInstrumentedTest {
             assertEquals(0, refusedProgress)
 
             // Exercise the production Details entrypoint, not an isolated mock inspection.
+            val fence = LocalMutationFence.revision
+            compose.waitUntil(5_000) {
+                LocalDetailsRuns.running.isEmpty() &&
+                    fence.acceptObservation(fence.snapshot(), emptyList<Any>())
+            }
             val port = EngineLocalDetailsPort(local)
             compose.setContent {
                 ChunksTheme {
