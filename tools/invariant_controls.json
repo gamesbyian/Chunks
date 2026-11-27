@@ -1317,6 +1317,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
       ]
+    },
+    {
+      "id": "refused-queued-recheck-reports-false-failure",
+      "invariant": "A queued recheck refused when its turn comes reports nothing (never a null 'check failed' on an attempt the follow-up may have verified)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddAttemptController.kt",
+      "old": "        recheck(queued.coordinator, queued.observer, queued.onResult)\n    }",
+      "new": "        if (!recheck(queued.coordinator, queued.observer, queued.onResult)) queued.onResult(null)\n    }",
+      "tests": [
+        "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
+      ]
     }
   ]
 }

@@ -157,7 +157,7 @@ class UniversalAddAttemptControllerTest {
         scope.cancel()
     }
 
-    @Test fun aQueuedCheckThatMayNoLongerRunReportsNoProofInsteadOfVanishing() = runBlocking {
+    @Test fun aQueuedCheckThatMayNoLongerRunNeverRunsAndNeverReportsAFalseFailure() = runBlocking {
         val scope = CoroutineScope(coroutineContext + Job())
         val controller = UniversalAddAttemptController { scope }
         val coordinator = unresolved(controller, "qbittorrent")
@@ -174,8 +174,11 @@ class UniversalAddAttemptControllerTest {
         controller.launch(other, otherTicket, writer)
         while (!controller.isSubmitting(EnvironmentId("qbittorrent"))) yield()
         followUpGate.complete(Unit)
-        while (!reported) yield()
+        while (controller.isChecking(EnvironmentId("qbittorrent"))) yield()
+        repeat(20) { yield() }
         assertFalse("never admitted during a write", personRan)
+        // Like any refused recheck it reports nothing: a null result would read as a failed check.
+        assertFalse("no false 'check failed' result", reported)
         writer.release.complete(Unit)
         scope.cancel()
     }

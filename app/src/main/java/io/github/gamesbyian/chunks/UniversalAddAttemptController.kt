@@ -225,12 +225,14 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
 
     /**
      * Start the person's queued recheck once the follow-up check that delayed it has ended. It is
-     * admitted again from scratch (no write in flight, still unresolved); if it no longer may run,
-     * its caller is told that no proof was obtained instead of hearing nothing.
+     * admitted again from scratch (no write in flight, still unresolved). If it may no longer run,
+     * nothing is reported, exactly like any refused recheck: the follow-up's own readback has
+     * already been applied, and a null result would read as a failed check on an attempt that the
+     * follow-up may just have verified.
      */
     private fun startQueuedRecheck(environment: EnvironmentId) {
         val queued = queuedRechecks.remove(environment) ?: return
-        if (!recheck(queued.coordinator, queued.observer, queued.onResult)) queued.onResult(null)
+        recheck(queued.coordinator, queued.observer, queued.onResult)
     }
 
     private fun claim(
