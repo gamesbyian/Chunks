@@ -111,6 +111,12 @@
             android:authorities="${applicationId}.owned-exports"
             android:exported="false"
             android:grantUriPermissions="true" />
+        <!-- Temporary read-only access to one explicitly reviewed local payload. -->
+        <provider
+            android:name=".LocalPayloadProvider"
+            android:authorities="${applicationId}.local-payload"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <service
             android:name=".LocalEngineService"
             android:exported="false"
