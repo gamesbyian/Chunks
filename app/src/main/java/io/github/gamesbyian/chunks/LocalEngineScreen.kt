@@ -897,17 +897,7 @@ internal fun LocalEngineScreen(
             )
         }
     }
-    val transfersRequester = remember { BringIntoViewRequester() }
-    val optionsRequester = remember { BringIntoViewRequester() }
-    // Local options search targets: existing panels on this screen.
-    val speedRequester = remember { BringIntoViewRequester() }
-    val dhtRequester = remember { BringIntoViewRequester() }
-    val clipboardRequester = remember { BringIntoViewRequester() }
-    val privacyRequester = remember { BringIntoViewRequester() }
-    val restoreRequester = remember { BringIntoViewRequester() }
-    val exportsRequester = remember { BringIntoViewRequester() }
-    val namesRequester = remember { BringIntoViewRequester() }
-    val originalFilesRequester = remember { BringIntoViewRequester() }
+    val scrollTargets = remember { LocalScrollTargets() }
     val optionsSearchHolder = optionsSearchState ?: rememberSaveable { mutableStateOf("") }
     var localOptionsSearch by optionsSearchHolder
     val categoryHolder = optionsCategoryState ?: rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
@@ -938,47 +928,7 @@ internal fun LocalEngineScreen(
         returnToOptionsIndex()
     }
     var showBatchTools by rememberSaveable { mutableStateOf(false) }
-    // Back from a local tool returns keyboard focus to the button that opened it.
-    val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val zipFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val seedingReturnIntoView = remember { BringIntoViewRequester() }
-    val createReturnIntoView = remember { BringIntoViewRequester() }
-    val zipReturnIntoView = remember { BringIntoViewRequester() }
-    LaunchedEffect(returnFocusTool, pane) {
-        val target = when (returnFocusTool) {
-            "SEEDING" -> seedingFocus
-            "CREATE" -> createFocus
-            "ARCHIVES" -> zipFocus
-            else -> null
-        } ?: return@LaunchedEffect
-        // Those tool entry buttons are mounted on Options, not Transfers.
-        // A return to a different pane must not steal keyboard focus later.
-        if (pane != LocalPane.OPTIONS) {
-            onReturnFocusConsumed()
-            return@LaunchedEffect
-        }
-        // Ensure the entry button is laid out and visible before keyboard focus
-        // is restored. ZIP review may be far below the fold even when the
-        // Options scroll state was retained. A focus request on a detached or
-        // offscreen target can otherwise fail silently.
-        val intoView = when (returnFocusTool) {
-            "SEEDING" -> seedingReturnIntoView
-            "CREATE" -> createReturnIntoView
-            "ARCHIVES" -> zipReturnIntoView
-            else -> null
-        }
-        repeat(18) {
-            androidx.compose.runtime.withFrameNanos { }
-            if (intoView != null) runCatching { intoView.bringIntoView() }
-            if (runCatching { target.requestFocus() }.getOrDefault(false)) {
-                onReturnFocusConsumed()
-                return@LaunchedEffect
-            }
-        }
-        // Leave the in-process request pending if the options button never
-        // became focusable. A future explicit pane mount can try again.
-    }
+    val toolReturnTargets = rememberLocalToolReturnTargets(returnFocusTool, pane, onReturnFocusConsumed)
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
     LaunchedEffect(pane, addExpanded, addNavigationRevision) {
@@ -1839,7 +1789,7 @@ internal fun LocalEngineScreen(
                                     // View only: search for the exact hash and show all states.
                                     transferSearch = newHash
                                     chooseLocalFilter(LocalQueueFilter.ALL)
-                                    scope.launch { transfersRequester.bringIntoView() }
+                                    scope.launch { scrollTargets.transfersRequester.bringIntoView() }
                                 }
                             })
                     }
@@ -2895,14 +2845,14 @@ internal fun LocalEngineScreen(
         if (optionsCategory != null) Text(optionsCategory?.title.orEmpty(), style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
-                .bringIntoViewRequester(optionsRequester)
+                .bringIntoViewRequester(scrollTargets.optionsRequester)
                 .semantics { heading() })
         if (optionsCategory != null) OutlinedButton(onClick = ::returnToOptionsIndex,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("All options") }
         ClearableTransferSearchField(value = localOptionsSearch, onValueChange = { localOptionsSearch = it },
             // The Options root names itself once (MainActivity's section pane title);
             // a second "Options" pane here made TalkBack/tests see two panes.
-            label = "Search options", modifier = Modifier.bringIntoViewRequester(optionsRequester))
+            label = "Search options", modifier = Modifier.bringIntoViewRequester(scrollTargets.optionsRequester))
         optionsLaunchError?.let {
             Text(it, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
@@ -2962,9 +2912,9 @@ internal fun LocalEngineScreen(
                         LocalOptionsShortcut.SERVER_BACKUP -> onRemoteSnapshot?.invoke()
                         LocalOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
                         LocalOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
-                        LocalOptionsShortcut.DHT -> scope.launch { androidx.compose.runtime.withFrameNanos { }; dhtRequester.bringIntoView() }
+                        LocalOptionsShortcut.DHT -> scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.dhtRequester.bringIntoView() }
                         LocalOptionsShortcut.CLIPBOARD_PREFILL -> scope.launch {
-                            androidx.compose.runtime.withFrameNanos { }; clipboardRequester.bringIntoView()
+                            androidx.compose.runtime.withFrameNanos { }; scrollTargets.clipboardRequester.bringIntoView()
                         }
                         LocalOptionsShortcut.DOWNLOAD_LOCATION -> {
                             // These controls still live with the existing Add workflow.
@@ -2972,12 +2922,12 @@ internal fun LocalEngineScreen(
                             if (onOpenAdd != null) onOpenAdd.invoke()
                             else { addExpanded = true; addNavigationRevision++ }
                         }
-                        LocalOptionsShortcut.SPEED_LIMITS -> scope.launch { androidx.compose.runtime.withFrameNanos { }; speedRequester.bringIntoView() }
-                        LocalOptionsShortcut.PRIVACY -> scope.launch { androidx.compose.runtime.withFrameNanos { }; privacyRequester.bringIntoView() }
-                        LocalOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { androidx.compose.runtime.withFrameNanos { }; restoreRequester.bringIntoView() }
-                        LocalOptionsShortcut.EXPORTS -> { showLocalTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; exportsRequester.bringIntoView() } }
-                        LocalOptionsShortcut.COLLECTION_NAMES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; namesRequester.bringIntoView() }
-                        LocalOptionsShortcut.ORIGINAL_TORRENT_FILES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; originalFilesRequester.bringIntoView() }
+                        LocalOptionsShortcut.SPEED_LIMITS -> scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.speedRequester.bringIntoView() }
+                        LocalOptionsShortcut.PRIVACY -> scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.privacyRequester.bringIntoView() }
+                        LocalOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.restoreRequester.bringIntoView() }
+                        LocalOptionsShortcut.EXPORTS -> { showLocalTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.exportsRequester.bringIntoView() } }
+                        LocalOptionsShortcut.COLLECTION_NAMES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.namesRequester.bringIntoView() }
+                        LocalOptionsShortcut.ORIGINAL_TORRENT_FILES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; scrollTargets.originalFilesRequester.bringIntoView() }
                     }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Column(Modifier.fillMaxWidth()) {
@@ -3034,18 +2984,18 @@ internal fun LocalEngineScreen(
         } // server tools remain scoped to the authenticated account
         OptionsSettingsGroup(optionsCategory == OptionsCategory.SEEDING) {
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(seedingReturnIntoView).focusRequester(seedingFocus)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(toolReturnTargets.seedingReturnIntoView).focusRequester(toolReturnTargets.seedingFocus)) {
             Text("Seeding rules…")
         }
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.PRIVACY) {
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
-            Column(Modifier.fillMaxWidth().bringIntoViewRequester(privacyRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
+            Column(Modifier.fillMaxWidth().bringIntoViewRequester(scrollTargets.privacyRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
         }
         // Settings first, then occasional tools: the person looking for a
         // speed limit does not have to scroll past snapshot and export panels.
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .bringIntoViewRequester(dhtRequester)
+            .bringIntoViewRequester(scrollTargets.dhtRequester)
             .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
                 onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -3061,7 +3011,7 @@ internal fun LocalEngineScreen(
         }
         // Clipboard suggestions can only fill an empty foreground Add draft.
         // The durable preference is configured here in Options, not on each Add.
-        Column(Modifier.fillMaxWidth().bringIntoViewRequester(clipboardRequester)) {
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(scrollTargets.clipboardRequester)) {
             clipboardPrefillOn?.let { current ->
                 ClipboardPrefillToggle(checked = current,
                     enabled = !clipboardPrefillSaving, onChange = { requested ->
@@ -3091,7 +3041,7 @@ internal fun LocalEngineScreen(
         }
         } // privacy and network
         OptionsSettingsGroup(optionsCategory == OptionsCategory.SEEDING) {
-            Column(Modifier.fillMaxWidth().bringIntoViewRequester(speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
+            Column(Modifier.fillMaxWidth().bringIntoViewRequester(scrollTargets.speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
             if (onOpenAdd != null) OutlinedButton(onClick = onOpenAdd,
@@ -3099,7 +3049,7 @@ internal fun LocalEngineScreen(
             if (onSmartRouting != null) OutlinedButton(onClick = onSmartRouting,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .testTag("chunks.options.smart_routing")) { Text("Smart Routing…") }
-        Column(Modifier.fillMaxWidth().bringIntoViewRequester(restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(scrollTargets.restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,
@@ -3385,13 +3335,13 @@ internal fun LocalEngineScreen(
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
         if (onCreateTorrent != null) OutlinedButton(onClick = onCreateTorrent,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(createReturnIntoView).focusRequester(createFocus)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(toolReturnTargets.createReturnIntoView).focusRequester(toolReturnTargets.createFocus)) {
             Text("Create a torrent…")
         }
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
         if (onZipReview != null) OutlinedButton(onClick = onZipReview,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(zipReturnIntoView).focusRequester(zipFocus)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(toolReturnTargets.zipReturnIntoView).focusRequester(toolReturnTargets.zipFocus)) {
             Text("Review ZIP archives…")
         }
         }
@@ -3402,7 +3352,7 @@ internal fun LocalEngineScreen(
                 .semantics { stateDescription = if (showLocalTools) "Expanded" else "Collapsed" }
         ) { Text(if (showLocalTools) "Hide local tools" else "More local tools") }
         if (showLocalTools) {
-        Column(Modifier.fillMaxWidth().bringIntoViewRequester(exportsRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(scrollTargets.exportsRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val snapshotEngine = LocalEngineHolder.current()
         LocalInventorySnapshotPanel(
             transfers = transfers,
@@ -3442,7 +3392,7 @@ internal fun LocalEngineScreen(
         }
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
-        Column(Modifier.fillMaxWidth().bringIntoViewRequester(namesRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(scrollTargets.namesRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CollectionNameManager(
             scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
             registry = nameRegistry,
@@ -3457,7 +3407,7 @@ internal fun LocalEngineScreen(
         }
         defaultHandling?.let { shown ->
             Text("Add & files", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold, modifier = Modifier.bringIntoViewRequester(originalFilesRequester)
+                fontWeight = FontWeight.Bold, modifier = Modifier.bringIntoViewRequester(scrollTargets.originalFilesRequester)
                     .semantics { heading() }
                     .testTag(ChunksSemantics.OPTIONS_ADD_AND_FILES))
             OriginalTorrentHandlingChoice("Original .torrent file after a verified Add",
@@ -3556,14 +3506,83 @@ internal fun LocalEngineScreen(
         // Standalone local tests retain their footer; ChunksApp owns the global one.
         optionsOpen = null,
         environmentLabel = "this device",
-        onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
+        onTransfers = { scope.launch { scrollTargets.transfersRequester.bringIntoView() } },
         onAdd = {
             addExpanded = true
             // Repeated taps also bring the real form into view above the footer.
             addNavigationRevision++
         },
-        onOptions = { scope.launch { optionsRequester.bringIntoView() } },
+        onOptions = { scope.launch { scrollTargets.optionsRequester.bringIntoView() } },
         onConnections = onConnections
     )
     } // measured footer + viewport
+}
+
+/** Navigation targets belong to this screen; no transfer or Add state is retained here. */
+private class LocalScrollTargets {
+    val transfersRequester = BringIntoViewRequester()
+    val optionsRequester = BringIntoViewRequester()
+    // Local options search targets: existing panels on this screen.
+    val speedRequester = BringIntoViewRequester()
+    val dhtRequester = BringIntoViewRequester()
+    val clipboardRequester = BringIntoViewRequester()
+    val privacyRequester = BringIntoViewRequester()
+    val restoreRequester = BringIntoViewRequester()
+    val exportsRequester = BringIntoViewRequester()
+    val namesRequester = BringIntoViewRequester()
+    val originalFilesRequester = BringIntoViewRequester()
+}
+
+private class LocalToolReturnTargets {
+    val seedingFocus = androidx.compose.ui.focus.FocusRequester()
+    val createFocus = androidx.compose.ui.focus.FocusRequester()
+    val zipFocus = androidx.compose.ui.focus.FocusRequester()
+    val seedingReturnIntoView = BringIntoViewRequester()
+    val createReturnIntoView = BringIntoViewRequester()
+    val zipReturnIntoView = BringIntoViewRequester()
+}
+
+/** Restore keyboard focus only for the existing Options tool-return route. */
+@Composable
+private fun rememberLocalToolReturnTargets(
+    returnFocusTool: String?,
+    pane: LocalPane,
+    onReturnFocusConsumed: () -> Unit
+): LocalToolReturnTargets {
+    val targets = remember { LocalToolReturnTargets() }
+    LaunchedEffect(returnFocusTool, pane) {
+        val target = when (returnFocusTool) {
+            "SEEDING" -> targets.seedingFocus
+            "CREATE" -> targets.createFocus
+            "ARCHIVES" -> targets.zipFocus
+            else -> null
+        } ?: return@LaunchedEffect
+        // Those tool entry buttons are mounted on Options, not Transfers.
+        // A return to a different pane must not steal keyboard focus later.
+        if (pane != LocalPane.OPTIONS) {
+            onReturnFocusConsumed()
+            return@LaunchedEffect
+        }
+        // Ensure the entry button is laid out and visible before keyboard focus
+        // is restored. ZIP review may be far below the fold even when the
+        // Options scroll state was retained. A focus request on a detached or
+        // offscreen target can otherwise fail silently.
+        val intoView = when (returnFocusTool) {
+            "SEEDING" -> targets.seedingReturnIntoView
+            "CREATE" -> targets.createReturnIntoView
+            "ARCHIVES" -> targets.zipReturnIntoView
+            else -> null
+        }
+        repeat(18) {
+            androidx.compose.runtime.withFrameNanos { }
+            if (intoView != null) runCatching { intoView.bringIntoView() }
+            if (runCatching { target.requestFocus() }.getOrDefault(false)) {
+                onReturnFocusConsumed()
+                return@LaunchedEffect
+            }
+        }
+        // Leave the in-process request pending if the options button never
+        // became focusable. A future explicit pane mount can try again.
+    }
+    return targets
 }
