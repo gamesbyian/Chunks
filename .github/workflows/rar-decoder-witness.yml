@@ -1,0 +1,63 @@
+name: RAR decoder callback qualification (host only)
+
+# A dependency-selection experiment, not an Android or publication gate.
+# Run the actual maintained upstream implementation on the genuine RARLAB
+# multipart fixture; fail rather than accept partial decoded bytes or warnings.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/rar-decoder-witness.yml"
+      - "tools/rar_decoder_witness.py"
+      - "app/src/androidTest/assets/rar-volume-review/**"
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rar-decoder-witness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  decode:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check out exact upstream libarchive 3.8.11
+        uses: actions/checkout@v4
+        with:
+          repository: libarchive/libarchive
+          ref: 03036ffa409a2aa1c5bbad35be2202641a040fda
+          path: upstream-libarchive
+          persist-credentials: false
+      - name: Build disposable host library
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream-libarchive rev-parse HEAD)" = 03036ffa409a2aa1c5bbad35be2202641a040fda
+          cmake -S upstream-libarchive -B "$RUNNER_TEMP/rar-build" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+            -DENABLE_TEST=OFF -DENABLE_TAR=OFF -DENABLE_CPIO=OFF -DENABLE_CAT=OFF
+          cmake --build "$RUNNER_TEMP/rar-build" --target archive --parallel 2
+      - name: Verify the actual decoded manifest and refusal cases
+        run: |
+          set -euo pipefail
+          library="$RUNNER_TEMP/rar-build/libarchive/libarchive.so"
+          test -f "$library"
+          printf 'CHUNKS_RAR_DECODER_SOURCE: %s\n' "$(git -C upstream-libarchive rev-parse HEAD)" | tee rar-decoder-receipt.txt
+          sha256sum "$library" | tee -a rar-decoder-receipt.txt
+          timeout 45s python3 tools/rar_decoder_witness.py app/src/androidTest/assets/rar-volume-review \
+            --library "$library" --expected-version "libarchive 3.8.11" 2>&1 | tee -a rar-decoder-receipt.txt
+      - name: Retain result even for an unsupported decoder
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rar-decoder-host-receipt-${{ github.run_attempt }}
+          path: rar-decoder-receipt.txt
+          retention-days: 14
+          if-no-files-found: warn
