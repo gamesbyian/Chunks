@@ -28,6 +28,7 @@ All apply regardless of cosmetic readiness:
 
 ## Required functional integration
 
+- [ ] For the full approved Android release, every required [detailed product requirement](TECHNICAL-COMPLETENESS-REQUIREMENTS.md), including all 58 advanced IDs and specialist outcomes, has a source-linked disposition: accepted, proven intrinsically capability-limited with truthful fallback, or explicitly owner-deferred. No undisposed/partial/acceptance-pending required item is silently treated as complete. Record the narrower scope of any daily-use preview separately.
 - [ ] Local and each remote client: Connect where applicable → Transfers → source-first Add file/magnet/HTTPS/Share/Open With → Place/Start choice → observed transfer → Details → file-priority/Finish in Order where supported → Stop/Start → session-only Remove and separate opt-in data removal.
 - [ ] Exact-client scoped and All Transfers share row/details/colour/name semantics and preserve search, list position, navigation and saved sessions; offline/locked accounts never mutate silently.
 - [ ] Smart Seeding priority, ratio, upload and tracker rules have tested effective outcomes, supported engine-specific actions and authoritative handling of disconnected/unknown/uncertain states.

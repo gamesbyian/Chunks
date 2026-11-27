@@ -6,6 +6,8 @@
 
 **Current scope boundary (2026-11-23 owner update):** The visual specimen atlas is a saved future work plan, not a current R2/R4 task or an acceptance blocker. Do not trigger tall-screen screenshot campaigns, atlas coverage audits or discretionary visual specimen CI during technical completion. Keep functional/accessibility bug fixes independent. No owner PC/Desktop Commander; use the repo and GitHub-hosted checks.
 
+**Full-product closure (owner 2026-11-27):** [#2176](https://github.com/gamesbyian/Chunks/issues/2176) and the [detailed requirement inventory](TECHNICAL-COMPLETENESS-REQUIREMENTS.md) expose remaining Android functionality beyond the narrow engineering checkpoint below. Do not infer functional completion from that checkpoint. Preserve R0 safety and R1 regressions; execute the ranked R5 product cohorts before final R2/R4. Explicit future scope remains separate.
+
 ## Completion disposition (2026-11-26; classification of the rows below, not another backlog)
 
 - **Remaining implementation (bounded):** A2611-02 decomposition, now also a toolchain-safety need: D8 miscompiled a null check in the >256-register `CombinedTransfersScreen` (installed launch crash on #2163 at `9f4f5c1`, JVM green). `LocalEngineScreen` (404 registers), `ChunksApp` (370) and `CombinedTransfersScreen` (310) are the only app methods above 255; `tools/dex_null_check_witness.py` and the `tools/dex_register_budget.py` ratchet guard every debug build. Decomposition of the `LocalEngineScreen`/`CombinedTransfersScreen`/`ChunksApp` bodies (Add routing decisions are now `AddRouting`; next: Add callbacks, Details operations, navigation); A2611-06 conversion of blocking remote policy bridges, only where a measurement shows benefit; release shrink enablement (A2611-09).
@@ -97,6 +99,22 @@ Record confirmed/conditional/measurement-required dispositions and source-exact 
 5. **Settings:** compose the registry as a single typed ownership/persistence source, respecting global/client/transfer scope, media consent, offline state, identity and privacy without rewriting functional app surface repeatedly.
 
 **Exit:** each approved Android-core capability is implemented, safely refused on genuinely unsupported clients, or explicitly owner-deferred. Record executed end-to-end positives and negative controls in the ledger.
+
+### R5 product-specification closure (owner 2026-11-27)
+
+Use [detailed requirements](TECHNICAL-COMPLETENESS-REQUIREMENTS.md), including all 58 adopted advanced IDs and specialist outcomes. Revalidate each initial disposition against live callers/tests/PRs; select the earliest unblocked coherent vertical slice. Parallel independent work is encouraged, but serialize shared owners. The current five-client architecture and correctness work remain prerequisites where relevant, not reasons to postpone all feature work.
+
+| Order | Executable cohort / issue ownership | Exit witness |
+| --- | --- | --- |
+| P1 | File/storage capability and transaction seams: #2, #7, #70, #809. Read-only inventory/path mapping and exact identity first; then safe relocation, backing rename, file recovery, Open/Share/seek access, verified payload copy and actual quota enforcement. | Real bytes and engine mappings before/after, source and sibling preservation, permission/path/space/collision/process-death negatives; installed entrypoints, no unsafe generic writer. |
+| P2 | Archive and library operations: #70, #809, #7. Extend bounded extraction, completion-triggered opt-in, cleanup and Plex-safe naming/library copy using P1 owners. | Expansion and format limits, reviewed conflicts, manifest/readback, archive retained by default, actual seeding-impact approval and crash recovery. |
+| P3 | Organization/media: #6, #403, #1453. Audit existing Collections, Similar Transfers, aliases and artwork role/inheritance, implement missing file-wide search, classification and graph breadth without rebuilding working providers. | Exact membership/source, explainable suggestions, overrides, no unapproved writes, consent and offline/locked/cross-client controls. |
+| P4 | Advanced torrent policy/network/diagnostics: #2179, #5, #415, #569. Inventory engine/OS capability before queue/slots, schedules, budgets, peer/transport/proxy/VPN, piece map, histories and policy explanation. | Native readback and actual effect, no cross-profile or traffic leakage, physical network/power negatives; conditional refusal with evidence. |
+| P5 | Discovery and intake: #2177, #6. Extend DiscoveryGate and retained Add authority into search, sources, RSS, watch/QR, saved filters, separate auth and separately authorized intake/Start; no second Add controller. | Attributed results, provider auth failures, revocable Off with zero discovery requests/intake, dedupe, restart and exact-client writes under explicit permission. |
+| P6 | Specialist workflows: #2178/#2179. Create/share breadth, cross-seed, automation/tasks, authorized storage/media handoff, technical inspection and secondary provider tools; depend on P1/P4/P5 where appropriate. | Real reachability/byte/identity/permission proof, bounded event recovery, no uncertain replay, no unsolicited cloud/publication/admin. |
+| P7 | Portability and end-to-end integration: #289/#464/#8/#10/#2176. Reconcile nonsecret settings/profile export, credential boundaries, snapshot capability, notifications, conflicts, bulk operations, completion actions and every required inventory row. | Exact source, positive and negative real journeys, durable disposition and independent functional/experience gates; then R2/R4. |
+
+**Exit:** every approved Android requirement is accepted, explicitly capability-limited with evidence, or explicitly owner-deferred. Acceptance-pending does not equal accepted. Do not reclassify a binding feature as optional future scope without owner authority. Existing R6 and atlas remain deferred; maintain separate daily-use preview vs complete-product claims.
 
 ## R2. Media, settings and coordinated functional experience
 

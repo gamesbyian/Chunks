@@ -30,6 +30,8 @@
 
 **Execution order clarification (2026-11-19):** R0 safety and R1 shared Add remain urgent; R3 reliability and **R5 approved Android functionality** should advance concurrently rather than being held until an R2 visual-polish tranche. R2 final cross-screen design precedes R4 assembled release qualification. The R0–R6 labels name contract cohorts, not one-day slots. [Current executable queue](WORK-QUEUE.md) and [release gate](RELEASE-ACCEPTANCE.md) determine action/exit.
 
+**Full-product closure (2026-11-27):** the [detailed requirements inventory](TECHNICAL-COMPLETENESS-REQUIREMENTS.md) includes specialist workflows, cross-cutting journeys and all 58 adopted advanced IDs. The ranked R5 product cohorts in WORK-QUEUE govern execution. Distinguish narrower daily-use preview from full Android release; require explicit accepted, proven capability-limited or owner-deferred disposition for every approved Android outcome before full-product completion. R6/atlas remain separate.
+
 ## Milestones and release meaning
 
 **Daily-use Android pre-alpha:** One source-first local or authenticated rTorrent Add (file/magnet/HTTPS/Share), selected destination and Start, canonical All/device/server list, compact rows, full Details, Start/Stop/priorities, rename, session-only Remove, resume/reconnect, safe error and privacy states. APK is installable, source-exact and candid about unaccepted features.

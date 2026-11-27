@@ -18,6 +18,8 @@ Separate optional expansions whose breadth could create a perpetually moving fin
 
 For unsupported remote operations (e.g. directory creation/rename, data deletion, relocation), represent honest typed capabilities, blocked/unsupported reasons and safe fallback, not a fiction that all engines can do everything. Technically complete can include a proven fail-closed refusal for intrinsically unavailable operations.
 
+**Full specification closure (owner 2026-11-27):** include every approved Android requirement in [the detailed inventory](TECHNICAL-COMPLETENESS-REQUIREMENTS.md), including advanced discovery, file/storage, automation, diagnostics and specialist integrations. The ranked R5 product cohorts govern dispatch; existing future-platform/atlas exclusions remain. A daily-use preview may be narrower; no full-product completion claim or final full-release gate until all required Android rows have accepted, proven capability-limited or explicitly owner-deferred dispositions. Do not rebuild existing slices or weaken safety.
+
 ## Default dispatch order for broad/autonomous agents
 
 0. **Safety / regressions / integration first:** protect exact client/hash/Place/Start, no unwanted destructive writes, no blind replay, credentials/privacy. Reconcile open PRs, genuine red CI and owner-reproduced Android failures, including Open With. Never merge unqualified overlap.
