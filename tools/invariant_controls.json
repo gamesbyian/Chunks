@@ -1347,6 +1347,36 @@
       "tests": [
         "io.github.gamesbyian.chunks.ProtocolAddPrivacyRouteTest"
       ]
+    },
+    {
+      "id": "details-probe-old-rendered-callback-dispatches",
+      "invariant": "A callback from an obsolete Details binding cannot initiate a read or supersede the exact current client's pending request",
+      "old": "        if (rendered == null || rendered !== binding) return",
+      "new": "        if (rendered == null) return",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedDetailProbeOwner.kt",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedDetailProbeOwnerTest"
+      ]
+    },
+    {
+      "id": "details-probe-privacy-epoch-reuses-evidence",
+      "invariant": "Changing the privacy epoch invalidates both read-only Details evidence families even when session and hash remain unchanged",
+      "old": "            previous.privacyEpoch == privacyEpoch) return previous",
+      "new": "            true) return previous",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedDetailProbeOwner.kt",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedDetailProbeOwnerTest"
+      ]
+    },
+    {
+      "id": "details-probe-queued-read-ignores-revocation",
+      "invariant": "A queued read-only Details request cannot dispatch after its exact binding has been revoked",
+      "old": "                if (!current(state, ticket)) return@launch",
+      "new": "                // Mutant: ignore revocation before dispatch",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedDetailProbeOwner.kt",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedDetailProbeOwnerTest"
+      ]
     }
   ]
 }

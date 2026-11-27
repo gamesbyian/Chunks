@@ -56,7 +56,6 @@ import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentId
 import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
-import io.github.gamesbyian.chunks.model.EnvironmentCapabilitySnapshot
 import io.github.gamesbyian.chunks.model.EnvironmentOperation
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
@@ -1058,56 +1057,25 @@ internal fun CombinedTransfersScreen(
         hasTransfers = result.transfers.isNotEmpty()
     )
     val focusedKey = detailKey
-    val signedInFocus = focusedKey?.takeIf { it.environment == serverId }
-    val capabilityGate = remember { RemoteCapabilityProbeSessionGate() }
-    // MainActivity creates a fresh CombinedServerSource each recomposition.
-    // The session witness comes from its live RTorrentRemote object, not this
-    // replaceable data wrapper or the persisted profile's endpoint string.
-    capabilityGate.bind(server?.authenticatedSession, serverId, signedInFocus)
-    val stallGate = remember { RemoteCapabilityProbeSessionGate() }
-    stallGate.bind(server?.authenticatedSession, serverId, signedInFocus)
     val latestServer = rememberUpdatedState(server)
     val latestServerId = rememberUpdatedState(serverId)
-    val latestFocus = rememberUpdatedState(signedInFocus)
     val latestMoveFocus = rememberUpdatedState(focusedKey)
     val latestLocalPrivacy = rememberUpdatedState(localPrivacy.mayShow)
     val latestServerPrivacy = rememberUpdatedState(serverPrivacy?.mayShow == true)
-    val latestStallAllowed = rememberUpdatedState(server?.stale == false &&
-        serverPrivacy?.mayShow == true && server?.authenticatedSession != null)
-    var pendingStall by remember {
-        mutableStateOf<RemoteCapabilityProbeSessionGate.Ticket?>(null)
-    }
-    var stallEvidence by remember {
-        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, RemoteStallEvidence>?>(null)
-    }
-    var stallFailure by remember {
-        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, String>?>(null)
-    }
-    fun stillStall(ticket: RemoteCapabilityProbeSessionGate.Ticket?) =
-        ticket != null && latestStallAllowed.value && stallGate.current(
-            ticket, latestServer.value?.authenticatedSession,
-            latestServerId.value, latestFocus.value
-        )
-    var pendingCapability by remember {
-        mutableStateOf<RemoteCapabilityProbeSessionGate.Ticket?>(null)
-    }
-    var capabilityEvidence by remember {
-        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, EnvironmentCapabilitySnapshot>?>(null)
-    }
-    var capabilityFailure by remember {
-        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, String>?>(null)
-    }
-    fun stillCurrent(ticket: RemoteCapabilityProbeSessionGate.Ticket?) =
-        ticket != null && capabilityGate.current(
-            ticket, latestServer.value?.authenticatedSession,
-            latestServerId.value, latestFocus.value
-        )
+    val detailProbes = remember(batchScope) { CombinedDetailProbeOwner(batchScope) }
+    val probeBinding = detailProbes.bind(
+        session = verifiedCombinedLifecycleOwner(server, serverId),
+        environment = serverId,
+        focus = focusedKey,
+        authorized = server?.stale == false && serverPrivacy?.mayShow == true,
+        privacyEpoch = "$privacyRevision/$policyRevision"
+    )
 
     if (focusedKey != null) {
         // The same observed source collection is the only detail authority.
         // Saved servers remain read-only here, even when credentials enabled a
         // manual listing. Never switch sign-in context or reuse a matching hash.
-        val snapshot = capabilityEvidence?.takeIf { stillCurrent(it.first) }?.second
+        val snapshot = detailProbes.capabilitySnapshot
         val details = UnifiedTransferDetails.resolve(
             focusedKey, sources,
             if (focusedKey.environment == EnvironmentSnapshots.LOCAL)
@@ -1439,76 +1407,16 @@ internal fun CombinedTransfersScreen(
                 }
             }) else null,
             onCheckCapabilities = readOnlyProbe?.let { probe ->
-                {
-                    val ticket = capabilityGate.begin()
-                    // Do not dispatch a probe if the app changed sessions after
-                    // composing the button but before the tap was delivered.
-                    if (stillCurrent(ticket)) {
-                        pendingCapability = ticket
-                        capabilityEvidence = null
-                        capabilityFailure = null
-                        batchScope.launch {
-                            try {
-                                val observed = withContext(Dispatchers.IO) {
-                                    withTimeout(15_000L) { probe() }
-                                }
-                                if (stillCurrent(ticket)) {
-                                    capabilityEvidence = ticket!! to
-                                        EnvironmentCapabilities.fromProbe(
-                                            ticket.environment, observed, System.currentTimeMillis())
-                                }
-                            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                if (cancel !is kotlinx.coroutines.TimeoutCancellationException)
-                                    throw cancel
-                                if (stillCurrent(ticket)) capabilityFailure =
-                                    ticket!! to "The client capability check timed out; no methods were verified."
-                            } catch (_: Exception) {
-                                if (stillCurrent(ticket)) capabilityFailure =
-                                    ticket!! to "The signed-in remote client did not complete the read-only check."
-                            } finally {
-                                if (pendingCapability === ticket) pendingCapability = null
-                            }
-                        }
-                    }
-                }
+                { detailProbes.requestCapabilities(probeBinding, probe) }
             },
-            capabilityCheckInProgress = stillCurrent(pendingCapability),
-            capabilityCheckError = capabilityFailure?.takeIf { stillCurrent(it.first) }?.second,
+            capabilityCheckInProgress = detailProbes.capabilityInProgress,
+            capabilityCheckError = detailProbes.capabilityError,
             onInspectStall = stallProbe?.let { inspect ->
-                {
-                    val ticket = stallGate.begin()
-                    if (stillStall(ticket)) {
-                        pendingStall = ticket
-                        stallEvidence = null
-                        stallFailure = null
-                        batchScope.launch {
-                            try {
-                                val observed = withContext(Dispatchers.IO) {
-                                    withTimeout(15_000L) {
-                                        inspect(ticket!!.focus.infoHash)
-                                    }
-                                }
-                                if (stillStall(ticket)) stallEvidence = ticket!! to observed
-                            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                if (cancel !is kotlinx.coroutines.TimeoutCancellationException)
-                                    throw cancel
-                                if (stillStall(ticket)) stallFailure = ticket!! to
-                                    "The exact transfer check timed out. Its current state is unknown."
-                            } catch (_: Exception) {
-                                // Never display RPC fault bodies, d.message,
-                                // tracker URLs, path names or credentials.
-                                if (stillStall(ticket)) stallFailure = ticket!! to
-                                    "The signed-in remote client could not finish the exact transfer check."
-                            } finally {
-                                if (pendingStall === ticket) pendingStall = null
-                            }
-                        }
-                    }
-                }
+                { detailProbes.requestStall(probeBinding, inspect) }
             },
-            stallCheckInProgress = stillStall(pendingStall),
-            stallReport = stallEvidence?.takeIf { stillStall(it.first) }?.second,
-            stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second,
+            stallCheckInProgress = detailProbes.stallInProgress,
+            stallReport = detailProbes.stallReport,
+            stallCheckError = detailProbes.stallError,
             similar = { transfer ->
                 SimilarTransfersHost(transfer, sources,
                     environmentLabel = { labels[it] },
