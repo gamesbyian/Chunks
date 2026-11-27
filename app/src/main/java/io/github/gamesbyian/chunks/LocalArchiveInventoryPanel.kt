@@ -20,10 +20,12 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.RarVolumeCandidates
+import io.github.gamesbyian.chunks.model.RarVolumeStructure
 import io.github.gamesbyian.chunks.model.Units
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 
 /** Read-only inventory on demand. Neither this surface nor its model has
@@ -36,9 +38,11 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
     var failed by remember(infoHash) { mutableStateOf(false) }
     var group by remember(infoHash) { mutableStateOf(0) }
     var page by remember(infoHash) { mutableStateOf(0) }
+    var structure by remember(infoHash, review, group) { mutableStateOf<RarVolumeStructure?>(null) }
+    var inspecting by remember(infoHash) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun read() {
-        if (busy) return
+        if (busy || inspecting) return
         expanded = true
         busy = true
         failed = false
@@ -59,11 +63,11 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
         OutlinedButton(onClick = {
             if (expanded) { expanded = false; review = null; failed = false }
             else read()
-        }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        }, enabled = !busy && !inspecting, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text(if (expanded) "Hide RAR volume review" else "Review RAR archive volumes…")
         }
         if (!expanded) return@Column
-        Text("Filename candidates and native hash-verified piece counts. Archive headers, durable disk bytes, final volume and archive integrity are not confirmed. This review does not extract or change files.",
+        Text("Filename candidates and native hash-verified piece counts. Header review checks the selected group for volume order and an end marker. Archive identity and decoded data integrity require separate proof.",
             style = MaterialTheme.typography.bodySmall)
         if (busy) Text("Reading the transfer inventory…")
         if (failed) Text("A complete current file inventory could not be confirmed.",
@@ -93,6 +97,35 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
                     " listed files report all pieces verified.")
                 if (candidate.allListedComplete && !candidate.ambiguous && candidate.missingCount == 0)
                     Text("All listed volumes report verified pieces; durable disk bytes, the final volume and archive integrity are unknown.")
+                if (LocalArchiveInventory.canInspectHeaders(candidate)) {
+                    OutlinedButton(onClick = {
+                        inspecting = true
+                        structure = null
+                        scope.launch {
+                            try {
+                                structure = runInterruptible(Dispatchers.IO) {
+                                    engine()?.inspectArchiveHeaders(shown, candidate) ?: RarVolumeStructure.UNCONFIRMED
+                                }
+                            } finally {
+                                inspecting = false
+                            }
+                        }
+                    }, enabled = !inspecting, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Inspect this group’s volume headers")
+                    }
+                    val headerStatus = when (structure) {
+                        RarVolumeStructure.TERMINAL_CHAIN ->
+                            "Volume headers agree on order and a final volume. Archive identity and integrity are unknown."
+                        RarVolumeStructure.MORE_VOLUMES_REQUIRED -> "The last listed volume expects another volume."
+                        RarVolumeStructure.NUMBERS_UNCONFIRMED -> "A final-volume header was found, but some volume numbers are unconfirmed."
+                        RarVolumeStructure.INCONSISTENT -> "The listed volume headers disagree on format, order or split boundaries."
+                        RarVolumeStructure.ENCRYPTED_HEADERS -> "The volume headers require a password."
+                        RarVolumeStructure.UNCONFIRMED -> "Volume headers could not be confirmed from the verified files."
+                        null -> if (inspecting) "Inspecting volume headers…" else null
+                    }
+                    if (headerStatus != null) Text(headerStatus,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
                 val lastPage = (candidate.volumes.size - 1) / 8
                 Text("Volumes " + (page * 8 + 1) + "–" +
                     minOf((page + 1) * 8, candidate.volumes.size) + " of " + candidate.volumes.size)
@@ -109,14 +142,14 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next volumes") }
                 }
                 if (candidates.size > 1) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { group--; page = 0 }, enabled = group > 0,
+                    OutlinedButton(onClick = { group--; page = 0 }, enabled = group > 0 && !inspecting,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Previous group") }
-                    OutlinedButton(onClick = { group++; page = 0 }, enabled = group < candidates.lastIndex,
+                    OutlinedButton(onClick = { group++; page = 0 }, enabled = group < candidates.lastIndex && !inspecting,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next group") }
                 }
             }
         }
-        OutlinedButton(onClick = ::read, enabled = !busy,
+        OutlinedButton(onClick = ::read, enabled = !busy && !inspecting,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Refresh RAR volume review") }
     }
 }

@@ -25,7 +25,8 @@ class RarUpstreamHeaderFixtureTest {
             bytes.copyInto(projected, offset)
         }
         assertEquals(RarVolumeHeaderReader.Result(
-            RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED, format, true, ordinal, next),
+            RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED, format, true, ordinal, next,
+            splitBefore = ordinal > 1, splitAfter = next),
             RarVolumeHeaderReader.inspect(ByteArrayMediaByteSource(projected)))
     }
 
