@@ -1327,6 +1327,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
       ]
+    },
+    {
+      "id": "privacy-gate-reuses-other-scope-ui",
+      "invariant": "A privacy gate's transient composition state never carries across exact client scopes at the same route slot",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "    androidx.compose.runtime.key(scope) {\n        ScopedTransferPrivacyGate(",
+      "new": "    androidx.compose.runtime.key(Unit) {\n        ScopedTransferPrivacyGate(",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
     }
   ]
 }
