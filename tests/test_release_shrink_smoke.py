@@ -110,5 +110,44 @@ class ReleaseShrinkSmokeTests(unittest.TestCase):
         self.assertIn("cannot read global logcat", r.stdout)
 
 
+class ReleaseTrackerAddressTests(unittest.TestCase):
+    def test_default_and_emulator_alias_are_distinct_compact_peer_addresses(self):
+        # Use a real local HTTP server, not a string-only source assertion.
+        import importlib.util
+        from http.server import ThreadingHTTPServer
+        from threading import Thread
+        from urllib.parse import urlencode
+        from urllib.request import urlopen
+
+        spec = importlib.util.spec_from_file_location(
+            "release_tracker_fixture", ROOT / "tools/interop/loopback_tracker.py")
+        tracker = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tracker)
+
+        class EmulatorTracker(tracker.Handler):
+            peer_address = bytes([10, 0, 2, 2])
+
+        for handler, expected in ((tracker.Handler, bytes([127, 0, 0, 1])),
+                                  (EmulatorTracker, bytes([10, 0, 2, 2]))):
+            with self.subTest(handler=handler.__name__):
+                tracker.SWARMS.clear()
+                server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+                worker = Thread(target=server.serve_forever, daemon=True)
+                worker.start()
+                try:
+                    base = f"http://127.0.0.1:{server.server_port}/announce?"
+                    def announce(port):
+                        query = urlencode({"info_hash": b"x" * 20, "port": port})
+                        with urlopen(base + query, timeout=3) as response:
+                            return response.read()
+                    announce(18792)
+                    self.assertIn(b"5:peers6:" + expected + (18792).to_bytes(2, "big"),
+                                  announce(18794))
+                finally:
+                    server.shutdown()
+                    server.server_close()
+                    worker.join(timeout=3)
+
+
 if __name__ == "__main__":
     unittest.main()
