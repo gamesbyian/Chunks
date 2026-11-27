@@ -21,8 +21,16 @@ texts="$(grep -o 'text="[^"]\+"' "$out/release-ui.xml" 2>/dev/null | wc -l)"
 echo "CHUNKS_RELEASE_SMOKE: pid=${pid:-none} rendered_text_nodes=$texts"
 [ "$texts" -ge 3 ] || { echo "CHUNKS_RELEASE_SMOKE: Compose UI did not render"; fail=1; }
 adb logcat -d > "$out/release-logcat.txt"
-if grep -E "FATAL EXCEPTION|UnsatisfiedLinkError|NoSuchMethodError|NoClassDefFoundError|ClassNotFoundException|NoSuchFieldError" "$out/release-logcat.txt" | grep -v "^---"; then
-  echo "CHUNKS_RELEASE_SMOKE: runtime failure in logcat"; fail=1
+# Only Chunks' own failures count: other system processes (e.g. Settings) log unrelated
+# ClassNotFoundExceptions. A crash record names the process; a live process is scoped by pid.
+if grep -A3 "FATAL EXCEPTION" "$out/release-logcat.txt" | grep -q "Process: $pkg"; then
+  echo "CHUNKS_RELEASE_SMOKE: Chunks crashed"; grep -A20 "FATAL EXCEPTION" "$out/release-logcat.txt" | head -40; fail=1
+fi
+if [ -n "$pid" ]; then
+  adb logcat -d --pid="$pid" > "$out/release-logcat-app.txt"
+  if grep -E "UnsatisfiedLinkError|NoSuchMethodError|NoClassDefFoundError|ClassNotFoundException|NoSuchFieldError|AbstractMethodError" "$out/release-logcat-app.txt"; then
+    echo "CHUNKS_RELEASE_SMOKE: R8/JNI runtime failure in the app process"; fail=1
+  fi
 fi
 [ "$fail" -eq 0 ] && echo "CHUNKS_RELEASE_SMOKE: PASS"
 exit "$fail"
