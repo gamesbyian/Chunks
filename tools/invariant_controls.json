@@ -1296,6 +1296,27 @@
       "tests": [
         "io.github.gamesbyian.chunks.OptionsDestinationSearchTest"
       ]
+    },
+    {
+      "id": "queued-recheck-overlaps-follow-up",
+      "invariant": "A person's recheck that arrives during a background follow-up never runs alongside that follow-up's read",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddAttemptController.kt",
+      "old": "            queuedRechecks[environment] = QueuedRecheck(coordinator, observer, onResult)\n            return true\n        }\n        checking[environment] = true",
+      "new": "        }\n        checking[environment] = true",
+      "tests": [
+        "io.github.gamesbyian.chunks.LocalNativeAddObserverTest",
+        "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
+      ]
+    },
+    {
+      "id": "follow-up-drops-persons-recheck",
+      "invariant": "A person's recheck that arrives during a background follow-up is queued, not silently dropped",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddAttemptController.kt",
+      "old": "            if (environment !in followUpChecking || environment in queuedRechecks) return false",
+      "new": "            return false",
+      "tests": [
+        "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
+      ]
     }
   ]
 }

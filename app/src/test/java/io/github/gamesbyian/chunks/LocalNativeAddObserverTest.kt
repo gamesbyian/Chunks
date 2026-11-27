@@ -152,8 +152,11 @@ class LocalNativeAddObserverTest {
         }, fence = LocalScreenObservationRevision(), clock = { 9_000L + reads.get() })
         assertTrue(controller.followUp(session.coordinator, observer, List(50) { 1L }))
         while (reads.get() == 0) yield()
-        assertFalse("a manual check cannot overlap the follow-up's read",
-            controller.recheck(session.coordinator, observer))
+        // #2138: the person's check is accepted and queued, never dropped; it still never
+        // overlaps the follow-up's read (no second read starts while that read is blocked).
+        assertTrue("queued, not silently dropped", controller.recheck(session.coordinator, observer))
+        repeat(20) { yield() }
+        assertEquals("a manual check cannot overlap the follow-up's read", 1, reads.get())
         gate.complete(Unit)
         while (session.coordinator.phase != UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) yield()
         assertTrue(session.acknowledgeObservedJob())
