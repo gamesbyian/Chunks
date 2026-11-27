@@ -6,8 +6,6 @@ import android.content.ClipData
 import android.net.Uri
 import android.os.SystemClock
 import android.system.Os
-import android.system.OsConstants
-import android.system.StructStat
 import android.webkit.MimeTypeMap
 import io.github.gamesbyian.chunks.engine.LocalFileDiskCheck
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
@@ -31,21 +29,13 @@ internal object LocalPayloadAccess {
     private const val MAX_GRANTS = 8
     private const val MAX_READERS = 4
 
-    internal data class Identity(val dev: Long, val inode: Long, val size: Long,
-        val modified: Long, val changed: Long) {
-        companion object {
-            fun from(stat: StructStat) = Identity(stat.st_dev, stat.st_ino, stat.st_size,
-                stat.st_mtime, stat.st_ctime)
-        }
-    }
-
     internal class Prepared(
         val engine: LocalTorrentEngine,
         val review: LocalFileInspection.Review,
         val file: LocalTransferFile,
         val root: File,
         val source: File,
-        val identity: Identity,
+        val identity: LocalPinnedReadIdentity,
         val revision: Int
     ) {
         val name = file.path.substringAfterLast('/')
@@ -83,9 +73,6 @@ internal object LocalPayloadAccess {
         LocalFileDiskCheck.check(root, listOf(file)).results.singleOrNull()?.status ==
             LocalFileDiskCheck.Status.PRESENT
 
-    private fun matches(stat: StructStat, identity: Identity): Boolean =
-        OsConstants.S_ISREG(stat.st_mode) && Identity.from(stat) == identity
-
     /** Off main. No URI is issued by an abandoned/cancelled preparation. */
     fun prepare(context: Context, engine: LocalTorrentEngine,
                 review: LocalFileInspection.Review, file: LocalTransferFile,
@@ -104,8 +91,8 @@ internal object LocalPayloadAccess {
             val fd = LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(source)
             try {
                 val stat = Os.fstat(fd)
-                val identity = Identity.from(stat)
-                if (stat.st_size != file.sizeBytes || !matches(Os.lstat(source.absolutePath), identity) ||
+                val identity = LocalPinnedReadIdentity.from(stat)
+                if (stat.st_size != file.sizeBytes || !identity.matches(Os.lstat(source.absolutePath)) ||
                     !onDisk(selected, file) || selected.canonicalFile != root || !authorized()) null
                 else Prepared(engine, review.copy(files = listOf(file)), file, root, source, identity, revision)
             } finally { Os.close(fd) }
@@ -188,8 +175,8 @@ internal object LocalPayloadAccess {
                 reviewed(source.engine, source.review, source.file) &&
                 File(source.review.savePath).canonicalFile == source.root &&
                 onDisk(File(source.review.savePath), source.file) &&
-                matches(Os.lstat(source.source.absolutePath), source.identity) &&
-                (fd == null || matches(Os.fstat(fd), source.identity)) &&
+                source.identity.matches(Os.lstat(source.source.absolutePath)) &&
+                (fd == null || source.identity.matches(Os.fstat(fd))) &&
                 lookup(context, uri) === grant
         } catch (_: Exception) { false }
         if (!valid) revoke(context, uri)

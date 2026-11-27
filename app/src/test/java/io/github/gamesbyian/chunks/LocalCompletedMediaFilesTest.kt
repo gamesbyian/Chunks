@@ -2,9 +2,7 @@ package io.github.gamesbyian.chunks
 
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.media.MediaFileHint
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.io.File
@@ -16,7 +14,7 @@ class LocalCompletedMediaFilesTest {
     private fun write(path: String, bytes: ByteArray) = File(root, path).apply { parentFile.mkdirs(); writeBytes(bytes) }
     private fun file(i: Int, path: String, size: Long, done: Long) = LocalTransferFile(i, path, size, done, true)
 
-    @Test fun onlyCompletedExactSizeFilesAreReadable() {
+    @Test fun onlyCompletedExactSizeFilesAreEligibleForPhysicalReview() {
         val cover = ByteArray(1234) { 7 }
         write("Album/cover.jpg", cover)
         write("Album/01.flac", ByteArray(500))
@@ -25,12 +23,23 @@ class LocalCompletedMediaFilesTest {
             file(2, "Album/02.flac", 100, 100))
         val local = LocalCompletedMediaFiles(root.absolutePath, files)
         assertEquals(3, local.hints.size)
-        assertArrayEquals(cover, local.read(MediaFileHint("Album/cover.jpg", 1234)))
-        assertNull("Partly downloaded files are never read", local.read(MediaFileHint("Album/01.flac")))
-        assertNull("A size mismatch is not the verified file", local.open(MediaFileHint("Album/02.flac")))
-        assertNull("Unlisted paths are refused", local.read(MediaFileHint("Album/other.jpg")))
-        assertNull("An over-limit image is refused", local.read(MediaFileHint("Album/cover.jpg"), limit = 100))
-        assertNotNull(local.open(MediaFileHint("Album/cover.jpg")))
+        assertEquals(File(root, "Album/cover.jpg").canonicalFile, local.resolve(MediaFileHint("Album/cover.jpg", 1234)))
+        assertNull("Partly downloaded files are never read", local.resolve(MediaFileHint("Album/01.flac")))
+        assertNull("A size mismatch is not the verified file", local.resolve(MediaFileHint("Album/02.flac")))
+        assertNull("Unlisted paths are refused", local.resolve(MediaFileHint("Album/other.jpg")))
+        assertNull("A contradictory size hint is refused", local.resolve(MediaFileHint("Album/cover.jpg", 100)))
+        assertEquals(File(root, "Album/cover.jpg").canonicalFile, local.resolve(MediaFileHint("Album/cover.jpg")))
+    }
+
+    @Test fun ambiguousRowsAndExcessCompletionNeverBecomeReadAuthority() {
+        val a = file(0, "movie.mkv", 8, 8)
+        assertEquals(mapOf(a.path to a), LocalCompletedMediaFiles.eligible(listOf(a)))
+        assertEquals(emptyMap<String, LocalTransferFile>(), LocalCompletedMediaFiles.eligible(
+            listOf(a, file(1, a.path, 8, 0))))
+        assertEquals(emptyMap<String, LocalTransferFile>(), LocalCompletedMediaFiles.eligible(
+            listOf(a, file(0, "other.mkv", 8, 8))))
+        assertEquals(emptyMap<String, LocalTransferFile>(), LocalCompletedMediaFiles.eligible(
+            listOf(file(0, a.path, 8, 9))))
     }
 
     @Test fun symlinksEscapesAndMissingFoldersAreRefused() {
@@ -39,9 +48,9 @@ class LocalCompletedMediaFilesTest {
         Files.createSymbolicLink(File(root, "link.jpg").toPath(), File(outside, "secret.jpg").toPath())
         val files = listOf(file(0, "link.jpg", 10, 10), file(1, "../secret.jpg", 10, 10))
         val local = LocalCompletedMediaFiles(root.absolutePath, files)
-        assertNull(local.read(MediaFileHint("link.jpg")))
-        assertNull(local.read(MediaFileHint("../secret.jpg")))
-        assertNull(LocalCompletedMediaFiles(File(root, "missing").absolutePath, files).read(MediaFileHint("link.jpg")))
-        assertNull(LocalCompletedMediaFiles("relative/path", files).read(MediaFileHint("link.jpg")))
+        assertNull(local.resolve(MediaFileHint("link.jpg")))
+        assertNull(local.resolve(MediaFileHint("../secret.jpg")))
+        assertNull(LocalCompletedMediaFiles(File(root, "missing").absolutePath, files).resolve(MediaFileHint("link.jpg")))
+        assertNull(LocalCompletedMediaFiles("relative/path", files).resolve(MediaFileHint("link.jpg")))
     }
 }

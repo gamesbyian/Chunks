@@ -62,9 +62,9 @@ case "$1" in
             [[ "$MOCK_BOUNDED_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
             printf 'OK (2 tests)\n'
             ;;
-          *LocalPayloadAccessInstrumentedTest*)
+          *LocalPayloadAccessInstrumentedTest*LocalCompletedMediaFilesInstrumentedTest*)
             [[ "$MOCK_PAYLOAD_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
-            printf 'OK (2 tests)\n'
+            printf 'OK (5 tests)\n'
             ;;
           *) exit 1 ;;
         esac
@@ -143,4 +143,4 @@ if bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-payload.log
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 8 ]]
-echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+19+3+2+2+11+2+2 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event/bounded-read/payload-access cases refused'
+echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+19+3+2+2+11+2+5 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event/bounded-read/payload-access cases refused'

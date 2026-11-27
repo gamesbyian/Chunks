@@ -124,6 +124,9 @@
     "api29": [
       "app/src/main/AndroidManifest.xml",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalPayloadAccess.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalPinnedReadIdentity.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalCompletedMediaFiles.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalCompletedMediaFilesInstrumentedTest.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalPayloadProvider.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalPayloadAccessPanel.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalAddStorageObservation.kt",

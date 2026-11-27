@@ -2,6 +2,10 @@
 
 **Status:** normative product/UX/technical feature contract; implementation and physical interoperability **not yet accepted**. **Authority:** [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), and [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md). Coverage and priority are recorded separately in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [WORK-QUEUE](WORK-QUEUE.md).
 
+## Implemented bounded slice (2026-11-27)
+
+#2187 merged: canonical Local Details > Files & priorities > Open or share a completed file. Wanted, completed files of a fully complete Local transfer, 0–64 GiB, privacy mode NEVER only. Exact native review and cache flush, scoped opaque content URI, seekable read-only proxy descriptor, 10-minute process-memory grant, eight grants/four readers, explicit revoke-all. API29 and API35 installed tests including separate UID denial/grant/revocation and seek passed; native campaign 46059354674 (441 executed, zero failed; all selected integration lanes green), R8/foundation/docs green. Actual receiver interoperability, timed expiry, throughput, immutable byte identity under arbitrary concurrent writers, protected scopes, Places parity, incomplete files, remote access and physical acceptance are outstanding. This is an implementation disposition, not blanket acceptance.
+
 ## Read-only inspection consumer
 
 The optional [MEDIA-INSPECTION](MEDIA-INSPECTION.md) workflow may request bounded file ranges and seek capability through the same permissioned byte-reader interface as Open with. It does not get broader filesystem, rTorrent RPC, transcoding or external cloud rights and must disclose remote data cost before reading. Container/codec facts and thumbnails are observed, privacy-scoped derived data, never proof of file integrity. This file retains exclusive ownership of byte-reader, URI and outbound app handoff safety; media parsing lives in its own feature contract.
