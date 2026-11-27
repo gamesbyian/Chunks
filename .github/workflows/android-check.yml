@@ -105,6 +105,10 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_dex_null_check_witness
           python3 tools/dex_null_check_witness.py app/build/outputs/apk/debug/app-debug.apk
+          # Keep the >256-register hazard from spreading: no new method above 255 registers,
+          # and the three known giants never grow past their recorded ceilings.
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_dex_register_budget
+          python3 tools/dex_register_budget.py app/build/outputs/apk/debug/app-debug.apk
       - name: Emit agent-readable CI evidence (without test output or secrets)
         if: always()
         env:
