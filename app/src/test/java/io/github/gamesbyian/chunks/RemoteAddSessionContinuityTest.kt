@@ -156,6 +156,7 @@ class RemoteAddSessionContinuityTest {
     }
 
     @Test fun lostMutationReplyAndSameAccountReconnectKeepFrozenReadOnlyRecovery() {
+        UniversalAddAttemptController.clearEvents()
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
         val calls = java.util.concurrent.CopyOnWriteArrayList<Pair<String, String>>()
         val received = java.util.concurrent.CountDownLatch(1)
@@ -264,7 +265,9 @@ class RemoteAddSessionContinuityTest {
                 // #2138: no timeout change; report what the gateway saw and the phase reached.
                 // Allowlisted by tools/ci_failure_digest.py: enum phase and RPC method names only.
                 throw AssertionError("read-only check did not confirm within 15 s\n" +
-                    "CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} gateway=${calls.map { it.first }}", timeout)
+                    "CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} " +
+                    "events=${UniversalAddAttemptController.recentEvents()} " +
+                    "gateway=${calls.map { it.first }}", timeout)
             }
             assertEquals("Recovered state cannot prove which client originally registered it", 0, verified)
             assertFalse("Late old completion must preserve the newer exclusion", artwork.value)

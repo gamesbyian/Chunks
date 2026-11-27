@@ -43,6 +43,7 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
         val onResult: (UniversalAddCoordinator.Readback?) -> Unit
     )
     private val followUpChecking = mutableSetOf<EnvironmentId>()
+    private fun note(event: String) = noteEvent(event)
     private val queuedRechecks = mutableMapOf<EnvironmentId, QueuedRecheck>()
 
     /** A write for this exact client is between admission and settlement. */
@@ -170,6 +171,7 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
                     checking.remove(environment)
                     startQueuedRecheck(environment)
                 }
+                note("follow-up:" + (readback?.name ?: "none"))
                 if (readback != null) observations[environment] = observationRevision(environment) + 1
                 onResult(readback)
             }
@@ -188,16 +190,19 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
         observer: UniversalAddObserver,
         onResult: (UniversalAddCoordinator.Readback?) -> Unit = {}
     ): Boolean {
-        val ticket = coordinator.retainedTicket ?: return false
+        val ticket = coordinator.retainedTicket ?: return false.also { note("manual-refused:no-ticket") }
         val environment = ticket.intent.target.environment
-        if (writing.containsKey(environment)) return false
+        if (writing.containsKey(environment)) return false.also { note("manual-refused:writing") }
         if (coordinator.phase !in UniversalAddLifecycle.UNRESOLVED &&
-            coordinator.phase != UniversalAddCoordinator.Phase.SESSION_CONFIRMED) return false
+            coordinator.phase != UniversalAddCoordinator.Phase.SESSION_CONFIRMED)
+            return false.also { note("manual-refused:" + coordinator.phase.name) }
         if (checking[environment] == true) {
             // A background follow-up must not swallow the person's own check: run it right after.
             // Another manual check in flight still refuses (single-flight), as does a second queue.
-            if (environment !in followUpChecking || environment in queuedRechecks) return false
+            if (environment !in followUpChecking || environment in queuedRechecks)
+                return false.also { note("manual-refused:in-flight") }
             queuedRechecks[environment] = QueuedRecheck(coordinator, observer, onResult)
+            note("manual-queued")
             return true
         }
         checking[environment] = true
@@ -208,6 +213,7 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (_: Exception) { null }
+                note("manual:" + (readback?.name ?: "none"))
                 if (readback != null) observations[environment] = observationRevision(environment) + 1
                 onResult(readback)
             } finally {
@@ -246,6 +252,16 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
     }
 
     companion object {
+        // Bounded, value-free, process-wide event history for diagnostics (#2138): event kinds and
+        // Readback/phase enum names only (no hashes, paths or endpoints). Tests clear and read it.
+        private val history = ArrayDeque<String>()
+        @Synchronized internal fun noteEvent(event: String) {
+            if (history.size >= 16) history.removeFirst()
+            history.addLast(event)
+        }
+        @Synchronized internal fun recentEvents(): List<String> = history.toList()
+        @Synchronized internal fun clearEvents() = history.clear()
+
         /**
          * Local: a cheap native list. Every second at first, then every 5 s for
          * about ten minutes, so a magnet whose metadata arrives later can still
