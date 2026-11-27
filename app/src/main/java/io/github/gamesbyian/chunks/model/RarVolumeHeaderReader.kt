@@ -76,6 +76,7 @@ internal object RarVolumeHeaderReader {
         var first = false
         var sawMain = false
         var splitAfter = false
+        var sawFile = false
         repeat(MAX_BLOCKS) {
             val prefix = input.exact(pos, 7)
             val type = prefix.u8(2)
@@ -114,13 +115,14 @@ internal object RarVolumeHeaderReader {
                     if (nameSize == 0 || nameSize > size - nameStart) refuse()
                     if (type == 0x74) {
                         if (!multi && flags and 3 != 0) refuse()
-                        if (first && flags and 1 != 0) refuse()
+                        if (splitAfter || ((first || sawFile) && flags and 1 != 0)) refuse()
                         splitAfter = flags and 2 != 0
+                        sawFile = true
                     }
                     pos = advance(dataStart, packed, input.size)
                 }
                 0x7b -> {
-                    if (flags and 0x000f.inv() != 0) refuse()
+                    if (flags and 0x400f.inv() != 0) refuse()
                     val next = flags and 1 != 0
                     if ((!multi && next) || (splitAfter && !next)) refuse()
                     var cursor = 7
@@ -163,6 +165,7 @@ internal object RarVolumeHeaderReader {
         var ordinal = 1
         var sawMain = false
         var splitAfter = false
+        var sawFile = false
         repeat(MAX_BLOCKS) {
             // Read no more than the three permitted size-vint bytes beyond
             // the CRC. A tiny header at EOF may have fewer than seven bytes.
@@ -187,11 +190,14 @@ internal object RarVolumeHeaderReader {
             if (!sawMain && type !in setOf(1L, 4L)) refuse()
             when (type) {
                 4L -> {
-                    if (sawMain) refuse()
+                    if (sawMain || flags and 4L.inv() != 0L || fields.vint() != 0L) refuse()
+                    val encryptionFlags = fields.vint()
+                    if (encryptionFlags !in 0L..1L || fields.end - fields.pos !=
+                        17 + if (encryptionFlags == 1L) 12 else 0) refuse()
                     return Result(Status.ENCRYPTED_HEADERS, Format.RAR5)
                 }
                 1L -> {
-                    if (sawMain || flags and 1L.inv() != 0L) refuse()
+                    if (sawMain || flags and 5L.inv() != 0L) refuse()
                     val archive = fields.vint()
                     if (archive and 0x1fL.inv() != 0L) refuse()
                     multi = archive and 1L != 0L
@@ -207,8 +213,9 @@ internal object RarVolumeHeaderReader {
                 2L, 3L -> {
                     if (type == 2L) {
                         if (!multi && flags and 0x18L != 0L) refuse()
-                        if (ordinal == 1 && flags and 8L != 0L) refuse()
+                        if (splitAfter || ((ordinal == 1 || sawFile) && flags and 8L != 0L)) refuse()
                         splitAfter = flags and 16L != 0L
+                        sawFile = true
                     }
                     // Validate the mandatory file/service fields fit the
                     // non-extra header, without interpreting names or extras.
@@ -225,11 +232,16 @@ internal object RarVolumeHeaderReader {
                         name != (fields.end - fields.pos).toLong()) refuse()
                 }
                 5L -> {
-                    if (flags != 0L) refuse()
+                    if (flags and 4L.inv() != 0L) refuse()
                     val end = fields.vint()
-                    if (end !in 0L..1L || fields.pos != fields.end || next != input.size) refuse()
+                    if (end !in 0L..1L || fields.pos != fields.end) refuse()
                     val more = end == 1L
                     if ((!multi && more) || (splitAfter && !more)) refuse()
+                    // Fixed-size nonfinal volumes can have trailing zero padding.
+                    // Bound it explicitly; do not accept appended opaque data.
+                    val padding = input.size - next
+                    if (padding != 0L && (!more || padding > 4096L ||
+                        input.exact(next, padding.toInt()).any { it != 0.toByte() })) refuse()
                     return Result(Status.HEADER_CHAIN_OBSERVED, Format.RAR5, multi, ordinal, more)
                 }
                 else -> refuse()
