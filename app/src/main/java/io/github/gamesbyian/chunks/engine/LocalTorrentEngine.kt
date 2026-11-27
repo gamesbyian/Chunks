@@ -162,6 +162,12 @@ data class LocalTransferFile(
     val priority: Int = if (wanted) 4 else 0
 )
 
+/** Exact native observation; each doneBytes value counts only verified pieces. */
+internal data class LocalVerifiedFileInventory(
+    val status: LocalTransferStatus,
+    val files: List<LocalTransferFile>
+)
+
 /** Bytes per second; 0 is unlimited. */
 data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesPerSecond: Int = 0) {
     init {
@@ -1514,6 +1520,48 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val files: List<LocalTransferFile>,
         val values: Array<Priority>
     )
+
+    /**
+     * Exact registration and complete bounded native file inventory, with
+     * PIECE_GRANULARITY counters only (hash-verified whole pieces, including
+     * shared boundary pieces). Never use default block progress, missing
+     * vector entries or a truncated inventory as evidence of readiness.
+     * This is point-in-time native evidence, not cache flush, filesystem
+     * stability, archive integrity or authorization to extract.
+     */
+    @Synchronized
+    internal fun readVerifiedFileInventory(infoHash: String, maxFiles: Int = 10_000): LocalVerifiedFileInventory? {
+        require(maxFiles in 1..10_000)
+        val key = normal(infoHash)
+        return try {
+            synchronized(handles) {
+                val handle = handles[key]?.takeIf { started && it.isValid } ?: return null
+                fun usable(status: LocalTransferStatus) =
+                    status.infoHash == key && status.metadataKnown && status.error == null &&
+                        status.nativeReviewToken.isNotBlank() && !status.stopsAfterCheck &&
+                        status.state in setOf(LocalTransferState.DOWNLOADING,
+                            LocalTransferState.FINISHED, LocalTransferState.SEEDING) &&
+                        status.progressPpm in 0..1_000_000
+                val before = snapshot(key, handle)?.takeIf(::usable) ?: return null
+                // readNativeFilePriorities checks full metadata identity and
+                // bounds the vector before any priority/progress JNI retrieval.
+                val layout = readNativeFilePriorities(key, handle, maxFiles) ?: return null
+                val verified = handle.fileProgress(TorrentHandle.PIECE_GRANULARITY)
+                if (verified.size != layout.values.size) return null
+                val rows = layout.files.map { file ->
+                    val count = verified[file.index]
+                    if (file.sizeBytes < 0L || count !in 0..file.sizeBytes ||
+                        file.priority !in 0..7) return null
+                    file.copy(doneBytes = count)
+                }
+                if (rows.map { it.path }.toSet().size != rows.size) return null
+                val after = snapshot(key, handle)?.takeIf(::usable) ?: return null
+                if (handles[key] !== handle || after.nativeReviewToken != before.nativeReviewToken ||
+                    after.savePath != before.savePath) return null
+                LocalVerifiedFileInventory(after, rows)
+            }
+        } catch (_: Exception) { null }
+    }
 
     /** Complete native file-priority observation for a portable snapshot. */
     @Synchronized
