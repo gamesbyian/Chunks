@@ -293,7 +293,8 @@ class TransferRowArtworkTest {
             payloadDownloadedBytes = 0, payloadUploadedBytes = 0, peers = 0, savePath = folder.absolutePath, error = null)
         val before = http.requests.size
         rule.setContent {
-            CompositionLocalProvider(LocalTransferMediaController provides c) {
+            CompositionLocalProvider(LocalTransferMediaController provides c,
+                io.github.gamesbyian.chunks.LocalMediaReadIO provides HostMediaReadPort) {
                 ChunksTheme { Surface {
                     androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState())) {
                         LocalTransferCard(transfer = transfer, busy = false, onToggle = {}, onRemove = {},
@@ -449,6 +450,7 @@ class TransferRowArtworkTest {
             payloadDownloadedBytes = 0, payloadUploadedBytes = 0, peers = 0, savePath = folder.absolutePath, error = null)
         var doneBytes by androidx.compose.runtime.mutableStateOf(mkv.size.toLong())
         rule.setContent {
+            CompositionLocalProvider(io.github.gamesbyian.chunks.LocalMediaReadIO provides HostMediaReadPort) {
             ChunksTheme { Surface {
                 androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState())) {
                     LocalTransferCard(transfer = card(doneBytes), busy = false, onToggle = {}, onRemove = {},
@@ -456,6 +458,7 @@ class TransferRowArtworkTest {
                         filesShown = true)
                 }
             } }
+            }
         }
         rule.onNodeWithText("Reads only this file's container headers, on this device.").performScrollTo().assertExists()
         rule.onNodeWithText("Inspect media").performScrollTo().performClick()
