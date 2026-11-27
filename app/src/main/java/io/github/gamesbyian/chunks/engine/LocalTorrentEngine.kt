@@ -2433,6 +2433,46 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * A fresh native cache witness for a bounded, exact subset of wanted,
+     * nonempty, fully piece-verified files. May be used on an unfinished
+     * torrent, but does not grant byte access, extraction, or publication.
+     * Reject an old pending flush, changed registration/root/file rows and
+     * any file that loses verification before the callback's readback.
+     * Call off main; no native engine monitor held while waiting.
+     */
+    internal fun flushVerifiedFilesForRead(
+        infoHash: String,
+        expectedNativeToken: String,
+        expectedSavePath: String,
+        expectedFiles: List<LocalTransferFile>,
+        timeoutMs: Long = 20_000L
+    ): Boolean {
+        val reviewed = expectedFiles.toList()
+        if (timeoutMs !in 1L..30_000L || expectedNativeToken.isBlank() ||
+            !File(expectedSavePath).isAbsolute || reviewed.size !in 1..512 ||
+            reviewed.map { it.index }.toSet().size != reviewed.size ||
+            reviewed.map { it.path }.toSet().size != reviewed.size ||
+            reviewed.any { !it.wanted || it.sizeBytes <= 0 || it.doneBytes != it.sizeBytes })
+            return false
+        val key = normal(infoHash)
+        return pendingFlushes.flush(
+            key, timeoutMs,
+            currentHandle = { if (started) handles[key] else null },
+            isComplete = {
+                val inventory = readVerifiedFileInventory(key)
+                if (inventory == null || inventory.status.nativeReviewToken != expectedNativeToken ||
+                    inventory.status.savePath != expectedSavePath) false
+                else {
+                    val current = inventory.files.associateBy { it.index }
+                    reviewed.all { current[it.index] == it }
+                }
+            },
+            requireFresh = true,
+            invokeNative = { it.flushCache() }
+        )
+    }
+
+    /**
      * Persist the exact current job after a user-confirmed Stop, before the UI
      * offers crash/relaunch recovery as settled. Unlike the periodic bulk save,
      * this never waits for unrelated torrents and cannot acknowledge a replaced
