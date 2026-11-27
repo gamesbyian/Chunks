@@ -31,6 +31,31 @@ class ByteArrayMediaByteSource(private val bytes: ByteArray) : MediaByteSource {
     }
 }
 
+/**
+ * One parser invocation's outer read boundary, including format detection,
+ * box/element headers, payloads and unsuccessful reads. Never trust a
+ * provider's returned length or a mutable source length. A budget breach
+ * refuses the observation; it does not allocate a partial attacker request.
+ */
+internal class BudgetedMediaByteSource(
+    private val delegate: MediaByteSource,
+    maximum: Long
+) : MediaByteSource {
+    override val size = delegate.size.also { require(it >= 0) }
+    private var remaining = maximum.also { require(it >= 0) }
+
+    override fun read(offset: Long, length: Int): ByteArray {
+        if (offset < 0 || length < 0) throw java.io.IOException("Invalid media read range")
+        if (offset >= size || length == 0) return ByteArray(0)
+        val count = minOf(length.toLong(), size - offset).toInt()
+        if (count.toLong() > remaining) throw java.io.IOException("Media read budget exceeded")
+        remaining -= count
+        val bytes = delegate.read(offset, count)
+        if (bytes.size > count) throw java.io.IOException("Media source exceeded requested range")
+        return bytes
+    }
+}
+
 enum class EmbeddedTagFormat { ID3V2, FLAC, MP4 }
 
 /** Facts read from the file's own tags: labelled "Embedded tags", still not a verified catalog identity. */
@@ -61,13 +86,16 @@ object EmbeddedTagReader {
     const val MAX_TAG_BYTES = 8 * 1024 * 1024
     const val MAX_PICTURE_BYTES = 6 * 1024 * 1024
     private const val MAX_ATOMS = 4_000
+    const val READ_BUDGET = 8L * 1024 * 1024 + 128 * 1024
+    private const val MAX_TEXT_BYTES = 64 * 1024
 
     fun read(source: MediaByteSource): EmbeddedMediaTags? = runCatching {
-        val head = source.read(0, 12)
+        val bounded = BudgetedMediaByteSource(source, READ_BUDGET)
+        val head = bounded.read(0, 12)
         when {
-            head.size >= 10 && String(head, 0, 3, Charsets.ISO_8859_1) == "ID3" -> id3(source, head)
-            head.size >= 4 && String(head, 0, 4, Charsets.ISO_8859_1) == "fLaC" -> flac(source)
-            head.size >= 8 && String(head, 4, 4, Charsets.ISO_8859_1) == "ftyp" -> mp4(source)
+            head.size >= 10 && String(head, 0, 3, Charsets.ISO_8859_1) == "ID3" -> id3(bounded, head)
+            head.size >= 4 && String(head, 0, 4, Charsets.ISO_8859_1) == "fLaC" -> flac(bounded)
+            head.size >= 8 && String(head, 4, 4, Charsets.ISO_8859_1) == "ftyp" -> mp4(bounded)
             else -> null
         }
     }.getOrNull()
@@ -223,15 +251,15 @@ object EmbeddedTagReader {
         var atoms = 0
         fun children(start: Long, end: Long, f: (type: String, bodyStart: Long, bodyEnd: Long) -> Unit) {
             var off = start
-            while (off + 8 <= end && atoms++ < MAX_ATOMS) {
-                val h = src.read(off, 16)
+            while (off >= 0 && off <= end && end - off >= 8 && atoms++ < MAX_ATOMS) {
+                val h = src.read(off, minOf(16L, end - off).toInt())
                 if (h.size < 8) return
                 var size = be32(h, 0)
                 val type = String(h, 4, 4, Charsets.ISO_8859_1)
                 var header = 8
                 if (size == 1L) { if (h.size < 16) return; size = (be32(h, 8) shl 32) or be32(h, 12); header = 16 }
                 if (size == 0L) size = end - off
-                if (size < header || off + size > end) return
+                if (size < header || size > end - off) return
                 f(type, off + header, off + size)
                 off += size
             }
@@ -247,9 +275,21 @@ object EmbeddedTagReader {
                     children(s3 + 4, e3) { t4, s4, e4 ->
                         if (t4 != "ilst") return@children
                         children(s4, e4) { key, s5, e5 ->
+                            // Only fields actually consumed below can justify
+                            // reading their bodies. Unknown keys are skipped.
+                            val limit = when (key) {
+                                "covr" -> MAX_PICTURE_BYTES
+                                "trkn" -> 32
+                                "©nam", "©ART", "aART", "©alb", "©day" -> MAX_TEXT_BYTES
+                                else -> return@children
+                            }
+                            if (key in items) return@children
                             children(s5, e5) { d, s6, e6 ->
                                 val len = e6 - s6 - 8
-                                if (d == "data" && len in 0..MAX_PICTURE_BYTES && key !in items) items[key] = src.read(s6 + 8, len.toInt())
+                                if (d == "data" && len in 1..limit.toLong() && key !in items) {
+                                    val body = src.read(s6 + 8, len.toInt())
+                                    if (body.size == len.toInt()) items[key] = body
+                                }
                             }
                         }
                     }

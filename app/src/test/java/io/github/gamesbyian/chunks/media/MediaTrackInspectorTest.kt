@@ -42,6 +42,21 @@ class MediaTrackInspectorTest {
         assertTrue(MediaTrackInspector.summary(i).startsWith("H.264 320×240"))
     }
 
+    @Test fun truncatedMp4HandlerCannotReadItsSiblingAsTrackKind() {
+        fun box(type: String, body: ByteArray): ByteArray =
+            java.nio.ByteBuffer.allocate(8 + body.size).putInt(8 + body.size)
+                .put(type.toByteArray(Charsets.ISO_8859_1)).put(body).array()
+        val shortHandler = box("hdlr", ByteArray(0))
+        // The next atom's body begins at +8 after hdlr's empty body.
+        // An unconstrained 12-byte read interprets "vide" as the handler.
+        val sibling = box("free", "vide".toByteArray())
+        val file = box("ftyp", ByteArray(8)) +
+            box("moov", box("trak", box("mdia", shortHandler + sibling)))
+        val result = requireNotNull(MediaTrackInspector.inspect(ByteArrayMediaByteSource(file)))
+        assertTrue(result.video.isEmpty())
+        assertEquals(TrackKind.OTHER, result.tracks.single().kind)
+    }
+
     @Test fun nonContainersAndHostileInputAreBounded() {
         assertNull(MediaTrackInspector.inspect(ByteArrayMediaByteSource(bytes("cover.jpg"))))
         assertNull(MediaTrackInspector.inspect(ByteArrayMediaByteSource(ByteArray(0))))
@@ -57,7 +72,7 @@ class MediaTrackInspectorTest {
                     override fun read(offset: Long, length: Int): ByteArray { read += length; return ByteArrayMediaByteSource(bad).read(offset, length) }
                 }
                 MediaTrackInspector.inspect(src)
-                assertTrue("read budget $read", read <= MediaTrackInspector.READ_BUDGET + 128 * 1024)
+                assertTrue("read budget $read", read <= MediaTrackInspector.READ_BUDGET)
             }
         }
         // A 1 TB claimed size in a huge virtual file stays within the read budget.
