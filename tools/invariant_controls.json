@@ -1216,6 +1216,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.CombinedLifecycleEligibilityTest"
       ]
+    },
+    {
+      "id": "combined-secure-window-ignores-typed-clients",
+      "invariant": "Combined Transfers sets FLAG_SECURE while an unlocked protected Transmission/qBittorrent/Deluge scope is shown",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedSecureWindow.kt",
+      "old": ".plus(savedShown).plus(protocol)",
+      "new": ".plus(savedShown)",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedSecureWindowTest"
+      ]
     }
   ]
 }

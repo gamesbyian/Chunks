@@ -1085,9 +1085,14 @@ internal fun CombinedTransfersScreen(
         sharedTorrentError == null
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
-    val secure = (localPrivacy.needsSecureWindow && localPrivacy.mayShow) ||
-        (serverPrivacy?.needsSecureWindow == true && serverPrivacy.mayShow) ||
-        savedPrivacy.any { (id, d) -> d.needsSecureWindow && d.mayShow && listings[id]?.observedAtEpochMillis != null }
+    // Typed protocol clients count too: their rows are shown here once allowed.
+    val secure = CombinedSecureWindow.required(
+        local = localPrivacy,
+        server = serverPrivacy,
+        savedShown = savedPrivacy.filter { (id, _) -> listings[id]?.observedAtEpochMillis != null }.values,
+        protocol = protocolPrivacyScopes.values.mapNotNull { privacyScope ->
+            privacyScope?.let { privacyEvidence?.decision(it, privacySession, deviceSecure) }
+        })
     DisposableEffect(activity, secure) {
         if (secure) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
