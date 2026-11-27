@@ -35,6 +35,15 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
     // any screen showing a receipt recomposes when retained evidence changes.
     private val observations = mutableStateMapOf<EnvironmentId, Int>()
     private val following = mutableMapOf<EnvironmentId, Job>()
+    // A person's explicit recheck that arrived while a background follow-up check was in flight
+    // (#2138): queued, at most one per client, and started as soon as that follow-up check ends.
+    private class QueuedRecheck(
+        val coordinator: UniversalAddCoordinator,
+        val observer: UniversalAddObserver,
+        val onResult: (UniversalAddCoordinator.Readback?) -> Unit
+    )
+    private val followUpChecking = mutableSetOf<EnvironmentId>()
+    private val queuedRechecks = mutableMapOf<EnvironmentId, QueuedRecheck>()
 
     /** A write for this exact client is between admission and settlement. */
     fun isSubmitting(environment: EnvironmentId): Boolean = writing.containsKey(environment)
@@ -151,12 +160,15 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
                 // Never alongside a write or a person's own Check status.
                 if (writing.containsKey(environment) || checking[environment] == true) continue
                 checking[environment] = true
+                followUpChecking += environment
                 val readback = try {
                     UniversalAddLifecycle.recheck(coordinator, observer)
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (_: Exception) { null } finally {
+                    followUpChecking -= environment
                     checking.remove(environment)
+                    startQueuedRecheck(environment)
                 }
                 if (readback != null) observations[environment] = observationRevision(environment) + 1
                 onResult(readback)
@@ -178,9 +190,16 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
     ): Boolean {
         val ticket = coordinator.retainedTicket ?: return false
         val environment = ticket.intent.target.environment
-        if (writing.containsKey(environment) || checking[environment] == true) return false
+        if (writing.containsKey(environment)) return false
         if (coordinator.phase !in UniversalAddLifecycle.UNRESOLVED &&
             coordinator.phase != UniversalAddCoordinator.Phase.SESSION_CONFIRMED) return false
+        if (checking[environment] == true) {
+            // A background follow-up must not swallow the person's own check: run it right after.
+            // Another manual check in flight still refuses (single-flight), as does a second queue.
+            if (environment !in followUpChecking || environment in queuedRechecks) return false
+            queuedRechecks[environment] = QueuedRecheck(coordinator, observer, onResult)
+            return true
+        }
         checking[environment] = true
         scope().launch {
             try {
@@ -196,6 +215,16 @@ internal class UniversalAddAttemptController(private val scope: () -> CoroutineS
             }
         }
         return true
+    }
+
+    /**
+     * Start the person's queued recheck once the follow-up check that delayed it has ended. It is
+     * admitted again from scratch (no write in flight, still unresolved); if it no longer may run,
+     * its caller is told that no proof was obtained instead of hearing nothing.
+     */
+    private fun startQueuedRecheck(environment: EnvironmentId) {
+        val queued = queuedRechecks.remove(environment) ?: return
+        if (!recheck(queued.coordinator, queued.observer, queued.onResult)) queued.onResult(null)
     }
 
     private fun claim(
