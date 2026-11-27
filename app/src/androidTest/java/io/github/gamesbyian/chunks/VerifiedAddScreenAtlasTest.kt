@@ -144,31 +144,31 @@ class VerifiedAddScreenAtlasTest {
             }
         }
         val list = rule.onNode(hasScrollToIndexAction())
-        list.performScrollToNode(hasText("Choose server folder suggestions", substring = true))
-        rule.onNodeWithText("Choose server folder suggestions", substring = true).assertExists()
+        list.performScrollToNode(hasText("Choose remote folder suggestions", substring = true))
+        rule.onNodeWithText("Choose remote folder suggestions", substring = true).assertExists()
         rule.onNodeWithText("Recent save folders").assertDoesNotExist()
-        rule.onNodeWithText("Folders seen on this server").assertDoesNotExist()
-        rule.onNodeWithText("Choose server folder suggestions", substring = true).performClick()
+        rule.onNodeWithText("Folders seen on this remote client").assertDoesNotExist()
+        rule.onNodeWithText("Choose remote folder suggestions", substring = true).performClick()
         list.performScrollToNode(hasText("Recent save folders"))
         rule.onNodeWithText("Recent save folders").assertExists()
-        list.performScrollToNode(hasContentDescription("Use recent server folder: /srv/recent"))
-        rule.onNodeWithContentDescription("Use recent server folder: /srv/recent").performClick()
+        list.performScrollToNode(hasContentDescription("Use recent remote folder: /srv/recent"))
+        rule.onNodeWithContentDescription("Use recent remote folder: /srv/recent").performClick()
         rule.runOnIdle {
             org.junit.Assert.assertEquals("/srv/recent", destination)
             org.junit.Assert.assertEquals(1, draftChoices)
         }
         rule.onNodeWithText("Recent save folders").assertDoesNotExist()
-        list.performScrollToNode(hasText("Choose server folder suggestions", substring = true))
-        rule.onNodeWithText("Choose server folder suggestions", substring = true).performClick()
-        list.performScrollToNode(hasText("Folders seen on this server"))
-        rule.onNodeWithText("Folders seen on this server").assertExists()
+        list.performScrollToNode(hasText("Choose remote folder suggestions", substring = true))
+        rule.onNodeWithText("Choose remote folder suggestions", substring = true).performClick()
+        list.performScrollToNode(hasText("Folders seen on this remote client"))
+        rule.onNodeWithText("Folders seen on this remote client").assertExists()
         list.performScrollToNode(hasText("/srv/observed"))
         rule.onNodeWithText("/srv/observed").performClick()
         rule.runOnIdle {
             org.junit.Assert.assertEquals("/srv/observed", destination)
             org.junit.Assert.assertEquals(2, draftChoices)
         }
-        rule.onNodeWithText("Folders seen on this server").assertDoesNotExist()
+        rule.onNodeWithText("Folders seen on this remote client").assertDoesNotExist()
         rule.onNodeWithText("Confirm one server operation").assertDoesNotExist()
     }
 
@@ -232,13 +232,13 @@ class VerifiedAddScreenAtlasTest {
                 .performScrollTo().assertIsEnabled().performClick()
             rule.waitUntil(timeoutMillis = 15_000) { settled == 1 }
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-                hasText("Check server state (read only)"))
+                hasText("Check remote state (read only)"))
             rule.onNodeWithText("Add transfer").assertDoesNotExist()
-            rule.onNodeWithText("Check server state (read only)").assertExists()
+            rule.onNodeWithText("Check remote state (read only)").assertExists()
             assertTrue("The fixture must receive the original one-time load",
                 fixture.methods.count { it == "load.start" } == 1)
             save("add-uncertain-recheck-real-compose")
-            rule.onNodeWithText("Check server state (read only)").performClick()
+            rule.onNodeWithText("Check remote state (read only)").performClick()
             // The fixture proves a registered exact job and Place, but has
             // zero payload bytes. rTorrent may therefore confirm Start or
             // honestly report it unverified. Either requires one explicit
@@ -342,7 +342,7 @@ class VerifiedAddScreenAtlasTest {
                     snapshotStale = true, mainView = true, onMutationStarted = { true }, onSettled = {})
             }
         }
-        rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
+        rule.onNodeWithText("Refresh this stale remote snapshot before removing a transfer.").assertExists()
         rule.onNodeWithText("Confirm remove").assertDoesNotExist()
     }
 

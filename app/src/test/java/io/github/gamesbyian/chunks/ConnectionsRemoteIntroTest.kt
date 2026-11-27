@@ -46,7 +46,7 @@ class ConnectionsRemoteIntroTest {
     @Test fun compactEmptyCardContainsAddAndFormOpensOnlyOnRequest() {
         render()
         rule.onNodeWithText("Connect to a remote client").assertExists()
-        rule.onNodeWithText("Manage torrents on another computer or server.").assertExists()
+        rule.onNodeWithText("Manage torrents in a remote client on another computer.").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).assertHeightIsAtLeast(48.dp).performClick()

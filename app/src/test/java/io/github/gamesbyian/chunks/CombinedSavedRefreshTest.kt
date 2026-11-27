@@ -58,13 +58,13 @@ class CombinedSavedRefreshTest {
         rule.waitUntil(10_000) { first.get() == 1 && second.get() == 1 }
         reveal("Client status · 3 sources")
         rule.onNodeWithText("Client status · 3 sources").performClick()
-        reveal("Server · Server 2: Could not load (did not answer in time) · 0 transfers")
-        reveal("Load Server · Server 2 transfers")
-        rule.onNodeWithContentDescription("Load transfers on Server · Server 2; read only").performClick()
+        reveal("Remote · Server 2: Could not load (did not answer in time) · 0 transfers")
+        reveal("Load Remote · Server 2 transfers")
+        rule.onNodeWithContentDescription("Load transfers on Remote · Server 2; read only").performClick()
         rule.waitUntil(10_000) { first.get() == 2 }
-        reveal("Server · Server 2: Could not load (did not answer in time) · 0 transfers")
-        reveal("Load Server · Server 2 transfers")
-        rule.onNodeWithContentDescription("Load transfers on Server · Server 2; read only").performClick()
+        reveal("Remote · Server 2: Could not load (did not answer in time) · 0 transfers")
+        reveal("Load Remote · Server 2 transfers")
+        rule.onNodeWithContentDescription("Load transfers on Remote · Server 2; read only").performClick()
         rule.waitUntil(10_000) { first.get() == 3 }
         rule.waitForIdle()
         // Retrying one failed server never reloads the other, and the failed

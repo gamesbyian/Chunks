@@ -19,10 +19,10 @@ class StoppedRemoteAddPlan private constructor(
         private val hashPattern = Regex("[0-9a-fA-F]{40}")
         private fun validatePath(path: String): String {
             require(path.startsWith("/") && path.length in 2..1024) {
-                "Choose a specific absolute server destination"
+                "Choose a specific absolute remote destination"
             }
             require(path.split('/').drop(1).all { it.isNotBlank() && it != "." && it != ".." }) {
-                "Invalid server destination path"
+                "Invalid remote destination path"
             }
             require(path.none { it.code < 32 || it in ",;=\\\"'\u0060\$()\\\\" }) {
                 "Unsupported characters in rTorrent destination"

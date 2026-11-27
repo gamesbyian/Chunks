@@ -86,7 +86,7 @@ class RemoteBatchLifecycleLargeTextTest {
 
         rule.onNodeWithText("Stop 1").performScrollTo().performClick()
         rule.onNodeWithText("Confirm Stop").performScrollTo().performClick()
-        rule.onNodeWithText("Another server change or refresh is in progress. Nothing was sent.")
+        rule.onNodeWithText("Another remote change or refresh is in progress. Nothing was sent.")
             .assertExists()
         assertEquals(1, attempts)
         assertEquals(0, settled)

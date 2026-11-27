@@ -54,7 +54,7 @@ class RemoteFolderPickerDefaultModeTest {
         rule.onNode(hasSetTextAction()).performTextReplacement("/srv/new")
         rule.waitForIdle()
         assertEquals(0, commits)
-        rule.onNodeWithText("Set as server default").performClick()
+        rule.onNodeWithText("Set as remote default").performClick()
         assertEquals(1, commits)
         assertEquals("/srv/new", selected)
     }

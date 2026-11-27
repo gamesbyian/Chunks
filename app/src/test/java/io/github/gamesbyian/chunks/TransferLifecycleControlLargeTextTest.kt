@@ -68,7 +68,7 @@ class TransferLifecycleControlLargeTextTest {
         val attempts = mutableListOf<String>()
         show(started = false, scale = 2f, attempts = attempts)
         rule.onNodeWithContentDescription(
-            "Start A very long named transfer for the exact remote server on this rTorrent server"
+            "Start A very long named transfer for the exact remote server on this rTorrent client"
         ).assertExists()
         rule.onNodeWithText("Start transfer…").performClick()
 

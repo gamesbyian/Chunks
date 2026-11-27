@@ -35,11 +35,11 @@ class RemoteAddPlaceOutcomeTest {
             remoteAddSaveToSummary("/custom", "/stored", false, "/observed"))
         assertEquals("Save to: /stored (saved default)",
             remoteAddSaveToSummary("", "/stored", true, "/observed"))
-        assertEquals("Save to: Server default (checking; Add is available)",
+        assertEquals("Save to: Remote default (checking; Add is available)",
             remoteAddSaveToSummary("", null, false, null))
         assertEquals("Save to: /observed (rTorrent default)",
             remoteAddSaveToSummary("", null, true, "/observed"))
-        assertEquals("Save to: Server default (confirm after adding)",
+        assertEquals("Save to: Remote default (confirm after adding)",
             remoteAddSaveToSummary("", null, true, null))
     }
 

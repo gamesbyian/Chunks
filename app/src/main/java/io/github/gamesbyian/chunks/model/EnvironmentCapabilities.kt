@@ -8,7 +8,7 @@ enum class EnvironmentOperation(val label: String) {
     ADD_MAGNET("Add a magnet link"),
     ADD_TORRENT_FILE("Add a .torrent file"),
     /** Optional: an Add with an explicitly chosen destination does not need it. */
-    SERVER_DEFAULT_ADD_FOLDER("Use the server's default Add folder"),
+    SERVER_DEFAULT_ADD_FOLDER("Use the remote client's default Add folder"),
     START_STOP("Start and stop"),
     FILE_PRIORITIES("File list and priorities"),
     TRACKER_HEALTH("Tracker health"),
@@ -69,7 +69,7 @@ data class EnvironmentCapabilitySnapshot(
             return Decision(false, "${operation.label}: capability evidence belongs to the wrong engine type")
         }
         if (proof == CapabilityEvidence.ADVERTISED && environment == EnvironmentSnapshots.LOCAL) {
-            return Decision(false, "${operation.label}: a server advertisement cannot authorize the local device engine")
+            return Decision(false, "${operation.label}: a remote client advertisement cannot authorize the local device engine")
         }
         return when (proof) {
             CapabilityEvidence.BUILT_IN -> Decision(true, "${operation.label}: built into the local device engine")
@@ -119,5 +119,5 @@ object EnvironmentCapabilities {
 
     /** A server whose probe has not run or did not answer: everything UNKNOWN, nothing MISSING. */
     fun unprobed(environment: EnvironmentId) =
-        EnvironmentCapabilitySnapshot(environment, "this server", null, emptyMap())
+        EnvironmentCapabilitySnapshot(environment, "this remote client", null, emptyMap())
 }

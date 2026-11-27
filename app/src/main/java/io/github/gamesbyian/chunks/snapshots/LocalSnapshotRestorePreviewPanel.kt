@@ -103,9 +103,9 @@ internal data class SnapshotRestoreTarget(
         val LOCAL = SnapshotRestoreTarget("local", "Local", "local-engine",
             "a native operation", "Already on this device (skip)",
             "Review original .torrent in local Add", supportsLowPriority = true)
-        val SERVER = SnapshotRestoreTarget("rTorrent server", "rTorrent server",
-            "rTorrent server (all-transfers view)", "a server operation",
-            "Already on this server (skip)", "Review original .torrent in server Add", supportsLowPriority = false)
+        val SERVER = SnapshotRestoreTarget("rTorrent client", "rTorrent client",
+            "rTorrent client (all-transfers view)", "a remote operation",
+            "Already on this remote client (skip)", "Review original .torrent in remote Add", supportsLowPriority = false)
     }
 }
 
@@ -394,16 +394,16 @@ internal fun SnapshotRestorePreviewPanel(
                         } > 8) Text("Additional unresolved journal entries are not shown. " +
                         "Use individual read-only checks for their identities.",
                         style = MaterialTheme.typography.bodySmall)
-                    Text("Read-only on the server. This check did not submit, start or retry " +
+                    Text("Read-only on the remote client. This check did not submit, start or retry " +
                         "a torrent. Journal verification may update only Chunks-owned local receipts.",
                         style = MaterialTheme.typography.bodySmall)
                 }
                 if (remoteDefinitionRestore != null && remoteDefinitionFolderAccount != null &&
                     remoteDefinitionAccountLabel != null && target == SnapshotRestoreTarget.SERVER) {
                     Text(if (remoteSelectedPlace == null)
-                        "Stopped restore uses this server's current default folder."
+                        "Stopped restore uses this remote client's current default folder."
                     else "Selected restore folder: $remoteSelectedPlace. Chunks will check this " +
-                        "exact server folder again before restoring.",
+                        "exact remote folder again before restoring.",
                         style = MaterialTheme.typography.bodySmall)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { chooseRemotePlace = true },
@@ -420,7 +420,7 @@ internal fun SnapshotRestorePreviewPanel(
                             remoteDefinitionNotice = null
                         }, enabled = !remoteDefinitionBusy && !remoteBatchBusy && !reading,
                             modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text("Use server default")
+                            Text("Use remote default")
                         }
                     }
                     if (chooseRemotePlace) RemoteFolderPicker(
@@ -453,13 +453,13 @@ internal fun SnapshotRestorePreviewPanel(
                                 latestGeneration == comparedGeneration) {
                                 remoteBatchBusy = true
                                 remoteBatchNotice =
-                                    "Checking all restore journals before stopped server Adds…"
+                                    "Checking all restore journals before stopped remote Adds…"
                                 scope.launch {
                                     try {
                                         val report = remoteBatchStoppedRestore.execute(
                                             bulkReview, confirmed = true)
                                         remoteBatchNotice = if (report.complete) {
-                                            "${report.verified}/${report.total} stopped server " +
+                                            "${report.verified}/${report.total} stopped remote " +
                                                 "definitions independently verified. No Start or " +
                                                 "payload copy. Refresh the comparison to review " +
                                                 "saved priorities."
@@ -471,20 +471,20 @@ internal fun SnapshotRestorePreviewPanel(
                                                 } ?: "") + ". Reason: " +
                                                 (report.stop?.name ?: "unknown") +
                                                 ". No automatic retry or rollback. Check previous " +
-                                                "server restores before considering another Add."
+                                                "remote restores before considering another Add."
                                         }
                                     } catch (cancel: CancellationException) {
                                         throw cancel
                                     } catch (_: Exception) {
                                         remoteBatchNotice =
                                             "The group outcome could not be verified. No automatic " +
-                                                "retry. Check previous server restores."
+                                                "retry. Check previous remote restores."
                                     } finally {
                                         remoteBatchBusy = false
                                     }
                                 }
                             } else {
-                                remoteBatchNotice = "The server comparison changed. " +
+                                remoteBatchNotice = "The remote comparison changed. " +
                                     "No group submission was authorized."
                             }
                         }
@@ -550,7 +550,7 @@ internal fun SnapshotRestorePreviewPanel(
                 remotePriorityReview?.let { review ->
                     Text("Current rTorrent priorities independently checked. " +
                         "Changed: ${review.changeCount}; unsupported Low choices: ${review.unsupportedCount}. " +
-                        "No server priority was changed during review.",
+                        "No remote priority was changed during review.",
                         style = MaterialTheme.typography.bodySmall)
                     val changes = review.rows.filter { it.saved != it.current }
                     changes.take(8).forEach { row ->
@@ -632,7 +632,7 @@ internal fun SnapshotRestorePreviewPanel(
                                     remoteBatchDraft = null
                                     remoteBatchBusy = true
                                     remoteBatchNotice = "Preflighting every original, " +
-                                        "the server roster and all previous Add journals…"
+                                        "the remote roster and all previous Add journals…"
                                     scope.launch {
                                         try {
                                             val draft = remoteBatchStoppedRestore.prepare(
@@ -647,7 +647,7 @@ internal fun SnapshotRestorePreviewPanel(
                                                 remoteBatchNotice = if (draft == null)
                                                     "Could not verify every original, journal, " +
                                                         "exact account and chosen folder. " +
-                                                        "No server Add was sent."
+                                                        "No remote Add was sent."
                                                 else null
                                             }
                                         } catch (cancel: CancellationException) {
@@ -655,7 +655,7 @@ internal fun SnapshotRestorePreviewPanel(
                                         } catch (_: Exception) {
                                             remoteBatchNotice =
                                                 "Stopped batch review failed safely. " +
-                                                    "No server Add was sent."
+                                                    "No remote Add was sent."
                                         } finally {
                                             remoteBatchBusy = false
                                         }
@@ -666,11 +666,11 @@ internal fun SnapshotRestorePreviewPanel(
                                 !remoteDefinitionBusy,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) {
-                            Text("Review ${remoteMissingOriginals.size} stopped server restores")
+                            Text("Review ${remoteMissingOriginals.size} stopped remote restores")
                         }
                     } else if (remoteBatchStoppedRestore != null &&
                         remoteMissingOriginals.size > 32) {
-                        Text("Stopped server group restore is limited to 32 verified " +
+                        Text("Stopped remote group restore is limited to 32 verified " +
                             "definitions per confirmation. Restore individual originals " +
                             "or compare a smaller snapshot.",
                             style = MaterialTheme.typography.bodySmall)
@@ -763,7 +763,7 @@ internal fun SnapshotRestorePreviewPanel(
                                     remotePreviousReport = null
                                     remoteDefinitionBusy = true
                                     remoteDefinitionNotice =
-                                        "Reading existing journals and current stopped server transfers…"
+                                        "Reading existing journals and current stopped remote transfers…"
                                     scope.launch {
                                         try {
                                             val report = remoteDefinitionRestore.inspectPreviousBatch(
@@ -775,14 +775,14 @@ internal fun SnapshotRestorePreviewPanel(
                                                 remotePreviousReport = report
                                                 remoteDefinitionNotice = if (report == null)
                                                     "Could not establish a complete, current authenticated " +
-                                                        "server and journal comparison. No Add was sent."
+                                                        "remote and journal comparison. No Add was sent."
                                                 else null
                                             }
                                         } catch (cancel: CancellationException) {
                                             throw cancel
                                         } catch (_: Exception) {
                                             remoteDefinitionNotice =
-                                                "Previous server batch could not be verified. No Add was sent."
+                                                "Previous remote batch could not be verified. No Add was sent."
                                         } finally {
                                             remoteDefinitionBusy = false
                                         }
@@ -791,7 +791,7 @@ internal fun SnapshotRestorePreviewPanel(
                             },
                             enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                        ) { Text("Check ${previousCandidates.size} previous server restores (read-only)") }
+                        ) { Text("Check ${previousCandidates.size} previous remote restores (read-only)") }
                     }
                     io.github.gamesbyian.chunks.ClearableTransferSearchField(
                         value = search,
@@ -836,7 +836,7 @@ internal fun SnapshotRestorePreviewPanel(
                     if (onApplyAlias != null && target == SnapshotRestoreTarget.SERVER &&
                         preview.containsSettings) Text(
                         "Applying a saved display alias only changes this device's Chunks label. " +
-                            "It never renames the server torrent or any files.",
+                            "It never renames the remote torrent or any files.",
                         style = MaterialTheme.typography.bodySmall
                     )
                     val shown = SnapshotRestoreCompareCatalogV1.select(
@@ -874,7 +874,7 @@ internal fun SnapshotRestorePreviewPanel(
                                         remotePriorityReview = null
                                         remotePriorityEntry = null
                                         checkingPriorities = true
-                                        priorityNotice = "Reading this server's current file priorities…"
+                                        priorityNotice = "Reading this remote client's current file priorities…"
                                         scope.launch {
                                             try {
                                                 val checked = readRemotePriorityReview(entry)
@@ -882,9 +882,9 @@ internal fun SnapshotRestorePreviewPanel(
                                                 priorityNotice = when {
                                                     !latestReady || latestHashes != comparedHashes ||
                                                         latestGeneration != generation ->
-                                                        "The server inventory changed. Compare the snapshot again."
+                                                        "The remote inventory changed. Compare the snapshot again."
                                                     checked == null ->
-                                                        "The exact server transfer, original file layout or priorities could not be confirmed. No changes were made."
+                                                        "The exact remote transfer, original file layout or priorities could not be confirmed. No changes were made."
                                                     else -> {
                                                         remotePriorityReview = checked
                                                         remotePriorityEntry = entry
@@ -902,7 +902,7 @@ internal fun SnapshotRestorePreviewPanel(
                                                 throw cancel
                                             } catch (_: Exception) {
                                                 if (result === preview)
-                                                    priorityNotice = "Could not check this server's current file priorities."
+                                                    priorityNotice = "Could not check this remote client's current file priorities."
                                             } finally {
                                                 checkingPriorities = false
                                             }
@@ -1045,7 +1045,7 @@ internal fun SnapshotRestorePreviewPanel(
                                                             remoteDefinitionReview = review
                                                             remoteDefinitionNotice = if (review == null)
                                                                 "Could not verify this rTorrent account, stopped Add " +
-                                                                    "capability, or selected server folder. No Add was sent."
+                                                                    "capability, or selected remote folder. No Add was sent."
                                                             else null
                                                         }
                                                     } finally {
@@ -1057,8 +1057,8 @@ internal fun SnapshotRestorePreviewPanel(
                                         enabled = targetReady && !reading && !remoteDefinitionBusy && !remoteBatchBusy,
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                     ) {
-                                        Text(if (recoveryOnly) "Check previous server restore"
-                                            else "Review stopped server restore")
+                                        Text(if (recoveryOnly) "Check previous remote restore"
+                                            else "Review stopped remote restore")
                                     }
                                 }
                             }

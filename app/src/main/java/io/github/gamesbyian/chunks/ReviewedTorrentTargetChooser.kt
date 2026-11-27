@@ -33,16 +33,16 @@ internal fun ReviewedTorrentTargetChooser(
                 style = MaterialTheme.typography.titleSmall)
             Text((if (localPlaceAvailable) "You can use the local device destination below, or prepare this exact "
                 else "The local download location is unavailable. You can prepare this exact ") +
-                "verified .torrent for the connected rTorrent server. The server " +
+                "verified .torrent for the connected rTorrent client. The remote client " +
                 "will download its own payload: no downloaded files move. " +
                 "Original tracker URLs may contain private passkeys. " +
-                "Nothing is sent until you confirm the server Add.",
+                "Nothing is sent until you confirm the remote Add.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
                 onClick = { onPrepareServerReview(verifiedTorrentBytes.copyOf()) },
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) { Text("Review .torrent on connected server") }
+            ) { Text("Review .torrent on connected remote client") }
         }
     }
 }

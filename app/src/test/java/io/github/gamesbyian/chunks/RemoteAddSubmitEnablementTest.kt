@@ -45,7 +45,7 @@ class RemoteAddSubmitEnablementTest {
         rule.onNode(hasTestTag(ChunksSemantics.ADD_SUBMIT)).assertIsNotEnabled().assert(
             SemanticsMatcher("states why") { node ->
                 (if (SemanticsProperties.StateDescription in node.config) node.config[SemanticsProperties.StateDescription] else "")
-                    .contains("Waiting for a fresh confirmed server transfer list")
+                    .contains("Waiting for a fresh confirmed remote transfer list")
             })
     }
 

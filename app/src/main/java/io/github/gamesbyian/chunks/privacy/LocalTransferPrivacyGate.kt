@@ -386,7 +386,7 @@ private fun TransferPrivacyGate(
             Text(if (redactLocalService)
                 "Locked Chunks UI does not pause or stop already-running local torrents."
                 else "This lock neither disconnects the " +
-                    (if (subject == "rTorrent profile") "rTorrent server" else subject) +
+                    (if (subject == "rTorrent profile") "rTorrent client" else subject) +
                     " nor stops transfers on this device.",
                 style = MaterialTheme.typography.bodySmall)
         }

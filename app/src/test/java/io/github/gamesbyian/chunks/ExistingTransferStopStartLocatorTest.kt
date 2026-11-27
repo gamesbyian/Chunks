@@ -68,7 +68,7 @@ class ExistingTransferStopStartLocatorTest {
                 } }
             }
             rule.onNodeWithText("Search names or hashes").performTextReplacement(target)
-            val row = hasContentDescription(" on Server", substring = true) and
+            val row = hasContentDescription(" on Remote", substring = true) and
                 !hasContentDescription("Details for", substring = true)
             rule.waitUntil(10_000) {
                 runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(row); true }.getOrDefault(false)

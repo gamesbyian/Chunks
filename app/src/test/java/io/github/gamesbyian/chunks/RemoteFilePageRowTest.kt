@@ -125,7 +125,7 @@ class RemoteFilePageRowTest {
             "Change priority for file 8: Season 1/Episode 01 The Long Title.mkv"
         ).assert(SemanticsMatcher.expectValue(
             SemanticsProperties.StateDescription,
-            "Unavailable until the current server view permits priority changes"
+            "Unavailable until the current client view permits priority changes"
         )).assertIsNotEnabled()
         assertEquals(0, clicks[0])
     }

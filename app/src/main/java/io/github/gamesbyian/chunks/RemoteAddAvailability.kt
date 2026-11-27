@@ -19,7 +19,7 @@ internal object RemoteAddAvailability {
     /** The guidance shown while the control is unavailable; null when no specific reason applies. */
     fun unavailableReason(hasPlan: Boolean, mutationReady: Boolean, planGuidance: String?): String? = when {
         !hasPlan -> planGuidance
-        !mutationReady -> "Waiting for a fresh confirmed server transfer list."
+        !mutationReady -> "Waiting for a fresh confirmed remote transfer list."
         else -> null
     }
 }

@@ -146,7 +146,7 @@ class CombinedBatchLifecycleTest {
             listOf(source(server, row(server, true))), busy.lifecycle, server, localEngine = { null })
         assertTrue(busy.calls.isEmpty())
         assertEquals(0, busy.settles)
-        assertEquals("server is busy or refreshing", report.items.single().reason)
+        assertEquals("remote client is busy or refreshing", report.items.single().reason)
 
         val gate = FakeGate(grant = true)
         val stale = runCombinedLifecycle(setOf(row(server, true).key), false,
@@ -158,7 +158,7 @@ class CombinedBatchLifecycleTest {
         val offline = runCombinedLifecycle(setOf(row(other, true).key), false,
             listOf(source(other, row(other, true))), gate.lifecycle, server, localEngine = { null })
         assertTrue(gate.calls.isEmpty())
-        assertEquals("only listed here; sign in to this server to change it", offline.items.single().reason)
+        assertEquals("only listed here; sign in to this remote client to change it", offline.items.single().reason)
     }
 
     @Test fun partialAndUnobservedSourcesDoNotTakeAnyMutationGate() = runBlocking {
@@ -181,16 +181,16 @@ class CombinedBatchLifecycleTest {
     }
 
     @Test fun previewAndResultsNameEveryEnvironment() = runBlocking {
-        val labels = mapOf(local to "On this device", server to "Server · ian @ box")
+        val labels = mapOf(local to "On this device", server to "Remote · ian @ box")
         val preview = combinedBatchPreview(false, setOf(row(local, true).key, row(server, true).key), labels)
         assertTrue(preview, preview.startsWith("Stop 2 selected"))
-        assertTrue(preview, preview.contains("On this device: 1; Server · ian @ box: 1"))
+        assertTrue(preview, preview.contains("On this device: 1; Remote · ian @ box: 1"))
         val gate = FakeGate(grant = true)
         val report = runCombinedLifecycle(setOf(row(server, true).key, row(local, true).key), false,
             listOf(source(local, row(local, true)), source(server, row(server, true))), gate.lifecycle, server,
             localEngine = { null })
         // Environments run in stable-ID order, independent of selection order.
-        assertEquals(listOf("Server · ian @ box: 1 confirmed stopped.",
+        assertEquals(listOf("Remote · ian @ box: 1 confirmed stopped.",
             "On this device: 1 not attempted (local engine is not running)."), report.describe { labels.getValue(it) })
     }
 

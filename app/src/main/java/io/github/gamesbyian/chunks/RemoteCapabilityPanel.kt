@@ -43,11 +43,11 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
                         capabilityEvidenceLabel(g)
                     }
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                catch (_: Exception) { listOf("The server did not answer the read-only capability check.") }
+                catch (_: Exception) { listOf("The remote client did not answer the read-only capability check.") }
                 checking = false
             }
         }, enabled = !checking, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text(if (checking) "Checking server…" else "Check server capabilities")
+            Text(if (checking) "Checking remote client…" else "Check client capabilities")
         }
         RemoteCapabilityResultAnnouncements(visibleCapabilityLines(lines, showCapabilityDetails))
         if (lines != null && requireNotNull(lines).size > 1) {
@@ -76,7 +76,7 @@ internal fun capabilityEvidenceLabel(graded: RemoteCapabilities.Graded): String 
     RemoteCapabilities.Status.MISSING ->
         "Not advertised: ${graded.feature.label} (missing ${graded.missing.joinToString()})"
     RemoteCapabilities.Status.UNKNOWN ->
-        "Unknown: ${graded.feature.label} (server did not expose a method list)"
+        "Unknown: ${graded.feature.label} (remote client did not expose a method list)"
 }
 
 /**

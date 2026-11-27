@@ -290,7 +290,7 @@ class CombinedTransfersScreenTest {
         revealDescription(details)
         rule.onNodeWithContentDescription(details).performClick()
         rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
-        rule.onNodeWithText(compactServerLabel(aliasScope).removePrefix("Server · ")).assertExists()
+        rule.onNodeWithText(compactServerLabel(aliasScope).removePrefix("Remote · ")).assertExists()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).performScrollTo().assertExists()
@@ -309,7 +309,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithContentDescription(action).performClick()
         rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.onNodeWithText("Size: 900 B", substring = true).assertExists()
-        rule.onNodeWithText("Open " + compactServerLabel(aliasScope).removePrefix("Server · ") +
+        rule.onNodeWithText("Open " + compactServerLabel(aliasScope).removePrefix("Remote · ") +
             " transfers").assertExists()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         revealDescription(action)
@@ -477,7 +477,7 @@ class CombinedTransfersScreenTest {
             rule.onNodeWithText(text).assertExists()
         }
         seen("On this device: Engine not running; open transfers on this device · 0 transfers")
-        seen("Server · seed @ other.example/RPC2: Not connected · 0 transfers")
+        seen("Remote · seed @ other.example/RPC2: Not connected · 0 transfers")
         seen(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers")
         // The one-line header gives counts and truthful live rates; precise
         // excluded-source counts depend on which environments are connected.
@@ -546,7 +546,7 @@ class CombinedTransfersScreenTest {
         // Local, the saved server may be clipped beyond the 411dp viewport.
         // Reveal the actual chip before tapping; a clipped center tap must
         // never be mistaken for a committed scope preference.
-        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true)
+        rule.onNodeWithContentDescription("Showing Remote · " + other.label, substring = true)
             .performScrollTo().assertIsDisplayed().performClick()
         rule.waitUntil(10_000) {
             persisted.load().scope == EnvironmentViewScope.Only(setOf(exactServerId))

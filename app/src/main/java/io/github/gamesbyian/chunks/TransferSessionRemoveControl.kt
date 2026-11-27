@@ -46,13 +46,13 @@ import kotlinx.coroutines.withTimeout
  */
 internal fun sessionEraseFeedback(response: SessionEraseOutcome): String = when (response) {
     is SessionEraseOutcome.VerifiedRemoved ->
-        "Confirmed: this transfer is gone from the server list. Its downloaded files weren't checked."
+        "Confirmed: this transfer is gone from the remote list. Its downloaded files weren't checked."
     is SessionEraseOutcome.AlreadyAbsent ->
-        "This transfer is already absent from the server. No removal request was sent."
+        "This transfer is already absent from the remote client. No removal request was sent."
     is SessionEraseOutcome.PendingRemoval ->
         "rTorrent still reports this exact infohash in its session after the removal request. Refresh and inspect before another action."
     is SessionEraseOutcome.Uncertain ->
-        "Chunks couldn't confirm removal. The server may have removed this transfer. Refresh its status before trying again."
+        "Chunks couldn't confirm removal. The remote client may have removed this transfer. Refresh its status before trying again."
 }
 
 /**
@@ -144,13 +144,13 @@ fun TransferSessionRemoveControl(
                 modifier = Modifier.fillMaxWidth(),
                 icon = R.drawable.chunks_ic_remove, stacked = false)
             if (environmentLabel == null) {
-                Text("The server account could not be identified. Reconnect before removing a transfer.",
+                Text("The remote account could not be identified. Reconnect before removing a transfer.",
                     style = MaterialTheme.typography.bodySmall)
             } else if (!mainView) {
-                Text("Switch to the main server view before removing a transfer.",
+                Text("Switch to the main client view before removing a transfer.",
                     style = MaterialTheme.typography.bodySmall)
             } else if (snapshotStale) {
-                Text("Refresh this stale server snapshot before removing a transfer.",
+                Text("Refresh this stale remote snapshot before removing a transfer.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -168,7 +168,7 @@ fun TransferSessionRemoveControl(
                     Text("Infohash: " + transfer.hash, style = MaterialTheme.typography.bodySmall)
                     Text("Current directory: " + transfer.directory,
                         style = MaterialTheme.typography.bodySmall)
-                    Text("Choose what to remove. Removing the transfer keeps downloaded files on the server. Custom server hooks could still have additional effects.",
+                    Text("Choose what to remove. Removing the transfer keeps downloaded files on the remote client. Custom client hooks could still have additional effects.",
                         style = MaterialTheme.typography.bodySmall)
                     AccentCardOutlinedButton(
                         onClick = {
@@ -194,31 +194,31 @@ fun TransferSessionRemoveControl(
                                         feedback = when (response) {
                                             is RemoteDeleteDataOutcome.QueuedForCleanup ->
                                                 (if (response.sessionRemoved) "Verified: this exact rTorrent session is absent. " else "Session removal is still pending. ") +
-                                                    "The server accepted the file-deletion request, but Chunks hasn't confirmed the files are gone."
+                                                    "The remote client accepted the file-deletion request, but Chunks hasn't confirmed the files are gone."
                                             is RemoteDeleteDataOutcome.Partial ->
-                                                "Partial result: the exact session is absent, but data cleanup was not acknowledged. Inspect server files; no request will be retried."
+                                                "Partial result: the exact session is absent, but data cleanup was not acknowledged. Inspect remote files; no request will be retried."
                                             RemoteDeleteDataOutcome.Unsupported ->
-                                                "This server doesn't support deleting files through Chunks. No deletion request was sent."
+                                                "This remote client doesn't support deleting files through Chunks. No deletion request was sent."
                                             is RemoteDeleteDataOutcome.Refused ->
                                                 "No deletion was accepted. " + response.reason.explanation
                                             is RemoteDeleteDataOutcome.Uncertain ->
-                                                "Chunks couldn't confirm whether the files were deleted. Check the server's transfer list and files. Chunks won't retry automatically."
+                                                "Chunks couldn't confirm whether the files were deleted. Check the remote client's transfer list and files. Chunks won't retry automatically."
                                         }
                                     } catch (_: TimeoutCancellationException) {
                                         feedback = "Removal timed out during: " + stage.label +
                                             " No request will be retried. Check the current session before another review; physical files were not verified."
                                     } catch (cancel: CancellationException) {
-                                        feedback = "Removal was interrupted. Check the current session and server files; no request will be retried."
+                                        feedback = "Removal was interrupted. Check the current session and remote files; no request will be retried."
                                         throw cancel
                                     } catch (_: Exception) {
-                                        feedback = "Delete-data outcome could not be verified. The request may have reached the server. No automatic retry."
+                                        feedback = "Delete-data outcome could not be verified. The request may have reached the remote client. No automatic retry."
                                     } finally {
                                         pending = false
                                         onSettled()
                                     }
                                 }
                             } else {
-                                feedback = "No delete-data command was sent. Refresh the connected server and review this transfer again."
+                                feedback = "No delete-data command was sent. Refresh the connected remote client and review this transfer again."
                                 confirming = false
                             }
                         },
@@ -229,7 +229,7 @@ fun TransferSessionRemoveControl(
                         else if (canRequestDataDeletion) "Remove transfer and data"
                         else "Remove transfer and data (unavailable)") }
                     Text(if (canRequestDataDeletion)
-                        "Requests ruTorrent erasedata to delete this transfer's exact payload files, including files present before Add. The server processes cleanup asynchronously; the operation is not complete until the actual files are gone. This choice cannot be undone."
+                        "Requests ruTorrent erasedata to delete this transfer's exact payload files, including files present before Add. The remote client processes cleanup asynchronously; the operation is not complete until the actual files are gone. This choice cannot be undone."
                         else capability?.reason ?: "Data-deletion support has not been verified. Session-only Remove remains available.",
                         style = MaterialTheme.typography.bodySmall)
                     if (!canRequestDataDeletion && !capabilityChecking) {
@@ -269,13 +269,13 @@ fun TransferSessionRemoveControl(
                                             feedback = sessionEraseFeedback(response)
                                         } catch (_: TimeoutCancellationException) {
                                             verified = false
-                                            feedback = "Removal timed out. It may still have worked. Check the server's transfer list; Chunks won't retry automatically."
+                                            feedback = "Removal timed out. It may still have worked. Check the remote client's transfer list; Chunks won't retry automatically."
                                         } catch (cancel: CancellationException) {
                                             feedback = "Removal was interrupted. Check the current session; no automatic retry."
                                             throw cancel
                                         } catch (_: Exception) {
                                             verified = false
-                                            feedback = "Removal could not be verified. Nothing will be retried automatically. Check the exact server session before another attempt."
+                                            feedback = "Removal could not be verified. Nothing will be retried automatically. Check the exact remote session before another attempt."
                                         } finally {
                                             pending = false
                                             onSettled()
@@ -288,7 +288,7 @@ fun TransferSessionRemoveControl(
                                     verified = false
                                     pending = false
                                     confirming = false
-                                    feedback = "Another server action is still running. Refresh before trying again; no removal was sent."
+                                    feedback = "Another remote action is still running. Refresh before trying again; no removal was sent."
                                 }
                             },
                             enabled = environmentLabel != null && !pending && mainView && !snapshotStale,
@@ -314,7 +314,7 @@ fun TransferSessionRemoveControl(
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Removal result", fontWeight = FontWeight.Bold)
                     Text(if (pending) stage.label else
-                        feedback ?: "Result unavailable. Inspect the server.",
+                        feedback ?: "Result unavailable. Inspect the remote client.",
                         modifier = Modifier.testTag(ChunksSemantics.REMOTE_REMOVAL_STATUS).semantics {
                             liveRegion = LiveRegionMode.Polite
                             stateDescription = if (pending) "Removal in progress" else "Removal result available"
@@ -335,28 +335,28 @@ fun TransferSessionRemoveControl(
                                                 // Fresh name+path match only reopens REVIEW.
                                                 verified = false
                                                 attempted = false
-                                                feedback = "The same transfer is still in this server's session. You can review a new Remove attempt."
+                                                feedback = "The same transfer is still in this remote client's session. You can review a new Remove attempt."
                                             }
                                             SessionEraseRecheck.Absent -> {
                                                 verified = !dataRemoval
                                                 feedback = "The exact transfer is now absent from rTorrent's session. No new Remove was sent; downloaded files were not inspected." +
-                                                    if (dataRemoval) " The earlier data-cleanup request still requires file-level verification in ruTorrent or server storage." else ""
+                                                    if (dataRemoval) " The earlier data-cleanup request still requires file-level verification in ruTorrent or remote storage." else ""
                                             }
                                             SessionEraseRecheck.Changed ->
                                                 feedback = "That hash now has a different name or directory. No retry is allowed from this old review. Refresh the transfer list."
                                             SessionEraseRecheck.Unavailable ->
-                                                feedback = "Could not verify the exact server identity. No retry is allowed until a new successful check."
+                                                feedback = "Could not verify the exact remote client identity. No retry is allowed until a new successful check."
                                         }
                                     } catch (cancel: CancellationException) {
                                         throw cancel
                                     } catch (_: Exception) {
-                                        feedback = "Server check failed. Nothing was removed or retried by this check."
+                                        feedback = "Remote client check failed. Nothing was removed or retried by this check."
                                     } finally { checking = false }
                                 }
                             },
                             enabled = !checking && !snapshotStale && mainView,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        ) { Text(if (checking) "Checking server…" else "Check current session (read-only)") }
+                        ) { Text(if (checking) "Checking remote client…" else "Check current session (read-only)") }
                     }
                 }
             }

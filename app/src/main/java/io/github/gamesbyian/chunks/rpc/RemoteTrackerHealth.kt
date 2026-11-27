@@ -25,7 +25,7 @@ data class RemoteTrackerHealth(
         enabled == 0 ->
             "All $total configured trackers are disabled; tracker-based discovery will not run until enabled."
         successfulAnnounces == 0L && failedAnnounces > 0L ->
-            "Tracker announces have failed without a recorded success in this session. Inspect the server's tracker errors and network access."
+            "Tracker announces have failed without a recorded success in this session. Inspect the remote client's tracker errors and network access."
         successfulAnnounces == 0L ->
             "No successful tracker announce recorded in this session yet. Wait for scheduling or inspect tracker connectivity."
         maxAnnouncedPeers == 0L ->
@@ -33,6 +33,6 @@ data class RemoteTrackerHealth(
         maxAnnouncedPeers != null && maxAnnouncedPeers > 0L ->
             "A tracker previously reported peers; this does not prove that rTorrent connected to them or downloaded bytes."
         else ->
-            "Tracker history is available, but recent peer counts are unsupported. Check the server's peer list and byte-progress observation."
+            "Tracker history is available, but recent peer counts are unsupported. Check the remote client's peer list and byte-progress observation."
     }
 }

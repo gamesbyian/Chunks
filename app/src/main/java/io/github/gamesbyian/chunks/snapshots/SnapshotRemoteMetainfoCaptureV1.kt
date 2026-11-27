@@ -38,7 +38,7 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ): Result {
         require(capture.manifest.source == SnapshotManifestV1.Source.RTORRENT) {
-            "Remote source capture requires a server inventory"
+            "Remote source capture requires a remote inventory"
         }
         val items = ArrayList<SnapshotManifestV1.Item>(capture.manifest.items.size)
         val definitions = LinkedHashMap<String, ByteArray>()
@@ -48,7 +48,7 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
         val total = capture.manifest.items.size
         for ((index, item) in capture.manifest.items.withIndex()) {
             currentCoroutineContext().ensureActive()
-            check(stillCurrent()) { "The server inventory or account changed during export" }
+            check(stillCurrent()) { "The remote inventory or account changed during export" }
             val candidate = try {
                 readOriginal(item.infoHashV1)
             } catch (cancel: CancellationException) {
@@ -56,7 +56,7 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
             } catch (_: Exception) {
                 null
             }
-            check(stillCurrent()) { "The server inventory or account changed during export" }
+            check(stillCurrent()) { "The remote inventory or account changed during export" }
             // Parser and archive both cap an original at 2 MiB. Previously
             // the parser rejected larger responses as simply "unavailable",
             // concealing the actionable size limit. Classify size first and
@@ -90,7 +90,7 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
             }
             onProgress(index + 1, total)
         }
-        check(stillCurrent()) { "The server inventory or account changed during export" }
+        check(stillCurrent()) { "The remote inventory or account changed during export" }
         val definitionsOnly = capture.manifest.copy(items = items)
         val complete = if (settingsCapture == null) definitionsOnly else withContext(Dispatchers.IO) {
             settingsCapture.collect(definitionsOnly, definitions, stillCurrent)
@@ -100,7 +100,7 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
         val archive = withContext(Dispatchers.Default) {
             SnapshotManifestV1.encode(complete, definitions)
         }
-        check(stillCurrent()) { "The server inventory or account changed during export" }
+        check(stillCurrent()) { "The remote inventory or account changed during export" }
         return Result(archive, definitions.size, unavailable, tooLarge, total,
             complete.items.count { it.settings?.displayAlias != null },
             complete.items.count { it.settings?.filePriorities != null })

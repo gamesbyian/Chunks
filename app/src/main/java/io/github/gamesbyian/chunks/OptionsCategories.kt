@@ -36,7 +36,7 @@ internal enum class OptionsCategory(
     private val synonyms: String
 ) {
     CONNECTIONS("Connections", "Remote clients, Smart Connect, saved profiles", Color(0xFF653184),
-        R.drawable.chunks_ic_server, "clients clients server remote account login endpoint profile password authentication"),
+        R.drawable.chunks_ic_server, "clients clients connection connections server remote account login endpoint profile password authentication"),
     DOWNLOADS("Downloads & storage", "Save to, ZIP archives and snapshot recovery", Color(0xFF765A00),
         R.drawable.chunks_ic_folder, "files place folder storage save path directory downloads zip extract snapshot restore collection original torrent archive keep delete source"),
     SEEDING("Seeding & limits", "Ratio rules, seeding time and speed limits", Color(0xFF006C80),

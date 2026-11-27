@@ -53,10 +53,10 @@ class CombinedSavedServersTest {
         // The privacy-policy read also runs outside the Compose test clock.
         // Require its actual entry point before sending one explicit refresh.
         rule.waitUntil(5_000) {
-            rule.onAllNodesWithText("Refresh other saved servers")
+            rule.onAllNodesWithText("Refresh other saved remote clients")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Refresh other saved servers").performScrollTo().performClick()
+        rule.onNodeWithText("Refresh other saved remote clients").performScrollTo().performClick()
     }
 
     /**
@@ -119,9 +119,9 @@ class CombinedSavedServersTest {
         // Dispatchers.IO continuations return to the composition.
         try {
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
+                rule.onAllNodesWithText("Remote · ann @ a.example/RPC2: Live · 1 transfers")
                     .fetchSemanticsNodes().isNotEmpty() &&
-                rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
+                rule.onAllNodesWithText("Remote · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
                     .fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
@@ -135,10 +135,10 @@ class CombinedSavedServersTest {
         }
         revealText("Linux ISO")
         rule.onNodeWithText("Linux ISO").assertExists()
-        rule.onNodeWithText("Server · ann @ a.example/RPC2: Live · 1 transfers").assertExists()
-        rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
+        rule.onNodeWithText("Remote · ann @ a.example/RPC2: Live · 1 transfers").assertExists()
+        rule.onNodeWithText("Remote · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
             .assertExists()
-        rule.onNodeWithText("Refresh other saved servers").assertExists()
+        rule.onNodeWithText("Refresh other saved remote clients").assertExists()
         // The failed source is not hammered and the healthy one is not
         // re-read early: still exactly one read each after settling.
         rule.waitForIdle()
@@ -146,7 +146,7 @@ class CombinedSavedServersTest {
         // A saved-only row opens read-only full Details without a command
         // or a misleading handoff to an unauthenticated owning list.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        val action = "Details for Linux ISO on Server · ann @ a.example/RPC2"
+        val action = "Details for Linux ISO on Remote · ann @ a.example/RPC2"
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             androidx.compose.ui.test.hasContentDescription(action))
         rule.onNodeWithContentDescription(action).performClick()
@@ -186,7 +186,7 @@ class CombinedSavedServersTest {
         }
         discloseSourceStatus()
 
-        val name = "Server · Account slot"
+        val name = "Remote · Account slot"
         // Automatic restore starts the first account's read without a tap.
         rule.waitUntil(5_000) { entered.get() == 1 }
         rule.runOnIdle {
@@ -211,7 +211,7 @@ class CombinedSavedServersTest {
         // An edited account cannot inherit the saved environment ID of A.
         // Refuse both disclosure and fetching until account B has its own
         // independently verifiable ID; a hidden refresh button is intentional.
-        rule.onNodeWithText("Refresh other saved servers").assertDoesNotExist()
+        rule.onNodeWithText("Refresh other saved remote clients").assertDoesNotExist()
         assertEquals("A mismatched saved identity cannot fetch B", 0, newReads.get())
 
         rule.runOnIdle {
@@ -273,7 +273,7 @@ class CombinedSavedServersTest {
 
     @Test fun failedRefreshShowsLastKnownRowsAsStaleInsteadOfLive() {
         var attempts = 0
-        val label = "Server · ann @ a.example/RPC2"
+        val label = "Remote · ann @ a.example/RPC2"
         show(listOf(CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", scopeA) {
             attempts++
             if (attempts == 1)
@@ -303,11 +303,11 @@ class CombinedSavedServersTest {
         // required locked status to appear, without opening or fetching an
         // unverifiable profile. This remains a negative authorization test.
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers")
+            rule.onAllNodesWithText("Remote · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
-        rule.onNodeWithText("Refresh other saved servers").assertDoesNotExist()
+        rule.onNodeWithText("Remote · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
+        rule.onNodeWithText("Refresh other saved remote clients").assertDoesNotExist()
         rule.waitForIdle()
         assertEquals("an unverifiable profile is never read, even automatically", 0, calls.get())
     }

@@ -166,7 +166,7 @@ internal fun VerifiedAddScreen(
     val attemptController = sharedAttemptController
         ?: remember(submitScope) { UniversalAddAttemptController { submitScope } }
     val draft = session ?: remember(remote, finishInOrderScope) { RemoteAddSession(finishInOrderScope) }
-    require(draft.accountScope == finishInOrderScope) { "Add review belongs to another server account" }
+    require(draft.accountScope == finishInOrderScope) { "Add review belongs to another remote account" }
     var selectedTorrent by draft::selectedTorrent
     var selectedBytes by draft::selectedBytes
     var useFile by draft::useFile
@@ -458,11 +458,11 @@ internal fun VerifiedAddScreen(
         // Match only our fixed validation messages, never display arbitrary
         // untrusted magnet input or server-provided exception text.
         addGuidance = when (failure.message) {
-            "Choose a specific absolute server destination" -> {
+            "Choose a specific absolute remote destination" -> {
                 invalidDestination = true
-                "Choose an absolute server folder starting with / (for example, /downloads)."
+                "Choose an absolute remote folder starting with / (for example, /downloads)."
             }
-            "Invalid server destination path" -> {
+            "Invalid remote destination path" -> {
                 invalidDestination = true
                 "Invalid destination: remove repeated slashes, '.' and '..' path segments."
             }
@@ -501,11 +501,11 @@ internal fun VerifiedAddScreen(
         when (draft.coordinator.phase) {
             UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> if (verifiedHash == null) {
                 verifiedHash = ticket.intent.source.expectedInfoHash
-                outcome = "Server now confirms this exact hash, destination and requested Start. " +
+                outcome = "The remote client now confirms this exact hash, destination and requested Start. " +
                     "Which client originally registered it remains unknown; no Start or Add was resent."
             }
             UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
-                outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
+                outcome = "The exact remote job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
             else -> Unit
         }
     }
@@ -615,7 +615,7 @@ internal fun VerifiedAddScreen(
                 )
                 if (fromLocal) Text("Original .torrent prepared on this device. Its " +
                     "tracker addresses may contain private passkeys, and the definition is " +
-                    "sent to this server only when you confirm. The server downloads " +
+                    "sent to this remote client only when you confirm. The remote client downloads " +
                     "its own payload; no downloaded files are copied from the local device.",
                     style = MaterialTheme.typography.bodySmall)
             }
@@ -662,7 +662,7 @@ internal fun VerifiedAddScreen(
                         awaitingConfirmation = false
                     }
                 },
-                label = { Text("Custom server folder (optional)") },
+                label = { Text("Custom remote folder (optional)") },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
                     autoCorrectEnabled = false,
@@ -714,8 +714,8 @@ internal fun VerifiedAddScreen(
                         stateDescription = if (showFolderExplanation) "Expanded" else "Collapsed"
                     }
                 ) {
-                    Text(if (showFolderExplanation) "Hide server folder details"
-                        else "About server folders")
+                    Text(if (showFolderExplanation) "Hide remote folder details"
+                        else "About remote folders")
                 }
                 if (showFolderExplanation) Text(
                     remoteDefaultUnavailableReason(defaultReport) +
@@ -727,11 +727,11 @@ internal fun VerifiedAddScreen(
                 io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed) TextButton(
                 onClick = { defaultReadRevision++ }, enabled = !submitting && !alreadyAttempted,
                 modifier = Modifier.heightIn(min = 48.dp)
-            ) { Text("Check the server's default folder again") }
+            ) { Text("Check the remote client's default folder again") }
             RemoteDefaultPlaceResetControl(
                 show = destination.isNotBlank() && (configuredDefault != null || savedDefaultPlace != null),
                 enabled = !submitting && !alreadyAttempted,
-                label = if (savedDefaultPlace != null) "Use this server's saved default folder"
+                label = if (savedDefaultPlace != null) "Use this remote client's saved default folder"
                     else "Reset to rTorrent default folder",
                 onReset = {
                     onDestination("")
@@ -745,11 +745,11 @@ internal fun VerifiedAddScreen(
             if (typedValid && !alreadyAttempted) TextButton(
                 onClick = {
                     defaultSaveProblem = if (onSaveDefaultPlace(destination)) null
-                        else "That folder could not be saved as this server's default."
+                        else "That folder could not be saved as this remote client's default."
                     if (defaultSaveProblem == null) { onDestination(""); awaitingConfirmation = false }
                 }, enabled = !submitting,
                 modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_REMOTE_SAVE_DEFAULT)
-            ) { Text("Always use this folder on this server") }
+            ) { Text("Always use this folder on this remote client") }
             if (usingSavedDefault && !alreadyAttempted) TextButton(
                 onClick = {
                     defaultSaveProblem = if (onSaveDefaultPlace(null)) null
@@ -761,8 +761,8 @@ internal fun VerifiedAddScreen(
             if (!alreadyAttempted && plan != null) {
                 Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
                 Text("Destination: " + when {
-                    plan.destination.isEmpty() -> "Server default; actual folder checked after Add."
-                    plan.useServerDefault -> plan.destination + " (server default; no directory override)"
+                    plan.destination.isEmpty() -> "Remote default; actual folder checked after Add."
+                    plan.useServerDefault -> plan.destination + " (remote default; no directory override)"
                     else -> plan.destination + " (custom parent folder)"
                 }, style = MaterialTheme.typography.bodySmall)
             }
@@ -783,7 +783,7 @@ internal fun VerifiedAddScreen(
                     val observedCount = observedPlaces.take(8).size
                     Text(
                         (if (showFolderShortcuts) "Hide" else "Choose") +
-                            " server folder suggestions · $recentCount recent · $observedCount observed"
+                            " remote folder suggestions · $recentCount recent · $observedCount observed"
                     )
                 }
                 if (showFolderShortcuts) {
@@ -796,8 +796,8 @@ internal fun VerifiedAddScreen(
                     }
                     if (observedPlaces.isNotEmpty()) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("Folders seen on this server", fontWeight = FontWeight.Bold)
-                            Text("Choose a folder used by an existing transfer. These are server-reported " +
+                            Text("Folders seen on this remote client", fontWeight = FontWeight.Bold)
+                            Text("Choose a folder used by an existing transfer. These are client-reported " +
                                 "suggestions, not a filesystem browser or proof that new files can be saved there.",
                                 style = MaterialTheme.typography.bodySmall)
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1016,7 +1016,7 @@ internal fun VerifiedAddScreen(
                     onInterrupted = { mayHaveWritten ->
                         if (mayHaveWritten) {
                             uncertain = true
-                            outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                            outcome = "Add was interrupted; inspect the exact remote state. No retry was sent."
                         } else {
                             draft.refusedBeforeAdd()
                             outcome = "Add was interrupted before anything was sent. Nothing was added."
@@ -1031,7 +1031,7 @@ internal fun VerifiedAddScreen(
                         if (run.writeMayHaveHappened) {
                             verifiedHash = null
                             uncertain = true
-                            outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
+                            outcome = "Could not verify the operation. Inspect the current remote transfer list before attempting another Add. No automatic retry occurred."
                         } else {
                             draft.refusedBeforeAdd()
                             verifiedHash = null
@@ -1054,7 +1054,7 @@ internal fun VerifiedAddScreen(
                             draft.refusedBeforeAdd()
                             verifiedHash = null
                             uncertain = false
-                            outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
+                            outcome = "The remote client refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
                             return@admitAndLaunch
                         }
                         else -> Unit
@@ -1075,7 +1075,7 @@ internal fun VerifiedAddScreen(
                             is RemoteAddAndStart.Started ->
                                 "Verified: added and started on rTorrent. Peer availability and payload bytes still need observation in Transfers."
                             is RemoteAddAndStart.StartNotVerified ->
-                                "Start after Add was not verified. The torrent may already be registered or started; refresh its exact server state before another action. No automatic retry."
+                                "Start after Add was not verified. The torrent may already be registered or started; refresh its exact remote state before another action. No automatic retry."
                             is RemoteAddAndStart.AddedStopped -> when (result.result) {
                                 is RemoteAddOutcome.VerifiedStopped ->
                                     "Verified: added stopped at " + result.result.destination +
@@ -1083,9 +1083,9 @@ internal fun VerifiedAddScreen(
                                 is RemoteAddOutcome.AlreadyPresent ->
                                     "Already present. No new Add or Start was sent. Inspect the existing transfer."
                                 is RemoteAddOutcome.PendingVerification ->
-                                    "The Add was not fully verified; no Start was sent. Inspect server state before retrying."
+                                    "The Add was not fully verified; no Start was sent. Inspect remote state before retrying."
                                 is RemoteAddOutcome.Uncertain ->
-                                    "Add uncertain; no Start was sent. Check the server before another operation."
+                                    "Add uncertain; no Start was sent. Check the remote client before another operation."
                             }
                         }
                         // Continue the newly verified job into Transfers
@@ -1121,7 +1121,7 @@ internal fun VerifiedAddScreen(
                         draft.coordinator.requireReadback(ticket)
                         verifiedHash = null
                         uncertain = true
-                        outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
+                        outcome = "Could not verify the operation. Inspect the current remote transfer list before attempting another Add. No automatic retry occurred."
                     }
 
                     }
@@ -1134,7 +1134,7 @@ internal fun VerifiedAddScreen(
                         draft.refusedBeforeAdd()
                         submitting = false
                         onMutationSettled()
-                        outcome = "Another Add to this exact server is still settling. Nothing was submitted."
+                        outcome = "Another Add to this exact remote client is still settling. Nothing was submitted."
                     }
                     is UniversalAddSubmission.Result.Refused, null -> {
                         val decision = (submitted as? UniversalAddSubmission.Result.Refused)?.decision
@@ -1143,7 +1143,7 @@ internal fun VerifiedAddScreen(
                         // The admission reasons are fixed app vocabulary
                         // (never server or source text); name the exact one.
                         val why = decision?.explanation?.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
-                        outcome = "Add could not be authorized for this exact server.$why Refresh the connection and review again; nothing was submitted."
+                        outcome = "Add could not be authorized for this exact remote client.$why Refresh the connection and review again; nothing was submitted."
                     }
                 }
             }
@@ -1206,7 +1206,7 @@ internal fun VerifiedAddScreen(
                         Text(if (nativePlaceAwaitingConfirmation) {
                             if (observedProgress?.metadataPending == true)
                                 "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
-                            else "Metadata is available. Check server state below to confirm the actual payload folder and requested Start. No Add or Start will be repeated."
+                            else "Metadata is available. Check remote state below to confirm the actual payload folder and requested Start. No Add or Start will be repeated."
                         } else outcome.orEmpty())
                         observedProgress?.let { progress ->
                             if (progressReading || progressReadFailed) {
@@ -1221,7 +1221,7 @@ internal fun VerifiedAddScreen(
                         }
                         if (progressReading) Text("Reading exact transfer status…")
                         else if (progressReadFailed) Text(
-                            "Transfer status could not be refreshed. Check the server state before another action.")
+                            "Transfer status could not be refreshed. Check the remote state before another action.")
                         verifiedHash?.let { hash ->
                             UniversalAddContinuationAction(ChunksSemantics.ADD_VIEW_TRANSFER, "View transfer",
                                 enabled = !submitting && !rechecking) { onViewVerifiedTransfer(hash) }
@@ -1236,9 +1236,9 @@ internal fun VerifiedAddScreen(
                     (magnet.isNotBlank() && magnet != draft.attemptSource))) {
                 Text(when {
                     exactSessionConfirmed ->
-                        "A new source is waiting. Acknowledge this confirmed server session before reviewing it."
+                        "A new source is waiting. Acknowledge this confirmed remote session before reviewing it."
                     registeredStartUnverified ->
-                        "A new source is waiting. The server confirms the prior job and Place, but not Start. Acknowledge that incomplete result first."
+                        "A new source is waiting. The remote client confirms the prior job and Place, but not Start. Acknowledge that incomplete result first."
                     addedByThisAttempt && !uncertain ->
                         "A new source is waiting. Choose Start another Add to review it."
                     else ->
@@ -1247,9 +1247,9 @@ internal fun VerifiedAddScreen(
             }
             if (exactSessionConfirmed && verifiedHash != null) {
                 Text(
-                    "The server confirms the exact transfer, its destination and requested Start state. " +
+                    "The remote client confirms the exact transfer, its destination and requested Start state. " +
                         "Chunks cannot prove which client originally registered it after the lost reply. " +
-                        "Acknowledging this server state permits a separate new review; no Add or Start is resent.",
+                        "Acknowledging this remote state permits a separate new review; no Add or Start is resent.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -1288,7 +1288,7 @@ internal fun VerifiedAddScreen(
             if (alreadyAttempted && attemptedTicket != null &&
                 draft.coordinator.phase != UniversalAddCoordinator.Phase.VERIFIED) {
                 UniversalAddContinuationAction(ChunksSemantics.ADD_CHECK_STATUS,
-                    label = if (rechecking) "Checking server…" else "Check server state (read only)",
+                    label = if (rechecking) "Checking remote client…" else "Check remote state (read only)",
                     enabled = !submitting && !rechecking
                 ) {
                     val ticket = attemptedTicket
@@ -1308,7 +1308,7 @@ internal fun VerifiedAddScreen(
                                         val saved = custom == null || runCatching {
                                             onCustomPlaceVerified(custom.absolutePath)
                                         }.getOrDefault(false)
-                                        "Server now confirms this exact hash, destination and active engine. " +
+                                        "The remote client now confirms this exact hash, destination and active engine. " +
                                             "Which client originally registered it remains unknown. No Start or Add was resent." +
                                             if (saved) "" else " Recent folder shortcut could not be saved."
                                     }
@@ -1319,7 +1319,7 @@ internal fun VerifiedAddScreen(
                             UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> {
                                 verifiedHash = null
                                 uncertain = true
-                                outcome = "The exact server job and Place are confirmed, but requested Start is unverified. " +
+                                outcome = "The exact remote job and Place are confirmed, but requested Start is unverified. " +
                                     "You may explicitly acknowledge this incomplete result; no Add or Start was resent."
                             }
                             else -> {
@@ -1329,7 +1329,7 @@ internal fun VerifiedAddScreen(
                                     !shouldProbeContradictoryRecheck(priorPhase) || readback == null ->
                                         "Read-only check did not confirm this exact hash, destination and requested Start. No Add or Start was resent."
                                     readback == UniversalAddCoordinator.Readback.NOT_OBSERVED ->
-                                        "A newer authenticated exact-job read confirms this hash is absent from the reviewed server. " +
+                                        "A newer authenticated exact-job read confirms this hash is absent from the reviewed remote client. " +
                                             "No Add or Start was resent."
                                     else -> "A newer authenticated exact-job read could not confirm the reviewed destination. " +
                                         "No Add or Start was resent."
@@ -1355,7 +1355,7 @@ internal fun verifiedAddNavigationHash(result: RemoteAddAndStart): String? = whe
 /** Seedhost evidence: some servers silently discard torrents without a tracker. */
 internal fun trackerlessWarning(isFile: Boolean): String =
     (if (isFile) "This .torrent lists no tracker. " else "This magnet link lists no tracker. ") +
-        "Some servers, including the tested Seedhost, silently discard tracker-less torrents, so it may not " +
+        "Some remote clients, including the tested Seedhost, silently discard tracker-less torrents, so it may not " +
         "appear after Add. Chunks will then report it as unconfirmed, not added, and will not retry."
 
 
@@ -1382,14 +1382,14 @@ internal fun RecentRemotePlaces(
                     onClick = { onChoose(parent) },
                     enabled = enabled,
                     modifier = Modifier.heightIn(min = 48.dp)
-                        .semantics { contentDescription = "Use recent server folder: $parent" }
+                        .semantics { contentDescription = "Use recent remote folder: $parent" }
                 ) {
                     Text(parent, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = 255.dp))
                 }
             }
         }
-        Text("These folders may have changed on the server. Chunks checks the " +
+        Text("These folders may have changed on the remote client. Chunks checks the " +
             "chosen folder again before reporting Add as verified.",
             style = MaterialTheme.typography.bodySmall)
     }
@@ -1413,7 +1413,7 @@ internal fun RemoteDefaultPlaceResetControl(
         modifier = Modifier.heightIn(min = 48.dp)
             .semantics { contentDescription = if (label == "Reset to rTorrent default folder")
                 "Use rTorrent default save folder for this Add"
-                else "Use this server's saved default folder for this Add" }
+                else "Use this remote client's saved default folder for this Add" }
     ) { Text(label) }
 }
 
@@ -1430,10 +1430,10 @@ internal fun remoteAddSaveToSummary(
 ): String = when {
     customPlace.isNotBlank() -> "Save to: $customPlace (this Add only)"
     savedDefaultPlace != null -> "Save to: $savedDefaultPlace (saved default)"
-    !defaultReadComplete -> "Save to: Server default (checking; Add is available)"
+    !defaultReadComplete -> "Save to: Remote default (checking; Add is available)"
     observedAbsoluteDefault != null ->
         "Save to: $observedAbsoluteDefault (rTorrent default)"
-    else -> "Save to: Server default (confirm after adding)"
+    else -> "Save to: Remote default (confirm after adding)"
 }
 
 /** Explain an unknown preview without making the optional override mandatory. */
@@ -1443,12 +1443,12 @@ internal fun remoteDefaultUnavailableReason(
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unset ->
         "rTorrent has no default download folder configured; its native working directory will be used."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.NotAbsolute ->
-        "rTorrent reports a relative default folder; its server working directory must also be observed."
+        "rTorrent reports a relative default folder; its remote working directory must also be observed."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unsupported ->
         "This rTorrent does not expose its default-folder getter."
     is io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed ->
-        "The server's default folder could not be read (connection or permission). You can check again."
-    else -> "The server's default folder has not yet been observed."
+        "The remote client's default folder could not be read (connection or permission). You can check again."
+    else -> "The remote client's default folder has not yet been observed."
 }
 
 /** Scope stays visible before someone chooses a magnet, file or destination. */
@@ -1466,10 +1466,10 @@ internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?)
     var showAbout by rememberSaveable { mutableStateOf(false) }
     TextButton(onClick = { showAbout = !showAbout }, modifier = Modifier.heightIn(min = 48.dp)
         .semantics { stateDescription = if (showAbout) "Expanded" else "Collapsed" }) {
-        Text(if (showAbout) "Hide details about adding to a server" else "About adding to a server")
+        Text(if (showAbout) "Hide details about adding to a remote client" else "About adding to a remote client")
     }
-    if (showAbout) Text("Downloads to this server's own folder. Nothing is copied to this device by Add. " +
-        "Saved Chunks server-seeding rules are not applied yet; rTorrent controls seeding.",
+    if (showAbout) Text("Downloads to this remote client's own folder. Nothing is copied to this device by Add. " +
+        "Saved Chunks remote seeding rules are not applied yet; rTorrent controls seeding.",
         style = MaterialTheme.typography.bodySmall)
 }
 

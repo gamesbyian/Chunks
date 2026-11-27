@@ -56,7 +56,7 @@ class RecentRemotePlacesLargeTextTest {
         show(true, selected)
         assertEquals("Displaying shortcuts alone must not choose a destination", 0, selected.size)
         rule.onNodeWithText("Recent save folders").assertExists()
-        val last = rule.onNodeWithContentDescription("Use recent server folder: " + paths.last())
+        val last = rule.onNodeWithContentDescription("Use recent remote folder: " + paths.last())
         last.performScrollTo()
         val bounds = last.getUnclippedBoundsInRoot()
         assertTrue("A recent Place needs a 48dp-class touch target",
@@ -70,7 +70,7 @@ class RecentRemotePlacesLargeTextTest {
     fun disabledShortcutsCannotChangeAnInFlightAddDraft() {
         val selected = mutableListOf<String>()
         show(false, selected)
-        rule.onNodeWithContentDescription("Use recent server folder: " + paths.first()).assertExists()
+        rule.onNodeWithContentDescription("Use recent remote folder: " + paths.first()).assertExists()
         assertEquals(0, selected.size)
     }
 }

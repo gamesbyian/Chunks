@@ -38,7 +38,7 @@ internal object BatchLocalCopy {
         fun summary(): String = "${count(Result.ADDED)} added to the local device, ${count(Result.ALREADY_ON_LOCAL)} " +
             "already there" + listOf(Result.REFUSED, Result.NO_MAGNET, Result.UNCONFIRMED, Result.NOT_RUN)
                 .filter { count(it) > 0 }.joinToString("") { ", ${count(it)} ${it.name.lowercase(Locale.ROOT).replace('_', ' ')}" } +
-            ". Server transfers were not changed; local jobs wait for metadata and download only after you start them."
+            ". Remote transfers were not changed; local jobs wait for metadata and download only after you start them."
     }
 
     fun validate(items: List<Item>): String? = when {

@@ -20,7 +20,7 @@ internal object RemoteCapabilities {
         // The ruTorrent HTTP upload form cannot be inferred from XML-RPC introspection.
         Feature("Add magnet via XML-RPC", listOf("d.multicall2", "d.name", "load.verbose"), EnvironmentOperation.ADD_MAGNET),
         Feature("Add .torrent via XML-RPC", listOf("d.multicall2", "d.name", "load.raw_verbose"), EnvironmentOperation.ADD_TORRENT_FILE),
-        Feature("Use server default Add folder", listOf("directory.default"), EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER),
+        Feature("Use remote default Add folder", listOf("directory.default"), EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER),
         // Acknowledged d.state alone cannot verify either lifecycle direction:
         // both Start and Stop inspect the independent engine-active getter.
         Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state", "d.is_active"), EnvironmentOperation.START_STOP),
@@ -28,7 +28,7 @@ internal object RemoteCapabilities {
         Feature("Tracker health", listOf("d.hash", "d.tracker_size", "t.multicall"), EnvironmentOperation.TRACKER_HEALTH),
         // Erase requires main-view preflight and exact d.hash readback,
         // not merely an advertised d.erase setter.
-        Feature("Remove from server session", listOf("d.multicall2", "d.hash", "d.erase"), EnvironmentOperation.SESSION_REMOVE),
+        Feature("Remove from remote session", listOf("d.multicall2", "d.hash", "d.erase"), EnvironmentOperation.SESSION_REMOVE),
         // Announced/bound address getters are optional; the web hostname can be a fallback.
         Feature("Copy files to this device", listOf("network.listen.port", "d.is_private", "d.is_active"), EnvironmentOperation.COPY_TO_LOCAL),
         Feature("Finish in Order", listOf("d.hash", "f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"), EnvironmentOperation.FINISH_IN_ORDER)
@@ -53,6 +53,6 @@ internal object RemoteCapabilities {
             "rTorrent ${probe.version} advertises every method Chunks uses. A proxy may still refuse some; " +
                 "each action is verified when you use it."
         else -> "rTorrent ${probe.version}: ${graded.count { it.status == Status.MISSING }} feature(s) look " +
-            "unavailable on this server."
+            "unavailable on this remote client."
     }
 }

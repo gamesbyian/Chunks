@@ -51,7 +51,7 @@ class RemoteTransferFilterStoreTest {
         assertEquals("No transfers reported in the last main-view observation.",
             RemoteEmptyTransfers.explanation(0, false, false, "main", false, false))
         assertTrue(RemoteEmptyTransfers.explanation(0, false, false, "started", false, false)
-            .contains("Other server views"))
+            .contains("Other client views"))
         assertTrue(RemoteEmptyTransfers.explanation(0, true, false, "main", false, false)
             .startsWith("Checking"))
         assertTrue(RemoteEmptyTransfers.explanation(4, false, true, "main", true, true)

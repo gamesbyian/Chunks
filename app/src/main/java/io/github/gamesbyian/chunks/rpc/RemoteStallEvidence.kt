@@ -24,19 +24,19 @@ internal data class RemoteStallEvidence(
 
     fun explanation(): String = when {
         messageClass == MessageClass.STORAGE ->
-            "The server reports a storage-related problem. Inspect the exact destination, available space and account permissions in ruTorrent."
+            "The remote client reports a storage-related problem. Inspect the exact destination, available space and account permissions in ruTorrent."
         hashCheckFailed == true && !open ->
             "rTorrent could not open or hash-check this transfer. Check the destination's permissions, available space and file access in ruTorrent. Start, Stop and Recheck cannot repair unavailable storage."
         hashCheckFailed == true || messageClass == MessageClass.HASH_CHECK ->
-            "The server reports a hash-check problem. Inspect this transfer's recheck state in ruTorrent."
+            "The remote client reports a hash-check problem. Inspect this transfer's recheck state in ruTorrent."
         hashingPhase != null && hashingPhase > 0 || hashChecking == true ->
             "rTorrent is checking pieces. This read alone does not establish when activation will complete."
         awaitingMetadata == true ->
             if (active) "Magnet metadata is still pending. The engine is active; wait for peers and metadata before verifying the payload folder."
             else "This transfer is still a metadata placeholder. Its inactive engine cannot retrieve magnet metadata."
         started && !active ->
-            "Start is requested but this exact torrent engine remains inactive. Inspect the server's storage, queue and per-transfer error state."
-        !open -> "This torrent is not open. Check server-side destination and storage conditions."
+            "Start is requested but this exact torrent engine remains inactive. Inspect the remote client's storage, queue and per-transfer error state."
+        !open -> "This torrent is not open. Check the remote destination and storage conditions."
         active -> "This torrent engine is active. Confirm actual received and hash-verified byte growth separately."
         else -> "This torrent is stopped. No Start or download activity is implied."
     }

@@ -186,7 +186,7 @@ internal fun RemoteFolderPicker(
                         maxLines = 3
                     )
                 } else {
-                    Text(currentPage?.path ?: current ?: "Checking server folders…",
+                    Text(currentPage?.path ?: current ?: "Checking remote folders…",
                         style = MaterialTheme.typography.bodySmall)
                     val crumbs = remoteFolderBreadcrumbs(root, currentPage?.path)
                     if (crumbs.isNotEmpty()) {
@@ -222,19 +222,19 @@ internal fun RemoteFolderPicker(
                         }
                     }
                     when (val state = result) {
-                        null -> Text("Loading server folders…")
+                        null -> Text("Loading remote folders…")
                         is RemoteDirectoryLookup.Unavailable -> {
                             val message = when (state.reason) {
                                 RemoteDirectoryLookup.Reason.UNSUPPORTED ->
-                                    "This server doesn't support folder browsing in Chunks."
+                                    "This remote client doesn't support folder browsing in Chunks."
                                 RemoteDirectoryLookup.Reason.AUTHENTICATION ->
-                                    "The server won't allow folder browsing. Check your access settings."
+                                    "The remote client won't allow folder browsing. Check your access settings."
                                 RemoteDirectoryLookup.Reason.OUTSIDE_SCOPE ->
-                                    "The server opened a different folder. Nothing was selected."
+                                    "The remote client opened a different folder. Nothing was selected."
                                 RemoteDirectoryLookup.Reason.INVALID_RESPONSE ->
-                                    "The server sent a folder list Chunks couldn't read."
+                                    "The remote client sent a folder list Chunks couldn't read."
                                 RemoteDirectoryLookup.Reason.CONNECTION ->
-                                    "Cannot list server folders right now."
+                                    "Cannot list remote folders right now."
                             }
                             Text(message, color = MaterialTheme.colorScheme.error)
                         }
@@ -368,7 +368,7 @@ internal fun RemoteFolderPicker(
                                                         RemoteFolderCreateOutcome.AlreadyExists ->
                                                             createStatus = "That folder already exists. Choose it from the list."
                                                         RemoteFolderCreateOutcome.Refused ->
-                                                            createStatus = "The server refused to create the folder. Nothing was confirmed."
+                                                            createStatus = "The remote client refused to create the folder. Nothing was confirmed."
                                                         RemoteFolderCreateOutcome.Uncertain -> {
                                                             uncertainPath = parentForCreate.trimEnd('/') + "/" + nameForCreate
                                                             showNewFolder = false
@@ -395,7 +395,7 @@ internal fun RemoteFolderPicker(
                             is RemoteFolderCreateCapability.Unavailable ->
                                 remoteFolderCreateUnavailableText(unavailable.reason)
                             else -> if (observedRoot == null)
-                                "Chunks needs to confirm the server's download folder first."
+                                "Chunks needs to confirm the remote client's download folder first."
                             else "Checking whether this folder allows a new folder…"
                         }
                         TextButton(onClick = {}, enabled = false,
@@ -409,7 +409,7 @@ internal fun RemoteFolderPicker(
                     if (currentPage != null && !manualMode) {
                         // Rename is deliberately not offered: no typed, tenant-safe rename with
                         // independent readback is verified, and live transfers may use the folder.
-                        Text("Renaming server folders isn't available in Chunks.",
+                        Text("Renaming remote folders isn't available in Chunks.",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.testTag(ChunksSemantics.REMOTE_FOLDER_RENAME_UNAVAILABLE))
                     }
@@ -444,7 +444,7 @@ internal fun RemoteFolderPicker(
                         enabled = !creating && !reconciling &&
                             (if (manualMode) manualValid else currentPage != null),
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                    ) { Text(if (savedDefaultMode) "Set as server default" else if (manualMode) "Use this path" else "Use this folder") }
+                    ) { Text(if (savedDefaultMode) "Set as remote default" else if (manualMode) "Use this path" else "Use this folder") }
                 }
             }
         }
@@ -454,13 +454,13 @@ internal fun RemoteFolderPicker(
 /** Why New folder is disabled in the current directory; creation stays capability-gated. */
 internal fun remoteFolderCreateUnavailableText(reason: RemoteFolderCreateCapability.Reason): String = when (reason) {
     RemoteFolderCreateCapability.Reason.NOT_INSTALLED ->
-        "This server doesn't support creating folders through Chunks."
+        "This remote client doesn't support creating folders through Chunks."
     RemoteFolderCreateCapability.Reason.ACCESS_DENIED ->
-        "The server won't allow Chunks to create folders."
+        "The remote client won't allow Chunks to create folders."
     RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
         "Chunks can't confirm access to this download folder."
     RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT ->
         "Chunks can't confirm this folder is safe for creating new folders. Try a folder inside it."
     RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
-        "Chunks couldn't confirm that this server can create folders."
+        "Chunks couldn't confirm that this remote client can create folders."
 }

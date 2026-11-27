@@ -47,7 +47,7 @@ data class RemoteTrafficWindow(
             val first = samples.first()
             require(Regex("[0-9a-fA-F]{40}").matches(first.hash)) { "Invalid transfer identity" }
             require(samples.all { it.hash.equals(first.hash, ignoreCase = true) }) {
-                "Server changed transfer identity during observation"
+                "Remote client changed transfer identity during observation"
             }
             require(samples.zipWithNext().all { (a, b) -> b.monotonicNanos > a.monotonicNanos }) {
                 "Nonmonotonic observation clock"
@@ -97,7 +97,7 @@ data class RemoteTrafficWindow(
 
     fun summary(): String = when (verdict) {
         TrafficVerdict.RECEIVED_AND_VERIFIED ->
-            "Download traffic and hash-verified completed bytes both increased during this observation. This confirms progress on the server, not the local device's own download."
+            "Download traffic and hash-verified completed bytes both increased during this observation. This confirms progress on the remote client, not the local device's own download."
         TrafficVerdict.RECEIVED_ONLY ->
             "Download traffic increased, but growth of hash-verified completion was not confirmed. Data may still be in-flight, redundant, or rejected."
         TrafficVerdict.VERIFIED_ONLY ->

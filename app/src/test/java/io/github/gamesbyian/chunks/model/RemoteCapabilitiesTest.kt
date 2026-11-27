@@ -16,7 +16,7 @@ class RemoteCapabilitiesTest {
     @Test fun missingMethodsAreNamedPerFeature() {
         val graded = RemoteCapabilities.grade(RemoteProbe("0.9.8", all - "d.erase" - "d.bitfield"))
         val byLabel = graded.associateBy { it.feature.label }
-        assertEquals(listOf("d.erase"), byLabel.getValue("Remove from server session").missing)
+        assertEquals(listOf("d.erase"), byLabel.getValue("Remove from remote session").missing)
         assertEquals(RemoteCapabilities.Status.MISSING, byLabel.getValue("Finish in Order").status)
         assertEquals(RemoteCapabilities.Status.ADVERTISED, byLabel.getValue("Transfer list").status)
     }
@@ -30,7 +30,7 @@ class RemoteCapabilitiesTest {
         assertEquals(RemoteCapabilities.Status.ADVERTISED,
             graded.getValue("Add .torrent via XML-RPC").status)
         assertEquals(RemoteCapabilities.Status.MISSING,
-            graded.getValue("Use server default Add folder").status)
+            graded.getValue("Use remote default Add folder").status)
     }
 
     @Test fun addRoutesAreIndependentAndRequireExactSessionLookup() {
@@ -52,8 +52,8 @@ class RemoteCapabilitiesTest {
         val graded = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.hash"))
             .associateBy { it.feature.label }
         assertEquals(RemoteCapabilities.Status.MISSING,
-            graded.getValue("Remove from server session").status)
-        assertEquals(listOf("d.hash"), graded.getValue("Remove from server session").missing)
+            graded.getValue("Remove from remote session").status)
+        assertEquals(listOf("d.hash"), graded.getValue("Remove from remote session").missing)
     }
 
     @Test fun missingActivityGetterCannotAdvertiseVerifiableLifecycle() {

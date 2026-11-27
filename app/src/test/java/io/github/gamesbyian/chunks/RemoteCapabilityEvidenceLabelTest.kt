@@ -31,6 +31,6 @@ class RemoteCapabilityEvidenceLabelTest {
         val text = capabilityEvidenceLabel(RemoteCapabilities.Graded(
             feature, RemoteCapabilities.Status.UNKNOWN, emptyList()
         ))
-        assertEquals("Unknown: Start and stop (server did not expose a method list)", text)
+        assertEquals("Unknown: Start and stop (remote client did not expose a method list)", text)
     }
 }

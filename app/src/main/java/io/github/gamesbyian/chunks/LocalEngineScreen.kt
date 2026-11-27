@@ -547,11 +547,11 @@ internal fun LocalEngineScreen(
         val occupied = (magnet.isNotBlank() && magnet != handoff) || pending != null ||
             sourceReading || initialTorrentUri != null
         if (occupied) {
-            message = "A source is already being reviewed here, so the server job's link was " +
+            message = "A source is already being reviewed here, so the remote job's link was " +
                 "not copied. Finish or clear this source, then copy it again."
             onPrefillConsumed()
         } else if (!reviewableLocalExternalText(handoff)) {
-            message = "The server job's link could not be reviewed here. Nothing was added."
+            message = "The remote job's link could not be reviewed here. Nothing was added."
             onPrefillConsumed()
         } else {
             selectTextSource(handoff)
@@ -2321,7 +2321,7 @@ internal fun LocalEngineScreen(
                         } catch (cancel: kotlinx.coroutines.CancellationException) {
                             throw cancel
                         } catch (_: Exception) {
-                            "The batch copy stopped unexpectedly. Check the server list before " +
+                            "The batch copy stopped unexpectedly. Check the remote list before " +
                                 "copying again; nothing is retried automatically."
                         }
                     }
@@ -2393,13 +2393,13 @@ internal fun LocalEngineScreen(
                         if (aliasCopied > 0) aliasRevision++
                         report.summary() + " $journaled ready to finish moving: review removal of the " +
                             "original local jobs below." +
-                            (if (aliasCopied > 0) " $aliasCopied display aliases carried to the server view." else "") +
-                            (if (aliasFailed > 0) " $aliasFailed display aliases could not be carried; edit them on the server view." else "") +
-                            (if (missingReadback > 0) " $missingReadback destination jobs could not be independently confirmed on this exact server. Their original local jobs were kept; check the destination before a new Move review." else "")
+                            (if (aliasCopied > 0) " $aliasCopied display aliases carried to the client view." else "") +
+                            (if (aliasFailed > 0) " $aliasFailed display aliases could not be carried; edit them on the client view." else "") +
+                            (if (missingReadback > 0) " $missingReadback destination jobs could not be independently confirmed on this exact remote client. Their original local jobs were kept; check the destination before a new Move review." else "")
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
-                        "The batch move stopped before removal. Check the server list; nothing was removed " +
+                        "The batch move stopped before removal. Check the remote list; nothing was removed " +
                             "and nothing is retried automatically."
                     }
                 }
@@ -2808,7 +2808,7 @@ internal fun LocalEngineScreen(
                                         error("The reviewed original local session no longer matches")
                                 }
                             },
-                            targetUnavailableReason = "Connect to the server account to check it."
+                            targetUnavailableReason = "Connect to the remote account to check it."
                         ),
                         onStartMove = { prepareRemoteHandoff?.invoke() },
                         revision = moveRevision
@@ -3003,16 +3003,16 @@ internal fun LocalEngineScreen(
             onRemoteOrganize != null && onRemoteNames != null && onRemoteSnapshot != null) {
             // The local Options route is independently privacy-gated from
             // remote profiles. Do not speak the server host/username here.
-            Text("Connected server tools", style = MaterialTheme.typography.titleMedium)
-            Text("These tools operate only on the currently authenticated server. Opening a tool does not submit an Add or change any torrent.",
+            Text("Connected remote client tools", style = MaterialTheme.typography.titleMedium)
+            Text("These tools operate only on the currently authenticated remote client. Opening a tool does not submit an Add or change any torrent.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = onRemotePlaces,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Server folders & destinations")
+                Text("Remote folders & destinations")
             }
             OutlinedButton(onClick = onRemoteOrganize,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Server collections")
+                Text("Remote collections")
             }
         }
         }
@@ -3020,7 +3020,7 @@ internal fun LocalEngineScreen(
         if (remoteEnvironmentLabel != null && onRemoteNames != null) {
             OutlinedButton(onClick = onRemoteNames,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Server transfer names")
+                Text("Remote transfer names")
             }
         }
         }
@@ -3028,7 +3028,7 @@ internal fun LocalEngineScreen(
         if (remoteEnvironmentLabel != null && onRemoteSnapshot != null) {
             OutlinedButton(onClick = onRemoteSnapshot,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Server inventory backup")
+                Text("Remote inventory backup")
             }
         }
         } // server tools remain scoped to the authenticated account

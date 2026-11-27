@@ -149,7 +149,7 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.error)
             }
             Text("No payload files are included. A historical completion percentage " +
-                "does not prove bytes exist on a replacement server.")
+                "does not prove bytes exist on a replacement remote client.")
             Text("Inspection never changes torrent sessions. The optional export saves " +
                 "one raw original .torrent to a separately selected Android document. " +
                 "It can contain private tracker passkeys, so keep exported files private. " +

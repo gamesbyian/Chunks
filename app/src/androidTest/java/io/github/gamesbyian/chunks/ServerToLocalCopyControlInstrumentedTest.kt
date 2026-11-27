@@ -92,10 +92,10 @@ class ServerToLocalCopyControlInstrumentedTest {
         show(complete()) { reviewed += it }
         rule.onNodeWithText("Copy files to this device").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("directly from your server at 127.0.0.1:6890", substring = true)
+            rule.onAllNodesWithText("directly from your remote client at 127.0.0.1:6890", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("The server transfer stays exactly as it is", substring = true).assertExists()
+        rule.onNodeWithText("The remote transfer stays exactly as it is", substring = true).assertExists()
         assertTrue("Reviewing nothing yet", reviewed.isEmpty())
         rule.onNodeWithText("Review local Add").performClick()
         assertEquals(listOf("magnet:?xt=urn:btih:${hash.lowercase()}&dn=Big%20Buck%20Bunny&x.pe=127.0.0.1:6890"),
@@ -112,10 +112,10 @@ class ServerToLocalCopyControlInstrumentedTest {
         show(complete()) { reviewed += it }
         rule.onNodeWithText("Copy files to this device").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Use a different server address…").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Use a different host address…").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Use a different server address…").performClick()
-        rule.onNodeWithText("Server peer address").performTextInput("127.0.0.1")
+        rule.onNodeWithText("Use a different host address…").performClick()
+        rule.onNodeWithText("Remote peer address").performTextInput("127.0.0.1")
         rule.onNodeWithText("Check with this address").performClick()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("(the address you entered)", substring = true)

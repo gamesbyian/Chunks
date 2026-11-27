@@ -134,7 +134,7 @@ internal fun LocalStoragePanel(
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Local device storage", fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge)
-            Text("Storage on this device, including other apps. Your remote server has separate storage.")
+            Text("Storage on this device, including other apps. Your remote client has separate storage.")
             val total = snapshot.totalBytes
             val free = snapshot.availableBytes
             if (total != null && free != null) {
@@ -282,7 +282,7 @@ internal fun LocalStoragePanel(
             }
             if (capMessage != null)
                 Text(requireNotNull(capMessage), style = MaterialTheme.typography.bodySmall)
-            Text("These limits are warnings only. Chunks won't stop downloads or delete files. Remote storage is shown only when the server reports it.",
+            Text("These limits are warnings only. Chunks won't stop downloads or delete files. Remote storage is shown only when the remote client reports it.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = {
                 snapshot = reader(context)

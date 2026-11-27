@@ -100,7 +100,7 @@ class CombinedDetailIdentityInstrumentedTest {
         title.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayouts) }
         assertTrue(titleLayouts.isNotEmpty())
         assertFalse("Long title must remain fully readable in details", titleLayouts.single().hasVisualOverflow)
-        rule.onNodeWithText(compactServerLabel(scope).removePrefix("Server · ")).performScrollTo().assertExists()
+        rule.onNodeWithText(compactServerLabel(scope).removePrefix("Remote · ")).performScrollTo().assertExists()
         // Palette preferences are read off-main; require the actual rendered result.
         fun colourPixels(): Int {
             val pixels = rule.onNodeWithTag("combined-detail-viewport").captureToImage().toPixelMap()

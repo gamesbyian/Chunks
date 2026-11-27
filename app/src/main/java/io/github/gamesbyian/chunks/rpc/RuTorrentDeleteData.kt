@@ -119,25 +119,25 @@ sealed class RemoteDeleteDataOutcome {
 enum class RemoteDeleteRefusal(val explanation: String) {
     INVALID_REVIEW("The reviewed name or directory is invalid. Refresh this transfer."),
     TARGET_CHANGED("The exact transfer's name or directory changed. Refresh and review it again."),
-    INVENTORY_UNAVAILABLE("The server session inventory could not be read. Check the connection and account permissions."),
+    INVENTORY_UNAVAILABLE("The remote session inventory could not be read. Check the connection and account permissions."),
     INCOMPLETE_SESSION("Complete session coverage could not be confirmed: the view is filtered or its coverage getter is unavailable. Deletion cannot safely check for shared files."),
     FILES_UNAVAILABLE("The exact payload file list could not be read. Check this transfer in ruTorrent."),
     UNSAFE_FILES("The payload paths could not be safely validated. Inspect this transfer's files in ruTorrent."),
-    SHARED_FILES("Another server transfer shares these payload files, or its file mapping could not be verified."),
-    SESSION_CHANGED("The server jobs or file mappings changed during review. Refresh before a new review."),
+    SHARED_FILES("Another remote transfer shares these payload files, or its file mapping could not be verified."),
+    SESSION_CHANGED("The remote jobs or file mappings changed during review. Refresh before a new review."),
     AUTHENTICATION("The server rejected authentication or access. Reconnect this exact profile."),
     CAPABILITY_RESTRICTED("The server restricts data-deletion capability discovery. Session-only Remove remains available; inspect permissions in ruTorrent."),
-    CAPABILITY_UNKNOWN("A safe data-deletion adapter could not be verified. Recheck server capabilities; session-only Remove remains available."),
+    CAPABILITY_UNKNOWN("A safe data-deletion adapter could not be verified. Recheck client capabilities; session-only Remove remains available."),
     PLUGIN_METHOD_REFUSED("The selected deletion endpoint rejected this HTTP method (405). No alternative deletion was attempted."),
     PLUGIN_UNAVAILABLE("The ruTorrent erasedata endpoint is unavailable on this exact server route.")
 }
 
 enum class RemoteRemovalStage(val label: String) {
-    CAPABILITY("Checking this server’s data-deletion support…"),
+    CAPABILITY("Checking this remote client’s data-deletion support…"),
     TARGET("Checking the reviewed transfer…"),
-    SESSION("Checking complete server session coverage…"),
+    SESSION("Checking complete remote session coverage…"),
     FILES("Checking payload paths and shared files…"),
     AUTHORIZATION("Checking access to this server's deletion plugin…"),
     SUBMITTING("Sending the approved removal once…"),
-    VERIFYING("Checking exact server session after removal…")
+    VERIFYING("Checking exact remote session after removal…")
 }

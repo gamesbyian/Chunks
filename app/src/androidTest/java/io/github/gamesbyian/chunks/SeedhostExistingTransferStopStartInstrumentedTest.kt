@@ -170,7 +170,7 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         rule.onNodeWithText("Search names or hashes").performTextReplacement(hash.lowercase())
         // The row's own description is "<name> on <server label>"; its nested
         // "Details for <name> on <server label>" button must not be clicked.
-        val row = hasContentDescription(" on Server", substring = true) and
+        val row = hasContentDescription(" on Remote", substring = true) and
             !hasContentDescription("Details for", substring = true)
         waitOrStage("row-missing", 30_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(row); true }.getOrDefault(false)

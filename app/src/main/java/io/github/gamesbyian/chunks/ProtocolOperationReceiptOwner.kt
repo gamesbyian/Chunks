@@ -43,7 +43,7 @@ internal class ProtocolOperationReceiptOwner(private val capacity: Int = 256) {
                 Phase.POSSIBLE_WRITE -> "$action: request in progress."
                 Phase.UNKNOWN -> "$action: the previous request may have reached this client. Its result is unknown."
                 Phase.ACK_PENDING -> "$action: acknowledged, but the requested effect was not confirmed."
-                Phase.REGISTRATION_ABSENT -> "Transfer removed. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server."
+                Phase.REGISTRATION_ABSENT -> "Transfer removed. Downloaded-file deletion was requested but could not be independently verified. Check the files on the remote client."
                 Phase.RECONCILED_PRESENT, Phase.RECONCILED_ABSENT -> {
                     val registration = if (phase == Phase.RECONCILED_PRESENT) "still registered" else "not registered"
                     val payload = if (ticket.kind == ProtocolOperationKind.REMOVE_DATA)

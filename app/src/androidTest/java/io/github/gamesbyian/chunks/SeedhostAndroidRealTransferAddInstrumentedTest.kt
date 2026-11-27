@@ -211,7 +211,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                 }
             }
             rule.waitUntil(30_000) {
-                runCatching { scroll("Custom server folder (optional)") }
+                runCatching { scroll("Custom remote folder (optional)") }
                 visible("Using custom Place.")
             }
             scroll("Add transfer")

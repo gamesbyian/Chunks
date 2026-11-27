@@ -35,7 +35,7 @@ class ReviewedTorrentTargetChooserInstrumentedTest {
         compose.onNodeWithText("Original tracker URLs may contain private passkeys.",
             substring = true).assertExists()
         compose.runOnIdle { assertEquals(0, calls.size) }
-        compose.onNodeWithText("Review .torrent on connected server").performClick()
+        compose.onNodeWithText("Review .torrent on connected remote client").performClick()
         compose.runOnIdle {
             assertEquals(1, calls.size)
             assertArrayEquals(verifiedBytes, calls.single())
@@ -55,7 +55,7 @@ class ReviewedTorrentTargetChooserInstrumentedTest {
                     onPrepareServerReview = { calls++ })
             }
         }
-        compose.onNodeWithText("Review .torrent on connected server")
+        compose.onNodeWithText("Review .torrent on connected remote client")
             .assertIsNotEnabled()
         compose.runOnIdle { assertEquals(0, calls) }
     }

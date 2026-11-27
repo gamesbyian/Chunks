@@ -84,7 +84,7 @@ class ServerSnapshotAliasInstrumentedTest {
                     }
                 }
             }
-            compose.onNodeWithText("Compare saved snapshot with rTorrent server").performClick()
+            compose.onNodeWithText("Compare saved snapshot with rTorrent client").performClick()
             fun review() {
                 compose.onNodeWithText("Choose .chunksnap to compare").performScrollTo().performClick()
                 compose.waitUntil(10_000) {
@@ -95,7 +95,7 @@ class ServerSnapshotAliasInstrumentedTest {
             }
             review()
             val apply = compose.onNodeWithText("Apply saved alias if this transfer has none")
-            compose.onNodeWithText("It never renames the server torrent or any files.",
+            compose.onNodeWithText("It never renames the remote torrent or any files.",
                 substring = true).assertExists()
             assertNull(store.get(alice, hash))
             compose.runOnIdle { current = current.copy(name = "Unexpected rename") }

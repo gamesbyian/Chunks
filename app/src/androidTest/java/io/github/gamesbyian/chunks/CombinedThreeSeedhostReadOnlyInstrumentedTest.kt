@@ -222,7 +222,7 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
             stage("combined-union")
             // Labels carry the address after the name; match name and count separately.
             fun chip(name: String, n: Int) = rule.onAllNodes(
-                hasContentDescription("Showing Server · $name", substring = true) and
+                hasContentDescription("Showing Remote · $name", substring = true) and
                     hasContentDescription(", $n transfers", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
             waitFor("combined-chips-mismatch") {

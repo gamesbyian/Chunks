@@ -205,7 +205,7 @@ class RemoteHashRecheckControlTest {
         rule.runOnIdle { finishRead.complete(RemoteHashRecheckObservation.NotChecking) }
         rule.waitForIdle()
         rule.runOnIdle { remote.value = b }
-        rule.onNodeWithText("The server reported a pending hash check for this exact transfer.", substring = true).assertExists()
+        rule.onNodeWithText("The remote client reported a pending hash check for this exact transfer.", substring = true).assertExists()
         rule.onNodeWithText("Last read: this exact transfer was neither checking nor queued.", substring = true).assertDoesNotExist()
     }
 

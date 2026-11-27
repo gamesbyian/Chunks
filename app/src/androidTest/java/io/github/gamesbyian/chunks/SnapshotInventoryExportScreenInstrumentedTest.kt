@@ -44,7 +44,7 @@ class SnapshotInventoryExportScreenInstrumentedTest {
             "Share inventory snapshot"
         ).assertIsEnabled()
         compose.onNodeWithText(
-            "Include old server directories (may reveal private paths)"
+            "Include old remote directories (may reveal private paths)"
         ).assertExists()
         compose.onNodeWithText(
             "Observed: 1 transfers in 'main'. Recorded: 1. Omitted: 0. Recoverable before optional Source reads: 0."

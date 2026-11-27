@@ -59,12 +59,12 @@ class ServerSnapshotRestorePreviewPanelInstrumentedTest {
                     onPrepareAdd = {}, onPrepareMagnet = {})
             }
         }
-        compose.onNodeWithText("Compare saved snapshot with rTorrent server").performClick()
+        compose.onNodeWithText("Compare saved snapshot with rTorrent client").performClick()
         compose.onNodeWithText("Choose .chunksnap to compare").assertIsNotEnabled()
-        compose.onNodeWithText("rTorrent server inventory is not yet confirmed",
+        compose.onNodeWithText("rTorrent client inventory is not yet confirmed",
             substring = true).assertExists()
         compose.runOnIdle { complete = true }
-        compose.onNodeWithText("Current verified rTorrent server queue: 1 transfer identities. " +
+        compose.onNodeWithText("Current verified rTorrent client queue: 1 transfer identities. " +
             "Comparisons are discarded if this list changes.").assertExists()
         compose.onNodeWithText("Choose .chunksnap to compare").assertIsEnabled()
         compose.runOnIdle { loading = true }

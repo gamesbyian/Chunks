@@ -68,7 +68,7 @@ internal fun LocalSnapshotStoppedRestoreReview(
             } else {
                 Text("This adds this original torrent definition to the local device engine " +
                     "stopped, without transferring any downloaded files from the old " +
-                    "device or server. No historical paths are reused. Existing " +
+                    "device or remote client. No historical paths are reused. Existing " +
                     "transfers are never overwritten or removed. The original tracker " +
                     "addresses may contain private passkeys; Chunks will not start " +
                     "contacting peers or trackers until you press Start separately.",

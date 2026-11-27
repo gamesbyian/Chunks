@@ -62,7 +62,7 @@ class LocalFirstEntryTest {
         show(opened)
         rule.onNodeWithText("Open local downloads").performClick()
         assertEquals(1, opened[0])
-        rule.onNodeWithText("No server account is needed.", substring = true).assertExists()
+        rule.onNodeWithText("No remote account is needed.", substring = true).assertExists()
         assertNull(LocalEngineHolder.current())
     }
 }

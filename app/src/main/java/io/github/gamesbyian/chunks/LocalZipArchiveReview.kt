@@ -239,7 +239,7 @@ internal fun LocalZipReviewResults(review: LocalZipReview) {
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Text("A successful review does not authorize extraction, deletion, or changes to seeding. Archives stored on a remote rTorrent server are not accessible through this device-only picker.",
+            Text("A successful review does not authorize extraction, deletion, or changes to seeding. Archives stored on a remote rTorrent client are not accessible through this device-only picker.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }

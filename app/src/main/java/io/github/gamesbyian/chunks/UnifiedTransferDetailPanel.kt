@@ -160,7 +160,7 @@ internal fun UnifiedTransferDetailPanel(
         if (!hidden && onInspectStall != null) {
             Text("Why is this transfer inactive?", style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
-            Text("Read-only check of this exact transfer on its signed-in server. " +
+            Text("Read-only check of this exact transfer on its signed-in remote client. " +
                 "No Start, retry, file changes or cleanup will occur.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
@@ -183,14 +183,14 @@ internal fun UnifiedTransferDetailPanel(
                 }
                 stallReport?.let { report ->
                     Text(report.explanation(), style = MaterialTheme.typography.bodyMedium)
-                    Text("Server requested Start: ${report.started}; engine active: ${report.active}; " +
+                    Text("Remote client requested Start: ${report.started}; engine active: ${report.active}; " +
                         "torrent open: ${report.open}; metadata placeholder: " +
                         "${report.awaitingMetadata?.toString() ?: "unknown"}; " +
                         "hash checking: ${report.hashChecking?.toString() ?: "unknown"}; " +
                         "hash-check failure: ${report.hashCheckFailed?.toString() ?: "unknown"}; " +
                         "hashing phase: ${report.hashingPhase?.toString() ?: "unknown"}.",
                         style = MaterialTheme.typography.bodySmall)
-                    Text("Server message classification: " + report.messageClass.name +
+                    Text("Client message classification: " + report.messageClass.name +
                         ". Raw messages and tracker details are withheld.",
                         style = MaterialTheme.typography.bodySmall)
                     Text("This is a momentary engine observation, not proof of peer bytes or storage writes.",
@@ -241,7 +241,7 @@ internal fun UnifiedTransferDetailPanel(
                     }
                 ) {
                     Text(if (capabilityCheckInProgress) "Checking capabilities…"
-                        else "Check server capabilities")
+                        else "Check client capabilities")
                 }
             }
             // The container stays mounted while a probe is in flight. TalkBack

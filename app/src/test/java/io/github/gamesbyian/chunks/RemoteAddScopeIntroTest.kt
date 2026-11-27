@@ -33,9 +33,9 @@ class RemoteAddScopeIntroTest {
         rule.onNodeWithText("Adding to: Seedbox 2").assertExists()
         // The copy/seeding boundary stays one tap away, not dominant default content.
         rule.onNodeWithText("Nothing is copied to this device by Add.", substring = true).assertDoesNotExist()
-        rule.onNodeWithText("About adding to a server").performClick()
+        rule.onNodeWithText("About adding to a remote client").performClick()
         rule.onNodeWithText("Nothing is copied to this device by Add.", substring = true).assertExists()
-        rule.onNodeWithText("Saved Chunks server-seeding rules are not applied yet;", substring = true).assertExists()
+        rule.onNodeWithText("Saved Chunks remote seeding rules are not applied yet;", substring = true).assertExists()
     }
 
     @Test
@@ -44,7 +44,7 @@ class RemoteAddScopeIntroTest {
         rule.setContent {
             ChunksTheme { Surface { RemoteAddScopeIntro(null, null) } }
         }
-        rule.onNodeWithText("About adding to a server").assertExists()
+        rule.onNodeWithText("About adding to a remote client").assertExists()
         rule.onNodeWithText("Adding to:", substring = true).assertDoesNotExist()
     }
 }

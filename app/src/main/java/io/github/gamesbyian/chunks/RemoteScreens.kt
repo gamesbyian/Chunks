@@ -216,8 +216,8 @@ internal fun ConnectionScreen(
             onChoose = { selected ->
                 if (onSaveDefaultFolder(selected)) {
                     editingRemoteDefault = false
-                    remoteDefaultNotice = "Default download folder saved for this server."
-                } else remoteDefaultNotice = "Could not save the server's default folder."
+                    remoteDefaultNotice = "Default download folder saved for this remote client."
+                } else remoteDefaultNotice = "Could not save the remote client's default folder."
             },
             onDismiss = { editingRemoteDefault = false },
             savedDefaultMode = true
@@ -284,7 +284,7 @@ internal fun ConnectionScreen(
                             Text("Connect to a remote client", modifier = Modifier.semantics { heading() },
                                 style = MaterialTheme.typography.titleMedium,
                                 color = ChunksColors.Background)
-                            Text("Manage torrents on another computer or server.", color = ChunksColors.Background)
+                            Text("Manage torrents in a remote client on another computer.", color = ChunksColors.Background)
                             OutlinedButton(onClick = openNewConnection, enabled = !loading,
                                 modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.CONNECTION_ADD)) {
                                 Text("+ Add connection", color = ChunksColors.Background)
@@ -358,7 +358,7 @@ internal fun ConnectionScreen(
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = onViewConnectedTransfers,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                                .semantics { contentDescription = "View transfers on current verified server" }) {
+                                .semantics { contentDescription = "View transfers on current verified remote client" }) {
                             Text("View transfers")
                         }
                         OutlinedButton(onClick = { onDisconnectCurrent(); managedProfileId = null }, enabled = !loading,
@@ -383,7 +383,7 @@ internal fun ConnectionScreen(
                                 onClick = {
                                     remoteDefaultNotice =
                                         if (onSaveDefaultFolder(null))
-                                            "This server will use its rTorrent default again."
+                                            "This remote client will use its rTorrent default again."
                                         else "Could not clear the saved default folder."
                                 },
                                 modifier = Modifier.heightIn(min = 48.dp)
@@ -398,7 +398,7 @@ internal fun ConnectionScreen(
                             .semantics {
                                 stateDescription = if (currentServerToolsOpen) "Expanded" else "Collapsed"
                             }) {
-                        Text(if (currentServerToolsOpen) "Hide current server tools" else "Current server tools")
+                        Text(if (currentServerToolsOpen) "Hide current remote client tools" else "Current remote client tools")
                     }
                     if (currentServerToolsOpen) {
                         Text("rTorrent " + connectedVersion + " · selected view " + connectedRequestedView,
@@ -438,7 +438,7 @@ internal fun ConnectionScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(profile.label, style = MaterialTheme.typography.titleMedium)
                     Text(profile.address, style = MaterialTheme.typography.bodySmall)
-                    if (!managingConnected) Text("Disconnected · connect to use remote folder browsing and server tools.",
+                    if (!managingConnected) Text("Disconnected · connect to use remote folder browsing and remote client tools.",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = {
                         onAddConnection()
@@ -499,10 +499,10 @@ internal fun ConnectionScreen(
                     if (renameProfileId == profile.id) {
                         OutlinedTextField(
                             value = renameDraft, onValueChange = { renameDraft = it },
-                            label = { Text("Friendly name for this server") },
+                            label = { Text("Friendly name for this connection") },
                             singleLine = true, modifier = Modifier.fillMaxWidth()
                         )
-                        Text("Only the name shown in Chunks changes. The server, login, torrents and files stay unchanged.",
+                        Text("Only the name shown in Chunks changes. The remote client, login, torrents and files stay unchanged.",
                             style = MaterialTheme.typography.bodySmall)
                         Row(Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -647,7 +647,7 @@ internal fun ConnectionScreen(
             OutlinedTextField(
                 value = connectionName, onValueChange = onConnectionName,
                 label = { Text("Connection name (optional)") },
-                supportingText = { Text(if (validName) "Leave blank to use the account and server name."
+                supportingText = { Text(if (validName) "Leave blank to use the account and host name."
                     else "Use up to 100 characters without control characters.") },
                 isError = !validName, enabled = !loading, singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -700,7 +700,7 @@ internal fun ConnectionScreen(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                     singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
                 )
-                Text("For a server your provider documents with a specific XML-RPC path. Enter only the " +
+                Text("For a host your provider documents with a specific XML-RPC path. Enter only the " +
                     "hostname above; Chunks then tests just this one address, read-only, instead of " +
                     "checking known paths.", style = MaterialTheme.typography.bodySmall)
             }
@@ -743,7 +743,7 @@ internal fun ConnectionScreen(
                 ), verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(checked = rememberLogin, onCheckedChange = null)
-                Text("Remember this server and login on this device",
+                Text("Remember this connection and login on this device",
                     modifier = Modifier.padding(start = 8.dp))
             }
             Text("On by default. Password encrypted with Android Keystore. " +
@@ -794,7 +794,7 @@ internal fun ConnectionScreen(
             }
         }
         item {
-            Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
+            Text("Protected HTTPS is required for remote clients. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
         } // Explicit Add/Edit connection form.
@@ -1019,7 +1019,7 @@ internal fun TransfersScreen(
             Text("$transferring reporting traffic · $zeroDownloading started but 0 B/s down" +
                 (if (unknown > 0) " · $unknown without a reported download rate" else ""),
                 style = MaterialTheme.typography.bodySmall)
-            Text("Start set is a server flag, not proof the engine is active or peers are " +
+            Text("Start set is a client flag, not proof the engine is active or peers are " +
                 "delivering data. Rates are a single loaded-view observation.",
                 style = MaterialTheme.typography.bodySmall)
         }
@@ -1130,9 +1130,9 @@ internal fun TransfersScreen(
                                 }
                                 batchMessage = if (accepted)
                                     "Saved ${targets.size} reviewed memberships on this device. " +
-                                        "Seeding and server files are unchanged."
+                                        "Seeding and remote files are unchanged."
                                 else "Batch save was not confirmed. Inspect current Collection " +
-                                    "memberships before retrying; no server mutation was requested."
+                                    "memberships before retrying; no remote change was requested."
                                 if (accepted) {
                                     batchHashes = emptySet()
                                     selecting = false
@@ -1179,19 +1179,19 @@ internal fun TransfersScreen(
                     }
                     if (view == "main") BatchMoveRemovalPanel(
                         pending = pendingServerMoves, serverScopeDigest = serverDigest,
-                        serverLabel = "this device", sourceLabel = "server",
+                        serverLabel = "this device", sourceLabel = "remote client",
                         busy = stale || loading,
                         observeTarget = { hash -> TransferMoveObservations.local(hash) },
                         removeSource = { hash ->
                             val original = pendingServerMoves.singleOrNull {
                                 it.infoHash.equals(hash, ignoreCase = true)
-                            } ?: error("Original server Move journal missing")
+                            } ?: error("Original remote Move journal missing")
                             val live = list.singleOrNull {
                                 it.hash.equals(hash, ignoreCase = true)
-                            } ?: error("Original server job unavailable")
+                            } ?: error("Original remote job unavailable")
                             if (!TransferMove.sourceIdentityMatches(
                                     original, live.name, null, live.directory))
-                                error("Original server job changed after Move review")
+                                error("Original remote job changed after Move review")
                             remote.eraseFromSession(
                                 original.infoHash, original.name,
                                 requireNotNull(original.sourceDirectory))
@@ -1320,7 +1320,7 @@ internal fun TransfersScreen(
         }
         item { RemoteCapabilityPanel(remote) }
         item {
-            Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
+            Text("Remote snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
                 style = MaterialTheme.typography.bodySmall)
         }
         }
@@ -1484,8 +1484,8 @@ internal fun TransferCard(
             }
             if (otherTransferDownloading) {
                 Text(
-                    "Other transfers in this loaded server view report download traffic, " +
-                        "while this torrent reports none. This is one server snapshot, " +
+                    "Other transfers in this loaded client view report download traffic, " +
+                        "while this torrent reports none. This is one remote snapshot, " +
                         "not proof of available seeders or future progress for this torrent.",
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -1522,7 +1522,7 @@ internal fun TransferCard(
                         "addresses, become a magnet Add draft on your device. Private " +
                         "torrents get the hash and name only: their tracker passkeys are " +
                         "never read, so they may not find peers. No downloaded bytes move, " +
-                        "and the local device may download everything again. The server transfer " +
+                        "and the local device may download everything again. The remote transfer " +
                         "stays intact.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1573,7 +1573,7 @@ internal fun TransferCard(
                 snapshotRevision = snapshotRevision
             )
             if (expanded) {
-                if (filesLoading) Text("Reading server file list…")
+                if (filesLoading) Text("Reading remote file list…")
                 if (filesError != null) Text(filesError, color = ChunksColors.Red)
                 if (files != null) {
                     if (mainView && finishInOrderScope != null) RemoteFinishInOrderPanel(
@@ -1618,7 +1618,7 @@ internal fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Un
                 }
             }
         }
-        if (places.isEmpty()) item { Text("No server locations in this snapshot.") }
+        if (places.isEmpty()) item { Text("No remote locations in this snapshot.") }
     }
 }
 
@@ -1713,7 +1713,7 @@ internal fun OrganizeScreen(
             )
         }
         if (selectedCollection != null) item {
-            Text("Showing only " + selectedCollection + " in this server view. A saved Collection may have no members in the loaded view.",
+            Text("Showing only " + selectedCollection + " in this client view. A saved Collection may have no members in the loaded view.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { selectedCollection = null; collectionPage = 0 },
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("Show all collections") }
@@ -1723,7 +1723,7 @@ internal fun OrganizeScreen(
                 value = manualQuery, onValueChange = { manualQuery = it; collectionPage = 0 },
                 label = "Find a transfer to organize"
             )
-            Text("Found " + pagedMatches.totalMatches + " matching transfers in the loaded server view and selected collection. Page " +
+            Text("Found " + pagedMatches.totalMatches + " matching transfers in the loaded client view and selected collection. Page " +
                 (pagedMatches.pageIndex + 1) + " of " + pagedMatches.totalPages + ".",
                 style = MaterialTheme.typography.bodySmall)
             if (pagedMatches.totalPages > 1) {
@@ -1804,7 +1804,7 @@ internal fun ServerScreen(
     onRefresh: () -> Unit, onDisconnect: () -> Unit,
     onSeedingRules: () -> Unit = {},
     /** Exact server environment label, so the view choice states its scope. */
-    environmentLabel: String = "this server"
+    environmentLabel: String = "this remote client"
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1812,7 +1812,7 @@ internal fun ServerScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Server settings · " + environmentLabel.removePrefix("Server · "),
+            Text("Connection settings · " + environmentLabel.removePrefix("Remote · "),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Text("rTorrent " + version +
@@ -1820,9 +1820,9 @@ internal fun ServerScreen(
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
-            Text("Server view", style = MaterialTheme.typography.titleLarge)
+            Text("Client view", style = MaterialTheme.typography.titleLarge)
             SettingScopeNote(environmentLabel)
-            Text("Different rTorrent servers organize views differently. Chunks never assumes the current view covers every torrent.",
+            Text("Different rTorrent clients organize views differently. Chunks never assumes the current view covers every torrent.",
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
@@ -1865,7 +1865,7 @@ internal fun ServerScreen(
             }
         }
         item {
-            Text("The current connection remains in memory. Unless opted out, the server login is encrypted on this device for later reconnection. Torrent operations remain separately confirmed.",
+            Text("The current connection remains in memory. Unless opted out, the remote login is encrypted on this device for later reconnection. Torrent operations remain separately confirmed.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }

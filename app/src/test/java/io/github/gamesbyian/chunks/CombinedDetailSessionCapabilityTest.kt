@@ -89,7 +89,7 @@ class CombinedDetailSessionCapabilityTest {
         // Explicit disclosure is presentation-only: it must never probe a session.
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         // Inside Details the client is named by its short compact origin (2026-11-15 design).
-        val check = "Check capabilities for " + compactServerLabel(aliasScope).removePrefix("Server · ")
+        val check = "Check capabilities for " + compactServerLabel(aliasScope).removePrefix("Remote · ")
         rule.onNodeWithContentDescription(check).performScrollTo().performClick()
         rule.waitUntil(5_000) { firstStarted.get() == 1 }
         rule.onNodeWithText("Checking capabilities…").assertExists()
@@ -101,7 +101,7 @@ class CombinedDetailSessionCapabilityTest {
                 secondReply.await()
             }
         }
-        rule.onNodeWithText("Check server capabilities").performScrollTo().assertExists()
+        rule.onNodeWithText("Check client capabilities").performScrollTo().assertExists()
         firstReply.complete(RemoteProbe("old-session", emptySet()))
         rule.waitUntil(5_000) { firstResponded.get() }
         rule.waitForIdle()
@@ -144,7 +144,7 @@ class CombinedDetailSessionCapabilityTest {
         awaitTransferRow()
         rule.onNodeWithContentDescription("Details for A single download on $label")
             .performScrollTo().performClick()
-        rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
+        rule.onNodeWithText("Check client capabilities").assertDoesNotExist()
     }
 
     private fun awaitTransferRow() {

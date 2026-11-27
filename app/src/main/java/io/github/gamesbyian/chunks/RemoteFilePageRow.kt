@@ -78,7 +78,7 @@ private fun RemoteFilePriorityToggle(
         modifier = modifier.heightIn(min = 48.dp).semantics {
             contentDescription = "$actionName for file ${index + 1}: ${file.path}"
             stateDescription = when {
-                !actionEnabled -> "Unavailable until the current server view permits priority changes"
+                !actionEnabled -> "Unavailable until the current client view permits priority changes"
                 expanded -> "Expanded"
                 else -> "Collapsed"
             }

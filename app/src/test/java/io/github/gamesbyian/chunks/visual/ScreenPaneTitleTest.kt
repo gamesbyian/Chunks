@@ -31,9 +31,9 @@ class ScreenPaneTitleTest {
 
     @Test fun titlesNameTheScreenAndEnvironmentOnly() {
         assertEquals("Transfers on this device", ScreenPaneTitles.of("LOCAL", "Transfers on this device", null))
-        assertEquals("Transfers on Server · alice @ seed.example",
-            ScreenPaneTitles.of("TRANSFERS", "Transfers", "Server · alice @ seed.example"))
-        assertEquals("Connect to a server", ScreenPaneTitles.of("TRANSFERS", "Transfers", null))
+        assertEquals("Transfers on Remote · alice @ seed.example",
+            ScreenPaneTitles.of("TRANSFERS", "Transfers", "Remote · alice @ seed.example"))
+        assertEquals("Connect to a remote client", ScreenPaneTitles.of("TRANSFERS", "Transfers", null))
         assertEquals("Seeding rules", ScreenPaneTitles.of("SEEDING", "Seeding rules", null))
     }
 

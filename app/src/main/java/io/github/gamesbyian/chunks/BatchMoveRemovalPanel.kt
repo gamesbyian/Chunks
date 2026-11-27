@@ -70,7 +70,7 @@ internal fun BatchMoveRemovalPanel(
                 Button(onClick = {
                     confirming = false
                     if (!BatchMoveRemoval.matchesServerScope(pending, serverScopeDigest)) {
-                        onFinished("The destination server account changed. No original jobs were removed.")
+                        onFinished("The destination remote account changed. No original jobs were removed.")
                         return@Button
                     }
                     working = true

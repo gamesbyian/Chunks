@@ -172,8 +172,8 @@ internal class TransferMoveStore(context: Context) {
                 .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
         fun hostLabel(aliasScope: String): String = try {
-            URI(aliasScope.substringBefore('\u0000').trim()).host ?: "your server"
-        } catch (_: Exception) { "your server" }
+            URI(aliasScope.substringBefore('\u0000').trim()).host ?: "your remote client"
+        } catch (_: Exception) { "your remote client" }
     }
 }
 
@@ -246,10 +246,10 @@ internal fun TransferMoveControl(
     }
     var working by remember(infoHash) { mutableStateOf(false) }
     var message by remember(infoHash) { mutableStateOf<String?>(null) }
-    val destination = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local device"
-    val addTarget = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local"
-    val destinationDisplay = if (direction == Direction.LOCAL_TO_SERVER) "server" else "the local device"
-    val source = if (direction == Direction.LOCAL_TO_SERVER) "local device" else "server"
+    val destination = if (direction == Direction.LOCAL_TO_SERVER) "remote client" else "local device"
+    val addTarget = if (direction == Direction.LOCAL_TO_SERVER) "remote" else "local"
+    val destinationDisplay = if (direction == Direction.LOCAL_TO_SERVER) "remote client" else "the local device"
+    val source = if (direction == Direction.LOCAL_TO_SERVER) "local device" else "remote client"
 
     fun apply(next: TransferMove.Next): Boolean = when (next) {
         is TransferMove.Next.Save -> {
@@ -374,7 +374,7 @@ internal fun TransferMoveControl(
                                 if (!moveRetirementScopeConfirmed(
                                         current, serverAliasScope, name, sourceReviewToken, sourceDirectory) ||
                                         observeTarget == null) {
-                                    message = "The server account, original transfer or destination changed. No Remove was sent."
+                                    message = "The remote account, original transfer or destination changed. No Remove was sent."
                                     return@Button
                                 }
                                 if (!onMutationStarted()) {
@@ -406,7 +406,7 @@ internal fun TransferMoveControl(
                 }
                 Stage.SOURCE_REMOVAL_REQUESTED, Stage.SOURCE_REMOVAL_UNCERTAIN -> OutlinedButton(onClick = {
                     if (!sameServer) {
-                        message = "Reconnect to the Move's original server account before checking its job."
+                        message = "Reconnect to the Move's original remote account before checking its job."
                         return@OutlinedButton
                     }
                     run {
@@ -423,7 +423,7 @@ internal fun TransferMoveControl(
             if (current.stage == Stage.AWAITING_TARGET || current.stage == Stage.TARGET_VERIFIED) {
                 OutlinedButton(onClick = {
                     if (!sameServer) {
-                        message = "Reconnect to the Move's original server account before cancelling its journal."
+                        message = "Reconnect to the Move's original remote account before cancelling its journal."
                         return@OutlinedButton
                     }
                     if (store.remove(current)) {

@@ -85,13 +85,13 @@ class RemoteDestinationResolutionTest {
         val destination = mutableStateOf("")
         show(saved, destination)
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Save to: Server default (confirm after adding)")
+            rule.onAllNodesWithText("Save to: Remote default (confirm after adding)")
                 .fetchSemanticsNodes().isNotEmpty()
         }
         // The complete diagnostic reason is still available on request,
         // without dominating every default-Place Add draft.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("About server folders"))
-        rule.onNodeWithText("About server folders").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("About remote folders"))
+        rule.onNodeWithText("About remote folders").performClick()
         reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("rTorrent has no default download folder configured", substring = true))
@@ -101,8 +101,8 @@ class RemoteDestinationResolutionTest {
         reveal(ChunksSemantics.ADD_SUBMIT)
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
 
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom server folder (optional)"))
-        rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/home/ian/torrents")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom remote folder (optional)"))
+        rule.onNodeWithText("Custom remote folder (optional)").performTextReplacement("/home/ian/torrents")
         reveal(ChunksSemantics.ADD_REMOTE_SAVE_DEFAULT)
         rule.onNodeWithTag(ChunksSemantics.ADD_REMOTE_SAVE_DEFAULT).performClick()
         rule.waitForIdle()
@@ -126,7 +126,7 @@ class RemoteDestinationResolutionTest {
         show(mutableStateOf(null), mutableStateOf(""))
         reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Save to: Server default (confirm after adding)")
+            rule.onAllNodesWithText("Save to: Remote default (confirm after adding)")
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onRoot().captureRoboImage("build/chunks-visual/remote-native-default-unknown.png")
@@ -161,10 +161,10 @@ class RemoteDestinationResolutionTest {
         val hash = "c".repeat(40)
         assertTrue(server.jobs.getValue(hash).started)
         server.metadataPending = false // independently supplied metadata, not another Add
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Check server state (read only)"))
-        rule.onNodeWithText("Check server state (read only)").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Check remote state (read only)"))
+        rule.onNodeWithText("Check remote state (read only)").performClick()
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Server now confirms this exact hash, destination and active engine.", substring = true)
+            rule.onAllNodesWithText("The remote client now confirms this exact hash, destination and active engine.", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals(1, server.loads().size)
@@ -287,18 +287,18 @@ class RemoteDestinationResolutionTest {
         val destination = mutableStateOf("")
         show(saved, destination)
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Save to: Server default (confirm after adding)")
+            rule.onAllNodesWithText("Save to: Remote default (confirm after adding)")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("About server folders"))
-        rule.onNodeWithText("About server folders").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("About remote folders"))
+        rule.onNodeWithText("About remote folders").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("could not be read (connection or permission)", substring = true))
         rule.onNodeWithText("could not be read (connection or permission)", substring = true)
             .assertExists()
         server.directoryDefault = "/srv/recovered"
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Check the server's default folder again"))
-        rule.onNodeWithText("Check the server's default folder again").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Check the remote client's default folder again"))
+        rule.onNodeWithText("Check the remote client's default folder again").performClick()
         rule.waitUntil(15_000) {
             rule.onAllNodesWithText("Save to: /srv/recovered (rTorrent default)")
                 .fetchSemanticsNodes().isNotEmpty()

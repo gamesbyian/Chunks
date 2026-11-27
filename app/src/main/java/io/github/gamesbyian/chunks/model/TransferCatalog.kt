@@ -87,7 +87,7 @@ object TransferCatalog {
     }
 
     fun places(items: List<RemoteTransfer>): List<Pair<String, Int>> =
-        items.groupingBy { it.directory.ifBlank { "(server location not reported)" } }
+        items.groupingBy { it.directory.ifBlank { "(remote location not reported)" } }
             .eachCount().toList().sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
 
     fun discoveredCollections(items: List<RemoteTransfer>): List<Pair<String, Int>> =

@@ -57,9 +57,9 @@ class RemoteCapabilityAnnouncementsTest {
         rule.onNodeWithText("Advertised, not yet verified: Start and stop").assertDoesNotExist()
 
         rule.runOnIdle {
-            lines.value = listOf("The server did not answer the read-only capability check.")
+            lines.value = listOf("The remote client did not answer the read-only capability check.")
         }
         rule.onNode(liveRegion).assertExists()
-        rule.onNodeWithText("The server did not answer the read-only capability check.").assertExists()
+        rule.onNodeWithText("The remote client did not answer the read-only capability check.").assertExists()
     }
 }

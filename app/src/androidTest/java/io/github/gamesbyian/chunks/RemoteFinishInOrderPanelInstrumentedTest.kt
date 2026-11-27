@@ -123,7 +123,7 @@ class RemoteFinishInOrderPanelInstrumentedTest {
         // while that coroutine is still mutating Compose state.
         rule.waitUntil(30_000) { settled.get() == 1 }
         rule.waitForIdle()
-        rule.onNodeWithText("confirmed by the server", substring = true).assertExists()
+        rule.onNodeWithText("confirmed by the remote client", substring = true).assertExists()
         assertEquals(1, started)
         assertEquals(listOf("f1=2"), writes.toList())
     }

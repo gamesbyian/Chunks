@@ -29,7 +29,7 @@ class RefreshFailureExplanationTest {
         assertFalse(isLoginRefused(RpcHttpStatusException(502)))
         assertTrue(readableFailure(RpcHttpStatusException(502)).contains("HTTP 502"))
         assertTrue(readableFailure(RpcHttpStatusException(429)).contains("limiting requests"))
-        assertEquals("Network or proxy error. Check your connection and server settings.",
+        assertEquals("Network or proxy error. Check your network and connection settings.",
             readableFailure(java.io.IOException("x")))
     }
 
@@ -38,13 +38,13 @@ class RefreshFailureExplanationTest {
         rule.setContent { ChunksTheme {
             RefreshProblemNotice("refused", refreshing = false, onRefresh = {}, onOpenServer = { opened++ })
         } }
-        rule.onNodeWithText("Open Server").performClick()
+        rule.onNodeWithText("Open Connections").performClick()
         assertEquals(1, opened)
     }
 
     @Test fun otherFailuresOfferOnlyTheReadOnlyRetry() {
         rule.setContent { ChunksTheme { RefreshProblemNotice("down", refreshing = false, onRefresh = {}) } }
         rule.onNodeWithText("Refresh list again").assertExists()
-        rule.onAllNodesWithText("Open Server").assertCountEquals(0)
+        rule.onAllNodesWithText("Open Connections").assertCountEquals(0)
     }
 }

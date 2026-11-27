@@ -92,7 +92,7 @@ internal class MainActivityRealMagnetJourney(
             // outcome, verified result, Add form infohash, checking, Add button, Transfers search.
             val flags = (if (hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)) "1" else "0") +
                 listOf("View transfer", "Infohash:",
-                    "Checking server", "Add transfer", "Search names or hashes", "Torrent link:",
+                    "Checking remote client", "Add transfer", "Search names or hashes", "Torrent link:",
                     "A new source is waiting")
                     .joinToString("") { if (visible(it)) "1" else "0" }
             // Flags first, then the control being clicked (bounded slug), so one stage names both.
@@ -136,7 +136,7 @@ internal class MainActivityRealMagnetJourney(
         // First interaction of the journey: the shared helper finds, reveals, re-finds and replaces
         // (idempotent), re-locating only for a row not yet composed or disposed before the focus request.
         LazyComposeActions.replaceText(rule, hasText(label) and hasSetTextAction(), text)
-        if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
+        if (label == "Magnet or torrent link" || label == "Custom remote folder (optional)") {
             // Exercise the same Done IME action available to a real local user
             // instead of leaving the URL editor focused under an unseen IME.
             // Never trigger a Connect/Confirm action from the keyboard.
@@ -388,13 +388,13 @@ internal class MainActivityRealMagnetJourney(
             } else type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
-                runCatching { scroll("Custom server folder (optional)") }
+                runCatching { scroll("Custom remote folder (optional)") }
                 hasTag(ChunksSemantics.ADD_REMOTE_SAVE_TO)
             }
-            if (default == null && !disposable) type("Custom server folder (optional)", parent)
+            if (default == null && !disposable) type("Custom remote folder (optional)", parent)
             if (disposable && default == null) {
                 assertEquals("Blank optional folder must remain a native-default selection", "",
-                    rule.onNodeWithText("Custom server folder (optional)").fetchSemanticsNode()
+                    rule.onNodeWithText("Custom remote folder (optional)").fetchSemanticsNode()
                         .config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
                 report("chunks_real_add_app_stage", "native-default-ready")
             }
@@ -580,7 +580,7 @@ internal class MainActivityRealMagnetJourney(
                 val flags = listOf(
                     "could not be authorized", "Another client operation must settle",
                     "Resolve or finish the previous exact Add", "The Add review has changed",
-                    "one-time submission ticket", "Checking server", "Add transfer"
+                    "one-time submission ticket", "Checking remote client", "Add transfer"
                 ).joinToString("") { if (visible(it)) "1" else "0" }
                 val enabledNow = runCatching { rule.onNode(submit).assertIsEnabled(); true }.getOrDefault(false)
                 report("chunks_real_add_app_stage", "click-after-submit-$flags-" + (if (enabledNow) "1" else "0"))
@@ -664,7 +664,7 @@ internal class MainActivityRealMagnetJourney(
                 assertTrue("Returning must retain the truthful pending native Place",
                     visible("Start after Add was not verified.") ||
                         visible("its payload folder and final Add result are not yet verified.") ||
-                        visible("Metadata is available. Check server state below"))
+                        visible("Metadata is available. Check remote state below"))
                 rule.onNodeWithText("View transfer").assertDoesNotExist()
             } else {
                 scroll("View transfer")
@@ -880,10 +880,10 @@ internal class MainActivityRealMagnetJourney(
                     val resolved = requireNotNull(row(hash))
                     assertTrue("Native payload Place must resolve to this disposable server's CWD",
                         resolved.directory in setOf(parent, "$parent/${preview.name}"))
-                    click("Check server state (read only)")
+                    click("Check remote state (read only)")
                     rule.waitUntil(60_000) {
                         runCatching { scrollOutcome() }
-                        visible("Server now confirms this exact hash, destination and active engine.")
+                        visible("The remote client now confirms this exact hash, destination and active engine.")
                     }
                     assertTrue("Read-only recovery must not claim attribution after an incomplete Add result",
                         visible("No Start or Add was resent."))
@@ -997,8 +997,8 @@ internal class MainActivityRealMagnetJourney(
                     rule.waitUntil(60_000) {
                         visible("Recheck acknowledged; checking was not observed.") ||
                             visible("Hash checking observed for this exact transfer.") ||
-                            visible("The server reported this exact transfer already checking.") ||
-                            visible("The server reported a pending hash check for this exact transfer.")
+                            visible("The remote client reported this exact transfer already checking.") ||
+                            visible("The remote client reported a pending hash check for this exact transfer.")
                     }
                     // Neither scheduling nor an idle sample proves files intact.
                     // Independently wait for both the queue and checking flags,

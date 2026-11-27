@@ -534,19 +534,19 @@ internal fun LocalTransferCard(
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Copy Transfer to server…")
+                    Text("Copy Transfer to remote client…")
                 }
                 if (confirmHandoff) {
-                    Text("Chunks opens your rTorrent server's Add review with this torrent's " +
+                    Text("Chunks opens your rTorrent client's Add review with this torrent's " +
                         ".torrent definition, including its tracker addresses. For private " +
                         "trackers these can contain your personal passkey; they are sent only " +
-                        "to the server you are signed in to, and nothing is added until you " +
+                        "to the remote client you are signed in to, and nothing is added until you " +
                         "confirm there. If the definition is unavailable, only the magnet " +
                         "identity is used, which may not find peers. No payload bytes move; " +
-                        "the server downloads from peers itself. The local transfer is untouched.",
+                        "the remote client downloads from peers itself. The local transfer is untouched.",
                         style = MaterialTheme.typography.bodySmall)
                     LocalTransferConfirmationActions(
-                        confirmLabel = "Review server Add",
+                        confirmLabel = "Review remote Add",
                         cancelLabel = "Cancel",
                         enabled = !busy,
                         onConfirm = { confirmHandoff = false; onPrepareRemote() },

@@ -214,17 +214,17 @@ class SeedhostAndroidAddUiInstrumentedTest {
                 // folder field is not composed until scrolled into view, and a
                 // focused field can pull the list back, so re-scroll while waiting.
                 rule.waitUntil(30_000) {
-                    runCatching { scrollTo("Custom server folder (optional)") }
+                    runCatching { scrollTo("Custom remote folder (optional)") }
                     visible("Using rTorrent default Place:") || visible("Using the server default without a folder override.")
                 }
                 // The app must agree with the preflight about the server default.
                 assertEquals(serverDefault != null, visible("Using rTorrent default Place:"))
                 checkpoint("place-status")
                 if (serverDefault == null) {
-                    rule.onNodeWithText("Custom server folder (optional)").performTextReplacement(parent)
+                    rule.onNodeWithText("Custom remote folder (optional)").performTextReplacement(parent)
                     hideKeyboard()
                     rule.waitUntil(10_000) {
-                        runCatching { scrollTo("Custom server folder (optional)") }
+                        runCatching { scrollTo("Custom remote folder (optional)") }
                         visible("Using custom Place.")
                     }
                 }
@@ -238,7 +238,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
 
             scrollTo("Infohash: $hash")
             assertTrue(visible("Infohash: $hash"))
-            assertTrue(visible(if (serverDefault != null) "(server default; no directory override)"
+            assertTrue(visible(if (serverDefault != null) "(remote default; no directory override)"
                 else "(custom parent folder)"))
             capture("seedhost-android-add-ui-review")
             checkpoint("review")

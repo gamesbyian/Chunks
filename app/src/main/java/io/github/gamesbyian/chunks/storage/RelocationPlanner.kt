@@ -40,7 +40,7 @@ sealed interface MoveDecision {
  */
 object RelocationPlanner {
     fun plan(facts: MoveFacts): MoveDecision {
-        if (!facts.sameServer) return MoveDecision.Refused("Cross-server moves are not supported")
+        if (!facts.sameServer) return MoveDecision.Refused("Cross-client moves are not supported")
         if (!facts.sourceWithinApprovedRoot || !facts.targetWithinApprovedRoot)
             return MoveDecision.Refused("Source or destination is outside allowed roots")
         if (!facts.sourceExists) return MoveDecision.Refused("Source is missing")
@@ -50,7 +50,7 @@ object RelocationPlanner {
         if (facts.sharedWithOtherTorrents)
             return MoveDecision.Refused("Data is shared with another torrent")
         if (!facts.durableJournalAvailable)
-            return MoveDecision.Refused("No crash-recoverable server operation journal")
+            return MoveDecision.Refused("No crash-recoverable remote operation journal")
         if (!facts.engineCanRebind || !facts.writesCanBeQuiescedForHandoff)
             return MoveDecision.Refused("Safe engine I/O handoff is unavailable")
         if (facts.sameVolume && facts.atomicRenameAvailable)

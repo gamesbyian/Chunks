@@ -113,12 +113,12 @@ internal fun CanonicalRemoteFilesControls(
                 observed == null -> {
                     // A transient timeout keeps the previous exact-job list, read-only.
                     files = previous
-                    problem = "Server file-list read timed out. No action was attempted." +
+                    problem = "Remote file-list read timed out. No action was attempted." +
                         if (previous != null) " The list shown is the previous verified read." else ""
                 }
                 observed.size > 12_000 -> {
                     files = null
-                    problem = "The server returned too many file records to present safely."
+                    problem = "The remote client returned too many file records to present safely."
                 }
                 remote.addAccountScope() != aliasScope -> {
                     files = null
@@ -130,7 +130,7 @@ internal fun CanonicalRemoteFilesControls(
             throw cancel
         } catch (_: Exception) {
             files = previous
-            problem = "The authenticated server file list could not be read. No action was attempted." +
+            problem = "The authenticated remote file list could not be read. No action was attempted." +
                 if (previous != null) " The list shown is the previous verified read." else ""
         } finally {
             loading = false
@@ -145,14 +145,14 @@ internal fun CanonicalRemoteFilesControls(
         ) { Text(if (expanded) "Hide files & priorities" else "Files & priorities…") }
         if (expanded) {
             if (!identityMatches) {
-                Text("Refresh the exact authenticated main server inventory before reading or changing file priorities.",
+                Text("Refresh the exact authenticated main remote inventory before reading or changing file priorities.",
                     style = MaterialTheme.typography.bodySmall)
             } else {
-                if (loading) Text("Reading this transfer's files from the verified server…",
+                if (loading) Text("Reading this transfer's files from the verified remote client…",
                     style = MaterialTheme.typography.bodySmall)
-                else if (!permitted) Text(if (files != null) "The server inventory is not current. The file " +
+                else if (!permitted) Text(if (files != null) "The remote inventory is not current. The file " +
                     "list below is the last verified read; changes wait for a fresh read."
-                    else "Waiting for a current server inventory before reading this transfer's files.",
+                    else "Waiting for a current remote inventory before reading this transfer's files.",
                     style = MaterialTheme.typography.bodySmall)
                 problem?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall,

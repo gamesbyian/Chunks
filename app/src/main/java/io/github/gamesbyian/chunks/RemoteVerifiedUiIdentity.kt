@@ -36,7 +36,7 @@ internal object RemoteVerifiedUiIdentity {
                 }
             }
         }
-        return "Server: $endpoint\nAccount: \"$account\""
+        return "Endpoint: $endpoint\nAccount: \"$account\""
     }
 
     /**

@@ -110,7 +110,7 @@ fun TransferLifecycleControl(
                     // A visually short action must still announce its complete
                     // exact target and engine to assistive-technology users.
                     contentDescription = (if (transfer.started) "Stop " else "Start ") +
-                        transfer.name + " on this rTorrent server"
+                        transfer.name + " on this rTorrent client"
                 },
                 icon = if (transfer.started) R.drawable.chunks_ic_stop else R.drawable.chunks_ic_play, stacked = false)
             // A torrent can have d.state=1 while d.is_active=0. Give a
@@ -128,16 +128,16 @@ fun TransferLifecycleControl(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         .semantics {
                             contentDescription = "Resume inactive " + transfer.name +
-                                " on this rTorrent server"
+                                " on this rTorrent client"
                         }
                 ) { Text("Resume inactive transfer…") }
             }
         }
         if (snapshotStale) {
-            Text("Refresh this stale server snapshot before changing a transfer.",
+            Text("Refresh this stale remote snapshot before changing a transfer.",
                 style = MaterialTheme.typography.bodySmall)
         } else if (attempted && !freshAfterAttempt && !pending) {
-            Text("This operation needs a new confirmed server snapshot before another Start or Stop.",
+            Text("This operation needs a new confirmed remote snapshot before another Start or Stop.",
                 style = MaterialTheme.typography.bodySmall)
         }
         if (confirmationFresh) {
@@ -151,7 +151,7 @@ fun TransferLifecycleControl(
                     Text(transfer.name, style = MaterialTheme.typography.bodyMedium)
                     Text("Exact infohash: " + transfer.hash,
                         style = MaterialTheme.typography.bodySmall)
-                    Text("The server will change this transfer's running state. Chunks will read it back and will not retry automatically.",
+                    Text("The remote client will change this transfer's running state. Chunks will read it back and will not retry automatically.",
                         style = MaterialTheme.typography.bodySmall)
                     Column(modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,13 +176,13 @@ fun TransferLifecycleControl(
                                                     ". That does not prove a peer connection or downloaded bytes."
                                             is LifecycleOutcome.Pending ->
                                                 if (requestedStarted && outcome.observedStarted)
-                                                    "rTorrent accepted Start, but active transfer state is not confirmed. It may be hashing, paused or queued. Inspect activity and server errors before any retry."
-                                                else "Server reports " + (if (outcome.observedStarted) "started" else "stopped") +
+                                                    "rTorrent accepted Start, but active transfer state is not confirmed. It may be hashing, paused or queued. Inspect activity and remote client errors before any retry."
+                                                else "Remote client reports " + (if (outcome.observedStarted) "started" else "stopped") +
                                                     ", not the requested state. Refresh before considering another action."
                                             is LifecycleOutcome.Uncertain ->
                                                 "RPC outcome uncertain. The operation may already have happened. Refresh before considering another action."
                                             null ->
-                                                "Could not verify the operation. Inspect the latest server state before retrying."
+                                                "Could not verify the operation. Inspect the latest remote state before retrying."
                                         }
                                     } finally {
                                         pending = false
@@ -206,7 +206,7 @@ fun TransferLifecycleControl(
                                     confirming = false
                                     // No command was sent, so do not manufacture an
                                     // attempted operation or a permanent UI lockout.
-                                    feedback = "The server snapshot changed or another command is pending. Refresh before trying again."
+                                    feedback = "The remote snapshot changed or another command is pending. Refresh before trying again."
                                 }
                             },
                             enabled = !pending && !snapshotStale,
@@ -258,7 +258,7 @@ fun TransferLifecycleControl(
                         } catch (cancel: CancellationException) {
                             throw cancel
                         } catch (_: Exception) {
-                            trafficError = "Could not obtain three stable exact-hash readings. No byte progress is inferred. Check server connectivity and retry read-only."
+                            trafficError = "Could not obtain three stable exact-hash readings. No byte progress is inferred. Check remote client connectivity and retry read-only."
                         } finally {
                             watchingTraffic = false
                             watchJob = null
@@ -327,7 +327,7 @@ fun TransferLifecycleControl(
                 }
                 if (trackerUnavailable) {
                     Text("This rTorrent gateway did not provide trustworthy tracker counters. " +
-                        "Inspect the server's tracker view for details.",
+                        "Inspect the remote client's tracker view for details.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -338,8 +338,8 @@ fun TransferLifecycleControl(
                                  else MaterialTheme.colorScheme.errorContainer)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp)) {
                     Text("Lifecycle result", fontWeight = FontWeight.Bold)
-                    Text(if (pending) "Checking the server's state…" else
-                        feedback ?: "Result unavailable; inspect server state.")
+                    Text(if (pending) "Checking the remote client's state…" else
+                        feedback ?: "Result unavailable; inspect remote state.")
                 }
             }
         }

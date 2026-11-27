@@ -100,7 +100,7 @@ class CanonicalRemoteFilesRefreshContinuityTest {
         } } } }
 
         rule.onNodeWithText("Files & priorities…").performClick()
-        rule.waitUntil(15_000) { rule.onAllNodesWithText("90 server-reported files").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("90 client-reported files").fetchSemanticsNodes().isNotEmpty() }
         rule.onNode(hasSetTextAction() and hasText("Search this transfer's files"))
             .performTextInput("Episode 77")
         rule.onNodeWithContentDescription("Change priority for file 78: Season 1/Episode 77.mkv")
@@ -146,12 +146,12 @@ class CanonicalRemoteFilesRefreshContinuityTest {
                 retainDuringRefresh = transient.value)
         } } } }
         rule.onNodeWithText("Files & priorities…").performClick()
-        rule.waitUntil(15_000) { rule.onAllNodesWithText("90 server-reported files").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("90 client-reported files").fetchSemanticsNodes().isNotEmpty() }
         rule.runOnIdle { stale.value = true; transient.value = false }
         rule.waitForIdle()
         assertTrue("An offline/locked/missing owner keeps no previous file list",
-            rule.onAllNodesWithText("90 server-reported files").fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithText("Waiting for a current server inventory", substring = true).assertExists()
+            rule.onAllNodesWithText("90 client-reported files").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Waiting for a current remote inventory", substring = true).assertExists()
         assertEquals(listOf("f.multicall"), methods.toList())
     }
 }

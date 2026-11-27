@@ -62,14 +62,14 @@ internal fun ServerToLocalCopyControl(
                         addressOverride)
                 }
             } catch (_: Exception) {
-                ServerToLocalCopy.Refused("Chunks could not read the server's peer details. Nothing changed.")
+                ServerToLocalCopy.Refused("Chunks could not read the remote client's peer details. Nothing changed.")
             } finally {
                 checking = false
             }
         }
     }
 
-    ActionTile(if (checking) "Checking the server…" else "Copy files to this device", ChunksColors.Yellow,
+    ActionTile(if (checking) "Checking the remote client…" else "Copy files to this device", ChunksColors.Yellow,
         onClick = { editingAddress = false; check(null) },
         enabled = !stale && !checking,
         modifier = Modifier.fillMaxWidth(),
@@ -78,9 +78,9 @@ internal fun ServerToLocalCopyControl(
     when (val current = plan) {
         is ServerToLocalCopy.Ready -> {
             Text("Chunks will download all " + Units.bytes(current.bytes) + " onto this device, " +
-                "directly from your server at " + current.peer + " (" + current.addressSource.label +
+                "directly from your remote client at " + current.peer + " (" + current.addressSource.label +
                 "), and verify every piece against " +
-                "the torrent's own hashes. The server transfer stays exactly as it is and keeps " +
+                "the torrent's own hashes. The remote transfer stays exactly as it is and keeps " +
                 "seeding; it uploads this data to the local device. This uses the local device's storage and " +
                 "network data, and other public peers may also contribute pieces.",
                 style = MaterialTheme.typography.bodySmall)
@@ -110,14 +110,14 @@ internal fun ServerToLocalCopyControl(
     }
     if (plan is ServerToLocalCopy.Ready && !editingAddress) {
         TextButton(onClick = { editingAddress = true }, enabled = !checking,
-            modifier = Modifier.heightIn(min = 48.dp)) { Text("Use a different server address…") }
+            modifier = Modifier.heightIn(min = 48.dp)) { Text("Use a different host address…") }
     }
     if (editingAddress) {
-        Text("Enter the IP address or hostname your server's BitTorrent client listens on " +
+        Text("Enter the IP address or hostname your remote client listens on " +
             "(your provider's dashboard may list it). Only this peer hint changes; nothing is sent " +
-            "to the server.", style = MaterialTheme.typography.bodySmall)
+            "to the remote client.", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(value = addressDraft, onValueChange = { addressDraft = it.take(253) },
-            label = { Text("Server peer address") }, singleLine = true,
+            label = { Text("Remote peer address") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { check(addressDraft) },

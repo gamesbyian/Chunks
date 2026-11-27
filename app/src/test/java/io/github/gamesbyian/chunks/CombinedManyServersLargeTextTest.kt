@@ -97,12 +97,12 @@ class CombinedManyServersLargeTextTest {
         // row scrolls horizontally; the final server stays reachable and toggles in place.
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
-        val last = androidx.compose.ui.test.hasContentDescription("Showing Server · Seedbox 12", substring = true)
+        val last = androidx.compose.ui.test.hasContentDescription("Showing Remote · Seedbox 12", substring = true)
         rule.onNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
             .performScrollToNode(last)
         rule.onNode(last).performClick()
         rule.waitForIdle()
-        rule.onNode(androidx.compose.ui.test.hasContentDescription("Hidden: Server · Seedbox 12", substring = true)).assertExists()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Hidden: Remote · Seedbox 12", substring = true)).assertExists()
         assertTrue("Toggling a chip never adds reads beyond one restore each",
             savedReads.get() <= profiles.size)
         assertNull(LocalEngineHolder.current())

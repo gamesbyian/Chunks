@@ -12,6 +12,10 @@ class OptionsSettingIndexTest {
         assertTrue(LocalOptionsShortcut.SERVER_NAMES in LocalOptionsShortcut.search("alias"))
         assertTrue(LocalOptionsShortcut.SERVER_BACKUP in LocalOptionsShortcut.search("server backup"))
         assertTrue(LocalOptionsShortcut.CONNECTIONS in LocalOptionsShortcut.search("remote login"))
+        // Remote-client terminology finds the same destinations; "server" stays a search alias.
+        assertTrue(LocalOptionsShortcut.SERVER_PLACES in LocalOptionsShortcut.search("remote client folder"))
+        assertTrue(LocalOptionsShortcut.SERVER_BACKUP in LocalOptionsShortcut.search("client backup"))
+        assertTrue(LocalOptionsShortcut.CONNECTIONS in LocalOptionsShortcut.search("remote client connection"))
     }
 
     @Test fun emptySearchShowsNoShortcuts() {

@@ -56,7 +56,7 @@ class UnifiedTransferCapabilityProbePanelTest {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme { Surface {
-                    UnifiedTransferDetailPanel(detail(), "Server · exact / rutorrent2",
+                    UnifiedTransferDetailPanel(detail(), "Remote · exact / rutorrent2",
                         onBack = {}, onCheckCapabilities = {
                             userTaps++
                             busy.value = true
@@ -73,11 +73,11 @@ class UnifiedTransferCapabilityProbePanelTest {
         rule.onNodeWithContentDescription("Hide technical details for this transfer")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
         val check = rule.onNodeWithContentDescription(
-            "Check capabilities for Server · exact / rutorrent2")
+            "Check capabilities for Remote · exact / rutorrent2")
         check.performScrollTo().performClick()
         assertEquals(1, userTaps)
         rule.onNodeWithText("Checking capabilities…").assertExists()
-        rule.onNodeWithContentDescription("Checking capabilities for Server · exact / rutorrent2")
+        rule.onNodeWithContentDescription("Checking capabilities for Remote · exact / rutorrent2")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress"))
             .assertIsNotEnabled()
         rule.runOnIdle {
@@ -128,7 +128,7 @@ class UnifiedTransferCapabilityProbePanelTest {
                 UnifiedTransferDetailPanel(detail(), "Saved, not signed in", onBack = {})
             } }
         }
-        rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
+        rule.onNodeWithText("Check client capabilities").assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         rule.onNodeWithText("Capabilities in this client").performScrollTo().assertExists()
     }
@@ -141,7 +141,7 @@ class UnifiedTransferCapabilityProbePanelTest {
             } }
         }
         rule.onNodeWithText("One exact transfer").assertDoesNotExist()
-        rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
+        rule.onNodeWithText("Check client capabilities").assertDoesNotExist()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
     }
 }
