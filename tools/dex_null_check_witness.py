@@ -77,12 +77,32 @@ def main() -> int:
     args = parser.parse_args()
     tool = dexdump_tool()
     suspects = []
+    observed_app_code = False
     with tempfile.TemporaryDirectory() as tmp, zipfile.ZipFile(args.apk) as apk:
-        for name in apk.namelist():
-            if re.fullmatch(r"classes\d*\.dex", name):
-                path = apk.extract(name, tmp)
-                dump = subprocess.run([tool, "-d", path], capture_output=True).stdout
-                suspects += scan(dump.decode("utf-8", "replace"), args.package)
+        entries = [name for name in apk.namelist() if re.fullmatch(r"classes\d*\.dex", name)]
+        if "classes.dex" not in entries or len(entries) != len(set(entries)):
+            print("CHUNKS_DEX_NULL_CHECK_WITNESS: unavailable (missing or duplicate DEX entries)", file=sys.stderr)
+            return 1
+        for name in entries:
+            path = apk.extract(name, tmp)
+            result = subprocess.run([tool, "-d", path], capture_output=True)
+            dump = result.stdout.decode("utf-8", "replace")
+            if result.returncode != 0 or not re.search(r"Class descriptor\s*:", dump):
+                print("CHUNKS_DEX_NULL_CHECK_WITNESS: unavailable (DEX dump failed or unrecognized)", file=sys.stderr)
+                return 1
+            # An individual library DEX need not contain app code, but the
+            # complete APK must have recognized app disassembly.
+            in_app_method = False
+            for line in dump.splitlines():
+                header = METHOD.search(line)
+                if header:
+                    in_app_method = args.package in header.group(1)
+                elif in_app_method and INSTRUCTION.search(line):
+                    observed_app_code = True
+            suspects += scan(dump, args.package)
+    if not observed_app_code:
+        print("CHUNKS_DEX_NULL_CHECK_WITNESS: unavailable (no app instructions observed)", file=sys.stderr)
+        return 1
     print(f"CHUNKS_DEX_NULL_CHECK_WITNESS: suspects={len(suspects)}")
     for method, at, checked, receiver, writer in suspects:
         print(f"  {method} @{at}: null check of v{checked} (last {writer}), call through v{receiver}")
