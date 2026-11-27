@@ -23,6 +23,10 @@
 | Accessibility / functional interaction | Mixed acceptance | Keep necessary entrypoints/error states operable and testable now; batch elective style polish later | FEATURE-EXPERIENCE-CONTRACT |
 | Release signing and distribution | Debug APK workflow exists | Finish release-candidate exact-head QA, signing/update identity/distribution | #10 |
 
+## Detailed requirement inventory
+
+The [detailed product requirements annex](TECHNICAL-COMPLETENESS-REQUIREMENTS.md) extends this historical baseline to the entire approved Android product scope, including specialist workflows, implied cross-cutting journeys and all 58 adopted advanced requirement IDs. Reconcile live source and evidence before selecting work; [#2176](https://github.com/gamesbyian/Chunks/issues/2176) tracks closure and R5 in the queue ranks it.
+
 ## Explicit post-core / separate expansion scope
 
 Transmission, qBittorrent and Deluge now have actual write-capable integrated Android client support and live development Seedhost checks. **Further remote engines beyond Local/rTorrent/Transmission/qBittorrent/Deluge** remain a separately scoped expansion under #660, not an unimplemented foundation of the current five-client application. Android TV (#663), per-transfer widgets (#689), Companion (#3), editorial catalogs (#403), font lab (#347) and variant research (#151) remain optional/conditional scope. Do not silently remove approved features or call release-ready merely because remote adapters are implemented.
