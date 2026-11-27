@@ -255,7 +255,13 @@ class RemoteAddSessionContinuityTest {
                 rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_CHECK_STATUS) and isEnabled())
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS).performClick()
+            // #2138: the screen's read-only progress poll keeps changing the layout above this
+            // button, so a positional tap could land elsewhere (the controller then recorded no
+            // check at all). Invoke the real onClick through its semantics action, the TalkBack
+            // path, and require that the controller received the person's check.
+            rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS)
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.waitUntil(5_000) { UniversalAddAttemptController.recentEvents().any { it.startsWith("manual") } }
             try {
                 rule.waitUntil(15_000) {
                     session.coordinator.phase ==
