@@ -119,12 +119,4 @@ internal object LocalFileInspection {
             if ((ch.isISOControl() && ch !in "\n\r\t") ||
                 Character.getType(ch) == Character.FORMAT.toInt()) '\uFFFD' else ch
         }.joinToString("")
-
-    internal enum class Comparison { NONE, INVALID, MATCHES, DIFFERS }
-    internal fun compare(observed: String, supplied: String): Comparison {
-        val value = supplied.trim()
-        if (value.isEmpty()) return Comparison.NONE
-        if (!value.matches(Regex("[0-9a-fA-F]{64}"))) return Comparison.INVALID
-        return if (value.equals(observed, ignoreCase = true)) Comparison.MATCHES else Comparison.DIFFERS
-    }
 }
