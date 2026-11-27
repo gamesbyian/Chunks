@@ -101,7 +101,11 @@ class FooterImeInstalledInstrumentedTest {
                     "foregroundIsChunks=${foregroundIsChunks ?: "unavailable"}; " +
                     "externalLauncherAnrVisible=${externalLauncherAnrVisible ?: "unavailable"}; " +
                     "externalLauncherWaitClicked=$externalLauncherWaitClicked. " +
-                    "No input or transfer write was attempted.", timeout)
+                    "No input or transfer write was attempted.\n" +
+                    // #1974: the digest withholds messages; this allowlisted line carries only booleans.
+                    "CHUNKS_SAFE_DIAG ime-focus foregroundIsChunks=${foregroundIsChunks ?: "unavailable"} " +
+                    "launcherAnr=${externalLauncherAnrVisible ?: "unavailable"} " +
+                    "waitClicked=$externalLauncherWaitClicked", timeout)
         }
         input.performScrollTo().performTouchInput { click() }
         val keyboardAppeared = runCatching { rule.waitUntil(15_000) { imeShown() } }.isSuccess
