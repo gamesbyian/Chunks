@@ -208,7 +208,7 @@ object MediaTrackInspector {
                         val scale = if (v1) (if (b.size >= 24) be(b, 20, 4) else 0) else be(b, 12, 4)
                         val dur = if (v1) (if (b.size >= 32) be(b, 24, 8) else 0) else be(b, 16, 4)
                         if (scale > 0 && dur > 0) duration = try {
-                            Math.addExact(Math.multiplyExact(dur / scale, 1000), (dur % scale) * 1000 / scale)
+                            Math.addExact(Math.multiplyExact(dur / scale, 1000L), (dur % scale) * 1000 / scale)
                         } catch (_: ArithmeticException) { null } } }
                     "trak" -> mp4Track(::read, ::be, ::boxes, s2, e2)?.let { tracks.add(it) }
                 }
