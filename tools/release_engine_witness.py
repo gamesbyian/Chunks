@@ -14,7 +14,15 @@ from urllib.parse import urlencode
 
 import libtorrent as lt
 
-from interop.loopback_tracker import Handler
+from interop.loopback_tracker import Handler, SWARMS
+
+# The emulator host alias reaches the runner's loopback listener without
+# advertising a guest loopback peer that can be mistaken for self.
+HOST_ALIAS = "10.0.2.2"
+
+
+class ReleaseTracker(Handler):
+    peer_address = bytes([10, 0, 2, 2])
 
 PACKAGE = "io.github.gamesbyian.chunks"
 PEER_PORT = 18792
@@ -54,7 +62,7 @@ def until(seconds, condition, label):
     end = time.monotonic() + seconds
     while time.monotonic() < end:
         result = condition()
-        if result:
+        if result is not None and result is not False:
             return result
         time.sleep(0.5)
     raise RuntimeError(label)
@@ -133,20 +141,21 @@ def seed(root):
           "the isolated peer did not verify its own pieces")
     info_hash = hashlib.sha1(lt.bencode(info)).hexdigest()
     magnet = "magnet:?xt=urn:btih:" + info_hash + "&" + urlencode(
-        {"dn": PAYLOAD_NAME, "tr": tracker, "x.pe": f"127.0.0.1:{PEER_PORT}"})
+        {"dn": PAYLOAD_NAME, "tr": f"http://{HOST_ALIAS}:{TRACKER_PORT}/announce",
+         "x.pe": f"{HOST_ALIAS}:{PEER_PORT}"})
     return session, handle, magnet, info_hash, payload
 
 
 def witness(root):
     root.mkdir(parents=True, exist_ok=False)
-    tracker = ThreadingHTTPServer(("127.0.0.1", TRACKER_PORT), Handler)
+    tracker = ThreadingHTTPServer(("127.0.0.1", TRACKER_PORT), ReleaseTracker)
     Thread(target=tracker.serve_forever, daemon=True).start()
-    forwarded = []
+    peer_session = peer = None
+    info_hash = None
+    latest = {"file_bytes": -1, "bytes_match": False, "readable": False}
     try:
         peer_session, peer, magnet, info_hash, payload = seed(root)
-        for port in (PEER_PORT, TRACKER_PORT):
-            adb("reverse", "--no-rebind", f"tcp:{port}", f"tcp:{port}")
-            forwarded.append(port)
+        print("CHUNKS_RELEASE_ENGINE: seed_verified=true transport=emulator_host_alias", flush=True)
         shell("test", "!", "-e", ANDROID_FILE)
         shell("am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", magnet, "-n", f"{PACKAGE}/.MainActivity")
         tap_add(magnet)
@@ -155,19 +164,44 @@ def witness(root):
             try:
                 content = adb("exec-out", "cat " + shlex.quote(ANDROID_FILE))
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+                latest.update(file_bytes=-1, bytes_match=False, readable=False)
                 return False
-            return content == payload and peer.status().total_payload_upload >= len(payload)
+            latest.update(file_bytes=len(content), bytes_match=content == payload, readable=True)
+            return latest["bytes_match"] and peer.status().total_payload_upload >= len(payload)
 
         until(120, downloaded, "verified fixture bytes and independent peer upload were not observed")
         print(f"CHUNKS_RELEASE_ENGINE: infohash={info_hash} peer_port={peer_session.listen_port()} "
               f"bytes={len(payload)} sha256={hashlib.sha256(payload).hexdigest()} "
               f"peer_upload={peer.status().total_payload_upload}", flush=True)
+    except Exception:
+        # Retain the first failed stage plus independent, fixture-only facts.
+        # Never replace the original exception with a diagnostic error.
+        try:
+            if peer is not None:
+                status = peer.status()
+                announced = SWARMS.get(bytes.fromhex(info_hash), {})
+                print("CHUNKS_RELEASE_ENGINE_DIAG: "
+                      f"seed={status.is_seeding} peer_upload={status.total_payload_upload} "
+                      f"peers={status.num_peers} tracker_announcers={len(announced)} "
+                      f"file_readable={latest['readable']} file_bytes={latest['file_bytes']} "
+                      f"bytes_match={latest['bytes_match']}", flush=True)
+            final_window = window()
+            if final_window is not None:
+                Path("app/build/outputs/release-engine-final-ui.xml").write_bytes(
+                    ET.tostring(final_window, encoding="utf-8"))
+                print("CHUNKS_RELEASE_ENGINE_DIAG: final_ui_captured=true", flush=True)
+            else:
+                print("CHUNKS_RELEASE_ENGINE_DIAG: final_ui_captured=false", flush=True)
+        except Exception as diagnostic:
+            print(f"CHUNKS_RELEASE_ENGINE_DIAG: unavailable={type(diagnostic).__name__}", flush=True)
+        raise
     finally:
         tracker.shutdown()
         tracker.server_close()
-        for port in forwarded:
-            subprocess.run(["adb", "reverse", "--remove", f"tcp:{port}"], check=False, timeout=15)
-        shell("rm", "-f", UI_FILE)
+        try:
+            shell("rm", "-f", UI_FILE)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            pass
 
 
 if __name__ == "__main__":
