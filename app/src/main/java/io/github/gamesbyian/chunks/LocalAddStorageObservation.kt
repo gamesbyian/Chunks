@@ -82,16 +82,17 @@ internal fun rememberLocalAddStoragePreflight(
     root: File?,
     target: File?,
     placeRevision: Int,
-    resumeRevision: Int
+    resumeRevision: Int,
+    read: (Context, File, File, Long) -> LocalAddStoragePreflight = LocalAddStorageObservation::read
 ): LocalAddStoragePreflight? {
     val context = LocalContext.current
-    val result = remember(context, review, root, target, placeRevision, resumeRevision) {
+    val result = remember(context, review, root, target, placeRevision, resumeRevision, read) {
         mutableStateOf<LocalAddStoragePreflight?>(null)
     }
     LaunchedEffect(result) {
         if (review != null && root != null && target != null) {
             result.value = withContext(Dispatchers.IO) {
-                LocalAddStorageObservation.read(context, root, target, review.preview.sizeBytes)
+                read(context, root, target, review.preview.sizeBytes)
             }
         }
     }
