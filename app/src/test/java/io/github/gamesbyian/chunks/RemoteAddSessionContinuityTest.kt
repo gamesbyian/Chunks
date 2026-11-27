@@ -317,10 +317,10 @@ class RemoteAddSessionContinuityTest {
         val oldSource = "magnet:?xt=urn:btih:$oldHash"
         val newSource = mutableStateOf("magnet:?xt=urn:btih:" + "cd".repeat(20))
         val session = RemoteAddSession(account, "/srv")
-        val target = io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedServer(account)
+        val target = io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedRemoteClient(account)
         val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
             io.github.gamesbyian.chunks.model.UniversalAddSource.magnet(oldSource, oldHash),
-            target, io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom("/srv"),
+            target, io.github.gamesbyian.chunks.model.UniversalAddPlace.RemoteCustom("/srv"),
             startWhenAdded = true, allowArtwork = true)
         assertTrue(session.coordinator.review(intent,
             io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(target.environment),

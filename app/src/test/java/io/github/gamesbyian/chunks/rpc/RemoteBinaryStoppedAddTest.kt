@@ -131,7 +131,7 @@ class RemoteBinaryStoppedAddTest {
             val remote = RTorrentRemote(RemoteCredentials(
                 "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
             assertEquals(RemoteAddOutcome.VerifiedStopped(expected, destination),
-                remote.loadStoppedTorrentBytes(bytes, destination, useServerDefault = true))
+                remote.loadStoppedTorrentBytes(bytes, destination, useRemoteDefault = true))
             assertArrayEquals(bytes, inspectedBinary)
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.raw_verbose",
                 "d.multicall2", "d.hash", "d.directory", "d.is_multi_file", "d.state",

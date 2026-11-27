@@ -16,14 +16,14 @@ import kotlinx.coroutines.CancellationException
  * the first Add whose outcome is not confirmed, because that load may have
  * landed: it must be reconciled from a fresh server list, never repeated.
  */
-internal object BatchServerCopy {
+internal object BatchRemoteCopy {
     const val MAX_ITEMS = 100
 
     data class Item(val infoHash: String, val name: String)
 
     enum class Result(val label: String) {
         ADDED("added stopped on the remote client"),
-        ALREADY_ON_SERVER("already on the remote client (not added again)"),
+        ALREADY_ON_REMOTE_CLIENT("already on the remote client (not added again)"),
         NO_DEFINITION("skipped: no exact torrent definition on the local device"),
         UNCONFIRMED("sent, but not confirmed — check the remote list; not retried"),
         NOT_RUN("not attempted (the batch stopped earlier)")
@@ -34,14 +34,14 @@ internal object BatchServerCopy {
      * must prove the job is registered before creating a verified Move journal
      * or carrying its presentation preferences. */
     fun observedDestinationForMove(result: Result, seen: TransferMove.Observation): Boolean =
-        (result == Result.ADDED || result == Result.ALREADY_ON_SERVER) &&
+        (result == Result.ADDED || result == Result.ALREADY_ON_REMOTE_CLIENT) &&
             seen == TransferMove.Observation.Present
 
     data class Report(val results: List<Pair<Item, Result>>) {
         val stoppedEarly: Boolean get() = results.any { it.second == Result.NOT_RUN }
         fun count(result: Result) = results.count { it.second == result }
         fun summary(): String = buildString {
-            append("${count(Result.ADDED)} added, ${count(Result.ALREADY_ON_SERVER)} already there")
+            append("${count(Result.ADDED)} added, ${count(Result.ALREADY_ON_REMOTE_CLIENT)} already there")
             count(Result.NO_DEFINITION).takeIf { it > 0 }?.let { append(", $it skipped") }
             count(Result.UNCONFIRMED).takeIf { it > 0 }?.let { append(", $it unconfirmed") }
             count(Result.NOT_RUN).takeIf { it > 0 }?.let { append(", $it not attempted") }
@@ -86,7 +86,7 @@ internal object BatchServerCopy {
             } catch (_: Exception) { null }
             results += item to when (outcome) {
                 is RemoteAddOutcome.VerifiedStopped -> Result.ADDED
-                is RemoteAddOutcome.AlreadyPresent -> Result.ALREADY_ON_SERVER
+                is RemoteAddOutcome.AlreadyPresent -> Result.ALREADY_ON_REMOTE_CLIENT
                 else -> { stopped = true; Result.UNCONFIRMED }
             }
         }

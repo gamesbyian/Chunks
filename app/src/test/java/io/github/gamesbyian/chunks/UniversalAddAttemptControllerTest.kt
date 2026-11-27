@@ -34,7 +34,7 @@ class UniversalAddAttemptControllerTest {
         val coordinator = UniversalAddCoordinator()
         val target = UniversalAddTarget.ProtocolClient(EnvironmentId(profile))
         val intent = UniversalAddIntent(UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash), target,
-            UniversalAddPlace.ServerCustom("/dl"), startWhenAdded = false, allowArtwork = false)
+            UniversalAddPlace.RemoteCustom("/dl"), startWhenAdded = false, allowArtwork = false)
         return coordinator to requireNotNull(UniversalAddAdmission.authorize(coordinator, intent,
             EnvironmentCapabilities.unprobed(target.environment), EnvironmentAvailability.LIVE, { true }, 1L).ticket)
     }

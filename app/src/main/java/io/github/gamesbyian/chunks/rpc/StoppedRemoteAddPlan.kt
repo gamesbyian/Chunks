@@ -11,7 +11,7 @@ class StoppedRemoteAddPlan private constructor(
     val destination: String,
     val kind: Kind,
     /** True means omit d.directory.set. Empty destination means a native default not yet observed. */
-    val useServerDefault: Boolean = false
+    val useRemoteDefault: Boolean = false
 ) {
     enum class Kind { MAGNET, ARCHIVE_TORRENT_URL }
 
@@ -54,12 +54,12 @@ class StoppedRemoteAddPlan private constructor(
          * Empty explicitly selects the native default without inventing a path;
          * exact-session readback must discover the actual payload directory.
          */
-        fun fromMagnetAtServerDefault(magnet: String, observedDefault: String = ""): StoppedRemoteAddPlan {
+        fun fromMagnetAtRemoteDefault(magnet: String, observedDefault: String = ""): StoppedRemoteAddPlan {
             require(observedDefault.isEmpty() || RuTorrentDeleteData.safeDirectory(observedDefault, allowRoot = true)) {
                 "Invalid observed server default"
             }
             return StoppedRemoteAddPlan(magnet, magnetIdentity(magnet),
-                observedDefault, Kind.MAGNET, useServerDefault = true)
+                observedDefault, Kind.MAGNET, useRemoteDefault = true)
         }
 
         /** The expected hash MUST come from validated fixture metainfo, never a filename. */

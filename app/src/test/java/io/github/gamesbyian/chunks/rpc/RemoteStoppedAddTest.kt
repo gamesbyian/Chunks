@@ -193,8 +193,8 @@ class RemoteStoppedAddTest {
         try {
             val remote = RTorrentRemote(RemoteCredentials(
                 "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, dir)
-            assertTrue(plan.useServerDefault)
+            val plan = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet, dir)
+            assertTrue(plan.useRemoteDefault)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.verbose",
                 "d.multicall2", "d.hash", "d.directory", "d.is_multi_file", "d.state",
@@ -226,7 +226,7 @@ class RemoteStoppedAddTest {
         try {
             val remote = RTorrentRemote(RemoteCredentials(
                 "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, dir)
+            val plan = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet, dir)
             try {
                 remote.loadStopped(plan)
                 fail("Must refuse a stale server default before load.verbose")

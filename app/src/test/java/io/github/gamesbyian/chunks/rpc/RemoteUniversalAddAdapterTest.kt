@@ -37,12 +37,12 @@ class RemoteUniversalAddAdapterTest {
     private fun ticket(
         scope: String,
         source: UniversalAddSource = UniversalAddSource.magnet(magnet, hash),
-        where: UniversalAddPlace = UniversalAddPlace.ServerCustom(place),
+        where: UniversalAddPlace = UniversalAddPlace.RemoteCustom(place),
         start: Boolean = true,
         allowArtwork: Boolean = true
     ): UniversalAddCoordinator.Ticket {
         val intent = UniversalAddIntent(
-            source, UniversalAddTarget.AuthenticatedServer(scope), where,
+            source, UniversalAddTarget.AuthenticatedRemoteClient(scope), where,
             startWhenAdded = start, allowArtwork = allowArtwork)
         val coordinator = UniversalAddCoordinator()
         assertTrue(coordinator.review(
@@ -391,7 +391,7 @@ class RemoteUniversalAddAdapterTest {
         withFixture { adapter, approved, methods, _ ->
             val wrongScopes = listOf(
                 "https://host.example/rutorrent3/plugins/httprpc/action.php\u0000owner",
-                (approved.intent.target as UniversalAddTarget.AuthenticatedServer).accountScope + "other")
+                (approved.intent.target as UniversalAddTarget.AuthenticatedRemoteClient).accountScope + "other")
             for (scope in wrongScopes) {
                 val wrong = ticket(scope)
                 try {
@@ -411,7 +411,7 @@ class RemoteUniversalAddAdapterTest {
             val bytes = ("d4:infod6:lengthi5e4:name8:test.txt12:piece lengthi16384e6:pieces20:" +
                 "01234567890123456789ee").toByteArray()
             val original = bytes.copyOf()
-            val scope = (approved.intent.target as UniversalAddTarget.AuthenticatedServer).accountScope
+            val scope = (approved.intent.target as UniversalAddTarget.AuthenticatedRemoteClient).accountScope
             val goodHash = TorrentMetainfoReader.preview(bytes).infoHashV1
             val frozen = UniversalAddSource.metainfo(bytes, goodHash)
             val accepted = ticket(scope, frozen)
@@ -503,12 +503,12 @@ class RemoteUniversalAddAdapterTest {
     @Test fun preWireAccountRefusalDisarmsOnlyThatTicketAndNeverReplaysIt() =
         withFixture { adapter, approved, methods, _ ->
             val badAccountScope = (approved.intent.target as
-                UniversalAddTarget.AuthenticatedServer).accountScope + "other"
+                UniversalAddTarget.AuthenticatedRemoteClient).accountScope + "other"
             val coordinator = UniversalAddCoordinator()
             val intent = UniversalAddIntent(
                 source = approved.intent.source,
-                target = UniversalAddTarget.AuthenticatedServer(badAccountScope),
-                place = UniversalAddPlace.ServerCustom(place),
+                target = UniversalAddTarget.AuthenticatedRemoteClient(badAccountScope),
+                place = UniversalAddPlace.RemoteCustom(place),
                 startWhenAdded = true, allowArtwork = true)
             assertTrue(coordinator.review(intent,
                 EnvironmentCapabilities.unprobed(intent.target.environment),
@@ -736,7 +736,7 @@ class RemoteUniversalAddAdapterTest {
                 adapter, approved, methods, _ ->
             // A different principal on the same exact endpoint is a VALID
             // authenticated scope, but never authority for this transport.
-            val firstScope = (approved.intent.target as UniversalAddTarget.AuthenticatedServer)
+            val firstScope = (approved.intent.target as UniversalAddTarget.AuthenticatedRemoteClient)
                 .accountScope
             val unrelated = ticket(firstScope + "other-principal")
             try {

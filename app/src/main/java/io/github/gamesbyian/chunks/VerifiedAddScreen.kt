@@ -433,7 +433,7 @@ internal fun VerifiedAddScreen(
     // Precedence: this Add's folder > the person's saved default for this exact account >
     // rTorrent's reported absolute default. Never a guessed or fabricated path.
     val usingSavedDefault = destination.isBlank() && savedDefaultPlace != null
-    val useServerDefault = destination.isBlank() && savedDefaultPlace == null
+    val useRemoteDefault = destination.isBlank() && savedDefaultPlace == null
     val effectiveDestination = when {
         destination.isNotBlank() -> destination
         savedDefaultPlace != null -> savedDefaultPlace
@@ -451,7 +451,7 @@ internal fun VerifiedAddScreen(
             val link = if (useFile && selectedTorrent != null && selectedBytes != null)
                 "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
             else (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: sourceText
-            if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, effectiveDestination)
+            if (useRemoteDefault) StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(link, effectiveDestination)
             else StoppedRemoteAddPlan.fromMagnet(link, effectiveDestination)
         }
     } catch (failure: IllegalArgumentException) {
@@ -762,7 +762,7 @@ internal fun VerifiedAddScreen(
                 Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
                 Text("Destination: " + when {
                     plan.destination.isEmpty() -> "Remote default; actual folder checked after Add."
-                    plan.useServerDefault -> plan.destination + " (remote default; no directory override)"
+                    plan.useRemoteDefault -> plan.destination + " (remote default; no directory override)"
                     else -> plan.destination + " (custom parent folder)"
                 }, style = MaterialTheme.typography.bodySmall)
             }
@@ -939,11 +939,11 @@ internal fun VerifiedAddScreen(
                     val reviewedSource = if (bytes != null)
                         UniversalAddSource.metainfo(bytes, requireNotNull(selectedTorrent).infoHashV1)
                     else UniversalAddSource.magnet(plan.source, plan.expectedInfoHash)
-                    val target = UniversalAddTarget.AuthenticatedServer(
+                    val target = UniversalAddTarget.AuthenticatedRemoteClient(
                         finishInOrderScope ?: remote.addAccountScope())
-                    val reviewedPlace = if (plan.useServerDefault)
-                        UniversalAddPlace.ServerDefault(plan.destination)
-                    else UniversalAddPlace.ServerCustom(plan.destination)
+                    val reviewedPlace = if (plan.useRemoteDefault)
+                        UniversalAddPlace.RemoteDefault(plan.destination)
+                    else UniversalAddPlace.RemoteCustom(plan.destination)
                     val intent = UniversalAddIntent(
                         reviewedSource, target, reviewedPlace, requestedStart, allowArtwork)
                     intent
@@ -1105,7 +1105,7 @@ internal fun VerifiedAddScreen(
                             } catch (_: Exception) { /* Keep the original uncertain result. */ }
                         }
                         orderNote?.let { outcome = outcome.orEmpty() + " " + it }
-                        if (!plan.useServerDefault &&
+                        if (!plan.useRemoteDefault &&
                             verifiedCustomPlaceOutcome(result, priorityBeforeStart = prioritiesFirst)) {
                             val saved = runCatching {
                                 onCustomPlaceVerified(plan.destination)
@@ -1177,8 +1177,8 @@ internal fun VerifiedAddScreen(
                 // healthy metadata wait as a storage/Start failure.
                 val nativePlaceAwaitingConfirmation = uncertain &&
                     attemptedTicket?.intent?.startWhenAdded == true &&
-                    attemptedTicket?.intent?.place is UniversalAddPlace.ServerDefault &&
-                    (attemptedTicket?.intent?.place as? UniversalAddPlace.ServerDefault)
+                    attemptedTicket?.intent?.place is UniversalAddPlace.RemoteDefault &&
+                    (attemptedTicket?.intent?.place as? UniversalAddPlace.RemoteDefault)
                         ?.observedDefaultPath?.isEmpty() == true &&
                     observedProgress?.registered == true && observedProgress?.started == true &&
                     observedProgress?.traffic?.active == true &&
@@ -1300,7 +1300,7 @@ internal fun VerifiedAddScreen(
                         when (draft.coordinator.phase) {
                             UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> {
                                 verifiedHash = ticket.intent.source.expectedInfoHash
-                                val custom = ticket.intent.place as? UniversalAddPlace.ServerCustom
+                                val custom = ticket.intent.place as? UniversalAddPlace.RemoteCustom
                                 outcome = when {
                                     readback != UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED ->
                                         "Previous exact-session confirmation is retained. No Start or Add was resent."

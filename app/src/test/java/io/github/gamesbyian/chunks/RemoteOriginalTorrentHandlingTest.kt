@@ -49,9 +49,9 @@ class RemoteOriginalTorrentHandlingTest {
         io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket> {
         val session = RemoteAddSession(account, "/srv")
         session.bindOriginalDocument(document, bytes)
-        val target = UniversalAddTarget.AuthenticatedServer(account)
+        val target = UniversalAddTarget.AuthenticatedRemoteClient(account)
         val intent = UniversalAddIntent(UniversalAddSource.metainfo(bytes, hash), target,
-            UniversalAddPlace.ServerCustom("/srv"), startWhenAdded = false, allowArtwork = true)
+            UniversalAddPlace.RemoteCustom("/srv"), startWhenAdded = false, allowArtwork = true)
         assertTrue(session.coordinator.review(intent, EnvironmentCapabilities.unprobed(target.environment),
             EnvironmentAvailability.LIVE).accepted)
         assertTrue(session.coordinator.authorizeByUser())

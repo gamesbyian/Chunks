@@ -22,7 +22,7 @@ class UniversalAddTransferReceiptTest {
         val hash = "ab".repeat(20)
         val source = UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash)
         val intent = UniversalAddIntent(source, UniversalAddTarget.ProtocolClient(environment),
-            UniversalAddPlace.ServerDefault("/downloads"), startWhenAdded = false, allowArtwork = true)
+            UniversalAddPlace.RemoteDefault("/downloads"), startWhenAdded = false, allowArtwork = true)
         assertNull(coordinator.transferReceipt(environment, "Exact client", submitting = true))
         val ticket = requireNotNull(UniversalAddAdmission.authorize(coordinator, intent,
             EnvironmentCapabilities.unprobed(environment), EnvironmentAvailability.LIVE,

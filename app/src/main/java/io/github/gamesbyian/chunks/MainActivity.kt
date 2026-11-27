@@ -1494,7 +1494,7 @@ internal fun ChunksApp(
                     }.getOrNull() ?: "your remote client") { bytes ->
                         val place = connectedRemote.defaultDirectory()
                             ?: error("The remote client reports no default download location")
-                        connectedRemote.loadStoppedTorrentBytes(bytes, place, useServerDefault = true)
+                        connectedRemote.loadStoppedTorrentBytes(bytes, place, useRemoteDefault = true)
                     },
                 moveServer = if (connectedRemote == null || localRemoteScope == null) null
                     else LocalMoveServer(aliasScope) { hash ->

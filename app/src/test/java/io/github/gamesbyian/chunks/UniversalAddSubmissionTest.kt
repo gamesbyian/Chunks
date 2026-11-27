@@ -28,7 +28,7 @@ class UniversalAddSubmissionTest {
     private fun intent(profile: String) = UniversalAddIntent(
         UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash),
         UniversalAddTarget.ProtocolClient(EnvironmentId(profile)),
-        UniversalAddPlace.ServerCustom("/dl"), startWhenAdded = false, allowArtwork = false)
+        UniversalAddPlace.RemoteCustom("/dl"), startWhenAdded = false, allowArtwork = false)
 
     private class Gated(val release: CompletableDeferred<Unit> = CompletableDeferred()) : UniversalAddExecutor<String> {
         var writes = 0

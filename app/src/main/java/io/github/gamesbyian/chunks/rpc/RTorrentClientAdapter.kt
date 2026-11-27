@@ -88,7 +88,7 @@ internal class RTorrentClientAdapter(
         val observedDefault = if (directory == null) remote.defaultDirectory().orEmpty() else ""
         val result: Any = when (val source = request.source) {
             is ClientAddSource.Magnet -> {
-                val plan = if (directory == null) StoppedRemoteAddPlan.fromMagnetAtServerDefault(source.uri, observedDefault)
+                val plan = if (directory == null) StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(source.uri, observedDefault)
                     else StoppedRemoteAddPlan.fromMagnet(source.uri, directory)
                 if (request.startNow) remote.loadStarted(plan) else remote.loadStopped(plan)
             }

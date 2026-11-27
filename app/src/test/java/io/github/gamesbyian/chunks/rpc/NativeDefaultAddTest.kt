@@ -13,7 +13,7 @@ class NativeDefaultAddTest {
     @Test fun unreadableDefaultDoesNotPreventOneNativeLoadAndExactPlaceReadback() = runBlocking {
         FakeRTorrent(directoryDefault = null).use { fixture ->
             val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet)
+            val plan = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet)
             assertEquals("Unknown is not a fabricated absolute directory", "", plan.destination)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, "/home/user"), remote.loadStopped(plan))
             assertEquals(1, fixture.loads().size)
@@ -28,7 +28,7 @@ class NativeDefaultAddTest {
     @Test fun anUnresolvableRelativeDirectoryCannotBecomeVerifiedOrTriggerAnotherAdd() = runBlocking {
         FakeRTorrent(directoryDefault = "", unsetDefaultLandsIn = ".").use { fixture ->
             val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet)
+            val plan = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet)
             val result = remote.loadStopped(plan)
             assertFalse(result is RemoteAddOutcome.VerifiedStopped)
             assertFalse(remote.reconcileStoppedAdd(plan) is RemoteAddOutcome.VerifiedStopped)

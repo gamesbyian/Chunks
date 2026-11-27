@@ -53,7 +53,7 @@ internal class SnapshotRemoteDefinitionRestore(
         val hash: String get() = original.infoHashV1
         val name: String get() = original.originalName
         val place: String get() = plan.destination
-        val serverDefault: Boolean get() = plan.useServerDefault
+        val serverDefault: Boolean get() = plan.useRemoteDefault
     }
 
     /** Read-only. A missing complete-session row is required before offering an Add review. */
@@ -84,7 +84,7 @@ internal class SnapshotRemoteDefinitionRestore(
             val preview = TorrentMetainfoReader.preview(original.copyVerifiedBytes())
             val magnet = "magnet:?xt=urn:btih:$hash"
             val plan = if (selectedPlace == null)
-                StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, place)
+                StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet, place)
             else StoppedRemoteAddPlan.fromMagnet(magnet, place)
             val directory = if (preview.files.isNotEmpty()) place.trimEnd('/') + "/" + original.originalName else place
             val archiveKey = SnapshotManifestV1.definitionArchiveFingerprint(archive)
@@ -109,7 +109,7 @@ internal class SnapshotRemoteDefinitionRestore(
             val loaded = readOrNull {
                 remote.loadStoppedTorrentBytes(
                     review.original.copyVerifiedBytes(), review.place,
-                    useServerDefault = review.serverDefault,
+                    useRemoteDefault = review.serverDefault,
                     beforeLoad = {
                         // Hidden jobs must never become restore candidates.
                         val destinationVerified = if (review.serverDefault)
@@ -184,7 +184,7 @@ internal class SnapshotRemoteDefinitionRestore(
             val hash = item.infoHashV1
             val magnet = "magnet:?xt=urn:btih:$hash"
             val plan = if (selectedPlace == null)
-                StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, place)
+                StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet, place)
             else StoppedRemoteAddPlan.fromMagnet(magnet, place)
             val original = withContext(Dispatchers.Default) {
                 SnapshotVerifiedTorrentDocumentV1.prepare(archive, hash)

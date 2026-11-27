@@ -38,7 +38,7 @@ class RTorrentDisposableNativeDefaultTest {
         Files.write(payload, data)
         try {
             // Empty observed path models a denied/empty default getter. No setter is sent.
-            val result = remote.loadStoppedTorrentBytes(bytes, "", useServerDefault = true)
+            val result = remote.loadStoppedTorrentBytes(bytes, "", useRemoteDefault = true)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, parent.toString()), result)
             assertEquals("The daemon really uses a relative native root", ".", remote.call("d.directory", listOf(hash)))
             val row = remote.listTransfers().single { it.hash.equals(hash, true) }
@@ -57,7 +57,7 @@ class RTorrentDisposableNativeDefaultTest {
                 remote.requestHashRecheck(hash, row.name, row.directory) is RemoteHashRecheckOutcome.Uncertain)
             remote.setStarted(hash, true)
             assertNull("Native default is not a wrong-Place contradiction",
-                remote.readExactAddContradiction(StoppedRemoteAddPlan.fromMagnetAtServerDefault(
+                remote.readExactAddContradiction(StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(
                     "magnet:?xt=urn:btih:$hash")))
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
                 remote.eraseFromSession(hash, row.name, row.directory))

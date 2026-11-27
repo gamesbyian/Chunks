@@ -33,8 +33,8 @@ internal object ProtocolUniversalAddAdapter {
             is ClientAddSource.Magnet -> UniversalAddSource.magnet(source.uri, source.infoHash)
         },
         target = UniversalAddTarget.ProtocolClient(EnvironmentId(clientId)),
-        place = request.directory?.let { UniversalAddPlace.ServerCustom(it) }
-            ?: UniversalAddPlace.ServerDefault(clientDefaultFolder.orEmpty()),
+        place = request.directory?.let { UniversalAddPlace.RemoteCustom(it) }
+            ?: UniversalAddPlace.RemoteDefault(clientDefaultFolder.orEmpty()),
         startWhenAdded = request.startNow,
         allowArtwork = allowArtwork
     )
@@ -81,8 +81,8 @@ internal class ProtocolAddExecutor(
         require(ticket.intent.target is UniversalAddTarget.ProtocolClient) { "Not a protocol client ticket" }
         val place = ticket.intent.place
         require(ticket.intent.startWhenAdded == request.startNow && when (place) {
-            is UniversalAddPlace.ServerCustom -> ClientHashes.sameDirectory(place.absolutePath, request.directory)
-            is UniversalAddPlace.ServerDefault -> request.directory == null
+            is UniversalAddPlace.RemoteCustom -> ClientHashes.sameDirectory(place.absolutePath, request.directory)
+            is UniversalAddPlace.RemoteDefault -> request.directory == null
             else -> false
         }) { "The request is not the reviewed ticket's Place and Start" }
     }
@@ -93,8 +93,8 @@ internal class ProtocolAddExecutor(
     ): ClientOperationOutcome {
         requireTicket(ticket)
         val place = ticket.intent.place
-        val reviewedDefault = (place as? UniversalAddPlace.ServerDefault)?.reviewedProtocolFolder()
-        if (place is UniversalAddPlace.ServerDefault && reviewedDefault == null) {
+        val reviewedDefault = (place as? UniversalAddPlace.RemoteDefault)?.reviewedProtocolFolder()
+        if (place is UniversalAddPlace.RemoteDefault && reviewedDefault == null) {
             return ClientOperationOutcome.Refused(request.source.infoHash,
                 "The default folder could not be confirmed; choose an explicit folder")
         }
@@ -185,7 +185,7 @@ internal class ProtocolAddObserver(
 }
 
 private fun UniversalAddPlace.reviewedProtocolFolder(): String? = when (this) {
-    is UniversalAddPlace.ServerCustom -> absolutePath
-    is UniversalAddPlace.ServerDefault -> runCatching { ClientHashes.requireDirectory(observedDefaultPath) }.getOrNull()
+    is UniversalAddPlace.RemoteCustom -> absolutePath
+    is UniversalAddPlace.RemoteDefault -> runCatching { ClientHashes.requireDirectory(observedDefaultPath) }.getOrNull()
     else -> null
 }

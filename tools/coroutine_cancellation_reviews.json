@@ -480,7 +480,7 @@
   "reason": "readLocalFile is a non-suspend (MediaFileHint) -> ByteArray? lambda."
  },
  {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/BatchServerCopy.kt",
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/BatchRemoteCopy.kt",
   "kind": "broad-catch",
   "fingerprint": "ffbd0b63a4fa6bc7a28c0584",
   "count": 1,

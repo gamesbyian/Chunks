@@ -19,7 +19,7 @@ class UniversalAddLifecycleTest {
     private val source = UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash)
     private val targets = listOf(
         UniversalAddTarget.Local,
-        UniversalAddTarget.AuthenticatedServer("https://host.invalid/RPC2\u0000exact-user"),
+        UniversalAddTarget.AuthenticatedRemoteClient("https://host.invalid/RPC2\u0000exact-user"),
         UniversalAddTarget.ProtocolClient(EnvironmentId("qbittorrent-profile")))
 
     private fun ticketFor(target: UniversalAddTarget, start: Boolean = true):
@@ -27,7 +27,7 @@ class UniversalAddLifecycleTest {
         val coordinator = UniversalAddCoordinator()
         val intent = UniversalAddIntent(source, target,
             if (target === UniversalAddTarget.Local) UniversalAddPlace.Local("reviewed-place")
-            else UniversalAddPlace.ServerCustom("/reviewed"), start, allowArtwork = false)
+            else UniversalAddPlace.RemoteCustom("/reviewed"), start, allowArtwork = false)
         val caps = if (target === UniversalAddTarget.Local) EnvironmentCapabilities.local()
             else EnvironmentCapabilities.unprobed(target.environment)
         val ticket = requireNotNull(UniversalAddAdmission.authorize(coordinator, intent, caps,

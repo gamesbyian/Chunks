@@ -70,13 +70,13 @@ internal sealed class UniversalAddTarget {
         override fun toString(): String = "Local"
     }
 
-    class AuthenticatedServer(val accountScope: String) : UniversalAddTarget() {
+    class AuthenticatedRemoteClient(val accountScope: String) : UniversalAddTarget() {
         override val environment: EnvironmentId =
             requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(accountScope)) {
                 "Remote Add requires the exact authenticated endpoint and principal"
             }
 
-        override fun toString(): String = "AuthenticatedServer(private)"
+        override fun toString(): String = "AuthenticatedRemoteClient(private)"
     }
 
     /** One exact Transmission/qBittorrent/Deluge client profile (stable identity, never a label). */
@@ -98,13 +98,13 @@ internal sealed class UniversalAddPlace {
     }
 
     /** Empty means the user selected the native default, whose path requires post-Add observation. */
-    class ServerDefault(val observedDefaultPath: String = "") : UniversalAddPlace() {
-        override fun toString(): String = "ServerDefault(private)"
+    class RemoteDefault(val observedDefaultPath: String = "") : UniversalAddPlace() {
+        override fun toString(): String = "RemoteDefault(private)"
     }
 
-    class ServerCustom(val absolutePath: String) : UniversalAddPlace() {
+    class RemoteCustom(val absolutePath: String) : UniversalAddPlace() {
         init { require(absolutePath.startsWith("/") && absolutePath.isNotBlank()) }
-        override fun toString(): String = "ServerCustom(private)"
+        override fun toString(): String = "RemoteCustom(private)"
     }
 }
 
@@ -216,7 +216,7 @@ internal class UniversalAddCoordinator {
             EnvironmentOperation.ADD_MAGNET else EnvironmentOperation.ADD_TORRENT_FILE
         val add = capabilities.decide(operation, availability)
         if (!add.allowed) return ReviewDecision(false, add.explanation)
-        if (intent.place is UniversalAddPlace.ServerDefault) {
+        if (intent.place is UniversalAddPlace.RemoteDefault) {
             val default = capabilities.decide(EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER, availability)
             if (!default.allowed) return ReviewDecision(false, default.explanation)
         }

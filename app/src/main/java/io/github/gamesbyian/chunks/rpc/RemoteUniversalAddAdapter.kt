@@ -37,14 +37,14 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
      */
     fun planFor(ticket: UniversalAddCoordinator.Ticket): StoppedRemoteAddPlan {
         val intent = ticket.intent
-        val account = intent.target as? UniversalAddTarget.AuthenticatedServer
+        val account = intent.target as? UniversalAddTarget.AuthenticatedRemoteClient
             ?: throw IllegalArgumentException("Remote Add requires an authenticated server target")
         check(account.accountScope == remote.addAccountScope()) {
             "The rTorrent account or exact numbered route changed; reconnect before Add or readback"
         }
         val (destination, serverDefault) = when (val place = intent.place) {
-            is UniversalAddPlace.ServerCustom -> place.absolutePath to false
-            is UniversalAddPlace.ServerDefault -> place.observedDefaultPath to true
+            is UniversalAddPlace.RemoteCustom -> place.absolutePath to false
+            is UniversalAddPlace.RemoteDefault -> place.observedDefaultPath to true
             else -> throw IllegalArgumentException("Remote Add requires a server Place")
         }
         val source = intent.source
@@ -64,7 +64,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
             }
         }
         val plan = if (serverDefault)
-            StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, destination)
+            StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(link, destination)
         else StoppedRemoteAddPlan.fromMagnet(link, destination)
         require(plan.expectedInfoHash.equals(source.expectedInfoHash, ignoreCase = true)) {
             "Reviewed source and target identity disagree"
@@ -114,7 +114,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
         }
         suspend fun loadStoppedPreflighted(): RemoteAddOutcome = try {
             if (bytes == null) remote.loadStopped(plan, enterLoad)
-            else remote.loadStoppedTorrentBytes(bytes, plan.destination, plan.useServerDefault, enterLoad)
+            else remote.loadStoppedTorrentBytes(bytes, plan.destination, plan.useRemoteDefault, enterLoad)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (refusal: RemotePreWriteRefusal) {
@@ -126,7 +126,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
         if (intent.startWhenAdded && !prioritiesBeforeStart) {
             val outcome = try {
                 if (bytes == null) remote.loadStarted(plan, enterLoad)
-                else remote.loadStartedTorrentBytes(bytes, plan.destination, plan.useServerDefault, enterLoad)
+                else remote.loadStartedTorrentBytes(bytes, plan.destination, plan.useRemoteDefault, enterLoad)
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (refusal: RemotePreWriteRefusal) {
@@ -194,7 +194,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
                 val stopped = verified.result as? RemoteAddOutcome.VerifiedStopped ?: return null
                 if (ticket.intent.startWhenAdded ||
                     !stopped.hash.equals(plan.expectedInfoHash, ignoreCase = true)) return null
-                if (plan.useServerDefault && plan.destination.isEmpty()) {
+                if (plan.useRemoteDefault && plan.destination.isEmpty()) {
                     val fresh = remote.reconcileStoppedAdd(plan)
                         as? RemoteAddOutcome.VerifiedStopped ?: return null
                     if (fresh != stopped) return null
