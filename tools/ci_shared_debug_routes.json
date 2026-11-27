@@ -123,6 +123,13 @@
     ],
     "api29": [
       "app/src/main/AndroidManifest.xml",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalPayloadAccess.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalPayloadProvider.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalPayloadAccessPanel.kt",
+      "app/src/main/java/io/github/gamesbyian/chunks/LocalAddStorageObservation.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPayloadAccessInstrumentedTest.kt",
+      "app/src/androidTest/java/io/github/gamesbyian/chunks/external/ExternalPayloadReaderActivity.java",
+      "app/src/androidTest/AndroidManifest.xml",
       "app/src/main/java/io/github/gamesbyian/chunks/SharedTorrentDocument.kt",
       "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledOpenWithHandoffInstrumentedTest.kt",
       "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlace*.kt",

@@ -37,7 +37,7 @@ class LocalIntakeDispatchTest(unittest.TestCase):
         expected = {
             "tools/installed_source_archive.sh": 1,
             "tools/installed_partial_resume_death.sh": 2,
-            "tools/android10_downloads_instrumentation.sh": 7,
+            "tools/android10_downloads_instrumentation.sh": 8,
             "tools/local_intake_journey.sh": 3,
             "tools/android10_downloads_revocation.sh": 2,
         }

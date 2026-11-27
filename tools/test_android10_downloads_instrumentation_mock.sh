@@ -62,6 +62,10 @@ case "$1" in
             [[ "$MOCK_BOUNDED_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
             printf 'OK (2 tests)\n'
             ;;
+          *LocalPayloadAccessInstrumentedTest*)
+            [[ "$MOCK_PAYLOAD_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
+            printf 'OK (2 tests)\n'
+            ;;
           *) exit 1 ;;
         esac
         ;;
@@ -73,14 +77,14 @@ esac
 MOCK
 chmod +x "$temp/bin/adb"
 export PATH="$temp/bin:$PATH" MOCK_DIR="$temp/device"
-export MOCK_UNINSTALL_STICKY=0 MOCK_INSTALL_FAIL=0 MOCK_GETPROP_FAIL=0 MOCK_PM_LIST_FAIL=0 MOCK_SKIP=0 MOCK_RESUME_SKIP=0 MOCK_JOURNAL_SKIP=0 MOCK_EVENT_SKIP=0 MOCK_BOUNDED_SKIP=0
+export MOCK_UNINSTALL_STICKY=0 MOCK_INSTALL_FAIL=0 MOCK_GETPROP_FAIL=0 MOCK_PM_LIST_FAIL=0 MOCK_SKIP=0 MOCK_RESUME_SKIP=0 MOCK_JOURNAL_SKIP=0 MOCK_EVENT_SKIP=0 MOCK_BOUNDED_SKIP=0 MOCK_PAYLOAD_SKIP=0
 : > "$MOCK_DIR/instruments"
 bash -n "$root/android10_downloads_instrumentation.sh"
 bash -n "$root/test_android10_downloads_instrumentation_mock.sh"
 
 output="$(bash "$root/android10_downloads_instrumentation.sh")"
 [[ "$output" == *'CHUNKS_ANDROID10_DOWNLOADS: API 29'* ]]
-[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 7 ]]
+[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 8 ]]
 
 refuse_before_tests() {
   : > "$MOCK_DIR/instruments"
@@ -132,4 +136,11 @@ if bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-bounded-rea
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 7 ]]
-echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+19+3+2+2+11+2 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event/bounded-read cases refused'
+export MOCK_BOUNDED_SKIP=0 MOCK_PAYLOAD_SKIP=1
+: > "$MOCK_DIR/instruments"
+if bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-payload.log" 2>&1; then
+  echo 'Skipped local payload access API29 instrumentation was accepted' >&2
+  exit 1
+fi
+[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 8 ]]
+echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+19+3+2+2+11+2+2 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event/bounded-read/payload-access cases refused'
