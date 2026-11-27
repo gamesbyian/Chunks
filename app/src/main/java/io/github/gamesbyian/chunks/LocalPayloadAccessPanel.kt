@@ -84,6 +84,9 @@ internal fun LocalPayloadAccessPanel(infoHash: String, engine: () -> LocalDetail
                 try {
                     context.startActivity(LocalPayloadAccess.chooser(uri, prepared.mime, share))
                     notice = "Android chooser opened. The receiving app determines whether it can read this file."
+                } catch (cancel: CancellationException) {
+                    LocalPayloadAccess.revoke(context, uri)
+                    throw cancel
                 } catch (_: Exception) {
                     LocalPayloadAccess.revoke(context, uri)
                     notice = "No compatible chooser could be opened. File access was revoked."
