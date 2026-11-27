@@ -1,5 +1,6 @@
 """Offline checks of tools/release_shrink_smoke.sh with a fake adb (no emulator)."""
 from pathlib import Path
+import hashlib
 import os
 import subprocess
 import tempfile
@@ -61,9 +62,9 @@ class ReleaseShrinkSmokeTests(unittest.TestCase):
         result = subprocess.run(["bash", str(SCRIPT), "x.apk"], cwd=work, env=env,
                                 capture_output=True, text=True, timeout=60)
         if result.returncode == 0:
-            receipt = (output / 'release-installed-identity.txt').read_text().splitlines()
-            self.assertEqual(len(receipt), 2)
-            self.assertEqual(receipt[0].split('=')[1], receipt[1].split('=')[1])
+            receipt = (output / 'release-installed-identity.txt').read_text().strip()
+            self.assertEqual(receipt, 'CHUNKS_INSTALLED_APK: matched size_bytes=9 sha256=' +
+                             hashlib.sha256(b'candidate').hexdigest())
         return result
 
     def test_other_processes_noise_does_not_fail_a_live_rendered_app(self):
@@ -90,7 +91,7 @@ class ReleaseShrinkSmokeTests(unittest.TestCase):
     def test_wrong_installed_bytes_and_unexpected_splits_fail(self):
         r = self.run_smoke(pid="4242", global_log="", app_log="", installed=b'other')
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn("installed APK hash differs", r.stdout)
+        self.assertIn("CHUNKS_INSTALLED_APK: byte-mismatch", r.stdout)
         r = self.run_smoke(pid="4242", global_log="", app_log="", split=True)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("exactly one installed base APK", r.stdout)
