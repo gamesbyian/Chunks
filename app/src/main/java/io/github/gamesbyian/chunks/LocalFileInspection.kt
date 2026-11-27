@@ -46,22 +46,17 @@ internal object LocalFileInspection {
             status.savePath == review.savePath
 
     fun review(engine: LocalTorrentEngine, infoHash: String): Review? = try {
-        val status = engine.status(infoHash)?.takeIf { ready(it, infoHash) }
-        if (status == null) null
+        val inventory = engine.readVerifiedFileInventory(infoHash, LocalLibraryCopySelection.MAX_FILES)
+        val status = inventory?.status?.takeIf { ready(it, infoHash) }
+        if (inventory == null || status == null) null
         else {
-            val rows = engine.files(infoHash, LocalLibraryCopySelection.PROBE_LIMIT)
-            if (rows == null || rows.size > LocalLibraryCopySelection.MAX_FILES ||
-                rows.map { it.index }.toSet().size != rows.size ||
-                rows.map { it.path }.toSet().size != rows.size) null
-            else {
-                val files = rows.filter {
-                    it.wanted && it.sizeBytes in 0..LocalPinnedPayloadRead.MAX_BYTES &&
-                        it.doneBytes == it.sizeBytes
-                }
-                val review = Review(status.infoHash, status.nativeReviewToken, status.savePath, files)
-                review.takeIf { files.isNotEmpty() &&
-                    engine.status(infoHash)?.let { current -> matches(current, review) } == true }
+            val files = inventory.files.filter {
+                it.wanted && it.sizeBytes in 0..LocalPinnedPayloadRead.MAX_BYTES &&
+                    it.doneBytes == it.sizeBytes
             }
+            val review = Review(status.infoHash, status.nativeReviewToken, status.savePath, files)
+            review.takeIf { files.isNotEmpty() &&
+                engine.status(infoHash)?.let { current -> matches(current, review) } == true }
         }
     } catch (_: Exception) { null }
 

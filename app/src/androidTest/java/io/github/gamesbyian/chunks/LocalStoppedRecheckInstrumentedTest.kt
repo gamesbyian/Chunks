@@ -236,6 +236,56 @@ class LocalStoppedRecheckInstrumentedTest {
             downloaded <= total - verified + 2L * pieceSize && downloaded >= total - (a.size + 120_000L) - pieceSize)
     }
 
+    /** Native proof: an unfinished torrent can contain individually
+     * hash-verified volumes, while same-size corrupt bytes prove nothing. */
+    @Test fun verifiedFileInventoryDistinguishesCompleteVolumesFromCorruptAndMissingFiles() {
+        val seedParent = File(work, "verified-volume-seed").apply { mkdirs() }
+        val root = File(seedParent, "Archive fixture").apply { mkdirs() }
+        val pieceSize = 32 * 1024
+        val size = 2 * pieceSize
+        val names = listOf("Set.part01.rar", "Set.part02.rar", "Unrelated.bin")
+        val original = names.mapIndexed { index, name ->
+            name to ByteArray(size).also { Random(31L + index).nextBytes(it) }
+        }.toMap()
+        original.forEach { (name, bytes) -> File(root, name).writeBytes(bytes) }
+        val torrent = TorrentBuilder().path(root).pieceSize(pieceSize).generate().entry().bencode()
+
+        val destination = File(work, "verified-volume-destination").apply { mkdirs() }
+        val files = File(destination, root.name).apply { mkdirs() }
+        val good = File(files, names[0]).apply { writeBytes(original.getValue(names[0])) }
+        val corrupt = ByteArray(size) { 7 }
+        val wrong = File(files, names[1]).apply { writeBytes(corrupt) }
+        val local = engine()
+        val added = (local.addStoppedChecked(torrent, destination) as LocalAddResult.AddedStopped).status
+        assertTrue(local.beginStoppedVerification(added.infoHash))
+        waitFor {
+            local.status(added.infoHash)?.let {
+                it.stopped && !it.stopsAfterCheck && it.state != LocalTransferState.CHECKING &&
+                    it.doneBytes == size.toLong()
+            } == true
+        }
+
+        val inventory = requireNotNull(local.readVerifiedFileInventory(added.infoHash))
+        assertEquals(added.infoHash, inventory.status.infoHash)
+        assertEquals(local.status(added.infoHash)!!.nativeReviewToken, inventory.status.nativeReviewToken)
+        assertEquals(destination.canonicalPath, File(inventory.status.savePath).canonicalPath)
+        assertTrue(inventory.status.progressPpm in 1 until 1_000_000)
+        val byName = inventory.files.associateBy { it.path.substringAfterLast('/') }
+        assertEquals(names.toSet(), byName.keys)
+        assertEquals(size.toLong(), byName.getValue(names[0]).doneBytes)
+        assertEquals(0L, byName.getValue(names[1]).doneBytes)
+        assertEquals(0L, byName.getValue(names[2]).doneBytes)
+        assertEquals(size.toLong(), byName.getValue(names[1]).sizeBytes)
+        assertEquals("The file limit must refuse an incomplete inventory", null,
+            local.readVerifiedFileInventory(added.infoHash, maxFiles = 2))
+        assertEquals(null, local.readVerifiedFileInventory("0".repeat(40)))
+        assertEquals("Whole-torrent checksum/share admission remains closed", null,
+            LocalFileInspection.review(local, added.infoHash))
+        assertEquals(0L, local.status(added.infoHash)!!.payloadDownloadedBytes)
+        assertArrayEquals(original.getValue(names[0]), good.readBytes())
+        assertArrayEquals(corrupt, wrong.readBytes())
+    }
+
     @Test fun stoppedRecheckCountsPiecesWithoutDownloadingAndStartRepairs() {
         val seedParent = File(work, "seed").apply { mkdirs() }
         val root = File(seedParent, "Chunks recheck fixture").apply { mkdirs() }
