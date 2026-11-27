@@ -32,6 +32,8 @@ import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
+import io.github.gamesbyian.chunks.model.RarVolumeCandidates
+import io.github.gamesbyian.chunks.model.RarVolumeStructure
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -53,6 +55,9 @@ internal interface LocalDetailsPort {
     fun dhtEnabled(): Boolean = false
     fun checksumReview(infoHash: String): LocalFileInspection.Review? = null
     fun archiveReview(infoHash: String): LocalArchiveInventory.Review? = null
+    fun inspectArchiveHeaders(review: LocalArchiveInventory.Review,
+        candidate: RarVolumeCandidates.Candidate) =
+        RarVolumeStructure.UNCONFIRMED
     fun prepareFileAccess(context: android.content.Context, review: LocalFileInspection.Review,
         file: LocalTransferFile, cancelled: () -> Boolean): LocalPayloadAccess.Prepared? = null
     fun inspectChecksum(review: LocalFileInspection.Review, file: LocalTransferFile,
@@ -78,6 +83,9 @@ internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : 
     override fun dhtEnabled() = engine.isDhtEnabled()
     override fun checksumReview(infoHash: String) = LocalFileInspection.review(engine, infoHash)
     override fun archiveReview(infoHash: String) = LocalArchiveInventory.review(engine, infoHash)
+    override fun inspectArchiveHeaders(review: LocalArchiveInventory.Review,
+        candidate: RarVolumeCandidates.Candidate) =
+        LocalArchiveInventory.inspectHeaders(engine, review, candidate)
     override fun prepareFileAccess(context: android.content.Context, review: LocalFileInspection.Review,
         file: LocalTransferFile, cancelled: () -> Boolean) =
         LocalPayloadAccess.prepare(context, engine, review, file, cancelled)

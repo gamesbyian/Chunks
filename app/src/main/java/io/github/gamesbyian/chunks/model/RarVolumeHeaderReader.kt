@@ -28,7 +28,9 @@ internal object RarVolumeHeaderReader {
         val multiVolume: Boolean? = null,
         /** One-based; null for old continuation volumes without number. */
         val ordinal: Int? = null,
-        val nextVolume: Boolean? = null
+        val nextVolume: Boolean? = null,
+        val splitBefore: Boolean = false,
+        val splitAfter: Boolean = false
     )
 
     private val sig4 = byteArrayOf(0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0)
@@ -75,6 +77,7 @@ internal object RarVolumeHeaderReader {
         var multi = false
         var first = false
         var sawMain = false
+        var splitBefore = false
         var splitAfter = false
         var sawFile = false
         repeat(MAX_BLOCKS) {
@@ -116,6 +119,7 @@ internal object RarVolumeHeaderReader {
                     if (type == 0x74) {
                         if (!multi && flags and 3 != 0) refuse()
                         if (splitAfter || ((first || sawFile) && flags and 1 != 0)) refuse()
+                        if (!sawFile) splitBefore = flags and 1 != 0
                         splitAfter = flags and 2 != 0
                         sawFile = true
                     }
@@ -136,7 +140,7 @@ internal object RarVolumeHeaderReader {
                     if (cursor != size || dataStart != input.size) refuse()
                     if (number != null && ((!multi && number != 1) || (first && number != 1))) refuse()
                     return Result(Status.HEADER_CHAIN_OBSERVED, Format.RAR4, multi,
-                        number ?: if (!multi || first) 1 else null, next)
+                        number ?: if (!multi || first) 1 else null, next, splitBefore, splitAfter)
                 }
                 else -> refuse()
             }
@@ -164,6 +168,7 @@ internal object RarVolumeHeaderReader {
         var multi = false
         var ordinal = 1
         var sawMain = false
+        var splitBefore = false
         var splitAfter = false
         var sawFile = false
         repeat(MAX_BLOCKS) {
@@ -214,6 +219,7 @@ internal object RarVolumeHeaderReader {
                     if (type == 2L) {
                         if (!multi && flags and 0x18L != 0L) refuse()
                         if (splitAfter || ((ordinal == 1 || sawFile) && flags and 8L != 0L)) refuse()
+                        if (!sawFile) splitBefore = flags and 8L != 0L
                         splitAfter = flags and 16L != 0L
                         sawFile = true
                     }
@@ -242,7 +248,8 @@ internal object RarVolumeHeaderReader {
                     val padding = input.size - next
                     if (padding != 0L && (!more || padding > 4096L ||
                         input.exact(next, padding.toInt()).any { it != 0.toByte() })) refuse()
-                    return Result(Status.HEADER_CHAIN_OBSERVED, Format.RAR5, multi, ordinal, more)
+                    return Result(Status.HEADER_CHAIN_OBSERVED, Format.RAR5, multi, ordinal, more,
+                        splitBefore, splitAfter)
                 }
                 else -> refuse()
             }

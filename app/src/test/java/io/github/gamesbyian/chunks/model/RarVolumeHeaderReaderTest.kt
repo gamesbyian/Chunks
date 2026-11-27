@@ -57,10 +57,10 @@ class RarVolumeHeaderReaderTest {
         val last = signature4 + main4(1) + file4(bytes(3, 4), 1) + end4(false, 2)
         assertEquals(RarVolumeHeaderReader.Result(
             RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED,
-            RarVolumeHeaderReader.Format.RAR4, true, 1, true), inspect(first))
+            RarVolumeHeaderReader.Format.RAR4, true, 1, true, splitAfter = true), inspect(first))
         assertEquals(RarVolumeHeaderReader.Result(
             RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED,
-            RarVolumeHeaderReader.Format.RAR4, true, 2, false), inspect(last))
+            RarVolumeHeaderReader.Format.RAR4, true, 2, false, splitBefore = true), inspect(last))
         val unknownOrdinal = signature4 + main4(1) + file4(bytes(5), 1) + header4(0x7b, 0)
         assertNull(inspect(unknownOrdinal).ordinal)
     }
@@ -70,10 +70,10 @@ class RarVolumeHeaderReaderTest {
         val last = signature5 + main5(true, 2) + file5(bytes(3, 4), 8) + end5(false)
         assertEquals(RarVolumeHeaderReader.Result(
             RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED,
-            RarVolumeHeaderReader.Format.RAR5, true, 1, true), inspect(first))
+            RarVolumeHeaderReader.Format.RAR5, true, 1, true, splitAfter = true), inspect(first))
         assertEquals(RarVolumeHeaderReader.Result(
             RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED,
-            RarVolumeHeaderReader.Format.RAR5, true, 2, false), inspect(last))
+            RarVolumeHeaderReader.Format.RAR5, true, 2, false, splitBefore = true), inspect(last))
         assertEquals(RarVolumeHeaderReader.Result(
             RarVolumeHeaderReader.Status.HEADER_CHAIN_OBSERVED,
             RarVolumeHeaderReader.Format.RAR5, false, 1, false),

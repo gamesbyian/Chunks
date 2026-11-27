@@ -30,15 +30,18 @@ class LocalArchiveInventoryInstrumentedTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-    @Test fun canonicalDetailsShowsNamesOnlyAndGapsFromActualNativeRegistration() {
+    @Test fun canonicalDetailsInspectsNativeVerifiedVolumeHeadersAndKeepsFilenameGaps() {
         val root = File(context.cacheDir, "rar-inventory-" + System.nanoTime()).apply { assertTrue(mkdir()) }
         val folder = File(root, "Source").apply { assertTrue(mkdir()) }
-        // Deliberately not RAR archives: a filename and native completion
-        // counter must never be represented as archive integrity.
+        // These name-only byte fixtures are independently verified by libtorrent.
+        // Keep them alongside a real compressed set to distinguish the observations.
         val contents = listOf("Extra.rar", "Extra.r00", "Film.part01.rar", "Film.part03.rar", "Unrelated.bin")
             .mapIndexed { index, name ->
                 File(folder, name) to ByteArray(32_768).also { Random(100L + index).nextBytes(it) }
-            }.toMap()
+            }.toMap() + listOf("Verified.part1.rar", "Verified.part2.rar").associate { name ->
+                File(folder, name) to InstrumentationRegistry.getInstrumentation().context.assets
+                    .open("rar-volume-review/$name").use { it.readBytes() }
+            }
         contents.forEach { (file, bytes) -> file.writeBytes(bytes) }
         val engine = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0"))
         try {
@@ -52,12 +55,12 @@ class LocalArchiveInventoryInstrumentedTest {
                 Thread.sleep(100)
             }
             val review = requireNotNull(LocalArchiveInventory.review(engine, hash))
-            assertEquals(2, review.candidates.size)
+            assertEquals(3, review.candidates.size)
             assertEquals(1_000_000, review.torrentProgressPpm)
             assertTrue(review.allFilesVerified)
             assertEquals(2, review.candidates.first().listedCompleteCount)
-            assertEquals(1, review.candidates.last().missingCount)
-            assertEquals(2, review.candidates.last().firstMissing)
+            assertEquals(1, review.candidates[1].missingCount)
+            assertEquals(2, review.candidates[1].firstMissing)
             assertNull(LocalArchiveInventory.review(engine, "0".repeat(40)))
 
             val fence = LocalMutationFence.revision
@@ -81,9 +84,22 @@ class LocalArchiveInventoryInstrumentedTest {
             }
             compose.onNodeWithText(namesOnly).assertExists()
             compose.onNodeWithText("Filename candidates and native hash-verified piece counts.", substring = true).assertExists()
+            val inspect = "Inspect this group’s volume headers"
+            compose.onNodeWithText(inspect).performScrollTo().performClick()
+            compose.waitUntil(30_000) {
+                compose.onAllNodes(hasText("Volume headers could not be confirmed from the verified files."))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             compose.onNodeWithText("Next group").performScrollTo().performClick()
             compose.onNodeWithText("Missing volume number 2 (1 gap in listed numbering).").assertExists()
             compose.onNodeWithText(namesOnly).assertDoesNotExist()
+            compose.onNodeWithText(inspect).assertDoesNotExist()
+            compose.onNodeWithText("Next group").performScrollTo().performClick()
+            compose.onNodeWithText(inspect).performScrollTo().performClick()
+            compose.waitUntil(30_000) {
+                compose.onAllNodes(hasText("Volume headers agree on order and a final volume. Archive identity and integrity are unknown."))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
             assertEquals(LocalTransferState.SEEDING, engine.status(hash)?.state)
             contents.forEach { (file, bytes) -> assertArrayEquals(bytes, file.readBytes()) }
         } finally {
