@@ -207,7 +207,9 @@ object MediaTrackInspector {
                         val v1 = b[0].toInt() == 1
                         val scale = if (v1) (if (b.size >= 24) be(b, 20, 4) else 0) else be(b, 12, 4)
                         val dur = if (v1) (if (b.size >= 32) be(b, 24, 8) else 0) else be(b, 16, 4)
-                        if (scale > 0 && dur > 0) duration = dur * 1000 / scale } }
+                        if (scale > 0 && dur > 0) duration = try {
+                            Math.addExact(Math.multiplyExact(dur / scale, 1000), (dur % scale) * 1000 / scale)
+                        } catch (_: ArithmeticException) { null } } }
                     "trak" -> mp4Track(::read, ::be, ::boxes, s2, e2)?.let { tracks.add(it) }
                 }
             }
@@ -229,12 +231,17 @@ object MediaTrackInspector {
                             if (b.size >= o + 2) { val p = be(b, o, 2).toInt()
                                 val code = String(charArrayOf((((p shr 10) and 31) + 0x60).toChar(), (((p shr 5) and 31) + 0x60).toChar(), ((p and 31) + 0x60).toChar()))
                                 lang = code.takeIf { it.all { c -> c in 'a'..'z' } && it != "und" } } } }
-                        "hdlr" -> read(ms, 12).let { b -> if (b.size >= 12) handler = String(b, 8, 4, Charsets.ISO_8859_1) }
+                        "hdlr" -> read(ms, minOf(12L, me - ms).toInt()).let { b -> if (b.size >= 12) handler = String(b, 8, 4, Charsets.ISO_8859_1) }
                         "minf" -> boxes(ms, me) { n, ns, ne -> if (n == "stbl") boxes(ns, ne) { st, ss, se ->
-                            if (st == "stsd") read(ss, 64).let { b -> if (b.size >= 16) {
-                                codec = String(b, 12, 4, Charsets.ISO_8859_1)
-                                // Audio sample entry: channelcount at +16 and samplerate (16.16) at +24 of the entry body.
-                                if (b.size >= 16 + 8 + 20) { ch = be(b, 16 + 8 + 8, 2).toInt(); rate = (be(b, 16 + 8 + 16, 4) shr 16).toInt() }
+                            if (st == "stsd") read(ss, minOf(64L, se - ss).toInt()).let { b -> if (b.size >= 16 && be(b, 4, 4) > 0) {
+                                val entrySize = be(b, 8, 4)
+                                if (entrySize >= 8 && entrySize <= se - ss - 8) {
+                                    codec = String(b, 12, 4, Charsets.ISO_8859_1)
+                                    // Audio fields must be within this sample entry, not a sibling.
+                                    if (entrySize >= 36 && b.size >= 44) {
+                                        ch = be(b, 32, 2).toInt(); rate = (be(b, 40, 4) shr 16).toInt()
+                                    }
+                                }
                             } } } }
                     }
                 }
