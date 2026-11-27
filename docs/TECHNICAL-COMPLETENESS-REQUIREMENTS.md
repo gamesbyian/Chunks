@@ -63,7 +63,7 @@ These are the individually adopted Fxx.yy identifiers in the three canonical con
 | Requirement | Initial disposition | Queue cohort | Next evidence / missing boundary |
 | --- | --- | --- | --- |
 | F03.12 — nested/encrypted archives | P | P2 | Bounded ZIP exists; explicit modern/legacy multipart RAR4/RAR5 set detection/order, nested/encrypted/other supported formats, missing/corrupt/mixed volume refusal, bombs and collision tests. |
-| F03.13 — independent checksum and metadata inspection | P | P1 | Accessible independent checksums and inert bounded NFO/manifest inspection. |
+| F03.13 — independent checksum and metadata inspection | P | P1 | #2184 merged canonical Local Details inspection of completed wanted files of complete Local transfers (0–64 GiB, two pinned reads, SHA-256/size and 64 KiB inert text previews), hosted JVM/R8, native Add and storage API29/35 regression green. Continue legacy checksum/SFV rows, broader file contexts, authenticated remote bytes, manifest parsing and physical proof. |
 | F03.14 — cross-file pieces and layout | P | P1 | Actual cross-file piece verification plus explanatory skipped-boundary UI. |
 | F03.20 — shared backing/link detection | P | P1 | Local inode accounting exists; shared-link risk and remote evidence before writes. |
 | F03.24 — remote path translation | U | P1 | Explicit per-profile path mapping with reversible verified roots and escape negatives. |
