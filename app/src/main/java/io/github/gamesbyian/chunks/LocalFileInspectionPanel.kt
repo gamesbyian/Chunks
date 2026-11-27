@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import kotlinx.coroutines.CancellationException
@@ -45,6 +46,8 @@ internal fun LocalFileInspectionPanel(
     var outcome by remember(infoHash) { mutableStateOf<LocalFileInspection.Outcome?>(null) }
     var notice by remember(infoHash) { mutableStateOf<String?>(null) }
     var supplied by remember(infoHash) { mutableStateOf("") }
+    var includeLegacy by remember(infoHash) { mutableStateOf(false) }
+    var comparisonAlgorithm by remember(infoHash) { mutableStateOf(LocalChecksumComparison.Algorithm.SHA256) }
     var page by remember(infoHash) { mutableStateOf(0) }
     var task by remember(infoHash) { mutableStateOf<Job?>(null) }
     val progressFlow = remember(infoHash) { MutableStateFlow(0L) }
@@ -104,6 +107,13 @@ internal fun LocalFileInspectionPanel(
         notice?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
         val shown = review
         if (shown != null) {
+            OutlinedButton(onClick = { includeLegacy = !includeLegacy }, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics { stateDescription = if (includeLegacy) "On" else "Off" }) {
+                Text("Include legacy checksums: " + if (includeLegacy) "On" else "Off")
+            }
+            Text("SHA-1 and MD5 are weak; CRC-32 is non-cryptographic. Optional legacy checksums are for comparison with older supplied values, not security proof.",
+                style = MaterialTheme.typography.bodySmall)
             val pageSize = 8
             val lastPage = (shown.files.size - 1) / pageSize
             Text("Files " + (page * pageSize + 1) + "–" +
@@ -114,6 +124,8 @@ internal fun LocalFileInspectionPanel(
                         selected = file
                         outcome = null
                         supplied = ""
+                        comparisonAlgorithm = LocalChecksumComparison.Algorithm.SHA256
+                        val requestedLegacy = includeLegacy
                         notice = null
                         progressFlow.value = 0
                         runRead {
@@ -122,6 +134,7 @@ internal fun LocalFileInspectionPanel(
                                 val port = engineProvider()
                                 port?.inspectChecksum(shown, file,
                                     cancelled = { worker?.isActive != true },
+                                    includeLegacy = requestedLegacy,
                                     onProgress = { progressFlow.value = it })
                                     ?: LocalFileInspection.Outcome.Refused("The local client is unavailable.")
                             }
@@ -156,14 +169,32 @@ internal fun LocalFileInspectionPanel(
                 Text("Two matching reads of " + result.file.path + " (" + result.file.sizeBytes + " bytes).",
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 SelectionContainer { Text("SHA-256: " + result.sha256) }
-                OutlinedTextField(value = supplied, onValueChange = { supplied = it.take(128) },
-                    label = { Text("Compare supplied SHA-256") },
+                val checksums = mapOf(LocalChecksumComparison.Algorithm.SHA256 to result.sha256) + result.legacy
+                result.legacy.forEach { (algorithm, digest) ->
+                    SelectionContainer { Text(algorithm.label + ": " + digest) }
+                }
+                if (checksums.size > 1) {
+                    checksums.keys.forEach { algorithm ->
+                        OutlinedButton(onClick = { comparisonAlgorithm = algorithm; supplied = "" },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                                .semantics { stateDescription = if (comparisonAlgorithm == algorithm) "Selected" else "Not selected" }) {
+                            Text("Compare " + algorithm.label)
+                        }
+                    }
+                }
+                val algorithm = comparisonAlgorithm.takeIf { it in checksums }
+                    ?: LocalChecksumComparison.Algorithm.SHA256
+                OutlinedTextField(value = supplied, onValueChange = { supplied = it.take(LocalChecksumComparison.MAX_INPUT + 1) },
+                    label = { Text("Compare supplied " + algorithm.label) },
                     singleLine = true, modifier = Modifier.fillMaxWidth())
-                when (LocalFileInspection.compare(result.sha256, supplied)) {
-                    LocalFileInspection.Comparison.NONE -> Unit
-                    LocalFileInspection.Comparison.INVALID -> Text("Enter exactly 64 hexadecimal characters.")
-                    LocalFileInspection.Comparison.MATCHES -> Text("Matches supplied checksum. Its origin is not verified.")
-                    LocalFileInspection.Comparison.DIFFERS -> Text("Does not match supplied checksum. No files were changed.")
+                Text("Paste a digest or one checksum-file row naming this exact relative path: " + result.file.path,
+                    style = MaterialTheme.typography.bodySmall)
+                when (LocalChecksumComparison.compare(algorithm, requireNotNull(checksums[algorithm]), supplied, result.file.path)) {
+                    LocalChecksumComparison.State.NONE -> Unit
+                    LocalChecksumComparison.State.INVALID -> Text("Enter " + algorithm.digits + " hexadecimal characters or one supported checksum-file row.")
+                    LocalChecksumComparison.State.WRONG_FILE -> Text("This checksum row does not name the exact reviewed file.")
+                    LocalChecksumComparison.State.MATCHES -> Text("Matches supplied checksum. Its origin is not verified.")
+                    LocalChecksumComparison.State.DIFFERS -> Text("Does not match supplied checksum. No files were changed.")
                 }
                 result.textPreview?.let { preview ->
                     Text(if (result.previewTruncated) "UTF-8 text preview (first 64 KiB; truncated)"
