@@ -11,6 +11,7 @@ import io.github.gamesbyian.chunks.privacy.TransferLockMode
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -85,5 +86,44 @@ class ProtocolTransferPrivacyGateTest {
     @Test fun addToAnUnprotectedTypedClientIsShown() {
         showAdd(scope)
         rule.onNodeWithText("ADD-FORM").assertExists()
+    }
+
+    @Test fun aHostOwnedGateRowDoesNotRelockEveryEntryWhenDisposed() {
+        policy(scope, TransferLockMode.EVERY_ENTRY)
+        val session = TransferPrivacyRuntime.session
+        assertTrue(session.finishUnlock(requireNotNull(session.beginUnlock(scope)), true))
+        val shown = androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                if (shown.value) ProtocolTransferPrivacyGate(scope = scope, clientKind = "Deluge",
+                    onBack = {}, exitOnDispose = false) { Text("ROW") }
+            }
+        }
+        rule.waitForIdle()
+        rule.runOnIdle { shown.value = false }    // e.g. scrolled off a lazy list
+        rule.waitForIdle()
+        assertTrue("a disposed row is not a route exit", session.mayView(scope))
+    }
+
+    @Test fun anOwnGateStillRelocksEveryEntryOnExit() {
+        policy(scope, TransferLockMode.EVERY_ENTRY)
+        val session = TransferPrivacyRuntime.session
+        assertTrue(session.finishUnlock(requireNotNull(session.beginUnlock(scope)), true))
+        val shown = androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                if (shown.value) ProtocolTransferPrivacyGate(scope = scope, clientKind = "Deluge",
+                    onBack = {}) { Text("ROW") }
+            }
+        }
+        rule.runOnIdle { shown.value = false }
+        rule.waitForIdle()
+        assertFalse(session.mayView(scope))
+    }
+
+    @Test fun theLockedTextNamesTheTypedClientNotRTorrent() {
+        policy(scope, TransferLockMode.ONCE_PER_PROCESS)
+        show(scope)
+        rule.onNodeWithText("neither disconnects the Deluge client", substring = true).assertExists()
     }
 }

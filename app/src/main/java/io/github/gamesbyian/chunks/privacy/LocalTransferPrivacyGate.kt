@@ -85,10 +85,13 @@ internal fun ProtocolTransferPrivacyGate(
     clientKind: String,
     onBack: () -> Unit,
     controlsInContent: Boolean = false,
+    /** See [TransferPrivacyGate]: false when the host calls [TransferPrivacySession.onExit] itself. */
+    exitOnDispose: Boolean = true,
     content: @Composable () -> Unit
 ) {
     TransferPrivacyGate(scope, onBack, "$clientKind client", "$clientKind client",
-        redactLocalService = false, controlsInContent = controlsInContent, content = content)
+        redactLocalService = false, controlsInContent = controlsInContent,
+        exitOnDispose = exitOnDispose, content = content)
 }
 
 /**
@@ -109,6 +112,11 @@ private fun TransferPrivacyGate(
     subject: String,
     redactLocalService: Boolean,
     controlsInContent: Boolean = false,
+    /**
+     * False when the host owns route exit (a gate row in a lazy list is disposed by scrolling
+     * or by opening Details, neither of which leaves the protected route).
+     */
+    exitOnDispose: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -172,7 +180,7 @@ private fun TransferPrivacyGate(
             // An Android rotation preserves the process's once-per-session
             // grant. An actual exit from the transfer route does not satisfy
             // EVERY_ENTRY on the next visit.
-            if (activity?.isChangingConfigurations != true) session.onExit(scope)
+            if (exitOnDispose && activity?.isChangingConfigurations != true) session.onExit(scope)
         }
     }
 
@@ -377,7 +385,9 @@ private fun TransferPrivacyGate(
             notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Text(if (redactLocalService)
                 "Locked Chunks UI does not pause or stop already-running local torrents."
-                else "This lock neither disconnects the rTorrent server nor stops transfers on this device.",
+                else "This lock neither disconnects the " +
+                    (if (subject == "rTorrent profile") "rTorrent server" else subject) +
+                    " nor stops transfers on this device.",
                 style = MaterialTheme.typography.bodySmall)
         }
     } else {

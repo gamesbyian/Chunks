@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentId
@@ -15,6 +16,7 @@ import io.github.gamesbyian.chunks.privacy.TransferLockMode
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -77,5 +79,49 @@ class CombinedProtocolPrivacyLockTest {
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("SecretTitle", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    private fun unlock() {
+        // An unlocked protected scope is shown only on a device with a secure screen lock.
+        org.robolectric.Shadows.shadowOf(context.getSystemService(android.app.KeyguardManager::class.java))
+            .setIsDeviceSecure(true)
+        val session = TransferPrivacyRuntime.session
+        val ticket = requireNotNull(session.beginUnlock(scope))
+        assertTrue(session.finishUnlock(ticket, deviceAuthenticated = true))
+    }
+
+    @Test fun lockNowHidesTheClientsRowsAtOnceNotOnTheNextTick() {
+        policy(TransferLockMode.ONCE_PER_PROCESS)
+        unlock()
+        showOwnView()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("SecretTitle", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        // Freeze time: the screen's own 10 s tick must not be what hides the rows.
+        rule.mainClock.autoAdvance = false
+        rule.onNodeWithText("Lock now").performClick()
+        repeat(3) { rule.mainClock.advanceTimeByFrame() }
+        rule.onNodeWithText("SecretTitle", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Deluge client locked").assertExists()
+    }
+
+    @Test fun leavingTheClientsOwnViewRelocksEveryEntryButStayingDoesNot() {
+        policy(TransferLockMode.EVERY_ENTRY)
+        unlock()
+        val shown = androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme {
+                if (shown.value) CombinedTransfersScreen(server = null, savedProfiles = emptyList(),
+                    onOpenLocal = {}, onOpenServer = null, onBack = {},
+                    protocolProfiles = listOf(profile), scopeFocusRequest = id)
+            }
+        }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("SecretTitle", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue("still unlocked while the view is open", TransferPrivacyRuntime.session.mayView(scope))
+        rule.runOnIdle { shown.value = false }
+        rule.waitForIdle()
+        assertFalse("leaving the view relocks EVERY_ENTRY", TransferPrivacyRuntime.session.mayView(scope))
     }
 }

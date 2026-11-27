@@ -561,6 +561,9 @@ internal fun CombinedTransfersScreen(
     // run during composition. Until a cancellable, exact-scope asynchronous
     // read completes, every environment is locked, including opt-out scopes.
     val privacyRevision = TransferPrivacyRuntime.lifecycleRevision
+    // An unlock or lock in a typed client's gate row changes what its rows may show; reading
+    // this revision makes the whole screen redraw at once, not on the next tick.
+    @Suppress("UNUSED_VARIABLE") val privacyVisibilityRevision = TransferPrivacyRuntime.visibilityRevision
     val policyRevision = TransferPrivacyPolicyStore.revision
     val localPrivacyScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
     val serverPrivacyScope = remember(server?.aliasScope) {
@@ -675,6 +678,16 @@ internal fun CombinedTransfersScreen(
             privacyEvidence?.decision(privacyScope, privacySession, deviceSecure)?.mayShow == true
     }.keys
     val protocolSources = rememberCombinedProtocolSources(protocolProfiles, protocolAllowed, now)
+    // A typed client's own view owns its route exit (EVERY_ENTRY): leaving that view relocks it.
+    // Its gate row inside the list may be disposed by scrolling or Details without leaving.
+    val ownProtocolViewScope = CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)
+        ?.privacyScope
+    DisposableEffect(ownProtocolViewScope, activity) {
+        onDispose {
+            if (ownProtocolViewScope != null && activity?.isChangingConfigurations != true)
+                TransferPrivacyRuntime.session.onExit(ownProtocolViewScope)
+        }
+    }
     val serverId = server?.let {
         EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
     }
@@ -1679,7 +1692,8 @@ internal fun CombinedTransfersScreen(
             item(key = "protocol-privacy-gate") {
                 io.github.gamesbyian.chunks.privacy.ProtocolTransferPrivacyGate(
                     scope = gate.privacyScope, clientKind = gate.clientKind,
-                    onBack = { update(query.copy(scope = EnvironmentViewScope.All)) }) {}
+                    onBack = { update(query.copy(scope = EnvironmentViewScope.All)) },
+                    exitOnDispose = false) {}
             }
         }
 
