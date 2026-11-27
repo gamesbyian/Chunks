@@ -1,36 +1,68 @@
 #!/usr/bin/env bash
-# Installed smoke of the REAL release variant built with R8 (-Pchunks.releaseShrink=true),
-# debug-signed with a throwaway key by the workflow. Black-box only: install, launch, let the
-# app run, require a live process, a rendered Compose UI and no R8/JNI failure in logcat.
-# This does not exercise the native engine; the engine witness for this APK is the static
-# tools/release_jni_witness.py, and an installed engine journey remains a release-candidate step.
+# Installed launch smoke of the REAL R8 release variant, throwaway-signed for an emulator.
+# Verify installed APK bytes, a fresh app-owned UI tree and process-scoped runtime logs.
+# This is not a native-engine journey or signed-release acceptance.
 set -uo pipefail
 apk="${1:?signed release apk}"
 out=app/build/outputs; mkdir -p "$out"
 pkg=io.github.gamesbyian.chunks
-adb install -r "$apk" || { echo "CHUNKS_RELEASE_SMOKE: install failed"; exit 1; }
-adb logcat -c
-adb shell am start -W -n "$pkg/.MainActivity" || { echo "CHUNKS_RELEASE_SMOKE: launch failed"; exit 1; }
+fail_smoke() { echo "CHUNKS_RELEASE_SMOKE: $*"; exit 1; }
+[ -s "$apk" ] || fail_smoke "missing or empty candidate APK"
+tmp="$(mktemp -d)" || fail_smoke "cannot create temporary directory"
+remote_ui="/sdcard/chunks-release-smoke-$$.xml"
+trap 'rm -rf "$tmp"; adb shell rm -f "$remote_ui" >/dev/null 2>&1 || true' EXIT
+rm -f "$out/release-ui.xml" "$out/release-installed-identity.txt" "$out/release-logcat.txt" "$out/release-logcat-app.txt"
+adb install -r "$apk" || fail_smoke "install failed"
+installed="$(adb shell pm path "$pkg")" || fail_smoke "cannot resolve installed APK"
+installed="${installed//$'\r'/}"
+# This workflow installs a single universal APK. An unexpected split set is not equivalent.
+[[ "$installed" =~ ^package:/data/app/[^[:space:]]+/base\.apk$ ]] || fail_smoke "expected exactly one installed base APK"
+adb pull "${installed#package:}" "$tmp/base.apk" >/dev/null || fail_smoke "cannot pull installed APK"
+expected="$(sha256sum "$apk")" || fail_smoke "cannot hash candidate APK"
+actual="$(sha256sum "$tmp/base.apk")" || fail_smoke "cannot hash installed APK"
+expected="${expected%% *}"; actual="${actual%% *}"
+printf 'candidate_sha256=%s\ninstalled_sha256=%s\n' "$expected" "$actual" > "$out/release-installed-identity.txt"
+[ "$expected" = "$actual" ] || fail_smoke "installed APK hash differs from candidate"
+adb logcat -c || fail_smoke "cannot clear logcat"
+adb shell am start -W -n "$pkg/.MainActivity" || fail_smoke "launch failed"
 sleep 20
 fail=0
-pid="$(adb shell pidof "$pkg" | tr -d '\r')"
-[ -n "$pid" ] || { echo "CHUNKS_RELEASE_SMOKE: process not alive after launch"; fail=1; }
-adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
-adb pull /sdcard/ui.xml "$out/release-ui.xml" >/dev/null 2>&1
-texts="$(grep -o 'text="[^"]\+"' "$out/release-ui.xml" 2>/dev/null | wc -l)"
+pid="$(adb shell pidof "$pkg")" || pid=""
+pid="${pid//$'\r'/}"
+[[ "$pid" =~ ^[0-9]+$ ]] || { echo "CHUNKS_RELEASE_SMOKE: process not alive after launch (or ambiguous PID)"; fail=1; }
+adb shell rm -f "$remote_ui" >/dev/null 2>&1 &&
+    adb shell uiautomator dump "$remote_ui" >/dev/null 2>&1 &&
+    adb pull "$remote_ui" "$out/release-ui.xml" >/dev/null 2>&1 || fail_smoke "fresh UI capture failed"
+# Count only nonblank text from this package, not permission dialogs, the launcher or Settings.
+texts="$(python3 - "$out/release-ui.xml" "$pkg" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+if root.tag != "hierarchy":
+    raise ValueError("not a UI hierarchy")
+print(sum(1 for node in root.iter("node")
+          if node.get("package") == sys.argv[2] and node.get("text", "").strip()))
+PY
+)" || fail_smoke "invalid UI hierarchy"
 echo "CHUNKS_RELEASE_SMOKE: pid=${pid:-none} rendered_text_nodes=$texts"
-[ "$texts" -ge 3 ] || { echo "CHUNKS_RELEASE_SMOKE: Compose UI did not render"; fail=1; }
-adb logcat -d > "$out/release-logcat.txt"
-# Only Chunks' own failures count: other system processes (e.g. Settings) log unrelated
-# ClassNotFoundExceptions. A crash record names the process; a live process is scoped by pid.
-if grep -A3 "FATAL EXCEPTION" "$out/release-logcat.txt" | grep -q "Process: $pkg"; then
-  echo "CHUNKS_RELEASE_SMOKE: Chunks crashed"; grep -A20 "FATAL EXCEPTION" "$out/release-logcat.txt" | head -40; fail=1
+[ "$texts" -ge 3 ] || { echo "CHUNKS_RELEASE_SMOKE: app-owned Compose UI did not render"; fail=1; }
+adb logcat -d > "$out/release-logcat.txt" || fail_smoke "cannot read global logcat"
+# Scan the whole stream (no early-exit pipe under pipefail). A crash may precede a restart.
+if awk -v pkg="$pkg" '
+    /FATAL EXCEPTION/ { remaining=3; next }
+    remaining > 0 {
+        if (index($0, "Process: " pkg ", PID:") || index($0, "Process: " pkg ":")) found=1
+        remaining--
+    }
+    END { exit !found }
+' "$out/release-logcat.txt"; then
+    echo "CHUNKS_RELEASE_SMOKE: Chunks crashed"; fail=1
 fi
-if [ -n "$pid" ]; then
-  adb logcat -d --pid="$pid" > "$out/release-logcat-app.txt"
-  if grep -E "UnsatisfiedLinkError|NoSuchMethodError|NoClassDefFoundError|ClassNotFoundException|NoSuchFieldError|AbstractMethodError" "$out/release-logcat-app.txt"; then
-    echo "CHUNKS_RELEASE_SMOKE: R8/JNI runtime failure in the app process"; fail=1
-  fi
+if [[ "$pid" =~ ^[0-9]+$ ]]; then
+    adb logcat -d --pid="$pid" > "$out/release-logcat-app.txt" || fail_smoke "cannot read app logcat"
+    if grep -E "UnsatisfiedLinkError|NoSuchMethodError|NoClassDefFoundError|ClassNotFoundException|NoSuchFieldError|AbstractMethodError" "$out/release-logcat-app.txt"; then
+        echo "CHUNKS_RELEASE_SMOKE: R8/JNI runtime failure in the app process"; fail=1
+    fi
 fi
 [ "$fail" -eq 0 ] && echo "CHUNKS_RELEASE_SMOKE: PASS"
 exit "$fail"
