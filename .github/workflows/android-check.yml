@@ -24,6 +24,11 @@ on:
       - "tools/check_coroutine_cancellation.py"
       - "tools/coroutine_cancellation_reviews.json"
       - "tests/test_coroutine_cancellation_inventory.py"
+      - "tools/dex_null_check_witness.py"
+      - "tools/dex_register_budget.py"
+      - "tools/dex_register_budget.json"
+      - "tests/test_dex_null_check_witness.py"
+      - "tests/test_dex_register_budget.py"
     # Drafts can accumulate several edits before source-exact acceptance.
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
@@ -57,6 +62,8 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_coroutine_cancellation_inventory.py
           python3 tools/check_coroutine_cancellation.py --reviews tools/coroutine_cancellation_reviews.json
+      - name: Exercise fail-closed DEX witnesses before Android setup
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_dex_null_check_witness tests.test_dex_register_budget
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -103,11 +110,9 @@ jobs:
       # crashed on launch while every JVM test passed. Scan the just-built debug dex offline.
       - name: Witness no D8 null-check miscompile in app methods (offline dex scan)
         run: |
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_dex_null_check_witness
           python3 tools/dex_null_check_witness.py app/build/outputs/apk/debug/app-debug.apk
           # Keep the >256-register hazard from spreading: no new method above 255 registers,
           # and the three known giants never grow past their recorded ceilings.
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_dex_register_budget
           python3 tools/dex_register_budget.py app/build/outputs/apk/debug/app-debug.apk
       - name: Emit agent-readable CI evidence (without test output or secrets)
         if: always()
