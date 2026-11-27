@@ -114,6 +114,8 @@ class RarVolumeHeaderReaderTest {
         assertEquals(RarVolumeHeaderReader.Status.ENCRYPTED_HEADERS,
             inspect(signature4 + main4(0x80)).status)
         assertEquals(RarVolumeHeaderReader.Status.ENCRYPTED_HEADERS,
+            inspect(signature5 + header5(4, 0, bytes(0, 0) + ByteArray(17))).status)
+        assertEquals(RarVolumeHeaderReader.Status.UNCONFIRMED,
             inspect(signature5 + header5(4, 0, bytes(0))).status)
         assertEquals(RarVolumeHeaderReader.Status.UNRECOGNIZED, inspect(bytes(1, 2, 3)).status)
     }
