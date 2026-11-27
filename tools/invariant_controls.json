@@ -1206,6 +1206,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.AddSourceOccupancyTest"
       ]
+    },
+    {
+      "id": "combined-lifecycle-ignores-stale-server",
+      "invariant": "Combined Transfers never offers rTorrent Start/Stop from a stale or unknown-freshness server read",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedLifecycleEligibility.kt",
+      "old": "f.serverPrivacyMayShow && f.serverStale == false &&",
+      "new": "f.serverPrivacyMayShow &&",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedLifecycleEligibilityTest"
+      ]
     }
   ]
 }

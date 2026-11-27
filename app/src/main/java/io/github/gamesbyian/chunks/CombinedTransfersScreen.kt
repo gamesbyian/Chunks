@@ -1047,15 +1047,21 @@ internal fun CombinedTransfersScreen(
         result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
     // ONE eligibility rule for Details' Start/Stop review and a row's quick Start/Stop.
-    fun lifecycleEligible(key: UnifiedTransferKey, readCurrent: Boolean): Boolean = readCurrent &&
-        sourcesByEnvironment[key.environment]?.canClaimCompleteLiveInventory == true &&
-        ((key.environment == EnvironmentSnapshots.LOCAL && localPrivacy.mayShow && localRunning) ||
-            (key.environment == serverId && server?.lifecycle != null &&
-                verifiedCombinedLifecycleOwner(server, serverId) != null && serverPrivacy?.mayShow == true &&
-                server.stale == false &&
-                // rTorrent Start/Stop only supports exact v1 hashes. Keep
-                // unsupported remote identities read-only before review.
-                key.infoHash.matches(V1_TRANSFER_HASH)))
+    fun lifecycleEligible(key: UnifiedTransferKey, readCurrent: Boolean): Boolean {
+        val isServer = key.environment == serverId
+        return CombinedLifecycleEligibility.eligible(CombinedLifecycleEligibility.Facts(
+            readCurrent = readCurrent,
+            completeLiveInventory = sourcesByEnvironment[key.environment]?.canClaimCompleteLiveInventory == true,
+            isLocal = key.environment == EnvironmentSnapshots.LOCAL,
+            localPrivacyMayShow = localPrivacy.mayShow,
+            localRunning = localRunning,
+            isAuthenticatedServer = isServer,
+            serverLifecyclePresent = server?.lifecycle != null,
+            verifiedServerOwner = isServer && verifiedCombinedLifecycleOwner(server, serverId) != null,
+            serverPrivacyMayShow = serverPrivacy?.mayShow == true,
+            serverStale = server?.stale,
+            infoHash = key.infoHash))
+    }
     val firstRunVisible = enableFirstRunWelcome && showCanonicalFirstRunWelcome(
         noPersistedJobs = noPersistedLocalJobs,
         nativeRunning = localRunning,
