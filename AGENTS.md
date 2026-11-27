@@ -6,8 +6,6 @@ Inspect live main, open PR heads/diffs/checks, issues and actual overlapping edi
 
 Execute FE-01–20 and A2611-01–09 through [R0](docs/WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration). Correctness and real capability proof precede discretionary UI work. The [visual atlas](docs/VISUAL-SPECIMEN-ATLAS-PLAN.md) is future-only; functional/accessibility fixes remain allowed. No owner PC/Desktop Commander. Use repo and hosted CI. No speculative rewrites, deletions or optimization.
 
-Full-product closure: consult the [detailed requirements inventory](docs/TECHNICAL-COMPLETENESS-REQUIREMENTS.md) and ranked R5 product cohorts; inspect actual callers and evidence before implementing a missing row. Do not equate narrow engineering closure with full Android completion, silently defer binding requirements, or rebuild accepted slices. Preserve current safety priority and explicit future scope.
-
 ## Non-negotiable behavior
 
 - One source-first Universal Add with exact client/account, source, Place, Start, file choices and original-file consent; one app-owned submit/observation authority. Retain reviewed identity through navigation and recreation. One canonical Transfers/Details browser and four-root footer; no competing Add route. [UX reconciliation](docs/NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md), [unified environments](docs/UNIFIED-ENVIRONMENTS.md).
@@ -29,4 +27,4 @@ Follow [CI policy](docs/CI-POLICY.md), [test architecture](docs/TEST-ARCHITECTUR
 
 For Android work read [Android evidence-first](.agents/skills/android-evidence-first/SKILL.md) and relevant available specialist skill or official Android docs. For settings use [registry](docs/SETTINGS-REGISTRY.md) and [settings skill](skills/settings-systems-engineering/SKILL.md); otherwise choose only consequential [skills](skills/CAPABILITY-ARCHITECTURE.md). Documentation changes follow [operational integrity](skills/references/operational-documentation-integrity.md); validate with `python3 tools/check_docs.py` and its unittest. Preserve detailed prior instructions in [historical snapshot](AGENTS-HISTORY-2026-11-25.md); consult relevant canonical contracts, never treat dated checkpoints as live instructions.
 
-Owning PR/issue records exact head/tree, runs, tiers, reds, limits. Update queue only on changed disposition. [Coverage](docs/SPEC-COVERAGE.md) defines gates; [evidence index](docs/QUALITY-LEDGER.md) locates receipts. Report merged/open, missing proof, next task.
+Owning PR/issue records exact head/tree, runs, tiers, reds, limits. Update queue only on changed disposition. [Coverage](docs/SPEC-COVERAGE.md) and [requirements](docs/TECHNICAL-COMPLETENESS-REQUIREMENTS.md) define gates; [evidence index](docs/QUALITY-LEDGER.md) locates receipts. Report merged/open, missing proof, next task.
