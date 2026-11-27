@@ -52,6 +52,7 @@ internal interface LocalDetailsPort {
     /** Read-only: whether DHT can supply peers (for the tracker line). */
     fun dhtEnabled(): Boolean = false
     fun checksumReview(infoHash: String): LocalFileInspection.Review? = null
+    fun archiveReview(infoHash: String): LocalArchiveInventory.Review? = null
     fun prepareFileAccess(context: android.content.Context, review: LocalFileInspection.Review,
         file: LocalTransferFile, cancelled: () -> Boolean): LocalPayloadAccess.Prepared? = null
     fun inspectChecksum(review: LocalFileInspection.Review, file: LocalTransferFile,
@@ -76,6 +77,7 @@ internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : 
         engine.removeWithDataIfMatching(infoHash, name, savePath, token)
     override fun dhtEnabled() = engine.isDhtEnabled()
     override fun checksumReview(infoHash: String) = LocalFileInspection.review(engine, infoHash)
+    override fun archiveReview(infoHash: String) = LocalArchiveInventory.review(engine, infoHash)
     override fun prepareFileAccess(context: android.content.Context, review: LocalFileInspection.Review,
         file: LocalTransferFile, cancelled: () -> Boolean) =
         LocalPayloadAccess.prepare(context, engine, review, file, cancelled)
@@ -225,6 +227,7 @@ private fun LocalDetailsFiles(
     // Exact local file inspection uses an explicit fresh native review, never
     // a pathname inferred from the list. Disposal on lock/revision cancels it.
     if (!locked) androidx.compose.runtime.key(infoHash, revision) {
+        LocalArchiveInventoryPanel(infoHash, engine)
         LocalPayloadAccessPanel(infoHash, engine)
         LocalFileInspectionPanel(infoHash, engine)
     }
