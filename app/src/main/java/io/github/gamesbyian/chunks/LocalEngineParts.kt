@@ -263,7 +263,8 @@ internal fun LocalAddReview(
                             "Choose files carefully or free space before starting.",
                             color = MaterialTheme.colorScheme.error)
                 }
-                Text("This is a worst-case estimate, not a disk reservation. Existing " +
+                Text("This is a worst-case estimate, not a disk reservation. The folder advisory limit " +
+                    "covers the chosen download root, including its child folders; available space refers to the planned target volume. Existing " +
                     "files, sparse allocation, other apps and later file selections " +
                     "can change actual storage needs.",
                     style = MaterialTheme.typography.bodySmall)

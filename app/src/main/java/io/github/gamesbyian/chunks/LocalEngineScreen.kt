@@ -6,7 +6,6 @@ import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
-import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -92,9 +91,6 @@ import io.github.gamesbyian.chunks.snapshots.SnapshotFilePriorities
 import io.github.gamesbyian.chunks.snapshots.applyLocalSnapshotAlias
 import io.github.gamesbyian.chunks.snapshots.SnapshotSettingsCapture
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
-import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
-import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
-import io.github.gamesbyian.chunks.model.LocalFolderInventoryProbe
 import io.github.gamesbyian.chunks.model.LocalInventoryFreshness
 import io.github.gamesbyian.chunks.model.LocalProgressHistory
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
@@ -420,9 +416,6 @@ internal fun LocalEngineScreen(
     var repairReview by remember {
         mutableStateOf<Pair<String, SharedTorrentDocument.Reviewed>?>(null)
     }
-    var addStorage by remember {
-        mutableStateOf<Pair<String, LocalAddStoragePreflight>?>(null)
-    }
     // Read-only foreign partial-file offer for the reviewed .torrent and exact folder.
     // Reuse requires the person's explicit choice; it resets whenever either changes.
     var addRecovery by remember {
@@ -728,30 +721,8 @@ internal fun LocalEngineScreen(
     val addFolderNameInvalid = remember(addFolderDraft) {
         LocalOwnedAddFolder.normalizedName(addFolderDraft) == null
     }
-    LaunchedEffect(pending?.preview?.infoHashV1, destination) {
-        addStorage = null
-        val review = pending
-        // A lazily created public folder may not exist yet: measure its volume.
-        val folder = destination?.let { if (it.isDirectory) it else it.parentFile }
-        if (review != null && folder != null) {
-            val estimate = withContext(Dispatchers.IO) {
-                val survey = try {
-                    LocalFolderInventoryProbe.measure(folder)
-                } catch (cancel: kotlinx.coroutines.CancellationException) {
-                    throw cancel
-                } catch (_: Exception) { null }
-                val cap = try {
-                    LocalCapPreferenceStore(context).get(folder)
-                } catch (_: Exception) { null }
-                // Query *the selected download volume*, not filesDir's volume.
-                val free = try {
-                    StatFs(folder.absolutePath).availableBytes.takeIf { it >= 0L }
-                } catch (_: Exception) { null }
-                LocalAddStoragePlanner.assess(review.preview.sizeBytes, survey, cap, free)
-            }
-            addStorage = review.preview.infoHashV1 to estimate
-        }
-    }
+    val addStorage = rememberLocalAddStoragePreflight(
+        pending, destination, proposedAddDestination, placeCheck, resumeTick)
     // The ongoing notification is how Android lets downloads continue in the background.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -1680,7 +1651,7 @@ internal fun LocalEngineScreen(
                         busy = !canAddTorrent,
                         startAfterAdd = startAfterAdd,
                         cancelEnabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-                        storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
+                        storagePreflight = addStorage,
                         seeding = seedingPreview,
                         recovery = addRecovery?.takeIf { it.first == add.preview.infoHashV1 }?.second,
                         useRecovery = useRecovery,
@@ -3120,7 +3091,6 @@ internal fun LocalEngineScreen(
                     snapshotRestoreDraft = null
                     snapshotBatchDraft = null
                     snapshotBatchRecoveryDraft = null
-                    addStorage = null
                     message = "Original snapshot .torrent is ready for manual local Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
                     if (onOpenAdd != null) onOpenAdd.invoke()
