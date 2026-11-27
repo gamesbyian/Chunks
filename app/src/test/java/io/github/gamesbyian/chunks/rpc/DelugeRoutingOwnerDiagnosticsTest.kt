@@ -13,17 +13,17 @@ import org.junit.Test
 class DelugeRoutingOwnerDiagnosticsTest {
     private suspend fun holdTheBracket(owner: DelugeRoutingOwner, entered: CompletableDeferred<Unit>,
                                        release: CompletableDeferred<Unit>) =
-        owner.bracket("daemon-a") { entered.complete(Unit); release.await() }
+        owner.bracket("daemon-a") { owner.step("web.get_hosts", "replied"); entered.complete(Unit); release.await() }
 
     @Test fun diagnosticsNameTheHolderWhileHeldAndNothingWhenFree() = runBlocking {
         val owner = DelugeRoutingOwner()
-        assertEquals("locked=false queued=0 acquisitions=0 holder=none", owner.diagnostics())
+        assertEquals("locked=false queued=0 acquisitions=0 lastStep=none holder=none", owner.diagnostics())
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         val job = launch { holdTheBracket(owner, entered, release) }
         entered.await()
         val held = owner.diagnostics()
-        assertTrue(held, held.startsWith("locked=true queued=0 acquisitions=1 holder="))
+        assertTrue(held, held.startsWith("locked=true queued=0 acquisitions=1 lastStep="))
         assertTrue("the holder is named by its own Chunks frame: $held", "holdTheBracket" in held)
         assertFalse("no endpoint, host or daemon value leaks: $held", "daemon-a" in held)
         assertTrue("fits the CHUNKS_SAFE_DIAG charset: $held",
@@ -31,6 +31,6 @@ class DelugeRoutingOwnerDiagnosticsTest {
         release.complete(Unit)
         job.join()
         yield()
-        assertEquals("locked=false queued=0 acquisitions=1 holder=none", owner.diagnostics())
+        assertEquals("locked=false queued=0 acquisitions=1 lastStep=web.get_hosts:replied holder=none", owner.diagnostics())
     }
 }

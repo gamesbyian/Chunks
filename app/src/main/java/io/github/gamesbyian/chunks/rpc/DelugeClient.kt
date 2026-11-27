@@ -431,12 +431,14 @@ internal class DelugeClientCore(
                     .toString().toByteArray(Charsets.UTF_8)
                 if (mutating) RemoteWriteOwnerFence.check()
                 beforeWrite()
+                routing.step(method, "sent")
                 val response = try {
                     wire.exchange(DelugeReadOnlyRpc.Request(endpoint, body, session))
                 } catch (e: CancellationException) { throw e } catch (_: Exception) {
                     if (mutating) throw ClientWriteUncertainException("Deluge reply lost")
                     throw IOException("Deluge RPC transport failed")
                 }
+                routing.step(method, "replied")
                 if (response.status != 200) {
                     if (mutating && response.status >= 500) throw ClientWriteUncertainException("Deluge client returned an HTTP server error")
                     throw ClientRefusedException("Deluge HTTP ${response.status}")

@@ -65,9 +65,18 @@ internal class DelugeRoutingOwner {
         .map { it.className.substringAfterLast('.').replace('$', '_') + "." + it.methodName.replace('$', '_') }
         .distinct().take(6).joinToString("/")
 
+    /** Diagnostics only (#2165): the last Deluge RPC step taken inside this owner's bracket. */
+    @Volatile private var lastStep: String? = null
+
+    /** Record a value-free step (a fixed Deluge method name plus a phase word); inside a bracket only. */
+    fun step(method: String, phase: String) {
+        lastStep = method.filter { it.isLetterOrDigit() || it == '.' || it == '_' }.take(48) + ":" + phase
+    }
+
     /** Diagnostics only: lock state and current holder frames, safe for an allowlisted CHUNKS_SAFE_DIAG line. */
     fun diagnostics(): String = synchronized(state) {
-        "locked=$locked queued=${queue.size} acquisitions=${acquisitionCount.get()} holder=${holder ?: "none"}"
+        "locked=$locked queued=${queue.size} acquisitions=${acquisitionCount.get()} " +
+            "lastStep=${lastStep ?: "none"} holder=${holder ?: "none"}"
     }
 
     private val acquisitionCount = AtomicLong()
