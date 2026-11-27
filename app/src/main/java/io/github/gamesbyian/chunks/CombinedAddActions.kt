@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 internal fun CombinedAddActions(
     serverLabel: String?,
     onOpenLocal: () -> Unit,
-    onAddToServer: (() -> Unit)?,
+    onAddToRemoteClient: (() -> Unit)?,
     hasOtherSavedServers: Boolean = false,
     /** Saved palette colours, shown beside the text name; never colour alone. */
     localHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
@@ -62,8 +62,8 @@ internal fun CombinedAddActions(
                     else "Add download on this device"
             }) { DestinationLabel(localHue,
                 if (sharedKind != null) "Review on this device" else "Add on this device") }
-        if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
-            OutlinedButton(onClick = onAddToServer, enabled = !readingSharedTorrent,
+        if (!serverLabel.isNullOrBlank() && onAddToRemoteClient != null) {
+            OutlinedButton(onClick = onAddToRemoteClient, enabled = !readingSharedTorrent,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                     contentDescription = if (sharedKind != null) "Review shared $sharedKind on $serverLabel"
                         else "Add download on $serverLabel"
@@ -74,7 +74,7 @@ internal fun CombinedAddActions(
             "Other saved remote clients need their own connection before adding.",
             style = MaterialTheme.typography.bodySmall
         )
-        if (onAddToServer != null || hasOtherSavedServers) Text(
+        if (onAddToRemoteClient != null || hasOtherSavedServers) Text(
             "Choosing which downloads to view never changes the Add destination.",
             style = MaterialTheme.typography.bodySmall
         )

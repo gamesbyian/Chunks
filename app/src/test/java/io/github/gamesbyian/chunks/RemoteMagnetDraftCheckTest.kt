@@ -154,13 +154,13 @@ class RemoteMagnetDraftCheckTest {
         // This test uses a deliberately disconnected server: source continuity
         // alone must never attempt an RPC or authorize a torrent Add.
         val source = mutableStateOf("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=LocalDraft")
-        val onServer = mutableStateOf(false)
+        val onRemoteClient = mutableStateOf(false)
         val startChoice = mutableStateOf(true)
         val artworkChoice = mutableStateOf(true)
         val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", ""))
         rule.setContent {
             ChunksTheme { Surface {
-                if (onServer.value) {
+                if (onRemoteClient.value) {
                     VerifiedAddScreen(remote, magnet = source.value, destination = "/srv/one-off",
                         onMagnet = { source.value = it }, onDestination = {},
                         onBack = {}, onComplete = {},
@@ -171,7 +171,7 @@ class RemoteMagnetDraftCheckTest {
                 }
             } }
         }
-        rule.runOnIdle { onServer.value = true }
+        rule.runOnIdle { onRemoteClient.value = true }
         reveal("Magnet for: LocalDraft")
         rule.onNodeWithText("Magnet for: LocalDraft").assertExists()
         reveal("Start when added")
@@ -183,10 +183,10 @@ class RemoteMagnetDraftCheckTest {
         rule.runOnIdle { org.junit.Assert.assertFalse(artworkChoice.value) }
         rule.runOnIdle { org.junit.Assert.assertFalse("Start selection is shared with local", startChoice.value) }
         rule.runOnIdle {
-            onServer.value = false
+            onRemoteClient.value = false
             source.value = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=EditedOnLocal"
         }
-        rule.runOnIdle { onServer.value = true }
+        rule.runOnIdle { onRemoteClient.value = true }
         reveal("Magnet for: EditedOnLocal")
         rule.onNodeWithText("Magnet for: EditedOnLocal").assertExists()
         rule.runOnIdle { org.junit.Assert.assertFalse("Unmount must not reset Start intent", startChoice.value) }

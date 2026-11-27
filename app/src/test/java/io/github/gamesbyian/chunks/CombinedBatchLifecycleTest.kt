@@ -36,10 +36,10 @@ class CombinedBatchLifecycleTest {
 
     @Test fun serverRunsUnderItsOwnLeaseAndSettlesExactlyOnce() = runBlocking {
         val gate = FakeGate(grant = true)
-        val onServer = row(server, false)
+        val onRemoteClient = row(server, false)
         val onLocal = row(local, false)
-        val report = runCombinedLifecycle(setOf(onServer.key, onLocal.key), true,
-            listOf(source(local, onLocal), source(server, onServer)), gate.lifecycle, server,
+        val report = runCombinedLifecycle(setOf(onRemoteClient.key, onLocal.key), true,
+            listOf(source(local, onLocal), source(server, onRemoteClient)), gate.lifecycle, server,
             localEngine = { null })
         assertEquals(listOf(hash to true), gate.calls)
         assertEquals(1, gate.begins)
@@ -59,8 +59,8 @@ class CombinedBatchLifecycleTest {
             begin = { begins++; true }, settled = {},
             setStarted = { h, on -> calls += h to on; LifecycleOutcome.Verified(on) }, probe = probe)
         val all = io.github.gamesbyian.chunks.model.RemoteCapabilities.features.flatMap { it.methods }.toSet()
-        val onServer = row(server, false)
-        val missing = runCombinedLifecycle(setOf(onServer.key), true, listOf(source(server, onServer)),
+        val onRemoteClient = row(server, false)
+        val missing = runCombinedLifecycle(setOf(onRemoteClient.key), true, listOf(source(server, onRemoteClient)),
             lifecycle { io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", all - "d.start") }, server,
             localEngine = { null })
         assertEquals(0, begins)
@@ -71,7 +71,7 @@ class CombinedBatchLifecycleTest {
         // No method list or a failed probe is UNKNOWN, not MISSING: the guarded command still runs.
         for (probe in listOf<suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe>(
             { io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null) }, { error("timeout") })) {
-            val report = runCombinedLifecycle(setOf(onServer.key), true, listOf(source(server, onServer)),
+            val report = runCombinedLifecycle(setOf(onRemoteClient.key), true, listOf(source(server, onRemoteClient)),
                 lifecycle(probe), server, localEngine = { null })
             assertEquals(CommandEvidence.VERIFIED, report.items.single().evidence)
         }
@@ -163,13 +163,13 @@ class CombinedBatchLifecycleTest {
 
     @Test fun partialAndUnobservedSourcesDoNotTakeAnyMutationGate() = runBlocking {
         val gate = FakeGate(grant = true)
-        val onServer = row(server, true)
-        val full = source(server, onServer)
+        val onRemoteClient = row(server, true)
+        val full = source(server, onRemoteClient)
         for (blocked in listOf(
             full.copy(inventoryComplete = false),
             full.copy(observedAtEpochMillis = null)
         )) {
-            val result = runCombinedLifecycle(setOf(onServer.key), start = false,
+            val result = runCombinedLifecycle(setOf(onRemoteClient.key), start = false,
                 sources = listOf(blocked), serverLifecycle = gate.lifecycle,
                 serverId = server, localEngine = { null })
             assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
@@ -209,8 +209,8 @@ class CombinedBatchLifecycleTest {
     @Test fun serverInventoryIsRecheckedAtConfirmationAndAfterCapabilityProbe() = runBlocking {
         val observed = 1_000_000L
         val expired = observed + EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS + 1
-        val onServer = row(server, true)
-        val source = source(server, onServer).copy(observedAtEpochMillis = observed)
+        val onRemoteClient = row(server, true)
+        val source = source(server, onRemoteClient).copy(observedAtEpochMillis = observed)
         for (expiresDuringProbe in listOf(false, true)) {
             var clock = if (expiresDuringProbe) observed else expired
             var probes = 0
@@ -221,7 +221,7 @@ class CombinedBatchLifecycleTest {
                 begin = { begins++; true }, settled = { settles++ },
                 setStarted = { _, on -> commands++; LifecycleOutcome.Verified(on) },
                 probe = { probes++; clock = expired; io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null) })
-            val report = runCombinedLifecycle(setOf(onServer.key), false, listOf(source),
+            val report = runCombinedLifecycle(setOf(onRemoteClient.key), false, listOf(source),
                 lifecycle, server, localEngine = { null }, nowEpochMillis = { clock })
             assertEquals(if (expiresDuringProbe) 1 else 0, probes)
             assertEquals(0, begins)

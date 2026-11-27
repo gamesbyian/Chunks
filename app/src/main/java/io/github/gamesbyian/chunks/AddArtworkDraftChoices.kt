@@ -26,7 +26,7 @@ internal class AddArtworkDraftChoices {
     }
 
     /** The account scope includes the exact endpoint/numbered route AND principal. */
-    fun onServer(exactAccountScope: String): MutableState<Boolean> {
+    fun onRemoteClient(exactAccountScope: String): MutableState<Boolean> {
         require(exactAccountScope.isNotBlank()) { "An authenticated Add account is required" }
         return serverChoices.getOrPut(exactAccountScope) { mutableStateOf(true) }
     }

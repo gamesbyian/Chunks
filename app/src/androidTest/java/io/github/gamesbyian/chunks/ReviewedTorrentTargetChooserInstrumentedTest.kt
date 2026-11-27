@@ -28,7 +28,7 @@ class ReviewedTorrentTargetChooserInstrumentedTest {
                 ReviewedTorrentTargetChooser(
                     verifiedTorrentBytes = verifiedBytes,
                     enabled = true,
-                    onPrepareServerReview = { calls += it })
+                    onPrepareRemoteReview = { calls += it })
             }
         }
         compose.onNodeWithText("Choose where to add this .torrent").assertExists()
@@ -52,7 +52,7 @@ class ReviewedTorrentTargetChooserInstrumentedTest {
                 ReviewedTorrentTargetChooser(
                     verifiedTorrentBytes = byteArrayOf(1, 2, 3),
                     enabled = false,
-                    onPrepareServerReview = { calls++ })
+                    onPrepareRemoteReview = { calls++ })
             }
         }
         compose.onNodeWithText("Review .torrent on connected remote client")

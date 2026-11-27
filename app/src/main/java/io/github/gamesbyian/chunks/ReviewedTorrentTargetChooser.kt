@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 internal fun ReviewedTorrentTargetChooser(
     verifiedTorrentBytes: ByteArray,
     enabled: Boolean,
-    onPrepareServerReview: (ByteArray) -> Unit,
+    onPrepareRemoteReview: (ByteArray) -> Unit,
     localPlaceAvailable: Boolean = true
 ) {
     Card(Modifier.fillMaxWidth()) {
@@ -39,7 +39,7 @@ internal fun ReviewedTorrentTargetChooser(
                 "Nothing is sent until you confirm the remote Add.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
-                onClick = { onPrepareServerReview(verifiedTorrentBytes.copyOf()) },
+                onClick = { onPrepareRemoteReview(verifiedTorrentBytes.copyOf()) },
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Review .torrent on connected remote client") }
