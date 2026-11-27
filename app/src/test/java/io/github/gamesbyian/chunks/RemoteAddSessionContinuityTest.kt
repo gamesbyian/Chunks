@@ -265,9 +265,12 @@ class RemoteAddSessionContinuityTest {
                 // #2138: no timeout change; report what the gateway saw and the phase reached.
                 // Allowlisted by tools/ci_failure_digest.py: enum phase and RPC method names only.
                 throw AssertionError("read-only check did not confirm within 15 s\n" +
-                    "CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} " +
-                    "events=${UniversalAddAttemptController.recentEvents()} " +
-                    "gateway=${calls.map { it.first }}", timeout)
+                    // The digest keeps only lines of at most 300 allowlisted characters, so the
+                    // short, decisive facts come first, each on its own capped line.
+                    ("CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} " +
+                        "events=${UniversalAddAttemptController.recentEvents()}").take(300) + "\n" +
+                    ("CHUNKS_SAFE_DIAG gateway-count=${calls.size} " +
+                        "last=${calls.map { it.first }.takeLast(12)}").take(300), timeout)
             }
             assertEquals("Recovered state cannot prove which client originally registered it", 0, verified)
             assertFalse("Late old completion must preserve the newer exclusion", artwork.value)
