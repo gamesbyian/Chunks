@@ -964,91 +964,9 @@ internal fun CombinedTransfersScreen(
             }
         }
     }
-    val aliasRequests = remember(rawSources, aliasScopes) {
-        CombinedAliasProjection.requests(rawSources, aliasScopes)
-    }
-    val aliasRevision = TransferAliasStore.revision
-    var loadedAliases by remember { mutableStateOf<CombinedAliasLoad?>(null) }
-    LaunchedEffect(context, aliasRequests, aliasRevision, batchIdentity) {
-        loadedAliases = null
-        if (aliasRequests.isEmpty()) return@LaunchedEffect
-        try {
-            val found = withContext(Dispatchers.IO) {
-                TransferAliasStore(context).getBatch(aliasRequests)
-            }
-            loadedAliases = CombinedAliasLoad(batchIdentity, aliasRequests, aliasRevision, found)
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            // Raw observed torrent titles remain readable; never use stale
-            // aliases or accidentally import a different account's labels.
-        }
-    }
-    val currentAliases = loadedAliases?.takeIf {
-        it.witness == batchIdentity && it.requests == aliasRequests && it.revision == aliasRevision
-    }?.values.orEmpty()
-    val sources = remember(rawSources, aliasScopes, currentAliases) {
-        CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
-    }
-    // All currently observed, unlocked local + remote jobs enter one backend, independent
-    // of the chosen tab, search/filter or composed LazyColumn rows. Exact owner scope,
-    // observation generation and transfer identity are captured with each inventory.
-    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
-    val mediaGraph = remember(context) { io.github.gamesbyian.chunks.media.ChunksMedia.get(context) }
-    // Privacy lifecycle/policy revisions break stale provider authority even if
-    // the same account/title later reappears after lock and unlock.
-    // Fresh inventory timestamps do not restart the unchanged ongoing work.
-    val mediaPrivacyEpoch = "$privacyRevision/$policyRevision"
-    val mediaSnapshot = remember(sources, aliasScopes, mediaPrivacyEpoch) {
-        io.github.gamesbyian.chunks.media.AuthorizedMediaInventorySnapshot.build(
-            sources, aliasScopes, mediaPrivacyEpoch)
-    }
-    // The activity-lifetime host (#1453) keeps working on the last fed inventory after this
-    // screen unmounts and runs the connectivity/retry heartbeat itself. This screen only
-    // feeds it. Without a host (isolated screen tests), fall back to a screen-owned session
-    // with the same witness so no second executor or unauthorized pass can appear.
-    val mediaHost = io.github.gamesbyian.chunks.media.LocalMediaInventoryHost.current
-    val currentMediaSnapshot = rememberUpdatedState(mediaSnapshot)
-    var mediaSession by remember(mediaGraph, mediaController, mediaHost) {
-        mutableStateOf<io.github.gamesbyian.chunks.media.MediaInventoryEnrichmentSession?>(null)
-    }
-    // Creating/closing the fallback session is an effect; composition itself does no I/O.
-    DisposableEffect(mediaGraph, mediaController, mediaHost, batchScope) {
-        val owned = if (mediaHost == null) mediaController?.let {
-            mediaGraph.openInventorySession(batchScope, it)
-        } else null
-        mediaSession = owned
-        onDispose {
-            owned?.close()
-            if (mediaSession === owned) mediaSession = null
-        }
-    }
-    LaunchedEffect(mediaHost, mediaSession, mediaSnapshot) {
-        if (mediaHost != null) mediaHost.feed(mediaSnapshot)
-        else mediaSession?.replace(mediaSnapshot.entries) { key ->
-            // Never accept the historical lookup's cached authorization: compare against
-            // the current privacy/profile scope, fresh source and exact job membership.
-            mediaSnapshot.stillAuthorizes(key, currentMediaSnapshot.value)
-        }
-    }
-    // Fallback only: reuse the existing 10s source-status ticker, without creating a second
-    // inventory worker. Connectivity/metering/power changes retry immediately; a sparse
-    // 30-minute heartbeat also notices expired provider negative-cache and image-failure TTLs.
-    val mediaNetworkChanges = remember(mediaSession) {
-        io.github.gamesbyian.chunks.media.MediaNetworkChangeTracker()
-    }
-    val mediaRetryHeartbeat = remember(mediaSession) {
-        io.github.gamesbyian.chunks.media.MediaInventoryRetryHeartbeat()
-    }
-    LaunchedEffect(mediaSession, now) {
-        val active = mediaSession ?: return@LaunchedEffect
-        val net = withContext(Dispatchers.IO) { mediaGraph.currentNetworkState() }
-        val networkChanged = mediaNetworkChanges.changedAfterFirstObservation(net)
-        val retryDue = mediaRetryHeartbeat.shouldRefresh(android.os.SystemClock.elapsedRealtime())
-        // The controller remains the one lookup engine; it rechecks exact-key
-        // exclusion, third-party consent, source authorization and retry TTL.
-        if (networkChanged || retryDue) active.refresh()
-    }
+    val sources = rememberCombinedObservedInventory(
+        context, rawSources, aliasScopes, batchIdentity,
+        "$privacyRevision/$policyRevision", batchScope, now)
     val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val result = remember(sources, query, mediaTitles) {
         UnifiedTransferCatalog.query(sources, query) { key ->
@@ -2225,4 +2143,106 @@ internal fun CombinedTransfersScreen(
     )
     } // measured footer + viewport
     }
+}
+
+/**
+ * Own the presentation-only alias read and authorized media inventory feed.
+ * The caller supplies only the already observed inventory and exact visible owner scopes.
+ * Keep the fallback media session and its current authorization witness in one composition group.
+ */
+@Composable
+private fun rememberCombinedObservedInventory(
+    context: Context,
+    rawSources: List<EnvironmentTransferSnapshot>,
+    aliasScopes: Map<EnvironmentId, String>,
+    batchIdentity: CombinedBatchViewIdentity,
+    mediaPrivacyEpoch: String,
+    batchScope: kotlinx.coroutines.CoroutineScope,
+    now: Long
+): List<EnvironmentTransferSnapshot> {
+    val aliasRequests = remember(rawSources, aliasScopes) {
+        CombinedAliasProjection.requests(rawSources, aliasScopes)
+    }
+    val aliasRevision = TransferAliasStore.revision
+    var loadedAliases by remember { mutableStateOf<CombinedAliasLoad?>(null) }
+    LaunchedEffect(context, aliasRequests, aliasRevision, batchIdentity) {
+        loadedAliases = null
+        if (aliasRequests.isEmpty()) return@LaunchedEffect
+        try {
+            val found = withContext(Dispatchers.IO) {
+                TransferAliasStore(context).getBatch(aliasRequests)
+            }
+            loadedAliases = CombinedAliasLoad(batchIdentity, aliasRequests, aliasRevision, found)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Raw observed torrent titles remain readable; never use stale
+            // aliases or accidentally import a different account's labels.
+        }
+    }
+    val currentAliases = loadedAliases?.takeIf {
+        it.witness == batchIdentity && it.requests == aliasRequests && it.revision == aliasRevision
+    }?.values.orEmpty()
+    val sources = remember(rawSources, aliasScopes, currentAliases) {
+        CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
+    }
+    // All currently observed, unlocked local + remote jobs enter one backend, independent
+    // of the chosen tab, search/filter or composed LazyColumn rows. Exact owner scope,
+    // observation generation and transfer identity are captured with each inventory.
+    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
+    val mediaGraph = remember(context) { io.github.gamesbyian.chunks.media.ChunksMedia.get(context) }
+    // Privacy lifecycle/policy revisions break stale provider authority even if
+    // the same account/title later reappears after lock and unlock.
+    // Fresh inventory timestamps do not restart the unchanged ongoing work.
+    val mediaSnapshot = remember(sources, aliasScopes, mediaPrivacyEpoch) {
+        io.github.gamesbyian.chunks.media.AuthorizedMediaInventorySnapshot.build(
+            sources, aliasScopes, mediaPrivacyEpoch)
+    }
+    // The activity-lifetime host (#1453) keeps working on the last fed inventory after this
+    // screen unmounts and runs the connectivity/retry heartbeat itself. This screen only
+    // feeds it. Without a host (isolated screen tests), fall back to a screen-owned session
+    // with the same witness so no second executor or unauthorized pass can appear.
+    val mediaHost = io.github.gamesbyian.chunks.media.LocalMediaInventoryHost.current
+    val currentMediaSnapshot = rememberUpdatedState(mediaSnapshot)
+    var mediaSession by remember(mediaGraph, mediaController, mediaHost) {
+        mutableStateOf<io.github.gamesbyian.chunks.media.MediaInventoryEnrichmentSession?>(null)
+    }
+    // Creating/closing the fallback session is an effect; composition itself does no I/O.
+    DisposableEffect(mediaGraph, mediaController, mediaHost, batchScope) {
+        val owned = if (mediaHost == null) mediaController?.let {
+            mediaGraph.openInventorySession(batchScope, it)
+        } else null
+        mediaSession = owned
+        onDispose {
+            owned?.close()
+            if (mediaSession === owned) mediaSession = null
+        }
+    }
+    LaunchedEffect(mediaHost, mediaSession, mediaSnapshot) {
+        if (mediaHost != null) mediaHost.feed(mediaSnapshot)
+        else mediaSession?.replace(mediaSnapshot.entries) { key ->
+            // Never accept the historical lookup's cached authorization: compare against
+            // the current privacy/profile scope, fresh source and exact job membership.
+            mediaSnapshot.stillAuthorizes(key, currentMediaSnapshot.value)
+        }
+    }
+    // Fallback only: reuse the existing 10s source-status ticker, without creating a second
+    // inventory worker. Connectivity/metering/power changes retry immediately; a sparse
+    // 30-minute heartbeat also notices expired provider negative-cache and image-failure TTLs.
+    val mediaNetworkChanges = remember(mediaSession) {
+        io.github.gamesbyian.chunks.media.MediaNetworkChangeTracker()
+    }
+    val mediaRetryHeartbeat = remember(mediaSession) {
+        io.github.gamesbyian.chunks.media.MediaInventoryRetryHeartbeat()
+    }
+    LaunchedEffect(mediaSession, now) {
+        val active = mediaSession ?: return@LaunchedEffect
+        val net = withContext(Dispatchers.IO) { mediaGraph.currentNetworkState() }
+        val networkChanged = mediaNetworkChanges.changedAfterFirstObservation(net)
+        val retryDue = mediaRetryHeartbeat.shouldRefresh(android.os.SystemClock.elapsedRealtime())
+        // The controller remains the one lookup engine; it rechecks exact-key
+        // exclusion, third-party consent, source authorization and retry TTL.
+        if (networkChanged || retryDue) active.refresh()
+    }
+    return sources
 }
