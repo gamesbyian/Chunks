@@ -16,7 +16,8 @@ internal object LocalArchiveInventory {
         val candidates: List<RarVolumeCandidates.Candidate>
     )
 
-    fun review(engine: LocalTorrentEngine, infoHash: String): Review? = try {
+    fun review(engine: LocalTorrentEngine, infoHash: String): Review? {
+        return try {
         fun usable(status: LocalTransferStatus) =
             status.infoHash.equals(infoHash, ignoreCase = true) &&
                 status.nativeReviewToken.isNotBlank() && status.metadataKnown &&
@@ -36,5 +37,6 @@ internal object LocalArchiveInventory {
             return null
         Review(after.infoHash, after.nativeReviewToken, after.savePath,
             after.progressPpm, candidates)
-    } catch (_: Exception) { null }
+        } catch (_: Exception) { null }
+    }
 }
