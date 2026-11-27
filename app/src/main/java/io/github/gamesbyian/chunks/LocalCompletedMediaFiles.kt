@@ -1,6 +1,10 @@
 package io.github.gamesbyian.chunks
 
 import android.system.Os
+import android.system.OsConstants
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import io.github.gamesbyian.chunks.engine.LocalFileDiskCheck
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.media.MediaFileHint
@@ -17,7 +21,8 @@ import java.util.Locale
  * Never return a pathname-only reader: every range checks the same physical
  * observation on a nonblocking, no-follow, regular-file descriptor.
  */
-internal class LocalCompletedMediaFiles(private val savePath: String, files: List<LocalTransferFile>) {
+internal class LocalCompletedMediaFiles(private val savePath: String, files: List<LocalTransferFile>,
+    private val io: LocalMediaReadPort = AndroidLocalMediaReadPort) {
     private val byPath = eligible(files)
 
     /** Hints for recognition and cover discovery: every listed file, completed or not. */
@@ -62,9 +67,8 @@ internal class LocalCompletedMediaFiles(private val savePath: String, files: Lis
         if (!present(root, file)) return null
         val path = File(root, file.path)
         return try {
-            val named = Os.lstat(path.absolutePath)
-            val identity = LocalPinnedReadIdentity.from(named)
-            if (identity.size != file.sizeBytes || !identity.matches(named)) return null
+            val identity = io.named(path)
+            if (identity.size != file.sizeBytes) return null
             val source = ReviewedSource(root, file, path, identity)
             source.prove()
             source
@@ -82,21 +86,20 @@ internal class LocalCompletedMediaFiles(private val savePath: String, files: Lis
 
         private fun current(): Boolean =
             root() == reviewedRoot && present(reviewedRoot, file) &&
-                identity.matches(Os.lstat(path.absolutePath))
+                io.named(path) == identity
 
-        private fun <T> pinned(block: (java.io.FileDescriptor) -> T): T {
+        private fun <T> pinned(block: (LocalMediaReadPort.Pinned) -> T): T {
             if (refused) throw IOException("Media observation expired")
             try {
                 if (!current()) throw IOException("Media source changed")
-                val fd = LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(path)
-                try {
-                    if (!identity.matches(Os.fstat(fd)) || !current())
+                return io.withPinned(path) { fd ->
+                    if (fd.identity() != identity || !current())
                         throw IOException("Media source changed before reading")
                     val result = block(fd)
-                    if (!identity.matches(Os.fstat(fd)) || !current())
+                    if (fd.identity() != identity || !current())
                         throw IOException("Media source changed during reading")
-                    return result
-                } finally { Os.close(fd) }
+                    result
+                }
             } catch (_: Exception) {
                 // Even if the original path later reappears, a partially
                 // consumed observation must never silently rebind.
@@ -117,7 +120,7 @@ internal class LocalCompletedMediaFiles(private val savePath: String, files: Lis
                 val result = ByteArray(count)
                 var filled = 0
                 while (filled < count) {
-                    val n = Os.pread(fd, result, filled, count - filled, offset + filled)
+                    val n = fd.read(result, filled, count - filled, offset + filled)
                     if (n <= 0 || n > count - filled) throw IOException("Incomplete media read")
                     filled += n
                 }
@@ -142,4 +145,43 @@ internal class LocalCompletedMediaFiles(private val savePath: String, files: Lis
             return files.filter { it.sizeBytes > 0 && it.doneBytes == it.sizeBytes }.associateBy { it.path }
         }
     }
+}
+
+/** Explicit OS boundary for UI tests. Production has exactly one adapter;
+ * no device detection, exception fallback or pathname-based production read. */
+internal interface LocalMediaReadPort {
+    interface Pinned {
+        fun identity(): LocalPinnedReadIdentity
+        fun read(bytes: ByteArray, start: Int, count: Int, offset: Long): Int
+    }
+    fun named(path: File): LocalPinnedReadIdentity
+    fun <T> withPinned(path: File, block: (Pinned) -> T): T
+}
+
+internal object AndroidLocalMediaReadPort : LocalMediaReadPort {
+    private fun identity(stat: android.system.StructStat): LocalPinnedReadIdentity {
+        if (!OsConstants.S_ISREG(stat.st_mode)) throw IOException("Media source is not regular")
+        return LocalPinnedReadIdentity.from(stat)
+    }
+
+    override fun named(path: File) = identity(Os.lstat(path.absolutePath))
+
+    override fun <T> withPinned(path: File, block: (LocalMediaReadPort.Pinned) -> T): T {
+        val fd = LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(path)
+        try {
+            return block(object : LocalMediaReadPort.Pinned {
+                override fun identity() = this@AndroidLocalMediaReadPort.identity(Os.fstat(fd))
+                override fun read(bytes: ByteArray, start: Int, count: Int, offset: Long) =
+                    Os.pread(fd, bytes, start, count, offset)
+            })
+        } finally { Os.close(fd) }
+    }
+}
+
+internal val LocalMediaReadIO = staticCompositionLocalOf<LocalMediaReadPort> { AndroidLocalMediaReadPort }
+
+@Composable
+internal fun rememberLocalCompletedMediaFiles(savePath: String, files: List<LocalTransferFile>): LocalCompletedMediaFiles {
+    val io = LocalMediaReadIO.current
+    return remember(savePath, files, io) { LocalCompletedMediaFiles(savePath, files, io) }
 }
