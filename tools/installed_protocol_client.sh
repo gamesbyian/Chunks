@@ -65,6 +65,23 @@ abort_on_instrument_timeout() {
   if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
     echo "::error::Installed $phase instrumentation exceeded its deadline; stopping the campaign"
     timeout 15s adb logcat -d -t 3000 > "$out/logcat-timeout-$phase.txt" 2>&1 || true
+    # #2165: name the blocked threads. The debug app is debuggable, so debuggerd -j prints its
+    # Java stacks without root; fall back to root + SIGQUIT (an ANR trace). Best effort only:
+    # diagnostics never change this exit status, and no input or write is sent to the app.
+    local pid
+    pid=$(timeout 10s adb shell pidof io.github.gamesbyian.chunks 2>/dev/null | tr -d '\r' | awk '{print $1}')
+    if [ -n "$pid" ]; then
+      timeout 30s adb shell debuggerd -j "$pid" > "$out/threads-timeout-$phase.txt" 2>&1 || true
+      if ! grep -q '"main"' "$out/threads-timeout-$phase.txt" 2>/dev/null; then
+        timeout 20s adb root >/dev/null 2>&1 || true
+        timeout 10s adb wait-for-device >/dev/null 2>&1 || true
+        timeout 10s adb shell kill -3 "$pid" >/dev/null 2>&1 || true
+        sleep 3
+        trace=$(timeout 10s adb shell ls -t /data/anr 2>/dev/null | tr -d '\r' | head -1)
+        [ -n "$trace" ] && timeout 30s adb pull "/data/anr/$trace" "$out/threads-timeout-$phase.txt" >/dev/null 2>&1 || true
+      fi
+      echo "CHUNKS_TIMEOUT_THREADS: phase=$phase pid=$pid lines=$(wc -l < "$out/threads-timeout-$phase.txt" 2>/dev/null || echo 0)"
+    fi
     exit 124
   fi
 }
