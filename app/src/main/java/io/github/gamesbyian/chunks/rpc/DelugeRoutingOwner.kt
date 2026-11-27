@@ -53,6 +53,23 @@ internal class DelugeRoutingOwner {
     /** The daemon this owner last left the slot on (guarded by the bracket lock). */
     private var lastOwnBind: String? = null
 
+    /**
+     * Diagnostics only (#2165): who holds the bracket, as a value-free list of Chunks class/method
+     * frames captured when the lock was granted (no hosts, hashes, paths or credentials).
+     */
+    @Volatile private var holder: String? = null
+
+    private fun callerFrames(): String = Throwable().stackTrace.asSequence()
+        .filter { it.className.startsWith("io.github.gamesbyian.chunks") &&
+            it.className != OWNER_CLASS && !it.className.startsWith("$OWNER_CLASS$") }
+        .map { it.className.substringAfterLast('.').replace('$', '_') + "." + it.methodName.replace('$', '_') }
+        .distinct().take(6).joinToString("/")
+
+    /** Diagnostics only: lock state and current holder frames, safe for an allowlisted CHUNKS_SAFE_DIAG line. */
+    fun diagnostics(): String = synchronized(state) {
+        "locked=$locked queued=${queue.size} acquisitions=${acquisitionCount.get()} holder=${holder ?: "none"}"
+    }
+
     private val acquisitionCount = AtomicLong()
     private val contendedCount = AtomicLong()
     private val overtakeCount = AtomicLong()
@@ -83,13 +100,14 @@ internal class DelugeRoutingOwner {
         val waiter: Waiter
         synchronized(state) {
             acquisitionCount.incrementAndGet()
-            if (!locked) { locked = true; return }
+            if (!locked) { locked = true; holder = callerFrames(); return }
             contendedCount.incrementAndGet()
             waiter = Waiter(host)
             queue.addLast(waiter)
         }
         try {
             waiter.turn.await()
+            holder = callerFrames()
         } catch (e: CancellationException) {
             // Cancelled while queued. If the turn was already handed to us, pass it on; otherwise
             // just leave the queue. Either way the lock stays usable for everyone else.
@@ -107,7 +125,7 @@ internal class DelugeRoutingOwner {
         synchronized(state) {
             if (host != null) lastHost = host
             next = pickNext()
-            if (next == null) locked = false else next.granted = true
+            if (next == null) { locked = false; holder = null } else next.granted = true
         }
         next?.turn?.complete(Unit)
     }
@@ -155,6 +173,7 @@ internal class DelugeRoutingOwner {
 
     internal companion object {
         const val MAX_OVERTAKES = 8
+        private val OWNER_CLASS: String = DelugeRoutingOwner::class.java.name
         private val owners = HashMap<String, java.lang.ref.Reference<DelugeRoutingOwner>>()
 
         /** Test seam: lets a test clear a reference exactly as the garbage collector would. */

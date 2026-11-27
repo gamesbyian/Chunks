@@ -281,8 +281,18 @@ class ProtocolClientInstalledJourneyTest {
         // sessions. Always use a NEW independent authenticated connection for
         // post-app readback, not the potentially stale fixture-preload cookie.
         // This remains real-daemon evidence and never replays the app's write.
-        suspend fun independentRead(hash: String) =
-            io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+        // #2165: bounded. A hang becomes an explicit failure that names the Deluge bracket holder;
+        // a timeout never becomes "absent" (callers assert null), it throws.
+        suspend fun independentRead(hash: String) = try {
+            kotlinx.coroutines.withTimeout(60_000) {
+                io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+            }
+        } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) {
+            val owner = if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE)
+                io.github.gamesbyian.chunks.rpc.DelugeRoutingOwner.forEndpoint(URI(url)).diagnostics() else "n/a"
+            throw AssertionError("Independent ${kind.name} read did not answer within 60 s\n" +
+                "CHUNKS_SAFE_DIAG independent-read-timeout kind=${kind.name} $owner", timeout)
+        }
         stage("client-" + kind.name.lowercase())
 
         /** Two unique files in one folder; returns the metainfo and the shared file-name suffix. */
