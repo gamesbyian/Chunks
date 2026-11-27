@@ -199,6 +199,23 @@ def witness(root):
                 Path("app/build/outputs/release-engine-final-ui.xml").write_bytes(
                     ET.tostring(final_window, encoding="utf-8"))
                 print("CHUNKS_RELEASE_ENGINE_DIAG: final_ui_captured=true", flush=True)
+                # Read-only navigation to the actual job list. No second Add
+                # or Start, even if the original action's outcome is unclear.
+                transfers = [n for n in locate(final_window, "Transfers")
+                             if n.get("clickable") == "true" and n.get("enabled") == "true"]
+                if len(transfers) == 1:
+                    bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                                          transfers[0].get("bounds", ""))
+                    if bounds:
+                        x1, y1, x2, y2 = map(int, bounds.groups())
+                        if x1 < x2 and y1 < y2:
+                            shell("input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+                            time.sleep(1)
+                            transfer_window = window()
+                            if transfer_window is not None:
+                                Path("app/build/outputs/release-engine-transfers-ui.xml").write_bytes(
+                                    ET.tostring(transfer_window, encoding="utf-8"))
+                                print("CHUNKS_RELEASE_ENGINE_DIAG: transfers_ui_captured=true", flush=True)
             else:
                 print("CHUNKS_RELEASE_ENGINE_DIAG: final_ui_captured=false", flush=True)
         except Exception as diagnostic:
