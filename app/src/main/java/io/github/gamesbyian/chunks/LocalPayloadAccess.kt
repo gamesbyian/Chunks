@@ -153,6 +153,14 @@ internal object LocalPayloadAccess {
         catch (_: RuntimeException) { }
     }
 
+    fun revokeAll(context: Context) {
+        val ids = synchronized(this) { grants.keys.toList().also { grants.clear() } }
+        ids.forEach { id ->
+            val uri = Uri.Builder().scheme("content").authority(authority(context)).appendPath(id).build()
+            revoke(context, uri)
+        }
+    }
+
     @Synchronized
     fun acquire(context: Context, uri: Uri): Grant? {
         val grant = lookup(context, uri) ?: return null
