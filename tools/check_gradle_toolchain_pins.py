@@ -21,6 +21,7 @@ WORKFLOWS = (
     "native-add-instrumentation.yml",
     "native-post-add-collision-witness.yml",
     "minified-smoke.yml",
+    "release-shrink-smoke.yml",
     "native-visual-atlas.yml",
     "android-fgs-timeout-repro.yml",
     "android-public-swarm.yml",

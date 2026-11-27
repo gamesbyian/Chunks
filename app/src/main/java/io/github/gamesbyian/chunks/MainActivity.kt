@@ -740,13 +740,14 @@ internal fun ChunksApp(
      * their explicit acknowledgement and no write is ever replayed.
      */
     fun releaseVerifiedAttemptsForNewSource() {
-        if (addDestination == UniversalAddRouteTarget.Local &&
-            activeLocalAddAttempt.attemptedTicket != null &&
-            localReviewedTorrent.value?.originalDocument == null &&
-            activeLocalAddAttempt.originalDocument.deletion == null &&
-            !activeLocalAddAttempt.originalDocument.deleting &&
-            activeLocalAddAttempt.coordinator.phase ==
-                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
+        if (AddSourceOccupancy.localVerifiedAttemptReleasable(
+                localSelected = addDestination == UniversalAddRouteTarget.Local,
+                attemptSubmitted = activeLocalAddAttempt.attemptedTicket != null,
+                newReviewedDocumentPresent = localReviewedTorrent.value?.originalDocument != null,
+                originalDocumentDeletionPending = activeLocalAddAttempt.originalDocument.deletion != null,
+                originalDocumentDeleting = activeLocalAddAttempt.originalDocument.deleting,
+                verified = activeLocalAddAttempt.coordinator.phase ==
+                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED) &&
             activeLocalAddAttempt.finishReviewedAttempt()) {
             // The finished source is one shared document: clear both of its halves.
             localReviewedTorrent.value = null
@@ -795,13 +796,16 @@ internal fun ChunksApp(
         val remoteDraft = selectedRemoteAddSession()
         // A first Android document being read is an occupied draft even
         // before the new .torrent metainfo is visible on the Add form.
-        return sharedTorrentReading ||
-            (magnet.isNotBlank() && magnet != incomingText) || localReviewedTorrent.value != null ||
-            serverHandoff() != null ||
-            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
-            activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true ||
-            (addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)
+        return AddSourceOccupancy.occupied(
+            sharedTorrentReading = sharedTorrentReading,
+            draftText = magnet, incomingText = incomingText,
+            localReviewedFilePresent = localReviewedTorrent.value != null,
+            serverHandoffPresent = serverHandoff() != null,
+            remoteFileChosen = remoteDraft?.useFile == true && remoteDraft.selectedBytes != null,
+            localAttemptSubmitted = activeLocalAddAttempt.attemptedTicket != null,
+            remoteAlreadyAttempted = remoteDraft?.alreadyAttempted == true,
+            protocolAttemptHeldForSelectedClient =
+                addProtocolTargetId != null && protocolAddAttempt.profileId == addProtocolTargetId)
     }
 
     fun readSharedDocument(document: Uri) {
@@ -1183,16 +1187,17 @@ internal fun ChunksApp(
     // A retained file is evidence only while it is the active source.
     // rTorrent can explicitly reselect its reviewed file over the same text.
     val preparingRemoteSource = addTargetIsAuthenticated && serverHandoff() != null
-    val routingSource = when {
-        preparingRemoteSource -> null
-        addTargetIsAuthenticated -> remoteAddSessions.forAccount(aliasScope).let { review ->
-            review.selectedTorrent.takeIf {
-                review.useFile && review.selectedBytes != null && review.textAtFileSelection == magnet
-            }
-        }
-        magnet.isBlank() -> localReviewedTorrent.value?.preview
-        else -> null
-    }
+    val routingRemoteReview = if (addTargetIsAuthenticated && !preparingRemoteSource)
+        remoteAddSessions.forAccount(aliasScope) else null
+    val routingSource = AddRouting.source(
+        preparingRemoteSource = preparingRemoteSource,
+        addTargetIsAuthenticated = addTargetIsAuthenticated,
+        remoteReviewedFile = routingRemoteReview?.selectedTorrent,
+        remoteFileStillCurrent = routingRemoteReview?.let {
+            it.useFile && it.selectedBytes != null && it.textAtFileSelection == magnet
+        } == true,
+        draftBlank = magnet.isBlank(),
+        localReviewedFile = localReviewedTorrent.value?.preview)
     val routingText = magnet.takeUnless { preparingRemoteSource || routingSource != null }.orEmpty()
     val (routingMagnetHash, routingMagnetName) = remember(routingText) {
         val parsed = MagnetDraftCheck.inspect(routingText) as? MagnetDraftCheck.Valid
@@ -1207,18 +1212,11 @@ internal fun ChunksApp(
     val routingResult = remember(routingPolicy, routingSource, routingMagnetName, connectedRTorrentId,
         combinedProtocolProfiles, activeAddRemoteName, routingSessions, routingRTorrent, routingRTorrentPlace,
         localAddStart.value) {
-        val candidates = buildList {
-            add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
-                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local", true, true, true))
-            connectedRTorrentId?.let { add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
-                it, activeAddRemoteName ?: "rTorrent", live = routingRTorrent != null,
-                acceptsAdd = true, placeKnown = routingRTorrentPlace != null)) }
-            combinedProtocolProfiles.filter { it.operations != null }.forEach {
-                add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.candidateFor(
-                    it.id, it.label, routingSessions[it.id],
-                    magnetSource = routingSource == null, startNow = localAddStart.value))
-            }
-        }
+        val candidates = AddRouting.candidates(
+            connectedRTorrentId = connectedRTorrentId, rTorrentLabel = activeAddRemoteName,
+            rTorrentLive = routingRTorrent != null, rTorrentPlaceKnown = routingRTorrentPlace != null,
+            protocolProfiles = combinedProtocolProfiles, protocolSessions = routingSessions,
+            magnetSource = routingSource == null, startNow = localAddStart.value)
         io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.evaluate(routingPolicy,
             routingSource?.name ?: routingMagnetName,
             routingSource?.files?.map { it.path }.orEmpty(), candidates)
@@ -1228,25 +1226,21 @@ internal fun ChunksApp(
     // The one handler for using a suggestion: the person's tap on the chip, or
     // the explicit opt-in pre-selection below. A target choice is a draft edit.
     fun useRoutingSuggestion() {
-        val id = routingSuggestion?.environmentId
-        when {
-            id == null -> Unit
-            id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value -> selectLocalAddTarget()
-            id == connectedRTorrentId -> selectAuthenticatedAddTarget()
-            combinedProtocolProfiles.any { it.id == id && it.operations != null } &&
-                (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) -> {
-                addDestination = UniversalAddRouteTarget.Protocol(id)
+        when (val target = AddRouting.targetFor(routingSuggestion?.environmentId, connectedRTorrentId,
+            combinedProtocolProfiles, protocolAddAttempt.busy, protocolAddAttempt.profileId)) {
+            null -> Unit
+            AddRouting.Target.Local -> selectLocalAddTarget()
+            AddRouting.Target.AuthenticatedRTorrent -> selectAuthenticatedAddTarget()
+            is AddRouting.Target.Protocol -> {
+                addDestination = UniversalAddRouteTarget.Protocol(target.profileId)
                 section = Section.ADD_CHOOSE
             }
         }
     }
     val routingSourceKey = routingSource?.infoHashV1 ?: routingMagnetHash
-    val routingSuggestionIsSelected = routingSuggestion?.environmentId?.let { id ->
-        id == addProtocolTargetId ||
-            (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
-            (addDestination == UniversalAddRouteTarget.Local &&
-                id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
-    } == true
+    val routingSuggestionIsSelected = AddRouting.isSelected(routingSuggestion?.environmentId,
+        addProtocolTargetId, addTargetIsAuthenticated, connectedRTorrentId,
+        localSelected = addDestination == UniversalAddRouteTarget.Local)
     LaunchedEffect(routingSuggestion?.environmentId, routingSourceKey, routingPolicy?.autoSelect,
         section, localSnapshotAddReview, addTargetUnavailable) {
         if (section != Section.ADD_CHOOSE || localSnapshotAddReview || addTargetUnavailable)

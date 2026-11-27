@@ -1,0 +1,97 @@
+name: Chunks release R8 shrink smoke
+
+# Manual: builds the real `release` variant with R8 (-Pchunks.releaseShrink=true), checks libtorrent4j
+# JNI class retention offline, debug-signs it with a throwaway key and runs a black-box installed
+# launch smoke on API35. It is release-candidate evidence for A2611-09; qaMinified does not
+# validate this shrink. It never signs with, or exposes, a release key and publishes nothing.
+on:
+  # Only the inputs of the release shrink itself; ordinary source changes are covered by
+  # qaMinified and are re-checked here at the release candidate by manual dispatch.
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/build.gradle.kts"
+      - "app/proguard-rules.pro"
+      - ".github/workflows/release-shrink-smoke.yml"
+      - "tools/release_shrink_smoke.sh"
+      - "tools/release_jni_witness.py"
+    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-release-shrink-smoke-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  release-shrink-smoke:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline witness unit tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.test_release_jni_witness tests.test_release_shrink_smoke
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build the R8-shrunk release APK
+        env:
+          CHUNKS_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          gradle --daemon -Pchunks.releaseShrink=true :app:assembleRelease
+          ls -l app/build/outputs/apk/release/*.apk
+          echo "release (R8) APK bytes: $(stat -c %s app/build/outputs/apk/release/app-release-unsigned.apk)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Static JNI/R8 witness
+        run: |
+          python3 tools/release_jni_witness.py app/build/outputs/apk/release/app-release-unsigned.apk \
+            app/build/outputs/mapping/release/mapping.txt app/build/outputs/mapping/release/usage.txt | tee -a "$GITHUB_STEP_SUMMARY"
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Debug-sign a throwaway copy for the emulator
+        run: |
+          bt="$ANDROID_HOME/build-tools/36.0.0"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/throwaway.jks" -storepass throwaway -keypass throwaway \
+            -alias t -keyalg RSA -keysize 2048 -validity 2 -dname "CN=throwaway"
+          "$bt/zipalign" -f 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
+          "$bt/apksigner" sign --ks "$RUNNER_TEMP/throwaway.jks" --ks-pass pass:throwaway --key-pass pass:throwaway \
+            --out "$RUNNER_TEMP/release-smoke.apk" "$RUNNER_TEMP/aligned.apk"
+          sha256sum "$RUNNER_TEMP/release-smoke.apk"
+      - name: Enable Android emulator KVM
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          [ -c /dev/kvm ] || { echo "::error::no /dev/kvm"; exit 1; }
+          sudo chmod 0666 /dev/kvm
+      - name: Installed launch smoke on the shrunk release
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/release_shrink_smoke.sh ${{ runner.temp }}/release-smoke.apk
+      - name: Upload mapping and smoke output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-release-shrink
+          path: |
+            app/build/outputs/mapping/release/
+            app/build/outputs/release-*.txt
+            app/build/outputs/release-ui.xml
+          retention-days: 14
+          if-no-files-found: warn
