@@ -164,7 +164,8 @@ internal object LocalPinnedPayloadRead {
     const val MAX_BYTES = 64L * 1024 * 1024 * 1024
     const val MAX_CAPTURE = LocalSingleLibraryMediaStoreCopy.MAX_BYTES
 
-    data class Result(val sha256: String, val captured: ByteArray)
+    data class Result(val sha256: String, val captured: ByteArray,
+        val legacy: Map<LocalChecksumComparison.Algorithm, String> = emptyMap())
 
     fun read(
         sourceRoot: File,
@@ -172,6 +173,7 @@ internal object LocalPinnedPayloadRead {
         expectedLength: Long,
         captureLimit: Int,
         cancelled: () -> Boolean,
+        includeLegacy: Boolean = false,
         onProgress: (Long) -> Unit = {}
     ): Result {
         if (expectedLength !in 0..MAX_BYTES || captureLimit !in 0..MAX_CAPTURE)
@@ -198,6 +200,11 @@ internal object LocalPinnedPayloadRead {
             val output = ByteArrayOutputStream(captureBytes)
             val digestFirst = MessageDigest.getInstance("SHA-256")
             val digestSecond = MessageDigest.getInstance("SHA-256")
+            // Legacy results are opt-in and derive from the first pass, whose
+            // exact bytes are independently checked by the second SHA-256 pass.
+            val sha1 = if (includeLegacy) MessageDigest.getInstance("SHA-1") else null
+            val md5 = if (includeLegacy) MessageDigest.getInstance("MD5") else null
+            val crc = if (includeLegacy) java.util.zip.CRC32() else null
             fun pass(hash: MessageDigest, capture: Boolean, base: Long) {
                 var offset = 0L
                 var lastProgress = 0L
@@ -207,6 +214,11 @@ internal object LocalPinnedPayloadRead {
                     val count = android.system.Os.pread(fd, buffer, 0, want, offset)
                     if (count <= 0 || count > want) throw IOException("Source stopped making progress")
                     hash.update(buffer, 0, count)
+                    if (capture) {
+                        sha1?.update(buffer, 0, count)
+                        md5?.update(buffer, 0, count)
+                        crc?.update(buffer, 0, count)
+                    }
                     if (capture && output.size() < captureBytes)
                         output.write(buffer, 0, minOf(count, captureBytes - output.size()))
                     offset += count
@@ -226,8 +238,13 @@ internal object LocalPinnedPayloadRead {
             if (!sameObject(namedAfter) || !sameObject(after) ||
                 !MessageDigest.isEqual(first, digestSecond.digest()))
                 throw IOException("Source was replaced or changed during read")
-            return Result(first.joinToString("") { "%02x".format(it.toInt() and 0xff) },
-                output.toByteArray())
+            fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
+            val legacy = if (includeLegacy) mapOf(
+                LocalChecksumComparison.Algorithm.SHA1 to hex(requireNotNull(sha1).digest()),
+                LocalChecksumComparison.Algorithm.MD5 to hex(requireNotNull(md5).digest()),
+                LocalChecksumComparison.Algorithm.CRC32 to requireNotNull(crc).value.toString(16).padStart(8, '0')
+            ) else emptyMap()
+            return Result(hex(first), output.toByteArray(), legacy)
         } finally {
             android.system.Os.close(fd)
         }

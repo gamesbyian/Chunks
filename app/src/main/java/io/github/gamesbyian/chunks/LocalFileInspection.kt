@@ -28,7 +28,8 @@ internal object LocalFileInspection {
             val file: LocalTransferFile,
             val sha256: String,
             val textPreview: String?,
-            val previewTruncated: Boolean
+            val previewTruncated: Boolean,
+            val legacy: Map<LocalChecksumComparison.Algorithm, String> = emptyMap()
         ) : Outcome
         data class Refused(val reason: String) : Outcome
     }
@@ -69,6 +70,7 @@ internal object LocalFileInspection {
         review: Review,
         file: LocalTransferFile,
         cancelled: () -> Boolean = { false },
+        includeLegacy: Boolean = false,
         onProgress: (Long) -> Unit = {}
     ): Outcome {
         fun refused(reason: String) = Outcome.Refused(reason)
@@ -95,13 +97,13 @@ internal object LocalFileInspection {
             val observed = LocalPinnedPayloadRead.read(
                 root, source, file.sizeBytes,
                 captureLimit = if (preview) MAX_PREVIEW_BYTES else 0,
-                cancelled = cancelled, onProgress = onProgress
+                cancelled = cancelled, includeLegacy = includeLegacy, onProgress = onProgress
             )
             if (cancelled() || !stillReviewed() || !onDisk() || selectedRoot.canonicalFile != root)
                 return refused("The inspection was cancelled or the source changed during reading.")
             Outcome.Observed(file, observed.sha256,
                 if (preview) inertText(observed.captured) else null,
-                preview && file.sizeBytes > observed.captured.size.toLong())
+                preview && file.sizeBytes > observed.captured.size.toLong(), observed.legacy)
         } catch (_: Exception) {
             refused("The file could not be read twice with matching bytes. No checksum was accepted.")
         }
@@ -117,12 +119,4 @@ internal object LocalFileInspection {
             if ((ch.isISOControl() && ch !in "\n\r\t") ||
                 Character.getType(ch) == Character.FORMAT.toInt()) '\uFFFD' else ch
         }.joinToString("")
-
-    internal enum class Comparison { NONE, INVALID, MATCHES, DIFFERS }
-    internal fun compare(observed: String, supplied: String): Comparison {
-        val value = supplied.trim()
-        if (value.isEmpty()) return Comparison.NONE
-        if (!value.matches(Regex("[0-9a-fA-F]{64}"))) return Comparison.INVALID
-        return if (value.equals(observed, ignoreCase = true)) Comparison.MATCHES else Comparison.DIFFERS
-    }
 }
