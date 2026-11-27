@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from collections.abc import Callable
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -266,12 +267,14 @@ _MEDIA_REVIEW_FINGERPRINT = re.compile(
 
 def _safe_timeout_signature(
     text: str, tests: set[tuple[str, str]], signature: re.Pattern[str], timeout_ms: int,
+    diagnostic_line: Callable[[re.Match[str]], str] | None = None,
 ) -> re.Match[str] | None:
     """Match only a named test's exact assertion and allowlisted Java continuation."""
     fields: dict[str, str] = {}
     stack: str | None = None
     stack_continuation = False
     stack_untrusted_suffix = False
+    diagnostic_seen = False
     # Android puts Java stack frames on separate raw lines after its initial
     # INSTRUMENTATION_STATUS: stack= assertion. Do not silently ignore an
     # arbitrary second line (including a URL, tracker token or injected text).
@@ -310,10 +313,19 @@ def _safe_timeout_signature(
             stack = None
             stack_continuation = False
             stack_untrusted_suffix = False
+            diagnostic_seen = False
         elif stack_continuation and not (
                 java_frame.fullmatch(line) or timeout_cause.fullmatch(line) or
                 omitted_frames.fullmatch(line)):
-            stack_untrusted_suffix = True
+            # A test may repeat exactly the already matched, fixed fields for
+            # Gradle JUnit diagnostics. No generic marker or arbitrary value is
+            # accepted, and inconsistent or repeated lines invalidate the match.
+            match = signature.fullmatch(stack or "")
+            if (diagnostic_line is not None and not diagnostic_seen and
+                    match is not None and line == diagnostic_line(match)):
+                diagnostic_seen = True
+            else:
+                stack_untrusted_suffix = True
     return None
 
 
@@ -342,11 +354,57 @@ _IME_FOCUS_FINGERPRINT = re.compile(
 
 def safe_ime_focus_failure(text: str) -> str | None:
     """Expose foreground and exact external ANR witnesses without dumping Android windows."""
-    match = _safe_timeout_signature(text, _IME_FOCUS_TESTS, _IME_FOCUS_FINGERPRINT, 15_000)
+    def diagnostic_line(match: re.Match[str]) -> str:
+        foreground, launcher, clicked = match.groups()
+        return (f"CHUNKS_SAFE_DIAG ime-focus foregroundIsChunks={foreground} "
+                f"launcherAnr={launcher} waitClicked={clicked}")
+
+    match = _safe_timeout_signature(text, _IME_FOCUS_TESTS, _IME_FOCUS_FINGERPRINT, 15_000,
+                                    diagnostic_line)
     if match is None:
         return None
     names = ("foregroundIsChunks", "externalLauncherAnrVisible", "externalLauncherWaitClicked")
     return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
+
+
+_CLIPBOARD_FOCUS_TESTS = {
+    ("io.github.gamesbyian.chunks.ClipboardUriIntakeInstrumentedTest",
+     "singleCopiedUriPrefillsButAmbiguousOrUnrelatedUrisNeverDo"),
+}
+_CLIPBOARD_FOCUS_FINGERPRINT = re.compile(
+    r"java\.lang\.AssertionError: Installed clipboard journey did not acquire Chunks window focus; "
+    r"targetFocused=(true|false|unavailable); "
+    r"targetPackageForeground=(true|false|unavailable); "
+    r"pixelLauncherAnr=(true|false|unavailable); "
+    r"targetAnr=(true|false|unavailable); "
+    r"launcherAnrDismissed=(true|false)\. No clipboard read or transfer write was attempted\."
+)
+
+
+def safe_clipboard_focus_failure(text: str) -> str | None:
+    names = ("targetFocused", "targetPackageForeground", "pixelLauncherAnr",
+             "targetAnr", "launcherAnrDismissed")
+
+    def fields(match: re.Match[str]) -> str:
+        return " ".join(f"{key}={value}" for key, value in zip(names, match.groups()))
+
+    match = _safe_timeout_signature(
+        text, _CLIPBOARD_FOCUS_TESTS, _CLIPBOARD_FOCUS_FINGERPRINT, 30_000,
+        lambda m: "CHUNKS_SAFE_DIAG clipboard-focus " + fields(m))
+    return fields(match) if match is not None else None
+
+
+def focus_diagnostics(text: str) -> dict[tuple[str, str], str]:
+    """Only exact, already-verified Boolean diagnostics may survive into JUnit."""
+    found = {}
+    for identities, label, fingerprint in (
+            (_IME_FOCUS_TESTS, "ime-focus", safe_ime_focus_failure(text)),
+            (_CLIPBOARD_FOCUS_TESTS, "clipboard-focus", safe_clipboard_focus_failure(text))):
+        if fingerprint is not None:
+            for identity in identities:
+                found[identity] = "CHUNKS_SAFE_DIAG " + label + " " + fingerprint
+    return found
+
 
 @dataclass(frozen=True)
 class TestResult:
@@ -410,7 +468,8 @@ def parse_stream(text: str) -> list[TestResult]:
     return list(finished.values())
 
 
-def write_junit(cases: list[TestResult], path: Path) -> None:
+def write_junit(cases: list[TestResult], path: Path,
+                diagnostics: dict[tuple[str, str], str] | None = None) -> None:
     failures = sum(x.outcome == "failed" for x in cases)
     errors = sum(x.outcome == "error" for x in cases)
     skipped = sum(x.outcome == "skipped" for x in cases)
@@ -424,7 +483,9 @@ def write_junit(cases: list[TestResult], path: Path) -> None:
             "classname": result.classname, "name": result.method,
         })
         if result.outcome == "failed":
-            ET.SubElement(case, "failure", message="instrumentation reported failure")
+            failure = ET.SubElement(case, "failure", message="instrumentation reported failure")
+            if diagnostics:
+                failure.text = diagnostics.get((result.classname, result.method))
         elif result.outcome == "error":
             ET.SubElement(case, "error", message="instrumentation reported error")
         elif result.outcome == "skipped":
@@ -446,7 +507,7 @@ def main() -> None:
         for location in failure_locations(raw):
             print("CHUNKS_PREBUILT_FAILURE_LOCATION: " + location)
         raise SystemExit("Android instrumentation receipt could not be verified")
-    write_junit(cases, args.junit)
+    write_junit(cases, args.junit, focus_diagnostics(raw))
     values = {kind: sum(x.outcome == kind for x in cases)
               for kind in ("passed", "failed", "error", "skipped")}
     print("CHUNKS_PREBUILT_INSTRUMENT: " + " ".join(
@@ -469,6 +530,9 @@ def main() -> None:
         safe_focus = safe_ime_focus_failure(raw)
         if safe_focus is not None:
             print("CHUNKS_PREBUILT_SAFE_IME_FOCUS: " + safe_focus)
+        safe_clipboard = safe_clipboard_focus_failure(raw)
+        if safe_clipboard is not None:
+            print("CHUNKS_PREBUILT_SAFE_CLIPBOARD_FOCUS: " + safe_clipboard)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 

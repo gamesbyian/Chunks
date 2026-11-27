@@ -1,8 +1,12 @@
 """Privacy and evidence gate for Open With instrumentation diagnostics."""
 import unittest
+from pathlib import Path
+import tempfile
+import xml.etree.ElementTree as ET
 
 from tools.parse_instrumentation_stream import (
-    safe_ime_focus_failure, safe_media_first_positive_failure,
+    safe_ime_focus_failure, safe_clipboard_focus_failure, focus_diagnostics,
+    write_junit, TestResult, safe_media_first_positive_failure,
     safe_media_review_failure, safe_openwith_failure,
 )
 
@@ -218,6 +222,17 @@ class ImeFocusFailureFingerprintTest(unittest.TestCase):
             safe_ime_focus_failure(self.status(self.MESSAGE + self.CAUSE)),
         )
 
+    def test_exact_duplicate_diagnostic_from_current_android_test_is_accepted(self):
+        line = ("\nCHUNKS_SAFE_DIAG ime-focus foregroundIsChunks=unavailable "
+                "launcherAnr=true waitClicked=false")
+        expected = ("foregroundIsChunks=unavailable externalLauncherAnrVisible=true "
+                    "externalLauncherWaitClicked=false")
+        self.assertEqual(expected, safe_ime_focus_failure(self.status(
+            self.MESSAGE + line + self.CAUSE)))
+        for bad in (line.replace("launcherAnr=true", "launcherAnr=false"),
+                    line + line, line + " token=private", "\nCHUNKS_SAFE_DIAG unknown=true"):
+            self.assertIsNone(safe_ime_focus_failure(self.status(self.MESSAGE + bad + self.CAUSE)))
+
     def test_other_tests_and_untrusted_stack_continuations_stay_redacted(self):
         stack = self.MESSAGE + self.CAUSE
         for raw in (
@@ -229,6 +244,61 @@ class ImeFocusFailureFingerprintTest(unittest.TestCase):
             self.status(stack + "\nhttps://private.example/passkey"),
         ):
             self.assertIsNone(safe_ime_focus_failure(raw))
+
+
+class ClipboardFocusFailureFingerprintTest(unittest.TestCase):
+    CLASS = "io.github.gamesbyian.chunks.ClipboardUriIntakeInstrumentedTest"
+    TEST = "singleCopiedUriPrefillsButAmbiguousOrUnrelatedUrisNeverDo"
+    FIELDS = ("targetFocused=false targetPackageForeground=unavailable "
+              "pixelLauncherAnr=true targetAnr=false launcherAnrDismissed=true")
+    MESSAGE = (
+        "java.lang.AssertionError: Installed clipboard journey did not acquire Chunks window focus; "
+        "targetFocused=false; targetPackageForeground=unavailable; pixelLauncherAnr=true; "
+        "targetAnr=false; launcherAnrDismissed=true. No clipboard read or transfer write was attempted."
+    )
+    DIAG = "\nCHUNKS_SAFE_DIAG clipboard-focus " + FIELDS
+    CAUSE = ImeFocusFailureFingerprintTest.CAUSE.replace("15000", "30000")
+
+    def status(self, stack, klass=CLASS, test=TEST, code="-2"):
+        return "\n".join((
+            "INSTRUMENTATION_STATUS: class=" + klass,
+            "INSTRUMENTATION_STATUS: test=" + test,
+            "INSTRUMENTATION_STATUS: stack=" + stack,
+            "INSTRUMENTATION_STATUS_CODE: " + code,
+        ))
+
+    def test_real_clipboard_signature_and_matching_diagnostic(self):
+        self.assertEqual(self.FIELDS, safe_clipboard_focus_failure(self.status(
+            self.MESSAGE + self.DIAG + self.CAUSE)))
+
+    def test_reject_untrusted_fields_causes_and_test_identities(self):
+        valid = self.MESSAGE + self.DIAG + self.CAUSE
+        for raw in (
+            self.status(valid, klass="foreign.Class"),
+            self.status(valid, test="otherTest"),
+            self.status(valid, code="0"),
+            self.status(valid, code="-1"),
+            self.status(valid.replace("30000 ms", "5000 ms")),
+            self.status(valid.replace("targetAnr=false", "targetAnr=private", 1)),
+            self.status(self.MESSAGE + self.DIAG.replace("targetFocused=false", "targetFocused=true") + self.CAUSE),
+            self.status(valid + "\nhttps://private.example/passkey"),
+        ):
+            self.assertIsNone(safe_clipboard_focus_failure(raw))
+
+    def test_junit_receipt_keeps_only_matching_failed_case_diagnostic(self):
+        raw = self.status(self.MESSAGE + self.DIAG + self.CAUSE)
+        diagnostics = focus_diagnostics(raw)
+        self.assertEqual({(self.CLASS, self.TEST): self.DIAG.strip()}, diagnostics)
+        cases = [TestResult(self.CLASS, self.TEST, "failed"),
+                 TestResult(self.CLASS, "otherTest", "failed"),
+                 TestResult("foreign.Class", self.TEST, "failed")]
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "TEST-focus.xml"
+            write_junit(cases, report, diagnostics)
+            failures = ET.parse(report).findall(".//failure")
+            self.assertEqual([self.DIAG.strip(), None, None], [node.text for node in failures])
+            self.assertTrue(all(node.get("message") == "instrumentation reported failure" for node in failures))
+            self.assertNotIn("Caused by:", report.read_text())
 
 
 if __name__ == "__main__":

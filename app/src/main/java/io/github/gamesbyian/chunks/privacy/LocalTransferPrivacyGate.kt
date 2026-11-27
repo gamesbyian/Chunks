@@ -119,6 +119,31 @@ private fun TransferPrivacyGate(
     exitOnDispose: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    // The same route slot can switch exact principals without unmounting. All transient
+    // authentication state, launchers, notices and settings UI must belong to the scope,
+    // not just the saved policy mode. Disposal cancels the previous scope's own tickets.
+    androidx.compose.runtime.key(scope) {
+        ScopedTransferPrivacyGate(
+            scope, onBack, lockedTitle, subject, redactLocalService,
+            controlsInContent, exitOnDispose, content)
+    }
+}
+
+@Composable
+private fun ScopedTransferPrivacyGate(
+    scope: String,
+    onBack: () -> Unit,
+    lockedTitle: String,
+    subject: String,
+    redactLocalService: Boolean,
+    controlsInContent: Boolean,
+    /**
+     * False when the host owns route exit (a gate row in a lazy list is disposed by scrolling
+     * or by opening Details, neither of which leaves the protected route).
+     */
+    exitOnDispose: Boolean,
+    content: @Composable () -> Unit
+) {
     val context = LocalContext.current
     val activity = remember(context) { context.activityOrNull() }
     val store = remember(context) { TransferPrivacyPolicyStore(context) }

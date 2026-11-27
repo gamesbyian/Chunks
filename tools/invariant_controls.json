@@ -1327,6 +1327,26 @@
       "tests": [
         "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
       ]
+    },
+    {
+      "id": "privacy-gate-reuses-other-scope-ui",
+      "invariant": "A privacy gate's transient composition state never carries across exact client scopes at the same route slot",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "    androidx.compose.runtime.key(scope) {\n        ScopedTransferPrivacyGate(",
+      "new": "    androidx.compose.runtime.key(Unit) {\n        ScopedTransferPrivacyGate(",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
+    },
+    {
+      "id": "actual-typed-add-bypasses-privacy-gate",
+      "invariant": "The actual ChunksApp typed Add route never constructs source or write operations behind a locked exact client",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "old": "          GatedProtocolAdd(privacyScope = protocolPrivacyScope,\n              clientKind = RemoteProtocolLabels.kind(profile.backend), onBack = ::returnFromAdd) {",
+      "new": "          run {",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolAddPrivacyRouteTest"
+      ]
     }
   ]
 }
