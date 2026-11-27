@@ -492,14 +492,7 @@ internal fun ChunksApp(
     // Navigation-only list state that survives moving between routes
     // (local ↔ All environments ↔ server ↔ settings) and rotation. It holds
     // no selection, confirmation or command state.
-    val localListScroll = rememberScrollState()
-    val localAddScroll = rememberScrollState()
-    val localOptionsScroll = rememberScrollState()
-    val localSearch = rememberSaveable { mutableStateOf("") }
-    val localOptionsSearch = rememberSaveable { mutableStateOf("") }
-    val localOptionsCategory = rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
-    val localOptionsReturnQuery = rememberSaveable { mutableStateOf("") }
-    val localOptionsIndexScroll = rememberSaveable { mutableStateOf(0) }
+    val localNavigation = rememberLocalNavigationMemory()
     // The single Add source draft belongs to the app, never to the currently
     // displayed local/server Add form. Both adapters edit the same source;
     // neither browsing filters nor opening a screen silently authorizes Add.
@@ -1426,13 +1419,13 @@ internal fun ChunksApp(
                 pane = pane,
                 showNavigationFooter = false,
                 listScroll = when (pane) {
-                    LocalPane.ADD -> localAddScroll
-                    LocalPane.OPTIONS -> localOptionsScroll
-                    else -> localListScroll
-                }, searchState = localSearch, optionsSearchState = localOptionsSearch,
-                optionsCategoryState = localOptionsCategory,
-                optionsReturnQueryState = localOptionsReturnQuery,
-                optionsIndexScrollState = localOptionsIndexScroll,
+                    LocalPane.ADD -> localNavigation.localAddScroll
+                    LocalPane.OPTIONS -> localNavigation.localOptionsScroll
+                    else -> localNavigation.localListScroll
+                }, searchState = localNavigation.localSearch, optionsSearchState = localNavigation.localOptionsSearch,
+                optionsCategoryState = localNavigation.localOptionsCategory,
+                optionsReturnQueryState = localNavigation.localOptionsReturnQuery,
+                optionsIndexScrollState = localNavigation.localOptionsIndexScroll,
                 magnetDraftState = addSourceDraft,
                 addPlaceState = localAddPlace, addFolderState = localAddFolder, addStartState = localAddStart,
                 addArtworkState = addArtworkChoices.onLocal(),
@@ -3141,14 +3134,7 @@ internal fun ChunksApp(
             },
             onOptions = {
                 savedAddReconnect.abandon()
-                if (localOptionsCategory.value != null) {
-                    localOptionsCategory.value = null
-                    localOptionsSearch.value = localOptionsReturnQuery.value
-                    scope.launch {
-                        androidx.compose.runtime.withFrameNanos { }
-                        localOptionsScroll.scrollTo(localOptionsIndexScroll.value)
-                    }
-                }
+                localNavigation.returnToOptionsIndexIfOpen(scope)
                 section = Section.OPTIONS
             },
             onConnections = {
@@ -3187,3 +3173,46 @@ internal fun httpStatusExplanation(status: Int): String = when (status) {
 internal fun isLoginRefused(failure: Exception): Boolean =
     failure is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException &&
         (failure.status == 401 || failure.status == 403)
+
+/** Navigation memory only: never contains an Add source, credential, selection or write authority. */
+private class LocalNavigationMemory(
+    val localListScroll: androidx.compose.foundation.ScrollState,
+    val localAddScroll: androidx.compose.foundation.ScrollState,
+    val localOptionsScroll: androidx.compose.foundation.ScrollState,
+    val localSearch: androidx.compose.runtime.MutableState<String>,
+    val localOptionsSearch: androidx.compose.runtime.MutableState<String>,
+    val localOptionsCategory: androidx.compose.runtime.MutableState<OptionsCategory?>,
+    val localOptionsReturnQuery: androidx.compose.runtime.MutableState<String>,
+    val localOptionsIndexScroll: androidx.compose.runtime.MutableState<Int>
+) {
+    fun returnToOptionsIndexIfOpen(scope: kotlinx.coroutines.CoroutineScope) {
+        if (localOptionsCategory.value != null) {
+            localOptionsCategory.value = null
+            localOptionsSearch.value = localOptionsReturnQuery.value
+            scope.launch {
+                androidx.compose.runtime.withFrameNanos { }
+                localOptionsScroll.scrollTo(localOptionsIndexScroll.value)
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberLocalNavigationMemory(): LocalNavigationMemory {
+    val localListScroll = rememberScrollState()
+    val localAddScroll = rememberScrollState()
+    val localOptionsScroll = rememberScrollState()
+    val localSearch = rememberSaveable { mutableStateOf("") }
+    val localOptionsSearch = rememberSaveable { mutableStateOf("") }
+    val localOptionsCategory = rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
+    val localOptionsReturnQuery = rememberSaveable { mutableStateOf("") }
+    val localOptionsIndexScroll = rememberSaveable { mutableStateOf(0) }
+    return remember(
+        localListScroll, localAddScroll, localOptionsScroll, localSearch,
+        localOptionsSearch, localOptionsCategory, localOptionsReturnQuery, localOptionsIndexScroll
+    ) {
+        LocalNavigationMemory(
+            localListScroll, localAddScroll, localOptionsScroll, localSearch,
+            localOptionsSearch, localOptionsCategory, localOptionsReturnQuery, localOptionsIndexScroll)
+    }
+}
