@@ -59,6 +59,26 @@ class LocalFileInspectionInstrumentedTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun legacyChecksumsAreOptInAndMatchIndependentKnownVectors() {
+        val root = fixtureRoot()
+        try {
+            val bytes = "123456789".toByteArray(Charsets.US_ASCII)
+            val file = File(root, "vector.bin").apply { writeBytes(bytes) }
+            val ordinary = LocalPinnedPayloadRead.read(root, file, bytes.size.toLong(), 0, { false })
+            assertTrue("Default read must not calculate legacy checksums", ordinary.legacy.isEmpty())
+            val legacy = LocalPinnedPayloadRead.read(root, file, bytes.size.toLong(), 0,
+                cancelled = { false }, includeLegacy = true)
+            assertEquals(ordinary.sha256, legacy.sha256)
+            assertEquals("f7c3bc1d808e04732adf679965ccc34ca7ae3441",
+                legacy.legacy[LocalChecksumComparison.Algorithm.SHA1])
+            assertEquals("25f9e794323b453885f5181f1b624d0b",
+                legacy.legacy[LocalChecksumComparison.Algorithm.MD5])
+            assertEquals("cbf43926", legacy.legacy[LocalChecksumComparison.Algorithm.CRC32])
+            assertEquals(0, legacy.captured.size)
+            assertArrayEquals(bytes, file.readBytes())
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun pinnedReadRejectsSubstitutionCancellationAndLeafSymlinkWithoutChangingEitherFile() {
         val root = fixtureRoot()
         try {
