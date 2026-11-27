@@ -101,5 +101,6 @@ jobs:
             app/build/outputs/mapping/release/
             app/build/outputs/release-*.txt
             app/build/outputs/release-ui.xml
+            app/build/outputs/release-engine-final-ui.xml
           retention-days: 14
           if-no-files-found: warn
