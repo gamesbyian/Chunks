@@ -18,7 +18,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Chunks UI unlock, and successful device auth is not rTorrent authentication.
  */
 internal object TransferPrivacyRuntime {
-    val session = TransferPrivacySession { SystemClock.elapsedRealtime() }
+    /** Bumped when an unlock or lock changes what a scope may show (observable by Compose). */
+    var visibilityRevision by mutableIntStateOf(0)
+        private set
+    val session = TransferPrivacySession(onVisibilityChanged = { visibilityRevision++ }) { SystemClock.elapsedRealtime() }
     var lifecycleRevision by mutableIntStateOf(0)
         private set
 

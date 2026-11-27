@@ -5,7 +5,6 @@ import android.os.Build
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.CancellationSignal
-import android.view.WindowManager
 import io.github.gamesbyian.chunks.LocalEngineService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -75,6 +74,27 @@ internal fun RemoteTransferPrivacyGate(
 }
 
 /**
+ * A typed Transmission/qBittorrent/Deluge client's own gate, for the exact
+ * client principal's privacy scope (`CombinedReadOnlyProtocolAdmission.privacyScope`).
+ * Same lock modes, OS authentication and secure-window rules as Local and rTorrent;
+ * unlocking it grants only that one client.
+ */
+@Composable
+internal fun ProtocolTransferPrivacyGate(
+    scope: String,
+    clientKind: String,
+    onBack: () -> Unit,
+    controlsInContent: Boolean = false,
+    /** See [TransferPrivacyGate]: false when the host calls [TransferPrivacySession.onExit] itself. */
+    exitOnDispose: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    TransferPrivacyGate(scope, onBack, "$clientKind client", "$clientKind client",
+        redactLocalService = false, controlsInContent = controlsInContent,
+        exitOnDispose = exitOnDispose, content = content)
+}
+
+/**
  * The unlocked gate's Privacy & authentication controls, provided to content
  * that hosts them in its Options area instead of a row pinned above every
  * screen (UX: Options contains Privacy and authentication). Null outside a
@@ -92,6 +112,11 @@ private fun TransferPrivacyGate(
     subject: String,
     redactLocalService: Boolean,
     controlsInContent: Boolean = false,
+    /**
+     * False when the host owns route exit (a gate row in a lazy list is disposed by scrolling
+     * or by opening Details, neither of which leaves the protected route).
+     */
+    exitOnDispose: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -139,12 +164,8 @@ private fun TransferPrivacyGate(
     // not re-read state that may already say NEVER after a policy change.
     val secureWindow = mode != TransferLockMode.NEVER
     DisposableEffect(activity, secureWindow) {
-        if (secureWindow)
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose {
-            if (secureWindow)
-                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
+        if (secureWindow) SecureWindowFlag.acquire(activity)
+        onDispose { if (secureWindow) SecureWindowFlag.release(activity) }
     }
     DisposableEffect(scope, activity) {
         onDispose {
@@ -159,7 +180,7 @@ private fun TransferPrivacyGate(
             // An Android rotation preserves the process's once-per-session
             // grant. An actual exit from the transfer route does not satisfy
             // EVERY_ENTRY on the next visit.
-            if (activity?.isChangingConfigurations != true) session.onExit(scope)
+            if (exitOnDispose && activity?.isChangingConfigurations != true) session.onExit(scope)
         }
     }
 
@@ -364,7 +385,9 @@ private fun TransferPrivacyGate(
             notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Text(if (redactLocalService)
                 "Locked Chunks UI does not pause or stop already-running local torrents."
-                else "This lock neither disconnects the rTorrent server nor stops transfers on this device.",
+                else "This lock neither disconnects the " +
+                    (if (subject == "rTorrent profile") "rTorrent server" else subject) +
+                    " nor stops transfers on this device.",
                 style = MaterialTheme.typography.bodySmall)
         }
     } else {
@@ -451,4 +474,25 @@ private fun TransferPrivacyGate(
             }
         }
     }
+}
+
+/**
+ * Add to one typed client: never composes for an unverifiable client identity (no privacy
+ * scope), and otherwise only through that client's own gate. Extracted from `ChunksApp` so the
+ * wiring itself is testable (invariant control `protocol-add-ungated`).
+ */
+@Composable
+internal fun GatedProtocolAdd(
+    privacyScope: String?,
+    clientKind: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    if (privacyScope == null) {
+        Text("Cannot verify which client this Add is for. Reconnect it from Connections.",
+            color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+        return
+    }
+    ProtocolTransferPrivacyGate(scope = privacyScope, clientKind = clientKind, onBack = onBack,
+        controlsInContent = true, content = content)
 }

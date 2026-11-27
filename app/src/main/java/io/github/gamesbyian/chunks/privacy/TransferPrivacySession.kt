@@ -17,6 +17,13 @@ internal enum class TransferLockMode {
 }
 
 internal class TransferPrivacySession(
+    /**
+     * Called after a grant or a manual/EVERY_ENTRY lock changes what a scope may show, so
+     * surfaces that read [mayView] outside the gate that changed it (combined Transfers'
+     * typed-client rows) redraw at once. Never called from [configure] or [mayView], which run
+     * during composition.
+     */
+    private val onVisibilityChanged: () -> Unit = {},
     private val elapsedRealtimeMillis: () -> Long
 ) {
     companion object { private const val FIVE_MINUTES_MS = 300_000L }
@@ -91,6 +98,7 @@ internal class TransferPrivacySession(
         if (!deviceAuthenticated || gate.mode == TransferLockMode.NEVER) return false
         gate.authorized = true
         gate.leftBackgroundAt = null
+        onVisibilityChanged()
         return true
     }
 
@@ -135,6 +143,7 @@ internal class TransferPrivacySession(
         gate.challengeNonce = null
         gate.policyChangeNonce = null
         gate.leftBackgroundAt = null
+        onVisibilityChanged()
     }
 
     /** App-wide background transition; does not pause torrent engines. */

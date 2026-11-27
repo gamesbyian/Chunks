@@ -6,7 +6,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import android.content.Context
 import android.content.ContextWrapper
-import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -562,6 +561,9 @@ internal fun CombinedTransfersScreen(
     // run during composition. Until a cancellable, exact-scope asynchronous
     // read completes, every environment is locked, including opt-out scopes.
     val privacyRevision = TransferPrivacyRuntime.lifecycleRevision
+    // An unlock or lock in a typed client's gate row changes what its rows may show; reading
+    // this revision makes the whole screen redraw at once, not on the next tick.
+    @Suppress("UNUSED_VARIABLE") val privacyVisibilityRevision = TransferPrivacyRuntime.visibilityRevision
     val policyRevision = TransferPrivacyPolicyStore.revision
     val localPrivacyScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
     val serverPrivacyScope = remember(server?.aliasScope) {
@@ -676,6 +678,16 @@ internal fun CombinedTransfersScreen(
             privacyEvidence?.decision(privacyScope, privacySession, deviceSecure)?.mayShow == true
     }.keys
     val protocolSources = rememberCombinedProtocolSources(protocolProfiles, protocolAllowed, now)
+    // A typed client's own view owns its route exit (EVERY_ENTRY): leaving that view relocks it.
+    // Its gate row inside the list may be disposed by scrolling or Details without leaving.
+    val ownProtocolViewScope = CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)
+        ?.privacyScope
+    DisposableEffect(ownProtocolViewScope, activity) {
+        onDispose {
+            if (ownProtocolViewScope != null && activity?.isChangingConfigurations != true)
+                TransferPrivacyRuntime.session.onExit(ownProtocolViewScope)
+        }
+    }
     val serverId = server?.let {
         EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
     }
@@ -1085,12 +1097,17 @@ internal fun CombinedTransfersScreen(
         sharedTorrentError == null
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
-    val secure = (localPrivacy.needsSecureWindow && localPrivacy.mayShow) ||
-        (serverPrivacy?.needsSecureWindow == true && serverPrivacy.mayShow) ||
-        savedPrivacy.any { (id, d) -> d.needsSecureWindow && d.mayShow && listings[id]?.observedAtEpochMillis != null }
+    // Typed protocol clients count too: their rows are shown here once allowed.
+    val secure = CombinedSecureWindow.required(
+        local = localPrivacy,
+        server = serverPrivacy,
+        savedShown = savedPrivacy.filter { (id, _) -> listings[id]?.observedAtEpochMillis != null }.values,
+        protocol = protocolPrivacyScopes.values.mapNotNull { privacyScope ->
+            privacyScope?.let { privacyEvidence?.decision(it, privacySession, deviceSecure) }
+        })
     DisposableEffect(activity, secure) {
-        if (secure) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+        if (secure) io.github.gamesbyian.chunks.privacy.SecureWindowFlag.acquire(activity)
+        onDispose { if (secure) io.github.gamesbyian.chunks.privacy.SecureWindowFlag.release(activity) }
     }
 
     val listState = listState ?: rememberLazyListState()
@@ -1667,6 +1684,17 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
+        }
+        // A typed client's own view (exactly one typed client selected): its privacy gate.
+        // While locked, the client's rows are already hidden by its privacy decision; this
+        // item offers the unlock and, once unlocked, its Privacy & authentication controls.
+        CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)?.let { gate ->
+            item(key = "protocol-privacy-gate") {
+                io.github.gamesbyian.chunks.privacy.ProtocolTransferPrivacyGate(
+                    scope = gate.privacyScope, clientKind = gate.clientKind,
+                    onBack = { update(query.copy(scope = EnvironmentViewScope.All)) },
+                    exitOnDispose = false) {}
+            }
         }
 
         visibleAddReceipts.forEach { receipt ->

@@ -1216,6 +1216,76 @@
       "tests": [
         "io.github.gamesbyian.chunks.CombinedLifecycleEligibilityTest"
       ]
+    },
+    {
+      "id": "combined-secure-window-ignores-typed-clients",
+      "invariant": "Combined Transfers sets FLAG_SECURE while an unlocked protected Transmission/qBittorrent/Deluge scope is shown",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedSecureWindow.kt",
+      "old": ".plus(savedShown).plus(protocol)",
+      "new": ".plus(savedShown)",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedSecureWindowTest"
+      ]
+    },
+    {
+      "id": "combined-typed-client-view-ungated",
+      "invariant": "Combined Transfers narrowed to one typed client shows that client's privacy gate (unlock and controls)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt",
+      "old": "        CombinedProtocolGate.forView(query.scope, protocolProfiles, protocolPrivacyScopes)?.let { gate ->",
+      "new": "        (null as CombinedProtocolGate.Gate?)?.let { gate ->",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedProtocolPrivacyLockTest"
+      ]
+    },
+    {
+      "id": "protocol-gate-composes-locked-content",
+      "invariant": "The typed-client privacy gate never composes protected content while that client's scope is locked (the Add wiring in MainActivity has no separate witness yet)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "    TransferPrivacyGate(scope, onBack, \"$clientKind client\", \"$clientKind client\",",
+      "new": "    if (true) { content(); return }\n    TransferPrivacyGate(scope, onBack, \"$clientKind client\", \"$clientKind client\",",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
+    },
+    {
+      "id": "protocol-add-ungated",
+      "invariant": "Add to a typed client is composed only through that client's privacy gate",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "    ProtocolTransferPrivacyGate(scope = privacyScope, clientKind = clientKind, onBack = onBack,\n        controlsInContent = true, content = content)",
+      "new": "    content()",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
+    },
+    {
+      "id": "secure-window-flag-not-counted",
+      "invariant": "One FLAG_SECURE owner's release never clears the flag while another owner still holds it",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/SecureWindowFlag.kt",
+      "old": "        if (count <= 1) {",
+      "new": "        if (true) {",
+      "tests": [
+        "io.github.gamesbyian.chunks.SecureWindowFlagTest"
+      ]
+    },
+    {
+      "id": "privacy-lock-not-observed",
+      "invariant": "Lock now on a typed client's gate row hides that client's rows in combined Transfers at once, not on the next tick",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/TransferPrivacySession.kt",
+      "old": "        gate.leftBackgroundAt = null\n        onVisibilityChanged()\n    }",
+      "new": "        gate.leftBackgroundAt = null\n    }",
+      "tests": [
+        "io.github.gamesbyian.chunks.CombinedProtocolPrivacyLockTest"
+      ]
+    },
+    {
+      "id": "gate-row-dispose-relocks-every-entry",
+      "invariant": "A host-owned gate row disposed by scrolling or Details does not relock an EVERY_ENTRY client",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "if (exitOnDispose && activity?.isChangingConfigurations != true) session.onExit(scope)",
+      "new": "if (activity?.isChangingConfigurations != true) session.onExit(scope)",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
     }
   ]
 }
