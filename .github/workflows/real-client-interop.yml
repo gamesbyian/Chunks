@@ -202,3 +202,13 @@ jobs:
       - name: Daemon logs on failure
         if: failure()
         run: tail -n 40 "$RUNNER_TEMP"/interop/*.log || true
+      - name: Retain raw disposable interop failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-disposable-interop-failure-${{ github.run_attempt }}
+          path: |
+            app/build/test-results/testDebugUnitTest/TEST-*.xml
+            ${{ runner.temp }}/interop/*.log
+          retention-days: 14
+          if-no-files-found: warn

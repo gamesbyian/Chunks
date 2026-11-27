@@ -39,7 +39,16 @@ class DelugeRoutingInteropTest {
         override suspend fun exchange(request: DelugeReadOnlyRpc.Request): DelugeReadOnlyRpc.Response {
             val m = JSONObject(request.body.toString(Charsets.UTF_8)).optString("method")
             methods.computeIfAbsent(m) { AtomicInteger() }.incrementAndGet()
-            return DelugeReadOnlyRpc.HttpWire.exchange(request)
+            return try {
+                DelugeReadOnlyRpc.HttpWire.exchange(request)
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (failure: java.io.IOException) {
+                // The production boundary deliberately hides transport details.
+                // The disposable test records only method and exception class.
+                println("CHUNKS_DELUGE_ROUTING_INTEROP: transport_method=$m error_class=${failure.javaClass.simpleName}")
+                throw failure
+            }
         }
     }
 
@@ -79,6 +88,8 @@ class DelugeRoutingInteropTest {
             }
             adds.forEach { assertTrue("fixture added on its own daemon: $it", it is ClientOperationOutcome.Verified) }
 
+            println("CHUNKS_DELUGE_ROUTING_INTEROP: stage=independent_fixture_adds_verified")
+
             // 2. Concurrent refreshes, per-job reads, file reads, and Details writes on both daemons.
             wire.methods.clear()
             val started = System.nanoTime()
@@ -112,6 +123,8 @@ class DelugeRoutingInteropTest {
             assertEquals(dirA, clientA().torrent(hash)!!.downloadDirectory)
             assertEquals(dirB, clientB().torrent(hash)!!.downloadDirectory)
 
+            println("CHUNKS_DELUGE_ROUTING_INTEROP: stage=independent_start_stop_verified")
+
             // 4. Cancellation: cancel half of a mixed queue mid-flight; the route stays usable and nothing is wedged.
             val pa = clientA(); val pb = clientB()
             val jobs = (0 until 40).map { i ->
@@ -144,6 +157,7 @@ class DelugeRoutingInteropTest {
             runCatching { ClientOperations(clientA()).remove(hash, deleteData = false) }
             runCatching { ClientOperations(clientB()).remove(hash, deleteData = false) }
         }
+        println("CHUNKS_DELUGE_ROUTING_INTEROP: stage=checking_cleanup_readback")
         assertTrue("fixture removed from A", clientA().torrent(hash) == null)
         assertTrue("fixture removed from B", clientB().torrent(hash) == null)
         File(dirA).delete(); File(dirB).delete()
