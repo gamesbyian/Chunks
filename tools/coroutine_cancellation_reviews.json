@@ -114,22 +114,6 @@
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
   "kind": "broad-catch",
-  "fingerprint": "25f47159f1b3d792a2978416",
-  "count": 1,
-  "disposition": "SAFE-NONSUSPEND",
-  "reason": "LocalCapPreferenceStore.get(folder) is a plain fun."
- },
- {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
-  "kind": "broad-catch",
-  "fingerprint": "480809c6cf62f1e5dc79adc1",
-  "count": 1,
-  "disposition": "SAFE-NONSUSPEND",
-  "reason": "StatFs(...).availableBytes is a blocking framework call, not suspending."
- },
- {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt",
-  "kind": "broad-catch",
   "fingerprint": "8782d4275fb847ea162891e4",
   "count": 1,
   "disposition": "SAFE-NONSUSPEND",
