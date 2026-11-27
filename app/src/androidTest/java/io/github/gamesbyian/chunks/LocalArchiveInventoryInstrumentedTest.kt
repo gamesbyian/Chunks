@@ -54,6 +54,7 @@ class LocalArchiveInventoryInstrumentedTest {
             val review = requireNotNull(LocalArchiveInventory.review(engine, hash))
             assertEquals(2, review.candidates.size)
             assertEquals(1_000_000, review.torrentProgressPpm)
+            assertTrue(review.allFilesVerified)
             assertEquals(2, review.candidates.first().listedCompleteCount)
             assertEquals(1, review.candidates.last().missingCount)
             assertEquals(2, review.candidates.last().firstMissing)
@@ -74,12 +75,12 @@ class LocalArchiveInventoryInstrumentedTest {
             }
             compose.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_FILES).performScrollTo().performClick()
             compose.onNodeWithText("Review RAR archive volumes…").performScrollTo().performClick()
-            val namesOnly = "All listed volumes report complete bytes; the final volume and archive integrity are unknown."
+            val namesOnly = "All listed volumes report verified pieces; durable disk bytes, the final volume and archive integrity are unknown."
             compose.waitUntil(10_000) {
                 compose.onAllNodes(hasText(namesOnly)).fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText(namesOnly).assertExists()
-            compose.onNodeWithText("Filename candidates only.", substring = true).assertExists()
+            compose.onNodeWithText("Filename candidates and native hash-verified piece counts.", substring = true).assertExists()
             compose.onNodeWithText("Next group").performScrollTo().performClick()
             compose.onNodeWithText("Missing volume number 2 (1 gap in listed numbering).").assertExists()
             compose.onNodeWithText(namesOnly).assertDoesNotExist()

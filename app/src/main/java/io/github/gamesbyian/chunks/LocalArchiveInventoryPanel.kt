@@ -63,7 +63,7 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
             Text(if (expanded) "Hide RAR volume review" else "Review RAR archive volumes…")
         }
         if (!expanded) return@Column
-        Text("Filename candidates only. Archive headers, verified pieces, final volume and integrity are not confirmed. This review does not extract or change files.",
+        Text("Filename candidates and native hash-verified piece counts. Archive headers, durable disk bytes, final volume and archive integrity are not confirmed. This review does not extract or change files.",
             style = MaterialTheme.typography.bodySmall)
         if (busy) Text("Reading the transfer inventory…")
         if (failed) Text("A complete current file inventory could not be confirmed.",
@@ -71,7 +71,7 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
         review?.let { shown ->
             val candidates = shown.candidates
             Text("At last review: " + candidates.size + " RAR filename groups" +
-                if (shown.torrentProgressPpm < 1_000_000) "; torrent not complete." else "; torrent reports complete.",
+                if (!shown.allFilesVerified) "; some torrent files are not fully verified." else "; all listed torrent files report verified pieces.",
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             if (candidates.isEmpty()) Text("No supported RAR volume names found.")
             candidates.getOrNull(group)?.let { candidate ->
@@ -90,16 +90,16 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
                         candidate.missingCount + (if (candidate.missingCount == 1) " gap" else " gaps") + " in listed numbering).",
                     color = MaterialTheme.colorScheme.error)
                 Text(candidate.listedCompleteCount.toString() + " of " + candidate.volumes.size +
-                    " listed files report complete bytes.")
+                    " listed files report all pieces verified.")
                 if (candidate.allListedComplete && !candidate.ambiguous && candidate.missingCount == 0)
-                    Text("All listed volumes report complete bytes; the final volume and archive integrity are unknown.")
+                    Text("All listed volumes report verified pieces; durable disk bytes, the final volume and archive integrity are unknown.")
                 val lastPage = (candidate.volumes.size - 1) / 8
                 Text("Volumes " + (page * 8 + 1) + "–" +
                     minOf((page + 1) * 8, candidate.volumes.size) + " of " + candidate.volumes.size)
                 candidate.volumes.drop(page * 8).take(8).forEach { volume ->
                     val file = volume.file
                     Text(file.path.substringAfterLast('/') + " · " + Units.bytes(file.doneBytes) +
-                        " of " + Units.bytes(file.sizeBytes) + if (!file.wanted) " · Skipped" else "",
+                        " of " + Units.bytes(file.sizeBytes) + " verified" + if (!file.wanted) " · Skipped" else "",
                         style = MaterialTheme.typography.bodySmall)
                 }
                 if (lastPage > 0) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

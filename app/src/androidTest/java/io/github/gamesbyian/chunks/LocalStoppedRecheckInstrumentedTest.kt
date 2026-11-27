@@ -281,6 +281,27 @@ class LocalStoppedRecheckInstrumentedTest {
         assertEquals(null, local.readVerifiedFileInventory("0".repeat(40)))
         assertEquals("Whole-torrent checksum/share admission remains closed", null,
             LocalFileInspection.review(local, added.infoHash))
+        // A whole-torrent flush must still refuse. A selected verified volume
+        // gets its own fresh native callback without requiring unrelated data.
+        assertFalse(local.flushCompletedForLibraryRead(added.infoHash, 100))
+        val token = inventory.status.nativeReviewToken
+        val savePath = inventory.status.savePath
+        val verified = byName.getValue(names[0])
+        val invalid = byName.getValue(names[1])
+        assertFalse(local.flushVerifiedFilesForRead(added.infoHash, token, savePath,
+            listOf(verified, invalid), 100))
+        assertFalse(local.flushVerifiedFilesForRead(added.infoHash, token, savePath,
+            listOf(invalid.copy(doneBytes = invalid.sizeBytes)), 100))
+        assertFalse(local.flushVerifiedFilesForRead(added.infoHash, token + "-stale", savePath,
+            listOf(verified), 100))
+        assertFalse(local.flushVerifiedFilesForRead(added.infoHash, token,
+            File(destination, "different").absolutePath, listOf(verified), 100))
+        assertFalse(local.flushVerifiedFilesForRead(added.infoHash, token, savePath,
+            listOf(verified, verified), 100))
+        assertTrue("Fresh native flush for exact verified volume of unfinished stopped job",
+            local.flushVerifiedFilesForRead(added.infoHash, token, savePath, listOf(verified), 30_000))
+        assertTrue(local.status(added.infoHash)!!.stopped)
+        assertTrue(local.status(added.infoHash)!!.progressPpm in 1 until 1_000_000)
         assertEquals(0L, local.status(added.infoHash)!!.payloadDownloadedBytes)
         assertArrayEquals(original.getValue(names[0]), good.readBytes())
         assertArrayEquals(corrupt, wrong.readBytes())
