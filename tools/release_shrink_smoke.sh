@@ -13,7 +13,7 @@ fail_smoke() { echo "CHUNKS_RELEASE_SMOKE: $*"; exit 1; }
 tmp="$(mktemp -d)" || fail_smoke "cannot create temporary directory"
 remote_ui="/sdcard/chunks-release-smoke-$$.xml"
 trap 'rm -rf "$tmp"; adb shell rm -f "$remote_ui" >/dev/null 2>&1 || true' EXIT
-rm -f "$out/release-ui.xml" "$out/release-installed-identity.txt" "$out/release-logcat.txt" "$out/release-logcat-app.txt" "$out/release-engine.txt" "$out/release-engine-final-ui.xml"
+rm -f "$out/release-ui.xml" "$out/release-installed-identity.txt" "$out/release-logcat.txt" "$out/release-logcat-app.txt" "$out/release-engine.txt" "$out/release-engine-final-ui.xml" "$out/release-engine-transfers-ui.xml"
 adb install -r "$apk" || fail_smoke "install failed"
 installed="$(adb shell pm path "$pkg")" || fail_smoke "cannot resolve installed APK"
 installed="${installed//$'\r'/}"
