@@ -14,6 +14,8 @@ on:
       - "app/proguard-rules.pro"
       - ".github/workflows/release-shrink-smoke.yml"
       - "tools/release_shrink_smoke.sh"
+      - "tools/verify_installed_apk_bytes.sh"
+      - "tests/test_release_shrink_smoke.py"
       - "tools/release_jni_witness.py"
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
