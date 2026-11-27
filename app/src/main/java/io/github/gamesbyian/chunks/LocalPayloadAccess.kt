@@ -59,6 +59,9 @@ internal object LocalPayloadAccess {
     }
 
     private val grants = LinkedHashMap<String, Grant>()
+    // Revoked/expired grants may still have open proxy descriptors. Count
+    // them until onRelease; removing a token cannot free a reader slot.
+    private var activeReaders = 0
 
     private fun privacyAllows(context: Context, revision: Int): Boolean = try {
         revision == TransferPrivacyPolicyStore.revision &&
@@ -104,7 +107,7 @@ internal object LocalPayloadAccess {
                 val identity = Identity.from(stat)
                 if (stat.st_size != file.sizeBytes || !matches(Os.lstat(source.absolutePath), identity) ||
                     !onDisk(selected, file) || selected.canonicalFile != root || !authorized()) null
-                else Prepared(engine, review, file, root, source, identity, revision)
+                else Prepared(engine, review.copy(files = listOf(file)), file, root, source, identity, revision)
             } finally { Os.close(fd) }
         } catch (_: Exception) { null }
     }
@@ -141,23 +144,30 @@ internal object LocalPayloadAccess {
         return grant
     }
 
-    @Synchronized
     fun revoke(context: Context, uri: Uri) {
-        token(context, uri)?.let { grants.remove(it) }
-        context.revokeUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        val id = token(context, uri) ?: return
+        synchronized(this) { grants.remove(id) }
+        // Removing the process-memory token is the authoritative denial;
+        // platform grant cleanup is best effort and cannot resurrect access.
+        try { context.revokeUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        catch (_: RuntimeException) { }
     }
 
     @Synchronized
     fun acquire(context: Context, uri: Uri): Grant? {
         val grant = lookup(context, uri) ?: return null
-        if (grants.values.sumOf { it.readers } >= MAX_READERS) return null
+        if (activeReaders >= MAX_READERS) return null
+        activeReaders++
         grant.readers++
         return grant
     }
 
     @Synchronized
     fun release(grant: Grant) {
-        if (grant.readers > 0) grant.readers--
+        if (grant.readers > 0) {
+            grant.readers--
+            activeReaders--
+        }
     }
 
     /** Exact grant, native generation, current file row and pinned identity.
