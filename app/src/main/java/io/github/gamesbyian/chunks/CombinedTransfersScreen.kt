@@ -377,6 +377,68 @@ internal fun combinedRowFreshnessLabel(source: EnvironmentTransferSnapshot?): St
     else -> "List not verified complete; last known facts only"
 }
 
+private data class CombinedEnvironmentPresentation(
+    val labels: Map<EnvironmentId, String>,
+    val rowLabels: Map<EnvironmentId, String>,
+    val hueFor: (EnvironmentId) -> EnvironmentHue?
+)
+
+@Composable
+private fun rememberCombinedEnvironmentPresentation(
+    context: Context,
+    server: CombinedServerSource?,
+    serverId: EnvironmentId?,
+    savedProfiles: List<CombinedSavedProfile>,
+    protocolProfiles: List<CombinedReadOnlyProtocolProfile>
+): CombinedEnvironmentPresentation {
+    val labels = LinkedHashMap<EnvironmentId, String>().apply {
+        put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
+        if (server != null && serverId != null)
+            put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
+        savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Remote · " + profile.label) }
+        protocolProfiles.forEach { profile ->
+            putIfAbsent(profile.environment,
+                profile.backend.name.lowercase().replaceFirstChar { it.uppercase() } + " · " + profile.label)
+        }
+    }
+    val rowLabels = remember(labels, savedProfiles, server?.aliasScope) {
+        compactEnvironmentLabels(labels, buildMap {
+            put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
+            savedProfiles.forEach { profile ->
+                profile.shortLabel?.let { put(EnvironmentId(profile.id), "Remote · $it") }
+            }
+            protocolProfiles.forEach { profile -> put(profile.environment, profile.label) }
+            if (server != null && serverId != null && serverId !in this)
+                put(serverId, compactServerLabel(server.aliasScope))
+        })
+    }
+    // Palette storage is a lifecycle effect, not work performed by remember or
+    // by LazyColumn composition. Read external changes via the shared revision:
+    // profile rename, navigation and chooser updates never overwrite user hues.
+    val paletteIdentities = labels.keys.toList()
+    val paletteRevision = EnvironmentColourStore.revision
+    var palette by remember { mutableStateOf(EnvironmentPalette.State(emptyMap(), emptyMap())) }
+    var coloursEnabled by remember { mutableStateOf(true) }
+    LaunchedEffect(context, paletteIdentities, paletteRevision) {
+        try {
+            val (savedPalette, enabled) = withContext(Dispatchers.IO) {
+                val store = EnvironmentColourStore(context)
+                store.ensure(paletteIdentities) to store.showEnvironmentColours()
+            }
+            palette = savedPalette
+            coloursEnabled = enabled
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Keep prior colours and the global preference if storage is unreadable.
+        }
+    }
+    val hueFor: (EnvironmentId) -> EnvironmentHue? = { id ->
+        palette.hueOf(id).takeIf { coloursEnabled }
+    }
+    return CombinedEnvironmentPresentation(labels, rowLabels, hueFor)
+}
+
 /**
  * Combined Transfers: one globally sorted (or grouped) union of the selected
  * environments. The environment chips are a VIEW scope only. The one action
@@ -843,51 +905,8 @@ internal fun CombinedTransfersScreen(
     var quickRunning by remember(batchIdentity) { mutableStateOf<UnifiedTransferKey?>(null) }
     var quickResults by remember(batchIdentity) {
         mutableStateOf<Map<UnifiedTransferKey, List<String>>>(emptyMap()) }
-    val labels = LinkedHashMap<EnvironmentId, String>().apply {
-        put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
-        if (server != null && serverId != null)
-            put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
-        savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Remote · " + profile.label) }
-        protocolProfiles.forEach { profile ->
-            putIfAbsent(profile.environment,
-                profile.backend.name.lowercase().replaceFirstChar { it.uppercase() } + " · " + profile.label)
-        }
-    }
-    val rowLabels = remember(labels, savedProfiles, server?.aliasScope) {
-        compactEnvironmentLabels(labels, buildMap {
-        put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
-        savedProfiles.forEach { profile ->
-            profile.shortLabel?.let { put(EnvironmentId(profile.id), "Remote · $it") }
-        }
-        protocolProfiles.forEach { profile -> put(profile.environment, profile.label) }
-        if (server != null && serverId != null && serverId !in this)
-            put(serverId, compactServerLabel(server.aliasScope))
-        })
-    }
-    // Palette storage is a lifecycle effect, not work performed by remember or
-    // by LazyColumn composition. Read external changes via the shared revision:
-    // profile rename, navigation and chooser updates never overwrite user hues.
-    val paletteIdentities = labels.keys.toList()
-    val paletteRevision = EnvironmentColourStore.revision
-    var palette by remember { mutableStateOf(EnvironmentPalette.State(emptyMap(), emptyMap())) }
-    var coloursEnabled by remember { mutableStateOf(true) }
-    LaunchedEffect(context, paletteIdentities, paletteRevision) {
-        try {
-            val (savedPalette, enabled) = withContext(Dispatchers.IO) {
-                val store = EnvironmentColourStore(context)
-                store.ensure(paletteIdentities) to store.showEnvironmentColours()
-            }
-            palette = savedPalette
-            coloursEnabled = enabled
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            // Keep prior colours and the global preference if storage is unreadable.
-        }
-    }
-    val hueFor: (EnvironmentId) -> EnvironmentHue? = { id ->
-        palette.hueOf(id).takeIf { coloursEnabled }
-    }
+    val (labels, rowLabels, hueFor) =
+        rememberCombinedEnvironmentPresentation(context, server, serverId, savedProfiles, protocolProfiles)
     var showingViewOptions by rememberSaveable { mutableStateOf(false) }
     var showingBatchTools by rememberSaveable { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
