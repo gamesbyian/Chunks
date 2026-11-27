@@ -26,13 +26,13 @@ internal fun RemoteSnapshotBatchStoppedConfirmation(
 ) {
     AlertDialog(
         onDismissRequest = onCancel,
-        title = { Text("Confirm ${draft.count} stopped server restores") },
+        title = { Text("Confirm ${draft.count} stopped remote restores") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("rTorrent account: $accountLabel")
-                Text((if (draft.serverDefault) "Current server default Place: "
-                    else "Reviewed server folder: ") + draft.place)
+                Text((if (draft.serverDefault) "Current remote default Place: "
+                    else "Reviewed remote folder: ") + draft.place)
                 Text("These original torrent definitions may contain private tracker " +
                     "addresses and passkeys. Confirmation sends them to this exact " +
                     "rTorrent account one at a time and leaves each new job STOPPED.")
@@ -42,7 +42,7 @@ internal fun RemoteSnapshotBatchStoppedConfirmation(
                     Text(name + " · " + hash.take(12))
                 }
                 Text("Chunks checks EVERY previous restore journal before the first " +
-                    "server Add, then independently checks each stopped job and " +
+                    "remote Add, then independently checks each stopped job and " +
                     "folder before proceeding. The first uncertain result stops " +
                     "all remaining work. No retries, rollback, Start or downloaded " +
                     "payload copies are attempted.")

@@ -62,20 +62,20 @@ internal object ServerToLocalCopy {
         val identity = TorrentIdentityHandoff.prepare(transfer.hash, transfer.name)
             ?: return Refused("Only transfers with a v1 info hash can be copied to the local device.")
         if (transfer.sizeBytes <= 0 || transfer.completedBytes != transfer.sizeBytes)
-            return Refused("The server has ${(transfer.fractionComplete * 100).toInt()}% of this transfer. " +
-                "It can only send what it holds, so finish the download on the server first.")
+            return Refused("The remote client has ${(transfer.fractionComplete * 100).toInt()}% of this transfer. " +
+                "It can only send what it holds, so finish the download on the remote client first.")
         if (source.isPrivate)
             return Refused("This is a private torrent. rTorrent does not share private torrents' metadata " +
                 "this way, and their trackers' rules may forbid it.")
         if (!source.isActive)
-            return Refused("The server is not running this torrent right now, so it cannot send it. " +
-                "Start it on the server, then try again.")
+            return Refused("The remote client is not running this torrent right now, so it cannot send it. " +
+                "Start it on the remote client, then try again.")
         if (source.listenPort !in 1L..65535L)
-            return Refused("The server did not report a usable BitTorrent listening port.")
+            return Refused("The remote client did not report a usable BitTorrent listening port.")
         // Announced, then bound, then the web host: a seedbox's rTorrent often
         // listens on a different address from the one serving ruTorrent.
         val entered = addressOverride?.let { validOverride(it) ?: return Refused(
-            "Enter only the server's IP address or hostname, without https://, a port or a path.",
+            "Enter only the host's IP address or hostname, without https://, a port or a path.",
             addressProblem = true) }
         val (host, origin) = when {
             entered != null -> entered to AddressSource.ENTERED
@@ -89,7 +89,7 @@ internal object ServerToLocalCopy {
         val address = resolved
             .filterNot { it.isAnyLocalAddress || it.isMulticastAddress || (it.isLoopbackAddress && !loopbackServer) }
             .let { all -> all.firstOrNull { it is Inet4Address } ?: all.firstOrNull { it is Inet6Address } }
-            ?: return Refused("Chunks could not find a usable network address for the server ($host). " +
+            ?: return Refused("Chunks could not find a usable network address for the host ($host). " +
                 "If you know its address, enter it below.", addressProblem = true)
         val literal = address.hostAddress.substringBefore('%')
         val peer = (if (address is Inet6Address) "[$literal]" else literal) + ":" + source.listenPort

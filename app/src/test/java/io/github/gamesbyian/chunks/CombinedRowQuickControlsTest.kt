@@ -167,10 +167,10 @@ class CombinedRowQuickControlsTest {
         assertTrue(serverId !in ((CombinedViewPreferences(context).load().scope as EnvironmentViewScope.Only).ids))
         // The last selected source cannot be hidden; avoid a blank catalog.
         rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
-        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
+        rule.onNodeWithContentDescription("Showing Remote · " + other.label, substring = true).performClick()
         assertEquals(EnvironmentViewScope.Only(setOf(io.github.gamesbyian.chunks.model.EnvironmentId(other.id))),
             CombinedViewPreferences(context).load().scope)
-        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true)
+        rule.onNodeWithContentDescription("Showing Remote · " + other.label, substring = true)
             .assertExists()
         // Re-including each previously hidden source restores dynamic All.
         rule.onNodeWithContentDescription("Hidden: " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()

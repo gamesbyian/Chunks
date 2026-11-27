@@ -11,11 +11,11 @@ data class RemoteAddProgress(
     val payloadVerifiedBytes: Long? get() = traffic?.verifiedBytes?.takeIf { metadataPending == false }
 
     fun summary(): String = when {
-        !registered -> "Waiting for the server to register this torrent. Do not submit it again."
+        !registered -> "Waiting for the remote client to register this torrent. Do not submit it again."
         started == false -> if (metadataPending == true) "Stopped. Magnet metadata is still pending." else "Stopped."
         metadataPending == true -> if ((traffic?.peers ?: 0L) > 0L)
             "Fetching magnet metadata from peers." else "Fetching magnet metadata. Waiting for peers."
-        metadataPending == null -> "Torrent registered. Metadata status is unavailable on this server."
+        metadataPending == null -> "Torrent registered. Metadata status is unavailable on this remote client."
         traffic?.expectedBytes != null && traffic.expectedBytes > 0L &&
             traffic.verifiedBytes == traffic.expectedBytes -> "Download complete. All payload pieces verified by rTorrent."
         traffic?.active == false -> "Metadata resolved. Waiting for rTorrent to activate the download."

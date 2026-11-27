@@ -40,7 +40,7 @@ internal class RememberedRemoteProfileRoster(
             val uri = URI(endpoint.trim())
             val port = if (uri.port == -1) "" else ":" + uri.port
             (uri.host.orEmpty() + port + uri.rawPath.orEmpty()).take(160)
-        } catch (_: Exception) { "rTorrent server" }
+        } catch (_: Exception) { "rTorrent client" }
         /** Local presentation label only; never changes a server principal or credentials. */
         internal fun validFriendlyName(raw: String): Boolean {
             val value = raw.trim()
@@ -89,7 +89,7 @@ internal class RememberedRemoteProfileRoster(
 
     private fun displayName(credentials: RemoteCredentials): String {
         val server = try { URI(credentials.endpoint).host } catch (_: Exception) { null }
-        val host = server?.take(96) ?: "rTorrent server"
+        val host = server?.take(96) ?: "rTorrent client"
         return if (credentials.username.isBlank()) host else
             credentials.username.take(40) + " @ " + host
     }

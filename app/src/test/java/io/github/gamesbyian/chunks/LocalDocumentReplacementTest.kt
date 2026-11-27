@@ -120,7 +120,7 @@ class LocalDocumentReplacementTest {
         rule.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
     }
     private fun handoff() {
-        rule.onNodeWithText("Review .torrent on connected server").performScrollTo().assertIsEnabled().performClick()
+        rule.onNodeWithText("Review .torrent on connected remote client").performScrollTo().assertIsEnabled().performClick()
     }
     private fun openPicker(): ShadowActivity.IntentForResult {
         rule.onNodeWithText("Open .torrent").performScrollTo().assertIsEnabled().performClick()
@@ -168,7 +168,7 @@ class LocalDocumentReplacementTest {
         rule.runOnIdle { source.value = uri("slow-second") }
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         rule.onNodeWithText("kept.txt", substring = true).performScrollTo().assertExists()
-        rule.onNodeWithText("Review .torrent on connected server").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithText("Review .torrent on connected remote client").performScrollTo().assertIsNotEnabled()
         rule.onNodeWithText("Open .torrent").performScrollTo().assertIsNotEnabled()
         SourceProvider.release.countDown()
         waitFor("next.txt")
@@ -186,7 +186,7 @@ class LocalDocumentReplacementTest {
         assertSame(current, preparedReview.get())
         assertSame(current, draft.value)
         assertEquals(uri("first"), draft.value?.originalDocument)
-        rule.onNodeWithText("Review .torrent on connected server").assertExists()
+        rule.onNodeWithText("Review .torrent on connected remote client").assertExists()
     }
 
     @Test fun refusedFirstSourceNeverCreatesAReview() {
@@ -194,7 +194,7 @@ class LocalDocumentReplacementTest {
         show()
         waitFor("The shared file was unavailable")
         assertNull(draft.value)
-        rule.onNodeWithText("Review .torrent on connected server").assertDoesNotExist()
+        rule.onNodeWithText("Review .torrent on connected remote client").assertDoesNotExist()
         rule.onNodeWithText("Add and start downloading").assertDoesNotExist()
         assertEquals(listOf(uri("invalid")), consumed.toList())
     }

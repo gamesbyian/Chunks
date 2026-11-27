@@ -89,7 +89,7 @@ internal suspend fun enableRemoteFinishInOrderAfterAdd(
     // continuation, never become a note that still allows Start.
     val files = try { withContext(Dispatchers.IO) { remote.listFiles(hash) } }
         catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-        catch (_: Exception) { return "Finish in Order was not set up: the server's file list could not be read." }
+        catch (_: Exception) { return "Finish in Order was not set up: the remote client's file list could not be read." }
     val asLocal = remoteFilesAsLocal(files)
     val suggestion = FinishInOrderPlanner.suggest(asLocal)
         ?: return "Finish in Order was not set up: no episode or numbered order was found. You can arrange one from the transfer."
@@ -106,7 +106,7 @@ internal suspend fun enableRemoteFinishInOrderAfterAdd(
         is FinishInOrderRunner.Step.Applied, is FinishInOrderRunner.Step.Idle ->
             "Finish in Order is on for ${suggestion.order.size} files."
         is FinishInOrderRunner.Step.Suspended -> "Finish in Order is paused: " + step.record.suspendedReason
-        else -> "Finish in Order is saved; the server did not confirm its first change. Check the transfer before relying on it."
+        else -> "Finish in Order is saved; the remote client did not confirm its first change. Check the transfer before relying on it."
     }
 }
 
@@ -129,7 +129,7 @@ internal fun RemoteFinishInOrderPanel(
     val asLocal = remember(files) { remoteFilesAsLocal(files) }
     ServerFinishInOrderPanel(
         hash = transfer.hash, scope = scope, asLocal = asLocal, stale = stale,
-        intro = "On rTorrent the current file gets High and the rest stay Normal. The server " +
+        intro = "On rTorrent the current file gets High and the rest stay Normal. The remote client " +
             "only moves on while Chunks is open and connected to this account.",
         isActive = { index -> files.getOrNull(index)?.priority == 2 },
         twoBands = true,
@@ -175,7 +175,7 @@ internal fun ServerFinishInOrderPanel(
 
     fun act(block: suspend () -> String?) {
         if (!onMutationStarted()) {
-            message = "Another server change is still settling. Try again after it finishes."
+            message = "Another remote change is still settling. Try again after it finishes."
             return
         }
         working = true
@@ -185,7 +185,7 @@ internal fun ServerFinishInOrderPanel(
                 message = try { block() } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
-                    "The server did not confirm this change. Refresh before trying again; nothing is retried."
+                    "The remote client did not confirm this change. Refresh before trying again; nothing is retried."
                 }
                 record = withContext(Dispatchers.IO) { store.get(hash) }
             } finally {
@@ -196,8 +196,8 @@ internal fun ServerFinishInOrderPanel(
     }
 
     fun describe(step: FinishInOrderRunner.Step?): String? = when (step) {
-        null, FinishInOrderRunner.Step.NotObservable -> "The server's file list could not be read; nothing changed."
-        is FinishInOrderRunner.Step.Applied -> "File priorities updated and confirmed by the server."
+        null, FinishInOrderRunner.Step.NotObservable -> "The remote client's file list could not be read; nothing changed."
+        is FinishInOrderRunner.Step.Applied -> "File priorities updated and confirmed by the remote client."
         is FinishInOrderRunner.Step.Idle -> null
         is FinishInOrderRunner.Step.Reconciled -> "The last interrupted change was checked; nothing was repeated."
         is FinishInOrderRunner.Step.Suspended -> step.record.suspendedReason
@@ -281,7 +281,7 @@ internal fun ServerFinishInOrderPanel(
                 OutlinedButton(onClick = {
                     coroutines.launch {
                         val removed = FinishInOrderController.exclusive { store.remove(hash) }
-                        message = if (removed) "Finish in Order is off. Server file priorities were left as they are."
+                        message = if (removed) "Finish in Order is off. Remote file priorities were left as they are."
                             else "Chunks could not turn Finish in Order off. Try again."
                         record = store.get(hash)
                     }

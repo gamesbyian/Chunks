@@ -104,15 +104,15 @@ internal fun RemoteHashRecheckControl(
                                 }
                                 if (ownsResult(ticket, generation)) feedback = when (result) {
                                     is RemoteHashRecheckOutcome.AlreadyChecking ->
-                                        "The server reported this exact transfer already checking. No new Recheck was scheduled."
+                                        "The remote client reported this exact transfer already checking. No new Recheck was scheduled."
                                     is RemoteHashRecheckOutcome.AlreadyQueued ->
-                                        "The server reported a pending hash check for this exact transfer. No new Recheck was scheduled."
+                                        "The remote client reported a pending hash check for this exact transfer. No new Recheck was scheduled."
                                     is RemoteHashRecheckOutcome.HashingObserved ->
                                         "Hash checking observed for this exact transfer. Completion and file integrity are not yet verified."
                                     is RemoteHashRecheckOutcome.SubmittedUnobserved ->
                                         "Recheck acknowledged; checking was not observed. It may be queued or already finished. File integrity is not verified."
                                     is RemoteHashRecheckOutcome.Uncertain ->
-                                        "Recheck outcome uncertain. The server may have scheduled it. Check status; no request will be repeated."
+                                        "Recheck outcome uncertain. The remote client may have scheduled it. Check status; no request will be repeated."
                                 }
                             } catch (cancel: CancellationException) {
                                 if (ownsResult(ticket, generation))
@@ -130,29 +130,29 @@ internal fun RemoteHashRecheckControl(
                         }
                     } else if (eligible && pendingIdentity != identity && readingIdentity != identity &&
                         attemptedIdentity != identity) {
-                        refusal = "Recheck was not submitted. Refresh this server and wait for its current operation to finish."
+                        refusal = "Recheck was not submitted. Refresh this remote client and wait for its current operation to finish."
                     }
                 },
                 enabled = eligible && !pending && !reading,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .testTag(ChunksSemantics.DETAILS_REMOTE_RECHECK)
             ) { Text("Recheck files") }
-            Text("Ask this server to hash the transfer's existing files. rTorrent may pause activity while checking; this does not repair storage access.",
+            Text("Ask this remote client to hash the transfer's existing files. rTorrent may pause activity while checking; this does not repair storage access.",
                 style = MaterialTheme.typography.bodySmall)
             refusal?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             if (!eligible) Text(when {
                 snapshotStale -> "Refresh this stale transfer before Recheck."
                 !mainView || aliasScope != remote.addAccountScope() ->
-                    "Recheck requires the exact authenticated account and its main server view."
+                    "Recheck requires the exact authenticated account and its main client view."
                 !transfer.hash.matches(Regex("[0-9a-fA-F]{40}")) ->
                     "Recheck is available only for an exact v1 torrent identity."
                 !transfer.directory.startsWith('/') ->
-                    "The server has not exposed an absolute location for this transfer. Inspect its folder in ruTorrent before Recheck."
+                    "The remote client has not exposed an absolute location for this transfer. Inspect its folder in ruTorrent before Recheck."
                 else -> "This transfer has no usable exact name or location for Recheck."
             }, style = MaterialTheme.typography.bodySmall)
         } else {
             Text(if (pending) "Recheck request in progress." else feedback ?:
-                "An earlier Recheck may have reached the server. Inspect its current status.",
+                "An earlier Recheck may have reached the remote client. Inspect its current status.",
                 modifier = Modifier.testTag(ChunksSemantics.REMOTE_RECHECK_STATUS).semantics {
                     liveRegion = LiveRegionMode.Polite
                 })

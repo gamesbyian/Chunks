@@ -157,7 +157,7 @@ class UniversalAddSourcePrecedenceTest {
         LazyComposeActions.activateOnce(rule, hasTestTag(ChunksSemantics.FOOTER_OPTIONS))
         LazyComposeActions.replaceText(rule, hasSetTextAction() and hasText("Search options"), "server backup")
         LazyComposeActions.activateOnce(rule, hasText(LocalOptionsShortcut.SERVER_BACKUP.where))
-        LazyComposeActions.activateOnce(rule, hasText("Compare saved snapshot with rTorrent server"))
+        LazyComposeActions.activateOnce(rule, hasText("Compare saved snapshot with rTorrent client"))
 
         val name = "chosen-from-snapshot.mkv"
         val original = torrent(name)
@@ -174,7 +174,7 @@ class UniversalAddSourcePrecedenceTest {
         assertEquals(Intent.ACTION_OPEN_DOCUMENT, picker.intent.action)
         shadowOf(rule.activity).receiveResult(picker.intent, Activity.RESULT_OK, Intent().setData(archiveUri))
 
-        LazyComposeActions.activateOnce(rule, hasText("Review original .torrent in server Add"))
+        LazyComposeActions.activateOnce(rule, hasText("Review original .torrent in remote Add"))
         waitForText(name)
         val retained = androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
             .reviewedTorrent.value

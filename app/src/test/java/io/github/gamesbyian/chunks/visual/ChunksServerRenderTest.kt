@@ -161,8 +161,8 @@ open class ChunksServerRenderTest {
         val addList = rule.onNode(hasScrollToIndexAction())
         addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
-        addList.performScrollToNode(hasText("Custom server folder (optional)"))
-        rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
+        addList.performScrollToNode(hasText("Custom remote folder (optional)"))
+        rule.onNodeWithText("Custom remote folder (optional)").performTextReplacement("/srv/one-off")
         rule.onNode(hasText("/srv/one-off")).assertExists()
         // The same next steps as the installed atlas: review the one-off folder.
         addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
@@ -235,14 +235,14 @@ open class ChunksServerRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-options.png")
 
         rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
-        rule.onNodeWithText("Connected server tools").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
+        rule.onNodeWithText("Connected remote client tools").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Remote folders & destinations").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-places.png")
         rule.onNodeWithContentDescription("Options").performClick()
 
         rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
-        rule.onNodeWithText("Server collections").performScrollTo().performClick()
+        rule.onNodeWithText("Remote collections").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-organize.png")
         rule.onNodeWithContentDescription("Options").performClick()

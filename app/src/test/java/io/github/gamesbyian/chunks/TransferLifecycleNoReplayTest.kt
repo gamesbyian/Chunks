@@ -53,7 +53,7 @@ class TransferLifecycleNoReplayTest {
         rule.runOnIdle { release.complete(Unit) }
         rule.waitForIdle()
         rule.onNodeWithText("Start transfer…").assertDoesNotExist() // settled, but no new snapshot yet
-        rule.onNodeWithText("This operation needs a new confirmed server snapshot", substring = true).assertExists()
+        rule.onNodeWithText("This operation needs a new confirmed remote snapshot", substring = true).assertExists()
         assertEquals("exactly one command", 1, commands)
         rule.runOnIdle { revision = 2L } // a NEW authoritative read
         rule.waitForIdle()

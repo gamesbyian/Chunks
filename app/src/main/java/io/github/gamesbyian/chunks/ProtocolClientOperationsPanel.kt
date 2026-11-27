@@ -77,7 +77,7 @@ internal object ProtocolOperationText {
     fun describe(action: String, outcome: ClientOperationOutcome, clientLabel: String): String = when (outcome) {
         is ClientOperationOutcome.Verified -> "$action: confirmed on $clientLabel."
         is ClientOperationOutcome.Pending -> if (outcome.registrationAbsent)
-            "Transfer removed from $clientLabel. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server."
+            "Transfer removed from $clientLabel. Downloaded-file deletion was requested but could not be independently verified. Check the files on the remote client."
         else "$action: requested, not yet confirmed (" +
             outcome.reason.lowercase() + "). Refresh to check."
         is ClientOperationOutcome.Uncertain -> "$action: the reply was lost, so the result is unknown. " +
@@ -668,7 +668,7 @@ internal fun ProtocolClientOperationsPanel(
         }
         val removal = removeReview
         if (!moveOnly && removal != null) {
-            Text("Remove this transfer from $clientLabel? By default its downloaded files stay on the server.",
+            Text("Remove this transfer from $clientLabel? By default its downloaded files stay on the remote client.",
                 style = MaterialTheme.typography.bodySmall)
             val reviewedFolder = removal.directory
             if (ClientCapability.REMOVE_WITH_DATA in caps && reviewedFolder != null) Row(
@@ -678,7 +678,7 @@ internal fun ProtocolClientOperationsPanel(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(checked = deleteData, onCheckedChange = null)
-                Text("Also delete its downloaded files on the server", modifier = Modifier.padding(start = 8.dp))
+                Text("Also delete its downloaded files on the remote client", modifier = Modifier.padding(start = 8.dp))
             }
             if (deleteData && reviewedFolder != null) {
                 Text("Folder on $clientLabel: $reviewedFolder", style = MaterialTheme.typography.bodySmall)

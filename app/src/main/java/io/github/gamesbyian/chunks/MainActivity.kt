@@ -299,7 +299,7 @@ internal fun optionsDestinationMatches(label: String, rawQuery: String): Boolean
         "On this device" -> "local local device downloads storage files"
         "Places" -> "folder destination location save path"
         "Organize" -> "collections categories organize grouping"
-        "Server" -> "connection endpoint profile account login settings server"
+        "Server" -> "connection connections endpoint profile account login settings remote client clients server"
         "ZIP review" -> "zip archives compressed inspect"
         "Create" -> "create torrent publish share new"
         "Artwork & info" -> "artwork art poster cover image media metadata identify match provider tmdb lookup"
@@ -1487,9 +1487,9 @@ internal fun ChunksApp(
                 serverCopy = if (connectedRemote == null || localRemoteScope == null) null
                     else LocalServerCopyLink(runCatching {
                         java.net.URI(aliasScope.substringBefore('\u0000').trim()).host
-                    }.getOrNull() ?: "your server") { bytes ->
+                    }.getOrNull() ?: "your remote client") { bytes ->
                         val place = connectedRemote.defaultDirectory()
-                            ?: error("The server reports no default download location")
+                            ?: error("The remote client reports no default download location")
                         connectedRemote.loadStoppedTorrentBytes(bytes, place, useServerDefault = true)
                     },
                 moveServer = if (connectedRemote == null || localRemoteScope == null) null
@@ -1975,7 +1975,7 @@ internal fun ChunksApp(
                     savedProfiles.firstOrNull { profile ->
                         profile.id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                             .serverIdOfAliasScope(aliasScope)?.value
-                    }?.label ?: "Connected rTorrent server"
+                    }?.label ?: "Connected rTorrent client"
                 },
                 connectedProfileId = server?.let { io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                     .serverIdOfAliasScope(aliasScope)?.value },
@@ -2059,7 +2059,7 @@ internal fun ChunksApp(
                     returnFromStartupConnectToCanonical = false
                     loading = false
                     connectDiagnostics = ConnectionDiagnostics()
-                    error = "Connection check cancelled. Nothing was changed on the server."
+                    error = "Connection check cancelled. Nothing was changed on the remote client."
                     readOnlyBackendError = "Connection check cancelled. Nothing was changed."
                 },
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
@@ -2926,7 +2926,7 @@ internal fun ChunksApp(
                                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                                         throw cancel
                                     } catch (_: Exception) {
-                                        send("Could not confirm this server's current transfer. No alias was applied.")
+                                        send("Could not confirm this remote client's current transfer. No alias was applied.")
                                     }
                                 }
                             },
@@ -3161,18 +3161,18 @@ internal fun readableFailure(failure: Exception): String = when (failure) {
     is RemoteSmartConnect.ConnectionFailed -> failure.message.orEmpty()
     // A real HTTP status from the transport says more than "network error".
     is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException -> httpStatusExplanation(failure.status)
-    is java.net.UnknownHostException -> "The server hostname could not be resolved."
-    is java.net.SocketTimeoutException -> "The server did not respond before the timeout. If a command was submitted, its outcome must be checked before retrying."
-    is java.net.ConnectException -> "The server did not accept the connection."
-    is java.io.IOException -> "Network or proxy error. Check your connection and server settings."
-    else -> "The server returned an incompatible or unsupported RPC response. Check its configuration before retrying an operation."
+    is java.net.UnknownHostException -> "The host name could not be resolved."
+    is java.net.SocketTimeoutException -> "The remote client did not respond before the timeout. If a command was submitted, its outcome must be checked before retrying."
+    is java.net.ConnectException -> "The host did not accept the connection."
+    is java.io.IOException -> "Network or proxy error. Check your network and connection settings."
+    else -> "The remote client returned an incompatible or unsupported RPC response. Check its configuration before retrying an operation."
 }
 
 /** Plain-language meaning of an observed gateway HTTP status; never a retry instruction for writes. */
 internal fun httpStatusExplanation(status: Int): String = when (status) {
     401, 403 -> "The server refused this login (HTTP $status). Its password or access may have " +
-        "changed. Open Server, Disconnect, then sign in again; your torrents are unchanged."
-    407 -> "A proxy between this device and the server requires its own login (HTTP 407)."
+        "changed. Open Connections, Disconnect, then sign in again; your torrents are unchanged."
+    407 -> "A proxy between this device and the host requires its own login (HTTP 407)."
     429 -> "The server is limiting requests (HTTP 429). Wait a moment, then refresh."
     in 500..599 -> "The server's web gateway returned HTTP $status. It may be restarting or " +
         "overloaded; refresh again shortly."

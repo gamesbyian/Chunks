@@ -22,10 +22,10 @@ internal object BatchServerCopy {
     data class Item(val infoHash: String, val name: String)
 
     enum class Result(val label: String) {
-        ADDED("added stopped on the server"),
-        ALREADY_ON_SERVER("already on the server (not added again)"),
+        ADDED("added stopped on the remote client"),
+        ALREADY_ON_SERVER("already on the remote client (not added again)"),
         NO_DEFINITION("skipped: no exact torrent definition on the local device"),
-        UNCONFIRMED("sent, but not confirmed — check the server list; not retried"),
+        UNCONFIRMED("sent, but not confirmed — check the remote list; not retried"),
         NOT_RUN("not attempted (the batch stopped earlier)")
     }
 
@@ -45,7 +45,7 @@ internal object BatchServerCopy {
             count(Result.NO_DEFINITION).takeIf { it > 0 }?.let { append(", $it skipped") }
             count(Result.UNCONFIRMED).takeIf { it > 0 }?.let { append(", $it unconfirmed") }
             count(Result.NOT_RUN).takeIf { it > 0 }?.let { append(", $it not attempted") }
-            append(". Local transfers and their files were not changed; the server jobs start ")
+            append(". Local transfers and their files were not changed; the remote jobs start ")
             append("stopped and download on their own.")
         }
     }

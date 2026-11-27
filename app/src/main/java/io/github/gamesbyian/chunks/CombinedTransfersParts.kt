@@ -206,7 +206,7 @@ internal fun rowKeyText(key: UnifiedTransferKey): String = key.environment.value
 /** Compact toggle text: the device, or a server's short profile name without its prefix. */
 internal fun environmentToggleName(id: EnvironmentId, label: String): String =
     if (id == EnvironmentSnapshots.LOCAL) "Local"
-    else label.removePrefix("Server · ").trim().ifEmpty { label }
+    else label.removePrefix("Remote · ").trim().ifEmpty { label }
 
 internal fun environmentVisible(scope: EnvironmentViewScope, id: EnvironmentId): Boolean =
     scope == EnvironmentViewScope.All || (scope is EnvironmentViewScope.Only && id in scope.ids)
@@ -523,7 +523,7 @@ internal suspend fun runCombinedLifecycle(
                 else if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
                     refusals[environment] = "Transfer list is out of date; refresh first"
                 else if (!capability.allowed) refusals[environment] = capability.explanation
-                else if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
+                else if (!serverLifecycle.begin()) refusals[environment] = "remote client is busy or refreshing"
                 else {
                     serverLeased = true
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
@@ -535,7 +535,7 @@ internal suspend fun runCombinedLifecycle(
                             else bound.setStarted(hash, on)).toLifecycleReply(on)
                     }
                 }
-            } else refusals[environment] = "only listed here; sign in to this server to change it"
+            } else refusals[environment] = "only listed here; sign in to this remote client to change it"
         }
         return UnifiedBatchLifecycle.run(targets, start, currentSources, adapters, refusals,
             // Check at each target, including no-ops, after any previous

@@ -96,7 +96,7 @@ private fun TransferHealthDocumentPanel(
                     style = MaterialTheme.typography.bodySmall)
                 if (stale) Text("The queue is stale; the report will mark its evidence as stale.",
                     color = MaterialTheme.colorScheme.error)
-                Text("Private by default: never includes torrent hashes, server endpoints, " +
+                Text("Private by default: never includes torrent hashes, client endpoints, " +
                     "usernames, credentials, file paths, trackers, private passkeys or raw errors.",
                     style = MaterialTheme.typography.bodySmall)
                 Row(

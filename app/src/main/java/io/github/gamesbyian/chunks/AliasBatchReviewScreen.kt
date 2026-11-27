@@ -65,7 +65,7 @@ internal fun AliasBatchReviewScreen(
         item {
             Text("Clean up queue names", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold)
-            Text("Review filename-only proposals in this server view. Display names stay on this device. No torrent metadata, remote filename or seeding data changes.")
+            Text("Review filename-only proposals in this client view. Display names stay on this device. No torrent metadata, remote filename or seeding data changes.")
             OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Back to transfers")
             }
@@ -144,7 +144,7 @@ internal fun AliasBatchReviewScreen(
             item {
                 Text(proposals.size.toString() + " suggestions ready for review" +
                     if (proposals.size == AliasReviewPlanner.MAX_REVIEW_ITEMS)
-                        " (first 100 in this server view)" else "")
+                        " (first 100 in this client view)" else "")
                 Text("Existing custom names and filenames without a safe suggestion are skipped. Nothing is selected or saved automatically.",
                     style = MaterialTheme.typography.bodySmall)
                 if (proposals.isNotEmpty()) {
@@ -180,7 +180,7 @@ internal fun AliasBatchReviewScreen(
                 }
             }
             if (proposals.isEmpty()) item {
-                Text("No eligible names in this server view. Existing custom labels will never be overwritten.")
+                Text("No eligible names in this client view. Existing custom labels will never be overwritten.")
             }
             items(proposals, key = { it.hash }) { item ->
                 Card {

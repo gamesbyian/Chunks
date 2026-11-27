@@ -52,7 +52,7 @@ internal fun RemoteBatchLocalCopyPanel(
         if (confirming) {
             Text("Adds each selected torrent to this device as a new job at the local device's default download " +
                 "location, one at a time, in metadata-only mode: nothing downloads until you start it. " +
-                "Downloaded server files are not transferred and the server transfers stay as they are. " +
+                "Downloaded remote files are not transferred and the remote transfers stay as they are. " +
                 "Public tracker addresses are included; private torrents get their identity only (their " +
                 "passkeys are never read), so they may find no peers.",
                 style = MaterialTheme.typography.bodySmall)
@@ -80,7 +80,7 @@ internal fun RemoteBatchLocalCopyPanel(
             if (confirmingMove) {
                 Text("Moves the torrent jobs, not their files, in two steps. First each selected torrent is " +
                     "added to this device (metadata only) and confirmed there. Then you review and separately " +
-                    "confirm removing the original server jobs. Downloaded files stay on the server and keep " +
+                    "confirm removing the original remote jobs. Downloaded files stay on the remote client and keep " +
                     "using its storage; the local device may download everything again.",
                     style = MaterialTheme.typography.bodySmall)
                 Button(onClick = {
@@ -145,7 +145,7 @@ internal suspend fun runBatchLocalMove(
             }
         }
     }
-    return "$text $journaled ready to finish moving: review removal of the original server jobs below." +
+    return "$text $journaled ready to finish moving: review removal of the original remote jobs below." +
         (if (aliasCopied > 0) " $aliasCopied display aliases carried to this device." else "") +
         (if (aliasFailed > 0) " $aliasFailed display aliases could not be carried; edit them on the local device." else "")
 }

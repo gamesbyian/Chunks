@@ -70,7 +70,7 @@ class CombinedTwoRealServersInstrumentedTest {
         val row = hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
         rule.onAllNodes(row).fetchSemanticsNodes().isNotEmpty() &&
-            rule.onAllNodes(hasContentDescription("Showing Server", substring = true))
+            rule.onAllNodes(hasContentDescription("Showing Remote", substring = true))
                 .fetchSemanticsNodes().isNotEmpty() && !visible("+ Add torrent")
     }.getOrDefault(false)
 
@@ -95,7 +95,7 @@ class CombinedTwoRealServersInstrumentedTest {
         val preferences = CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext)
         val only = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(setOf(expectedId))
         val port = expectedUrl.substringAfter("127.0.0.1:").substringBefore('/')
-        val hiddenTarget = hasContentDescription("Hidden: Server", substring = true) and
+        val hiddenTarget = hasContentDescription("Hidden: Remote", substring = true) and
             hasContentDescription(":$port", substring = true)
         if (rule.onAllNodes(hiddenTarget).fetchSemanticsNodes().isNotEmpty()) {
             val previous = preferences.load().scope
@@ -237,7 +237,7 @@ class CombinedTwoRealServersInstrumentedTest {
         typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
         typeInto("Username, if required", user)
         typeInto("Password", password)
-        scrollTo("Remember this server and login on this device")
+        scrollTo("Remember this connection and login on this device")
         // Read/scroll only while polling. Clicking from inside waitUntil
         // previously raced LazyColumn reattachment and reached a detached
         // Compose ModifierNode (run 43567813262). The stable capability tag
@@ -462,7 +462,7 @@ class CombinedTwoRealServersInstrumentedTest {
                     // canonical Details; opening it may only READ, not mutate.
                     rule.onNodeWithText("Files & priorities…").performScrollTo().performClick()
                     waitFor("exact authenticated B file inventory inside full Details", 45_000) {
-                        visible("${filesOnB.size} server-reported files")
+                        visible("${filesOnB.size} client-reported files")
                     }
                     // The same exact filename also appears in the Details
                     // heading and the tentative media summary. Select the
@@ -697,8 +697,8 @@ class CombinedTwoRealServersInstrumentedTest {
                 hasText(":$port", substring = true) and hasText(text, substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
             fun refreshOthers() {
-                scrollTo("Refresh other saved servers")
-                rule.onNodeWithText("Refresh other saved servers").performClick()
+                scrollTo("Refresh other saved remote clients")
+                rule.onNodeWithText("Refresh other saved remote clients").performClick()
                 // Expanded, the toggle reads "Hide client status".
                 scrollTo("lient status")
                 if (!visible("Hide client status"))
@@ -717,7 +717,7 @@ class CombinedTwoRealServersInstrumentedTest {
             // explicit refresh, never from the previous failed read.
             fault("thaw-a")
             waitFor("refresh enabled after timeout", 60_000) {
-                rule.onAllNodesWithText("Refresh other saved servers").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Refresh other saved remote clients").fetchSemanticsNodes().isNotEmpty()
             }
             refreshOthers()
             waitFor("A live again after explicit refresh", 90_000) {

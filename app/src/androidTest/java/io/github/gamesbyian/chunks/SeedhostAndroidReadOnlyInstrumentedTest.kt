@@ -167,9 +167,9 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                     .fetchSemanticsNodes().isNotEmpty() -> "connect-auth-rejected"
                 rule.onAllNodesWithText("Secure connection failed.", substring = true)
                     .fetchSemanticsNodes().isNotEmpty() -> "connect-tls-failed"
-                rule.onAllNodesWithText("The server is unreachable or did not respond.", substring = true)
+                rule.onAllNodesWithText("The host is unreachable or did not respond.", substring = true)
                     .fetchSemanticsNodes().isNotEmpty() -> "connect-network-failed"
-                rule.onAllNodesWithText("The server answered, but its rTorrent identity could not be verified.", substring = true)
+                rule.onAllNodesWithText("The endpoint answered, but its rTorrent identity could not be verified.", substring = true)
                     .fetchSemanticsNodes().isNotEmpty() -> "connect-protocol-failed"
                 rule.onAllNodesWithText("The seedbox gateway could not process a read-only connection check.", substring = true)
                     .fetchSemanticsNodes().isNotEmpty() -> "connect-service-failed"
@@ -236,8 +236,8 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             rule.onAllNodesWithText("Adding to: Wood", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         checkpoint("add-open")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom server folder (optional)"))
-        rule.onNodeWithText("Custom server folder (optional)").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom remote folder (optional)"))
+        rule.onNodeWithText("Custom remote folder (optional)").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
         val readback = runBlocking {
@@ -248,7 +248,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         check(readback is RemoteDirectoryLookup.Ready && readback.page.folders.isNotEmpty()) {
             "Independent protected folder read did not return a usable root"
         }
-        val placeField = hasText("Custom server folder (optional)") and androidx.compose.ui.test.hasSetTextAction()
+        val placeField = hasText("Custom remote folder (optional)") and androidx.compose.ui.test.hasSetTextAction()
         fun placesAreUnchanged() {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(placeField)
             val selected = rule.onNode(placeField).fetchSemanticsNode()

@@ -335,7 +335,7 @@ internal class QBittorrentClient(
                 400, 409, 415 -> throw ClientRefusedException("qBittorrent rejected the request (HTTP ${response.status})")
                 else -> {
                     if (mutating && response.status >= 500)
-                        throw ClientWriteUncertainException("qBittorrent server error")
+                        throw ClientWriteUncertainException("qBittorrent client returned an HTTP server error")
                     throw ClientRefusedException("qBittorrent HTTP ${response.status}")
                 }
             }

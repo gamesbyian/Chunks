@@ -86,7 +86,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Seeding rules", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Rules apply only to new transfers. On a server they apply only after you turn them on for it.",
+            "Rules apply only to new transfers. On a remote client they apply only after you turn them on for it.",
             style = MaterialTheme.typography.bodySmall
         )
         OutlinedButton(
@@ -101,8 +101,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 "New transfers on this device get any matching upload limit while Chunks is running. " +
                     "When a stop condition is reached, Chunks pauses the transfer once. " +
                     "Existing transfers won't change when you edit a rule. " +
-                    "On a server, rules apply only if you turn on \"Apply while Chunks is open\" for it, and only to " +
-                    "transfers added after that, while Chunks is open and connected. Each server's own counters are used: " +
+                    "On a remote client, rules apply only if you turn on \"Apply while Chunks is open\" for it, and only to " +
+                    "transfers added after that, while Chunks is open and connected. Each remote client's own counters are used: " +
                     "rTorrent has no seeding-time counter, and other clients may count seeding time only while a " +
                     "transfer is active. A rule's upload limit is set on each matching transfer on Transmission, " +
                     "qBittorrent and Deluge (checked by reading it back); rTorrent has no per-transfer limit. " +
@@ -110,9 +110,9 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         }
         if (snapshot.quarantinedRemoteRules.isNotEmpty() ||
             snapshot.quarantinedRemoteDefaults.isNotEmpty()) {
-            ChunksBanner("Older server assignments need review",
-                "Older server rules are saved but turned off because they may now refer to a different account. " +
-                    "Choose the right server for each rule before using it. Local rules are unchanged.",
+            ChunksBanner("Older remote client assignments need review",
+                "Older remote client rules are saved but turned off because they may now refer to a different account. " +
+                    "Choose the right remote client for each rule before using it. Local rules are unchanged.",
                 ChunksTone.PAUSED)
         }
         if (snapshot.unreadable) {
@@ -167,7 +167,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                                 if (SeedingEnvironment.LOCAL_ID in r.environments)
                                     add("Local: matching future additions only")
                                 if (r.environments.any { it.startsWith("remote:") })
-                                    add("Servers: saved for later, not applied")
+                                    add("Remote clients: saved for later, not applied")
                             }
                             if (scopeOutcomes.isNotEmpty()) Text(
                                 scopeOutcomes.joinToString(" · "),
@@ -299,9 +299,9 @@ internal fun matchingSeedingRules(
 }
 
 internal fun appliesTo(rule: SeedingRule, labels: Map<String, String>): String {
-    val named = rule.environments.map { labels[it] ?: "a server not saved on this device" }.sorted()
+    val named = rule.environments.map { labels[it] ?: "a remote client not saved on this device" }.sorted()
     return "Applies to: " + (if (named.isEmpty()) "no client" else named.joinToString(", ")) +
-        if (rule.includeFutureEnvironments) ", and servers added later" else ""
+        if (rule.includeFutureEnvironments) ", and remote clients added later" else ""
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -343,7 +343,7 @@ private fun SeedingRuleEditor(
     }
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(future, role = Role.Checkbox) { future = it },
         verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(future, null); Text("Also apply to servers added later", Modifier.padding(start = 8.dp))
+        Checkbox(future, null); Text("Also apply to remote clients added later", Modifier.padding(start = 8.dp))
     }
     OutlinedTextField(name, { name = it; nameIsCustom = true }, label = { Text("Rule name") }, modifier = Modifier.fillMaxWidth())
     if (nameIsCustom && suggested != null) OutlinedButton(onClick = { nameIsCustom = false; name = suggested },
@@ -446,9 +446,9 @@ private fun RemoteSeedingEnforcementRow(
         Text("Apply while Chunks is open", modifier = Modifier.weight(1f))
         androidx.compose.material3.Switch(checked = on, onCheckedChange = null)
     }
-    Text(if (on) "Transfers added to this server from now on follow these rules while Chunks is open and " +
+    Text(if (on) "Transfers added to this remote client from now on follow these rules while Chunks is open and " +
             "connected. Chunks stops a transfer at most once and never deletes anything."
-        else "Off: nothing is sent to this server.", style = MaterialTheme.typography.bodySmall)
+        else "Off: nothing is sent to this remote client.", style = MaterialTheme.typography.bodySmall)
     if (failed) Text("The setting could not be saved; it is unchanged.",
         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
 }

@@ -61,13 +61,13 @@ class LocalTransferConfirmationActionsTest {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme { Surface {
                     Box(Modifier.width(396.dp)) {
-                        LocalTransferConfirmationActions("Review server Add", "Cancel",
+                        LocalTransferConfirmationActions("Review remote Add", "Cancel",
                             onConfirm = {}, onCancel = {})
                     }
                 } }
             }
         }
-        val confirm = rule.onNodeWithText("Review server Add").getUnclippedBoundsInRoot()
+        val confirm = rule.onNodeWithText("Review remote Add").getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Cancel").getUnclippedBoundsInRoot()
         assertEquals("Review and cancel stay on a single row", confirm.top, cancel.top)
         assertTrue("Buttons remain separate", confirm.right <= cancel.left)

@@ -97,7 +97,7 @@ class CombinedSharedDetailNavigationTest {
             .performScrollTo().performClick()
         rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         // Details names its client by the short compact origin (identity-first Details design).
-        rule.onNodeWithText(compactServerLabel(connectedScope).removePrefix("Server · ")).assertExists()
+        rule.onNodeWithText(compactServerLabel(connectedScope).removePrefix("Remote · ")).assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
         rule.onNodeWithText("Instance three download").assertDoesNotExist()
         rule.onNodeWithText("Exact infohash: $hash").assertDoesNotExist()
@@ -122,7 +122,7 @@ class CombinedSharedDetailNavigationTest {
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance three download"))
         rule.onNodeWithContentDescription(
-            "Details for Instance three download on Server · $savedLabel")
+            "Details for Instance three download on Remote · $savedLabel")
             .performScrollTo().performClick()
         rule.onNodeWithText(savedLabel).assertExists()
         rule.onNodeWithText("Instance three download").assertExists()

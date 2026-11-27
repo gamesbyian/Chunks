@@ -524,7 +524,7 @@ class ProtocolClientOperationsPanelTest {
         val fake = Fake()
         render(fake, reportedDirectory = null)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
-        rule.onNodeWithText("Also delete its downloaded files on the server").assertDoesNotExist()
+        rule.onNodeWithText("Also delete its downloaded files on the remote client").assertDoesNotExist()
         rule.onNodeWithText("Remove, keep files").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
         rule.waitUntil(5_000) { !fake.present }
@@ -537,7 +537,7 @@ class ProtocolClientOperationsPanelTest {
         val fake = Fake()
         render(fake)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
-        rule.onNodeWithText("Also delete its downloaded files on the server").assertExists()
+        rule.onNodeWithText("Also delete its downloaded files on the remote client").assertExists()
         rule.onNodeWithText("Remove, keep files").assertExists()
         rule.onAllNodesWithText("Remove and delete files").assertCountEquals(0)
         rule.onNodeWithText("Folder on Seedbox qB: /d").assertDoesNotExist()
@@ -551,7 +551,7 @@ class ProtocolClientOperationsPanelTest {
         val fake = Fake()
         render(fake)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
-        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the remote client").performClick()
         rule.onNodeWithText("Remove and delete files").assertExists()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick() // Cancel remove
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick() // review again
@@ -565,11 +565,11 @@ class ProtocolClientOperationsPanelTest {
         val fake = Fake()
         render(fake)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
-        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the remote client").performClick()
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
         rule.waitUntil(5_000) { !fake.present }
         rule.waitForIdle()
-        rule.onNodeWithText("Transfer removed from Seedbox qB. Downloaded-file deletion was requested but could not be independently verified. Check the files on the server.").assertExists()
+        rule.onNodeWithText("Transfer removed from Seedbox qB. Downloaded-file deletion was requested but could not be independently verified. Check the files on the remote client.").assertExists()
         rule.onNodeWithText("Remove and delete files: confirmed on Seedbox qB.").assertDoesNotExist()
         assertEquals(1, fake.writes)
     }
@@ -578,7 +578,7 @@ class ProtocolClientOperationsPanelTest {
         val fake = Fake()
         render(fake)
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
-        rule.onNodeWithText("Also delete its downloaded files on the server").performClick()
+        rule.onNodeWithText("Also delete its downloaded files on the remote client").performClick()
         rule.onNodeWithText("Folder on Seedbox qB: /d").assertExists()
         rule.runOnIdle { fake.dir = "/other" }
         rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()

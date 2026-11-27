@@ -69,7 +69,7 @@ internal fun TransferFilePriorityControl(
                 Text("This file identity or priority is not supported for editing.",
                     color = MaterialTheme.colorScheme.error)
             } else if (!mainView || snapshotStale) {
-                Text("Switch to the main server view and refresh the current snapshot before changing file priorities.",
+                Text("Switch to the main client view and refresh the current snapshot before changing file priorities.",
                     color = MaterialTheme.colorScheme.error)
             }
             if (!attempted && !confirming && allowed) {
@@ -111,14 +111,14 @@ internal fun TransferFilePriorityControl(
                                     is FilePriorityOutcome.Verified ->
                                         "Verified by rTorrent: file priority is " + choices[result.priority] + "."
                                     is FilePriorityOutcome.Unchanged ->
-                                        "The server already reports this priority; no change was sent."
+                                        "The remote client already reports this priority; no change was sent."
                                     is FilePriorityOutcome.PendingVerification ->
-                                        "The server did not yet verify the requested file priority. Refresh the file list before doing anything else."
+                                        "The remote client did not yet verify the requested file priority. Refresh the file list before doing anything else."
                                     is FilePriorityOutcome.Uncertain ->
                                         "The priority request may have applied. Inspect the file list; never blindly repeat the change."
                                 }
                             } catch (_: Exception) {
-                                feedback = "Unable to verify file priority. A server change may have applied; refresh before attempting anything else."
+                                feedback = "Unable to verify file priority. A remote change may have applied; refresh before attempting anything else."
                                 verified = false
                             } finally {
                                 pending = false
@@ -142,7 +142,7 @@ internal fun TransferFilePriorityControl(
             }
             if (attempted) {
                 Text("Priority result", fontWeight = FontWeight.Bold)
-                Text(if (pending) "Checking file priority on the server…" else
+                Text(if (pending) "Checking file priority on the remote client…" else
                     feedback ?: "Result unavailable. Inspect the remote file list.",
                     color = if (verified) MaterialTheme.colorScheme.onSurface
                             else MaterialTheme.colorScheme.error,

@@ -38,13 +38,13 @@ internal class RemoteTransferFilterStore(context: Context) {
 internal object RemoteEmptyTransfers {
     fun explanation(totalInLoadedView: Int, loading: Boolean, stale: Boolean,
                     view: String, searching: Boolean, filtered: Boolean): String = when {
-        loading -> "Checking this server's transfers…"
-        stale -> "The last server list may be out of date. Refresh before relying on these results."
+        loading -> "Checking this remote client's transfers…"
+        stale -> "The last remote list may be out of date. Refresh before relying on these results."
         totalInLoadedView == 0 && view != "main" ->
-            "No transfers in the '$view' server view. Other server views may contain downloads."
+            "No transfers in the '$view' client view. Other client views may contain downloads."
         totalInLoadedView == 0 -> "No transfers reported in the last main-view observation."
         searching || filtered -> "No transfers match this search or filter."
-        else -> "No transfers are visible in the current server view."
+        else -> "No transfers are visible in the current client view."
     }
 
     fun canClear(search: String, filter: TransferFilter): Boolean =

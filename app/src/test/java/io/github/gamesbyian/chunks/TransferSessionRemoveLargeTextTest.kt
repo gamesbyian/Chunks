@@ -231,7 +231,7 @@ class TransferSessionRemoveLargeTextTest {
     }
 
     @Test fun removalReviewShowsServerAccountAndClosesIfScopeChanges() {
-        var label by mutableStateOf("Server · alice @ host.example/rutorrent/")
+        var label by mutableStateOf("Remote · alice @ host.example/rutorrent/")
         rule.setContent {
             ChunksTheme { Surface {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -244,11 +244,11 @@ class TransferSessionRemoveLargeTextTest {
             } }
         }
         rule.onNodeWithText("Remove from rTorrent…").performClick()
-        rule.onNodeWithText("Server · alice @ host.example/rutorrent/").assertExists()
-        rule.runOnIdle { label = "Server · bob @ host.example/rutorrent2/" }
+        rule.onNodeWithText("Remote · alice @ host.example/rutorrent/").assertExists()
+        rule.runOnIdle { label = "Remote · bob @ host.example/rutorrent2/" }
         rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         rule.onNodeWithText("Remove from rTorrent…").performClick()
-        rule.onNodeWithText("Server · bob @ host.example/rutorrent2/").assertExists()
+        rule.onNodeWithText("Remote · bob @ host.example/rutorrent2/").assertExists()
         assertEquals(0, mutations)
     }
 
@@ -317,7 +317,7 @@ class TransferSessionRemoveLargeTextTest {
             } }
         }
         rule.onNodeWithText("Remove from rTorrent…").assertIsNotEnabled()
-        rule.onNodeWithText("The server account could not be identified.", substring = true).assertExists()
+        rule.onNodeWithText("The remote account could not be identified.", substring = true).assertExists()
         assertEquals(0, mutations)
     }
 
@@ -443,7 +443,7 @@ class TransferSessionRemoveLargeTextTest {
                 }
             }
         }
-        rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
+        rule.onNodeWithText("Refresh this stale remote snapshot before removing a transfer.").assertExists()
         rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         assertEquals(0, mutations)
     }

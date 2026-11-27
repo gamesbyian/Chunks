@@ -471,7 +471,7 @@ private fun ConsentCard(onEnable: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Online lookup is off", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, fontWeight = FontWeight.Bold)
         Text("If you turn it on, Chunks sends only a cleaned-up title (plus year, season or episode) to the named media " +
-            "databases. Torrent names, links, trackers, file paths and server details are never sent. Providers can see " +
+            "databases. Torrent names, links, trackers, file paths and connection details are never sent. Providers can see " +
             "your network address.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         Button(onClick = onEnable, modifier = Modifier.heightIn(min = 48.dp)) { Text("Turn on online lookup…") }
     }

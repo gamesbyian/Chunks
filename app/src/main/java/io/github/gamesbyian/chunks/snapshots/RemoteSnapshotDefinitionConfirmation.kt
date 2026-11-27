@@ -21,7 +21,7 @@ internal fun RemoteSnapshotDefinitionConfirmation(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (review.recoveryOnly) "Check previous server restore" else "Restore stopped") },
+        title = { Text(if (review.recoveryOnly) "Check previous remote restore" else "Restore stopped") },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -30,8 +30,8 @@ internal fun RemoteSnapshotDefinitionConfirmation(
                 Text(accountLabel)
                 Text(review.name)
                 Text("Infohash: " + review.hash)
-                Text((if (review.serverDefault) "Server default Place: "
-                    else "Explicitly reviewed server folder: ") + review.place)
+                Text((if (review.serverDefault) "Remote default Place: "
+                    else "Explicitly reviewed remote folder: ") + review.place)
                 if (review.recoveryOnly) {
                     Text("Checks the journal and the transfer at the reviewed Place. Read-only.")
                 } else {

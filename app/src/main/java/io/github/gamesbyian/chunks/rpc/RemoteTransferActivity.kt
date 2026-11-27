@@ -13,7 +13,7 @@ data class RemoteTransferActivity(
     val downloadBytesPerSecond: Long?
 ) {
     fun summary(): String = when {
-        active == false -> "rTorrent is not active. The Start state may be set, but the engine has not activated this torrent. Check server errors, hashing, queue limits or storage."
+        active == false -> "rTorrent is not active. The Start state may be set, but the engine has not activated this torrent. Check remote client errors, hashing, queue limits or storage."
         open == false -> "rTorrent has not opened this torrent. Check storage path, filesystem permissions and disk space."
         active == true && connectedPeers == 0L ->
             "Engine active, 0 peers connected. Check trackers, DHT/peer discovery and whether live seeds exist."
@@ -22,6 +22,6 @@ data class RemoteTransferActivity(
         active == true && (downloadBytesPerSecond ?: 0L) > 0 ->
             "Engine active and reporting download traffic. File completion still needs observation."
         active == true -> "Engine active. Peer and traffic details are not all available."
-        else -> "This server did not expose enough activity diagnostics. Inspect its tracker/error view."
+        else -> "This remote client did not expose enough activity diagnostics. Inspect its tracker/error view."
     }
 }

@@ -378,7 +378,7 @@ class ChunksMainActivityAtlasTest {
         addList.performScrollToNode(hasText("Magnet or torrent link"))
         rule.onNodeWithText("Magnet or torrent link").performTextReplacement(
             "magnet:?xt=urn:btih:" + "ab".repeat(20))
-        replaceTextInLazyField("Custom server folder (optional)", "/srv/one-off")
+        replaceTextInLazyField("Custom remote folder (optional)", "/srv/one-off")
         dismissSearchKeyboard()
         // Inline source/Place proof is read-only. Never click Add transfer
         // in a synthetic inventory-only fixture.
@@ -389,7 +389,7 @@ class ChunksMainActivityAtlasTest {
 
         val reset = androidx.compose.ui.test.hasContentDescription(
             "Use rTorrent default save folder for this Add")
-        addList.performScrollToNode(hasText("Custom server folder (optional)"))
+        addList.performScrollToNode(hasText("Custom remote folder (optional)"))
         // The server default is read on Dispatchers.IO, outside the Compose
         // clock. Keep its item composed while waiting for the usable result.
         rule.waitUntil(15_000) {
@@ -400,8 +400,8 @@ class ChunksMainActivityAtlasTest {
         // Place changes replace the inline effective destination without
         // authorizing Add or making a second Review screen.
         addList.performScrollToNode(hasText(
-            "Destination: /downloads (server default; no directory override)"))
-        rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
+            "Destination: /downloads (remote default; no directory override)"))
+        rule.onNodeWithText("Destination: /downloads (remote default; no directory override)")
             .assertExists()
         addList.performScrollToNode(hasText("Add transfer"))
         rule.onNodeWithText("Add transfer").assertExists()
@@ -487,8 +487,8 @@ class ChunksMainActivityAtlasTest {
         // its real LazyColumn into view, before opening the actionable result.
         // A heading alone must never satisfy the searchable-route acceptance.
         save("app-options-server-filter-precheck-real-compose")
-        val connectionResult = "Manage device and server connections · opens Connections"
-        val placesResult = "Folders on the authenticated server · opens Server places"
+        val connectionResult = "Manage device and remote client connections · opens Connections"
+        val placesResult = "Folders on the authenticated remote client · opens Remote places"
         // These results are immediately visible on the recorded Options
         // viewport. A LazyColumn scroll-to-*item* cannot resolve this nested
         // card text, even when the user can already see and tap the card.
@@ -503,7 +503,7 @@ class ChunksMainActivityAtlasTest {
         save("app-places-populated-real-compose")
 
         rule.onNodeWithContentDescription("Options").performClick()
-        rule.onNodeWithText("Server collections").performScrollTo().performClick()
+        rule.onNodeWithText("Remote collections").performScrollTo().performClick()
         rule.onNodeWithText("Chunks has ideas.").assertExists()
         save("app-organize-populated-real-compose")
 
@@ -533,9 +533,9 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(returnRow).performClick()
         rule.onNodeWithText("Files & priorities…").performScrollTo().performClick()
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("85 server-reported files").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("85 client-reported files").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("85 server-reported files").performScrollTo()
+        rule.onNodeWithText("85 client-reported files").performScrollTo()
         save("app-files-populated-real-compose")
         val invoked = receivedMethods.toList()
         assertTrue("Installed client must request server version", invoked.contains("system.client_version"))

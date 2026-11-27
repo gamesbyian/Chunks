@@ -25,7 +25,7 @@ class RemoteAddAvailabilityTest {
 
     @Test fun theReasonNamesTheFirstProblem() {
         assertEquals("Review the source.", RemoteAddAvailability.unavailableReason(false, false, "Review the source."))
-        assertEquals("Waiting for a fresh confirmed server transfer list.",
+        assertEquals("Waiting for a fresh confirmed remote transfer list.",
             RemoteAddAvailability.unavailableReason(true, false, "ignored"))
         assertNull(RemoteAddAvailability.unavailableReason(true, true, "ignored"))
     }

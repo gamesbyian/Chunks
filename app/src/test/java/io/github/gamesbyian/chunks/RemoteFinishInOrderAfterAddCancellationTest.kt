@@ -31,7 +31,7 @@ class RemoteFinishInOrderAfterAddCancellationTest {
 
     @Test fun ordinaryUnreadableFileListStillReturnsTheNote() {
         val note = runBlocking { enableRemoteFinishInOrderAfterAdd(context, remote, "fio-cancel-test", hash) }
-        assertEquals("Finish in Order was not set up: the server's file list could not be read.", note)
+        assertEquals("Finish in Order was not set up: the remote client's file list could not be read.", note)
     }
 
     @Test fun cancelledAddPropagatesInsteadOfAllowingStart() {

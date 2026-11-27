@@ -62,7 +62,7 @@ class CombinedDetailIdentityTest {
             }.isSuccess
         }
         rule.onNodeWithContentDescription(target).performClick()
-        rule.onNodeWithText(compactServerLabel(scope).removePrefix("Server · ")).performScrollTo().assertExists()
+        rule.onNodeWithText(compactServerLabel(scope).removePrefix("Remote · ")).performScrollTo().assertExists()
         // Palette preferences are read off-main; require the actual rendered result.
         fun colourPixels(): Int {
             val pixels = rule.onRoot().captureToImage().toPixelMap()

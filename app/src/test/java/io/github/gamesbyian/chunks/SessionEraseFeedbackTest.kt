@@ -11,14 +11,14 @@ class SessionEraseFeedbackTest {
 
     @Test fun verifiedAbsentIsSessionSpecificAndDoesNotClaimPayloadInspection() {
         val text = sessionEraseFeedback(SessionEraseOutcome.VerifiedRemoved(hash))
-        assertTrue(text.contains("gone from the server list"))
+        assertTrue(text.contains("gone from the remote list"))
         assertTrue(text.contains("downloaded files weren't checked"))
-        assertFalse(text.contains("main server view"))
+        assertFalse(text.contains("main client view"))
     }
 
     @Test fun alreadyAbsentDidNotSendAnotherErase() {
         val text = sessionEraseFeedback(SessionEraseOutcome.AlreadyAbsent(hash))
-        assertTrue(text.contains("already absent from the server"))
+        assertTrue(text.contains("already absent from the remote client"))
         assertTrue(text.contains("No removal request was sent"))
         assertFalse(text.contains("main view"))
     }

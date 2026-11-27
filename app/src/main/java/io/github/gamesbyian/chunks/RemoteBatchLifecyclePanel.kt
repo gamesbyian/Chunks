@@ -54,7 +54,7 @@ internal fun RemoteBatchLifecyclePanel(
         val wanted = confirming
         if (wanted != null) {
             val count = if (wanted) toStart else toStop
-            Text("${if (wanted) "Start" else "Stop"} $count selected transfers on this server, one " +
+            Text("${if (wanted) "Start" else "Stop"} $count selected transfers on this remote client, one " +
                 "at a time. Already ${if (wanted) "started" else "stopped"} transfers are skipped. If " +
                 "any reply is lost or refused, Chunks stops there without retrying and refreshes " +
                 "so you can check. No files are moved or deleted.",
@@ -63,7 +63,7 @@ internal fun RemoteBatchLifecyclePanel(
                 Button(onClick = {
                     confirming = null
                     if (!onMutationStarted()) {
-                        message = "Another server change or refresh is in progress. Nothing was sent."
+                        message = "Another remote change or refresh is in progress. Nothing was sent."
                         return@Button
                     }
                     running = true
@@ -101,7 +101,7 @@ private fun describe(report: RemoteBatchLifecycle.Report): String {
     if (report.halted) {
         text += if (report.haltedUncertain)
             " Halted: one command's result could not be verified, so that transfer may or may not have changed."
-        else " Halted: the server refused one command."
+        else " Halted: the remote client refused one command."
         text += " ${report.notAttempted.size} not attempted. Check the refreshed list before trying again."
     }
     return text

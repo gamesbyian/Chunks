@@ -42,7 +42,7 @@ class SeedingRulesScreenTest {
             } }
         }
         rule.onNodeWithText(
-            "Rules apply only to new transfers. On a server they apply only after you turn them on for it."
+            "Rules apply only to new transfers. On a remote client they apply only after you turn them on for it."
         ).assertExists()
         rule.onNodeWithText("New transfers on this device get any matching upload limit", substring = true)
             .assertDoesNotExist()
@@ -73,7 +73,7 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("1. Iptorrents · Ratio 1.00 · 24 kbit/s").assertExists()
         rule.onNodeWithText("Applies to: On this device").assertExists()
         rule.onNodeWithText("Local: matching future additions only").assertExists()
-        rule.onNodeWithText("Servers: saved for later", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Remote clients: saved for later", substring = true).assertDoesNotExist()
 
         val stored = SeedingRuleStore(context).load().rules.single()
         assertEquals(setOf("iptorrents.com"), stored.trackerDomains)
@@ -98,7 +98,7 @@ class SeedingRulesScreenTest {
             ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } }
         }
         rule.onNodeWithText("Review defaults", substring = true).performClick()
-        rule.onNodeWithText("Off: nothing is sent to this server.").performScrollTo().assertExists()
+        rule.onNodeWithText("Off: nothing is sent to this remote client.").performScrollTo().assertExists()
         val toggle = rule.onNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.SEEDING_REMOTE_ENFORCEMENT))
         toggle.performScrollTo().assertIsEnabled()
             .assert(androidx.compose.ui.test.SemanticsMatcher.expectValue(
@@ -108,7 +108,7 @@ class SeedingRulesScreenTest {
         rule.waitForIdle()
         assertTrue("persisted for this exact server only", switch.enabled(box.id))
         assertFalse(switch.enabled(SeedingEnvironment.LOCAL_ID))
-        rule.onNodeWithText("Transfers added to this server from now on follow these rules", substring = true).assertExists()
+        rule.onNodeWithText("Transfers added to this remote client from now on follow these rules", substring = true).assertExists()
         toggle.performClick()
         rule.waitForIdle()
         assertFalse(switch.enabled(box.id))

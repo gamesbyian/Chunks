@@ -89,10 +89,10 @@ class LocalBatchCollectionPanelInstrumentedTest {
         }
         compose.onNodeWithText("Batch organize local transfers").performClick()
         compose.onNodeWithText("Public transfer two").performClick()
-        compose.onNodeWithText("Copy Transfer to server (1)…").performScrollTo().performClick()
+        compose.onNodeWithText("Copy Transfer to remote client (1)…").performScrollTo().performClick()
         compose.onNodeWithText("Downloaded files are not transferred", substring = true).assertExists()
         assertTrue(copied.isEmpty())
-        compose.onNodeWithText("Confirm copy to server").performScrollTo().performClick()
+        compose.onNodeWithText("Confirm copy to remote client").performScrollTo().performClick()
         assertEquals(listOf(listOf(h2)), copied)
     }
 
@@ -105,6 +105,6 @@ class LocalBatchCollectionPanelInstrumentedTest {
             }
         }
         compose.onNodeWithText("Batch organize local transfers").performClick()
-        compose.onNodeWithText("Copy selected to the server").assertDoesNotExist()
+        compose.onNodeWithText("Copy selected to the remote client").assertDoesNotExist()
     }
 }

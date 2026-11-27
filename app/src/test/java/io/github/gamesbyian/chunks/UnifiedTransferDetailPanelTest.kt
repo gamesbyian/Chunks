@@ -188,7 +188,7 @@ class UnifiedTransferDetailPanelTest {
         }
         rule.onNodeWithText("Inspect transfer state").performScrollTo().performClick()
         assertEquals(1, inspected)
-        rule.onNodeWithText("Server requested Start:", substring = true).performScrollTo().assertExists()
+        rule.onNodeWithText("Remote client requested Start:", substring = true).performScrollTo().assertExists()
         rule.onNodeWithText("Raw messages and tracker details are withheld.", substring = true)
             .performScrollTo().assertExists()
         rule.onNodeWithText("passkey", substring = true).assertDoesNotExist()

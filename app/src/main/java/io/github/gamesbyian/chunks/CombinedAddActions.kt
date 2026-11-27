@@ -71,7 +71,7 @@ internal fun CombinedAddActions(
                     if (sharedKind != null) "Review on $serverLabel" else "Add on $serverLabel") }
         }
         if (hasOtherSavedServers) Text(
-            "Other saved servers need their own connection before adding.",
+            "Other saved remote clients need their own connection before adding.",
             style = MaterialTheme.typography.bodySmall
         )
         if (onAddToServer != null || hasOtherSavedServers) Text(

@@ -190,20 +190,20 @@ internal fun LocalBatchCollectionPanel(
                 }
                 message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 if (onBatchCopyToServer != null && copyServerLabel != null) {
-                    Text("Copy selected to the server", style = MaterialTheme.typography.titleMedium)
+                    Text("Copy selected to the remote client", style = MaterialTheme.typography.titleMedium)
                     OutlinedButton(onClick = { copyConfirm = !copyConfirm },
                         enabled = !saving && !inventoryStale && selected.isNotEmpty() &&
                             selected.size <= io.github.gamesbyian.chunks.model.BatchServerCopy.MAX_ITEMS,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("Copy Transfer to server (${selected.size})…")
+                        Text("Copy Transfer to remote client (${selected.size})…")
                     }
                     if (copyConfirm) {
                         Text("Adds each selected torrent's exact definition to $copyServerLabel as a new, " +
-                            "stopped job at the server's default Place, one at a time. Downloaded files " +
-                            "are not transferred: the server downloads on its own, and these local " +
-                            "transfers stay exactly as they are. Torrents already on the server are " +
+                            "stopped job at the remote client's default Place, one at a time. Downloaded files " +
+                            "are not transferred: the remote client downloads on its own, and these local " +
+                            "transfers stay exactly as they are. Torrents already on the remote client are " +
                             "skipped. Tracker addresses (which can include private passkeys) go only to " +
-                            "this server. If an Add cannot be confirmed, Chunks stops there without retrying.",
+                            "this remote client. If an Add cannot be confirmed, Chunks stops there without retrying.",
                             style = MaterialTheme.typography.bodySmall)
                         Button(onClick = {
                             copyConfirm = false
@@ -212,7 +212,7 @@ internal fun LocalBatchCollectionPanel(
                             onBatchCopyToServer(ids)
                         }, enabled = !saving && !inventoryStale,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text("Confirm copy to server")
+                            Text("Confirm copy to remote client")
                         }
                     }
                 }
@@ -221,13 +221,13 @@ internal fun LocalBatchCollectionPanel(
                         enabled = !saving && !inventoryStale && selected.isNotEmpty() &&
                             selected.size <= io.github.gamesbyian.chunks.model.BatchServerCopy.MAX_ITEMS,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("Move Transfer to server (${selected.size})…")
+                        Text("Move Transfer to remote client (${selected.size})…")
                     }
                     if (moveConfirm) {
                         Text("Moves the torrent jobs, not their files, in two steps. First Chunks adds each " +
                             "selected torrent to $copyServerLabel as a stopped job and confirms it there. " +
                             "Then you review and separately confirm removing the original local jobs. " +
-                            "Downloaded files stay on this device and keep using its storage; the server " +
+                            "Downloaded files stay on this device and keep using its storage; the remote client " +
                             "may download everything again.", style = MaterialTheme.typography.bodySmall)
                         Button(onClick = {
                             moveConfirm = false
@@ -236,7 +236,7 @@ internal fun LocalBatchCollectionPanel(
                             onBatchMoveToServer(ids)
                         }, enabled = !saving && !inventoryStale,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Text("Add to server, then review removal")
+                            Text("Add to remote client, then review removal")
                         }
                     }
                 }

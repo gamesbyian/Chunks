@@ -18,6 +18,7 @@ class OptionsDestinationSearchTest {
 
     @Test fun exactDestinationAndDocumentedAliasesFindSameExistingRoutes() {
         assertEquals(listOf("Server"), routes.filter { optionsDestinationMatches(it, "SERVER settings") })
+        assertEquals(listOf("Server"), routes.filter { optionsDestinationMatches(it, "remote client") })
         assertEquals(listOf("Places"), routes.filter { optionsDestinationMatches(it, "folder") })
         assertEquals(listOf("ZIP review"), routes.filter { optionsDestinationMatches(it, "archive") })
         assertEquals(listOf("Organize"), routes.filter { optionsDestinationMatches(it, "collections") })

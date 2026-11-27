@@ -204,7 +204,7 @@ internal fun UniversalAddDestinationPicker(
                 }
             }
             Text("Only the Chunks list label changes after a verified new Add. " +
-                "The torrent name, source, files and server remain untouched.",
+                "The torrent name, source, files and remote client remain untouched.",
                 style = MaterialTheme.typography.bodySmall)
             if (!validUniversalAddAlias(aliasDraft)) Text(
                 "Use a visible name of at most 160 characters without control characters.",

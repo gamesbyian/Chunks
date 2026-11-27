@@ -9,6 +9,40 @@
 - Use **Connections** for the footer destination and the unified remote profile roster, **Manage** for advanced remote settings, and **Transfers** for the one canonical inventory screen. A connection/profile is persistent saved configuration; a live connected session, read-only accessible inventory and the selected client scope are separate states. Do not call a disconnected source 'connected' merely because cached or read-only rows are available.
 - Update user-visible strings in Compose, Android string resources, screen-reader/TalkBack descriptions, notifications, widgets, menus, labels, help, confirmations and screenshots/tests **where they refer to clients**. Preserve **environment** in historical documents, source-level architecture discussion, external protocol terms, logs/debugging where needed, and any truly different domain meaning. Avoid blind global replacement that alters code APIs or changes meaning.
 
+## Clients, not servers (owner directive, 2026-11-27)
+
+**Chunks manages BitTorrent clients, some of which happen to expose server interfaces.** Local and remote clients are first-class participants in one application, so a remote BitTorrent client is a **remote client**, never generically a "server". One client can simultaneously be a BitTorrent client (peer-to-peer participant that downloads and seeds), an RPC/HTTP server (accepting remote-control requests from Chunks) and a daemon (a background process without its own interface). Which description is right depends on the relationship being described. The host computer, the client software and the interface Chunks talks to are three different things.
+
+| Term | Meaning |
+| --- | --- |
+| Client | Any BitTorrent client managed by Chunks. |
+| Local client | Chunks' integrated BitTorrent client (its UI name stays **Local Device** / **Local**, code `Local`, ID `local`). |
+| Remote client | An external BitTorrent client controlled by Chunks. |
+| Client type | rTorrent, Deluge, Transmission, qBittorrent. |
+| Client instance | One particular running instance of client software (for example a numbered Seedhost instance). |
+| Connection | A configured relationship between Chunks and a remote client (the saved profile). |
+| Host | The machine or network host running the remote client. |
+| Endpoint | The network address through which Chunks communicates with the client. |
+| Server | A component accepting network requests, only where that role is specifically relevant. |
+| Daemon | A background service, where applicable. |
+| Engine | The underlying torrent-processing implementation. |
+
+| Avoid | Prefer |
+| --- | --- |
+| Add server | Add remote client |
+| Deluge server | Deluge client |
+| Server settings | Connection settings |
+| Server type | Client type |
+| Server name | Client name |
+| Server unavailable | Remote client unreachable |
+| Server-side seeding | Remote client seeding |
+| Server download directory | Remote download directory |
+| Server reported ratio | Client-reported ratio |
+
+**Legitimate uses of server** describe actual server functionality: an HTTP status a web server returned, a TLS server certificate, the ruTorrent/web server that fronts rTorrent, a test `MockWebServer`, or code such as `RpcServer`, `serverCertificate` and `serverResponse`. Keep them. Placeholders such as `server.example` name a **host** and may stay as host examples.
+
+**Scope and method.** Apply this to UI strings, accessibility descriptions, help, notifications, documentation, domain models, identifiers and tests, as a **contextual review, never a blanket search-and-replace**. Keep distinctions that belong only to networking and transport in that layer; do not encode "server" into domain concepts such as transfers, inventory, Places, seeding or Add destinations. Rename code identifiers incrementally by ownership, one qualified change at a time, and **never change persisted keys, stable IDs, migrations or protocol contracts** merely to rename them. Tests that assert visible text are rewritten with the copy (REWRITE), preserving the behavior they witness. Dated historical documents keep their wording.
+
 ## Transfers summary: included, not excluded
 
 In the compact Transfers summary immediately above rows, a scope count representing the sources **selected to participate in the current transfer-view scope** is labelled **`N clients included`**, never `N sources excluded` or `N environments excluded`. Example: **`48 transfers · No live rates · 2 clients included`**.

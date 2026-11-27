@@ -32,7 +32,7 @@ internal fun RefreshProblemNotice(
         }
         if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Open Server")
+            Text("Open Connections")
         }
     }
 }

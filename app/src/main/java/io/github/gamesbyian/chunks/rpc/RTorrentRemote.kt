@@ -506,7 +506,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return resolveInventoryDirectories(requireUniqueIdentities(transfers))
     }
 
-    private class UnresolvedServerDirectory : IllegalStateException("Server directory could not be resolved")
+    private class UnresolvedServerDirectory : IllegalStateException("Remote directory could not be resolved")
 
     /** Only lexical child components are resolvable without server realpath/symlink evidence. */
     private fun relativeDirectorySuffix(raw: String): String {
@@ -550,7 +550,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     private suspend fun observedDirectory(hash: String): String =
-        resolveServerDirectory(call("d.directory", listOf(hash)) as? String ?: error("Missing server directory"))
+        resolveServerDirectory(call("d.directory", listOf(hash)) as? String ?: error("Missing remote directory"))
 
     /** A session-only operation can compare a raw relative root without authorizing any file access. */
     private suspend fun sessionDirectoryMatches(hash: String, reviewed: String): Boolean =
@@ -582,12 +582,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private suspend fun readViewIdentities(view: String): List<String> {
         val hashes = extractRows(call("download_list", listOf("", view))).map {
             val hash = it as? String ?: error("Invalid torrent identity")
-            require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
+            require(identityPattern.matches(hash)) { "Invalid torrent infohash in client view" }
             hash
         }
         require(hashes.size <= MAX_TRANSFERS) { "Unexpectedly large torrent list" }
         require(hashes.map { it.uppercase(java.util.Locale.ROOT) }.toSet().size == hashes.size) {
-            "rTorrent server view contains duplicate transfer identities"
+            "rTorrent client view contains duplicate transfer identities"
         }
         return hashes
     }
@@ -629,7 +629,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
 
     private fun transferFromRow(row: List<*>, rich: Boolean): RemoteTransfer {
         val hash = row[0] as? String ?: error("Missing info hash")
-        require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
+        require(identityPattern.matches(hash)) { "Invalid torrent infohash in client view" }
         val size = nonNegativeNumber(row[2], "torrent size")
         val completed = nonNegativeNumber(row[3], "verified bytes")
         require(completed <= size) { "Verified bytes exceed torrent size" }
@@ -641,7 +641,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // inventory. Refuse unrepresentable rows instead of manufacturing
         // shorter paths or names. Do not trim otherwise valid literal spaces.
         val name = row[1] as? String ?: error("Missing torrent name")
-        val directory = row[5] as? String ?: error("Missing server path")
+        val directory = row[5] as? String ?: error("Missing remote path")
         require(name.length <= 2048 && directory.length <= 4096) {
             "rTorrent returned an overlong transfer identity; refresh the account"
         }
@@ -666,7 +666,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val identities = HashSet<String>(parsed.size)
         require(parsed.all {
             identities.add(it.hash.uppercase(java.util.Locale.ROOT))
-        }) { "rTorrent server view contains duplicate transfer identities" }
+        }) { "rTorrent client view contains duplicate transfer identities" }
         return parsed
     }
 
@@ -684,7 +684,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private suspend fun prepareLoad(plan: StoppedRemoteAddPlan, beforeLoad: suspend () -> Unit) {
         if (plan.useServerDefault && plan.destination.isNotEmpty()) {
             check(defaultDirectory() == plan.destination) {
-                "Server default location is missing or changed. Review this Add again."
+                "Remote default location is missing or changed. Review this Add again."
             }
         }
         beforeLoad()
@@ -1335,7 +1335,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
           catch (_: RpcFault) { snapshot(RemoteCapabilityState.RESTRICTED, null,
               "This server restricts deletion capability introspection.") }
           catch (failure: Exception) { snapshot(RemoteCapabilityState.UNKNOWN, null,
-              "Server deletion support could not be checked (${failure.javaClass.simpleName}). Reconnect or recheck.") }
+              "Remote deletion support could not be checked (${failure.javaClass.simpleName}). Reconnect or recheck.") }
     }
 
     /** Read-only same-instance resources; authenticate only after their own challenge. */

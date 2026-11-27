@@ -67,7 +67,7 @@ class TransferMoveTest {
         assertTrue(done.message.contains("Downloaded files remain on this device"))
         val back = TransferMove.onRemovalResult(started(Direction.SERVER_TO_LOCAL)
             .copy(stage = Stage.SOURCE_REMOVAL_REQUESTED), Observation.Absent) as Next.Done
-        assertTrue(back.message.contains("Downloaded files remain on the server"))
+        assertTrue(back.message.contains("Downloaded files remain on the remote client"))
     }
 
     @Test fun localSourceGenerationRoundTripsAndNeverAuthorizesReplacement() {

@@ -438,7 +438,7 @@ internal class DelugeClientCore(
                     throw IOException("Deluge RPC transport failed")
                 }
                 if (response.status != 200) {
-                    if (mutating && response.status >= 500) throw ClientWriteUncertainException("Deluge server error")
+                    if (mutating && response.status >= 500) throw ClientWriteUncertainException("Deluge client returned an HTTP server error")
                     throw ClientRefusedException("Deluge HTTP ${response.status}")
                 }
                 val fullInventory = method == "core.get_torrents_status" &&

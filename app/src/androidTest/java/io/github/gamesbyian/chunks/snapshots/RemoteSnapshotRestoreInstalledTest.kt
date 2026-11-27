@@ -105,14 +105,14 @@ class RemoteSnapshotRestoreInstalledTest {
             compose.waitUntil(timeout) { compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
         }
         fun reviewOnce() {
-            awaitText("Review stopped server restore")
-            compose.onNodeWithText("Review stopped server restore").performScrollTo().performClick()
+            awaitText("Review stopped remote restore")
+            compose.onNodeWithText("Review stopped remote restore").performScrollTo().performClick()
             awaitText("Confirm stopped restore")
             compose.onNodeWithText("Disposable server A").assertExists()
             compose.onNodeWithText("Infohash: " + hash).assertExists()
-            compose.onNodeWithText("Server default Place: " + place).assertExists()
+            compose.onNodeWithText("Remote default Place: " + place).assertExists()
         }
-        compose.onNodeWithText("Compare saved snapshot with rTorrent server").performClick()
+        compose.onNodeWithText("Compare saved snapshot with rTorrent client").performClick()
         compose.onNodeWithText("Choose .chunksnap to compare").performScrollTo().performClick()
         reviewOnce()
         // This screen contains only the disposable account and synthetic source.

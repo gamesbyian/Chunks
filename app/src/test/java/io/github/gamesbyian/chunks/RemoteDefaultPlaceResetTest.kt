@@ -74,7 +74,7 @@ class RemoteDefaultPlaceResetTest {
             list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
             rule.onNodeWithTag(ChunksSemantics.ADD_REMOTE_SAVE_TO).assertExists()
             rule.onNodeWithText("Save to: /srv/one-off (this Add only)").assertExists()
-            list.performScrollToNode(hasText("Custom server folder (optional)"))
+            list.performScrollToNode(hasText("Custom remote folder (optional)"))
             rule.waitUntil(15_000) {
                 rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(
                     "Use rTorrent default save folder for this Add")).fetchSemanticsNodes().isNotEmpty()
@@ -86,12 +86,12 @@ class RemoteDefaultPlaceResetTest {
             
             
             list.performScrollToNode(hasText(
-                "Destination: /downloads (server default; no directory override)"))
-            rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
+                "Destination: /downloads (remote default; no directory override)"))
+            rule.onNodeWithText("Destination: /downloads (remote default; no directory override)")
                 .assertExists()
             list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
             rule.onNodeWithText("Save to: /downloads (rTorrent default)").assertExists()
-            rule.onNodeWithText("About server folders").assertDoesNotExist()
+            rule.onNodeWithText("About remote folders").assertDoesNotExist()
             assertEquals("Preview and Reset must issue only the default read",
                 listOf("directory.default"), methods.toList())
         } finally {

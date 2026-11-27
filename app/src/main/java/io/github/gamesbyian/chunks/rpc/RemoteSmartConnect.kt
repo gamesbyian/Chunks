@@ -55,9 +55,9 @@ object RemoteSmartConnect {
             Category.PROXY -> "A network proxy requires separate authentication (HTTP 407). Chunks stopped endpoint discovery."
             Category.RATE_LIMIT -> "The server is limiting connection attempts (HTTP 429). Chunks stopped checking addresses to protect your login."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
-            Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
+            Category.NETWORK -> "The host is unreachable or did not respond. Check its address and network."
             Category.SERVICE -> "The seedbox gateway could not process a read-only connection check. Chunks stopped checking other paths rather than risking another instance."
-            Category.PROTOCOL -> "The server answered, but its rTorrent identity could not be verified. Chunks stopped looking at other paths."
+            Category.PROTOCOL -> "The endpoint answered, but its rTorrent identity could not be verified. Chunks stopped looking at other paths."
             Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
@@ -77,9 +77,9 @@ object RemoteSmartConnect {
                 "Check whether your network, VPN or company proxy requires separate sign-in.",
                 "A proxy login cannot be fixed by guessing rTorrent paths or changing the seedbox password.")
             Category.IDENTITY -> listOf(
-                "The server returned version and transfers without challenging the supplied login.",
+                "The endpoint returned version and transfers without challenging the supplied login.",
                 "Confirm the exact ruTorrent/HTTP-RPC address for this account and instance.",
-                "If the server intentionally permits anonymous access, clear both login fields before connecting.")
+                "If the endpoint intentionally permits anonymous access, clear both login fields before connecting.")
             Category.AUTH -> listOf(
                 "Use the same username and password that open ruTorrent in your browser.",
                 "Some providers use a separate web-UI password from the SSH/FTP one.",
@@ -89,12 +89,12 @@ object RemoteSmartConnect {
                 "If your server uses a self-signed certificate, Chunks cannot connect to it yet; it will not bypass certificate checks.")
             Category.NETWORK -> listOf(
                 "Check the hostname for typos and that the local device is online.",
-                "If the server is only reachable on a home network or VPN, connect to that network first.")
+                "If the host is only reachable on a home network or VPN, connect to that network first.")
             Category.SERVICE -> listOf(
                 "The exact seedbox gateway returned a server-side error; it may be temporarily unavailable.",
                 "Check your provider status or retry this exact address later. Chunks will not search other account paths after this response.")
             Category.PROTOCOL -> listOf(
-                "The server replied, but Chunks could not prove that the response came from the expected rTorrent instance.",
+                "The endpoint replied, but Chunks could not prove that the response came from the expected rTorrent instance.",
                 "Paste your exact ruTorrent or XML-RPC address; Chunks will not try another account path after an ambiguous reply.")
             Category.ENDPOINT -> buildList {
                 if (!explicit) add("Open ruTorrent in your browser and paste the full address from the address bar " +
@@ -148,7 +148,7 @@ object RemoteSmartConnect {
         // Even the advanced-path join must not silently discard an ambiguous
         // supplied host path such as https://host// before adding /RPC2.
         require("//" !in uri.rawPath.orEmpty()) {
-            "Ambiguous server path; use one slash between path segments"
+            "Ambiguous endpoint path; use one slash between path segments"
         }
         require(uri.rawPath.orEmpty().trim('/').isEmpty() && uri.rawQuery == null &&
             uri.rawFragment == null && uri.rawUserInfo == null) {
@@ -183,13 +183,13 @@ object RemoteSmartConnect {
         // trust inconsistent reverse-proxy normalization of tenant mounts.
         // Literal repeated separators have no single stable account route.
         val suppliedPath = uri.rawPath.orEmpty()
-        require("//" !in suppliedPath) { "Ambiguous server path; use one slash between path segments" }
+        require("//" !in suppliedPath) { "Ambiguous endpoint path; use one slash between path segments" }
         val rawPath = suppliedPath.trimEnd('/')
         // Avoid URI normalization/path traversal changing the intended tenant
         // or accidentally selecting a different backend mount.
         require(!dotTraversalSegment.containsMatchIn(rawPath) &&
             !ambiguousPathEscape.containsMatchIn(rawPath)) {
-            "Unsafe path segments in server address"
+            "Unsafe path segments in endpoint address"
         }
         val entries = linkedMapOf<String, Candidate>()
         fun add(path: String, description: String) {

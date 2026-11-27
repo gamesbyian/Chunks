@@ -174,7 +174,7 @@ internal fun OrphanMoveRecoveryPanel(
                                     )) withContext(Dispatchers.IO) { store.remove(record) }
                                     else false
                                 if (!stillBound() && !cleared) {
-                                    message = "The server account or saved Move changed. Nothing was cleared."
+                                    message = "The remote account or saved Move changed. Nothing was cleared."
                                     return@launch
                                 }
                                 if (cleared) {

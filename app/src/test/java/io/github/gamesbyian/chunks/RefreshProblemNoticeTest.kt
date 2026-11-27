@@ -23,12 +23,12 @@ class RefreshProblemNoticeTest {
         var refreshes = 0
         var refreshing by mutableStateOf(false)
         rule.setContent { ChunksTheme {
-            RefreshProblemNotice("The server did not accept the connection.", refreshing) {
+            RefreshProblemNotice("The host did not accept the connection.", refreshing) {
                 refreshes++
                 refreshing = true
             }
         } }
-        rule.onNodeWithText("The server did not accept the connection.").assertExists()
+        rule.onNodeWithText("The host did not accept the connection.").assertExists()
         rule.onNodeWithText("Refresh list again").performClick()
         assertEquals(1, refreshes)
         rule.onNodeWithText("Refreshing…").assertIsNotEnabled()

@@ -61,7 +61,7 @@ class CombinedAddAndFreshnessTest {
     @Test fun sharedTorrentIsSourceOnlyUntilExactLocalOrServerReviewChosen() {
         val local = AtomicInteger()
         val server = AtomicInteger()
-        val label = "Server · Personal seedbox #2"
+        val label = "Remote · Personal seedbox #2"
         show(label, { local.incrementAndGet() }, { server.incrementAndGet() },
             pendingSharedTorrent = true)
         rule.onNodeWithText("Choose a destination for the shared .torrent").assertIsDisplayed()
@@ -81,7 +81,7 @@ class CombinedAddAndFreshnessTest {
     @Test fun sharedDocumentButtonsRefuseClicksWhileLocalValidationIsRunning() {
         val local = AtomicInteger()
         val server = AtomicInteger()
-        val label = "Server · Personal seedbox #2"
+        val label = "Remote · Personal seedbox #2"
         show(label, { local.incrementAndGet() }, { server.incrementAndGet() },
             pendingSharedTorrent = true, readingSharedTorrent = true)
         rule.onNodeWithText("Checking the shared .torrent on this device…").assertExists()
@@ -94,7 +94,7 @@ class CombinedAddAndFreshnessTest {
     @Test fun sharedMagnetRequiresExactDestinationAndDoesNotDisplaySecretSource() {
         val local = AtomicInteger()
         val server = AtomicInteger()
-        val label = "Server · Personal seedbox #2"
+        val label = "Remote · Personal seedbox #2"
         show(label, { local.incrementAndGet() }, { server.incrementAndGet() },
             pendingSharedMagnet = true)
         rule.onNodeWithText("A shared magnet is ready. Choose where to review it. Nothing is added until you confirm.")
@@ -113,7 +113,7 @@ class CombinedAddAndFreshnessTest {
     @Test fun exactLocalAndAuthenticatedServerCallbacksStaySeparateAt320And200Percent() {
         val local = AtomicInteger()
         val server = AtomicInteger()
-        val name = "Server · Personal seedbox #2"
+        val name = "Remote · Personal seedbox #2"
         show(name, { local.incrementAndGet() }, { server.incrementAndGet() })
 
         rule.onNodeWithContentDescription("Add download on this device").assertIsDisplayed()
@@ -131,7 +131,7 @@ class CombinedAddAndFreshnessTest {
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun savedOnlyServerDoesNotExposeUnverifiedAddRoute() {
         val local = AtomicInteger()
-        val name = "Server · Saved but disconnected"
+        val name = "Remote · Saved but disconnected"
         show(name, { local.incrementAndGet() }, null)
         rule.onNodeWithContentDescription("Add download on $name").assertDoesNotExist()
         rule.onNodeWithContentDescription("Add download on this device").assertIsDisplayed()
@@ -142,7 +142,7 @@ class CombinedAddAndFreshnessTest {
     @Test fun localOnlyDoesNotDescribeUnconfiguredSavedServersAt320And200Percent() {
         show(null, {}, null)
         rule.onNodeWithText("Add on this device").assertIsDisplayed()
-        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+        rule.onNodeWithText("Other saved remote clients need their own connection before adding.")
             .assertDoesNotExist()
         rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
             .assertDoesNotExist()
@@ -150,18 +150,18 @@ class CombinedAddAndFreshnessTest {
 
     @Test fun savedOfflineServerIsNamedOnlyAsUnavailableAddAuthority() {
         show(null, {}, null, otherSavedServers = true)
-        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+        rule.onNodeWithText("Other saved remote clients need their own connection before adding.")
             .assertExists()
         rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
             .assertExists()
         rule.onNodeWithText("Add on this device").assertIsDisplayed()
-        rule.onNodeWithText("Add on Server", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Add on Remote", substring = true).assertDoesNotExist()
     }
 
     @Test fun signedInOnlyServerDoesNotClaimAnyOtherSavedAccounts() {
-        show("Server · exact session", {}, {})
-        rule.onNodeWithText("Add on Server · exact session").assertExists()
-        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+        show("Remote · exact session", {}, {})
+        rule.onNodeWithText("Add on Remote · exact session").assertExists()
+        rule.onNodeWithText("Other saved remote clients need their own connection before adding.")
             .assertDoesNotExist()
         rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
             .assertExists()

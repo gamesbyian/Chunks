@@ -114,7 +114,7 @@ class ServerToLocalSessionPlanTest {
         }
         rule.onNodeWithText("Copy files to this device").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("directly from your server at 127.0.0.1:6890", substring = true)
+            rule.onAllNodesWithText("directly from your remote client at 127.0.0.1:6890", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Review local Add").assertExists()
@@ -124,7 +124,7 @@ class ServerToLocalSessionPlanTest {
         assertTrue("Switching servers must never hand off the previous plan", handedOff.isEmpty())
         rule.onNodeWithText("Copy files to this device").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("directly from your server at 127.0.0.1:6891", substring = true)
+            rule.onAllNodesWithText("directly from your remote client at 127.0.0.1:6891", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         // A new server requires an independent review. On the actual click,

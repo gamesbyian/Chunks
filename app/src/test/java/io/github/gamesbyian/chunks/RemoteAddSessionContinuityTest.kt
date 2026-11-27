@@ -76,18 +76,18 @@ class RemoteAddSessionContinuityTest {
             // Only discovery can repeat; the attached submit action is invoked once.
             submitReviewedAddOnce()
             rule.waitUntil(15_000) { settled == 1 }
-            reveal("Check server state (read only)")
+            reveal("Check remote state (read only)")
             reveal("Back to transfers")
             rule.onNodeWithText("Back to transfers").performClick()
             rule.runOnIdle { showing.value = true }
-            reveal("Check server state (read only)")
+            reveal("Check remote state (read only)")
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
             reveal("Magnet or torrent link")
             rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
-            reveal("Check server state (read only)")
+            reveal("Check remote state (read only)")
             assertEquals(1, attempts)
             val before = requests.toList()
-            rule.onNodeWithText("Check server state (read only)").performClick()
+            rule.onNodeWithText("Check remote state (read only)").performClick()
             rule.waitUntil(15_000) { requests.size > before.size }
             assertEquals(1, attempts)
             assertEquals("Exactly one originally authorized load, never replayed",
@@ -242,12 +242,12 @@ class RemoteAddSessionContinuityTest {
                 remote.value = RTorrentRemote(RemoteCredentials(endpoint, "owner", "new-login"))
                 showing.value = true
             }
-            reveal("Check server state (read only)")
+            reveal("Check remote state (read only)")
             assertEquals(0, consumed)
             assertEquals(oldHash, session.attemptTicket?.intent?.source?.expectedInfoHash)
             assertTrue(session.attemptTicket?.intent?.startWhenAdded == true)
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
-            // #2138: a background follow-up recheck disables this action ("Checking server…")
+            // #2138: a background follow-up recheck disables this action ("Checking remote client…")
             // while it runs; a click on the disabled button is ignored, so the person's own
             // check never ran under hosted load. Click only once the action is enabled.
             rule.waitUntil(15_000) {

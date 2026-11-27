@@ -21,7 +21,7 @@ class RemoteAddProgressTest {
     }
 
     @Test fun unknownMetadataAndStartedFlagsCannotProveDownloading() {
-        assertEquals("Torrent registered. Metadata status is unavailable on this server.",
+        assertEquals("Torrent registered. Metadata status is unavailable on this remote client.",
             RemoteAddProgress(true, null, true, traffic(rate = 10_000)).summary())
         assertEquals("Metadata resolved. Waiting for peers.",
             RemoteAddProgress(true, false, true, traffic(1_000L, 0L)).summary())

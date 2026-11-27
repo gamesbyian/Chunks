@@ -33,38 +33,38 @@ class CombinedCompactLabelTest {
 
     @Test fun localChipUsesTheRequestedShortNameWithoutChangingSpokenIdentity() {
         assertEquals("Local", environmentToggleName(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL))
-        assertEquals("Wood", environmentToggleName(a, "Server · Wood"))
+        assertEquals("Wood", environmentToggleName(a, "Remote · Wood"))
     }
 
     @Test fun uniqueFriendlyNamesAreCompactAndCollisionsKeepExactLabels() {
         val exact = mapOf(
             EnvironmentSnapshots.LOCAL to LOCAL_ENVIRONMENT_LABEL,
-            a to "Server · Wood · host.example/rutorrent/",
-            b to "Server · ian @ host.example · host.example/rutorrent/",
-            c to "Server · ian @ host.example · host.example/rutorrent2/")
+            a to "Remote · Wood · host.example/rutorrent/",
+            b to "Remote · ian @ host.example · host.example/rutorrent/",
+            c to "Remote · ian @ host.example · host.example/rutorrent2/")
         val compact = mapOf(
             EnvironmentSnapshots.LOCAL to LOCAL_ENVIRONMENT_LABEL,
-            a to "Server · Wood",
-            b to "Server · ian @ host.example",
-            c to "Server · ian @ host.example")
+            a to "Remote · Wood",
+            b to "Remote · ian @ host.example",
+            c to "Remote · ian @ host.example")
         val shown = compactEnvironmentLabels(exact, compact)
         assertEquals(LOCAL_ENVIRONMENT_LABEL, shown[EnvironmentSnapshots.LOCAL])
-        assertEquals("Server · Wood", shown[a])
+        assertEquals("Remote · Wood", shown[a])
         // Two instances on one host must never look identical.
         assertEquals(exact[b], shown[b])
         assertEquals(exact[c], shown[c])
     }
 
     @Test fun missingOrBlankCompactNameFallsBackToExact() {
-        val exact = mapOf(a to "Server · x · h/RPC2", b to "Server · y · h/RPC2")
+        val exact = mapOf(a to "Remote · x · h/RPC2", b to "Remote · y · h/RPC2")
         val shown = compactEnvironmentLabels(exact, mapOf(a to "  "))
         assertEquals(exact, shown)
     }
 
     @Test fun compactServerLabelDropsOnlyThePath() {
-        assertEquals("Server · ian @ box.example",
+        assertEquals("Remote · ian @ box.example",
             compactServerLabel("https://box.example/rutorrent2/plugins/httprpc/action.php\u0000ian"))
-        assertEquals("Server · box.example", compactServerLabel("https://box.example/RPC2\u0000"))
+        assertEquals("Remote · box.example", compactServerLabel("https://box.example/RPC2\u0000"))
     }
 
     @Test fun rowsShowCompactOriginWhileSpokenActionsKeepExactIdentity() {

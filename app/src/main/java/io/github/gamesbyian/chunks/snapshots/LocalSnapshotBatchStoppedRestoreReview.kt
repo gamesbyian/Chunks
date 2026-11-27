@@ -55,7 +55,7 @@ internal fun LocalSnapshotBatchStoppedRestoreReview(
                 "an uncertain write, starts a transfer or copies downloaded files.",
                 style = MaterialTheme.typography.bodySmall)
             Text("These originals may contain private tracker passkeys. The snapshot's " +
-                "old server paths and settings are not reused. You must Start any " +
+                "old remote paths and settings are not reused. You must Start any " +
                 "successfully restored transfer separately.",
                 style = MaterialTheme.typography.bodySmall)
             if (!eligible) Text(

@@ -68,7 +68,7 @@ internal fun TransferFilePager(
     val matchedIndices = matchingFileIndices(files.map { it.path }, fileSearch)
     val current = FilePages.select(matchedIndices.size, requestedPage)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("${files.size} server-reported files", fontWeight = FontWeight.Bold)
+        Text("${files.size} client-reported files", fontWeight = FontWeight.Bold)
         if (files.isNotEmpty()) {
             ClearableTransferSearchField(
                 value = fileSearch,
@@ -90,7 +90,7 @@ internal fun TransferFilePager(
                 onNext = { requestedPage = current.number + 1 }
             )
             if (!mainView || snapshotStale) {
-                Text("Refresh the main server view before changing file priorities.",
+                Text("Refresh the main client view before changing file priorities.",
                     style = MaterialTheme.typography.bodySmall)
             }
             if (matchedIndices.isEmpty()) Text(

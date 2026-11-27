@@ -114,7 +114,7 @@ internal fun connectedServerFriendlyLabel(
     serverId: EnvironmentId,
     savedProfiles: List<CombinedSavedProfile>
 ): String = savedProfiles.firstOrNull { it.id == serverId.value }
-    ?.let { "Server · " + it.label }
+    ?.let { "Remote · " + it.label }
     ?: serverEnvironmentLabel(aliasScope)
 
 /** The connected server's latest accepted list, as the server screen holds it. */
@@ -239,7 +239,7 @@ internal fun compactServerLabel(aliasScope: String): String {
     val user = aliasScope.substringAfter('\u0000', "").trim()
     val host = try { java.net.URI(endpoint.trim()).host } catch (_: Exception) { null }
         ?.takeIf { it.isNotBlank() } ?: return serverEnvironmentLabel(aliasScope)
-    return "Server · " + (if (user.isEmpty()) host else "$user @ $host")
+    return "Remote · " + (if (user.isEmpty()) host else "$user @ $host")
 }
 
 /** One read-only fetch of another saved server: never a command, never a sign-in switch. */
@@ -848,7 +848,7 @@ internal fun CombinedTransfersScreen(
         put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
         if (server != null && serverId != null)
             put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
-        savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
+        savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Remote · " + profile.label) }
         protocolProfiles.forEach { profile ->
             putIfAbsent(profile.environment,
                 profile.backend.name.lowercase().replaceFirstChar { it.uppercase() } + " · " + profile.label)
@@ -858,7 +858,7 @@ internal fun CombinedTransfersScreen(
         compactEnvironmentLabels(labels, buildMap {
         put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
         savedProfiles.forEach { profile ->
-            profile.shortLabel?.let { put(EnvironmentId(profile.id), "Server · $it") }
+            profile.shortLabel?.let { put(EnvironmentId(profile.id), "Remote · $it") }
         }
         protocolProfiles.forEach { profile -> put(profile.environment, profile.label) }
         if (server != null && serverId != null && serverId !in this)
@@ -1255,7 +1255,7 @@ internal fun CombinedTransfersScreen(
             serverId != null && serverPrivacy?.mayShow == true && it.addAccountScope() == server?.aliasScope
         }?.let { remote ->
             ProtocolMoveTarget(requireNotNull(serverId).value,
-                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent", aliasScopes[serverId],
+                labels[serverId]?.removePrefix("Remote · ") ?: "rTorrent", aliasScopes[serverId],
                 connectionWitness = remote, ownerCurrent = {
                     latestServer.value?.authenticatedSession === remote &&
                         latestServerId.value == serverId && latestServerPrivacy.value
@@ -1371,9 +1371,9 @@ internal fun CombinedTransfersScreen(
             }),
             environmentLabel = if (focusedKey.environment == EnvironmentSnapshots.LOCAL) "Local"
                 else savedProfiles.firstOrNull { it.id == focusedKey.environment.value }?.shortLabel
-                    ?: rowLabels[focusedKey.environment]?.removePrefix("Server · ") ?: "Remote client",
+                    ?: rowLabels[focusedKey.environment]?.removePrefix("Remote · ") ?: "Remote client",
             environmentHue = hueFor(focusedKey.environment),
-            exactEnvironmentLabel = labels[focusedKey.environment]?.removePrefix("Server · "),
+            exactEnvironmentLabel = labels[focusedKey.environment]?.removePrefix("Remote · "),
             onBack = { savedDetailTarget = null },
             // A Remove's outcome is retained after its job leaves the list (incomplete or
             // uncertain deletions must stay visible), so Details keeps showing it.
@@ -1471,7 +1471,7 @@ internal fun CombinedTransfersScreen(
                         (moveReceipt != null && serverMoveSession)) {
                         ProtocolClientOperationsPanel(
                             hash = focusedKey.infoHash,
-                            clientLabel = labels[requireNotNull(serverId)]?.removePrefix("Server · ") ?: "rTorrent",
+                            clientLabel = labels[requireNotNull(serverId)]?.removePrefix("Remote · ") ?: "rTorrent",
                             sourceClientId = serverId.value,
                             observedStarted = details.observation?.started,
                             current = details.readState == TransferDetailReadState.CURRENT &&
@@ -1543,10 +1543,10 @@ internal fun CombinedTransfersScreen(
                                 if (cancel !is kotlinx.coroutines.TimeoutCancellationException)
                                     throw cancel
                                 if (stillCurrent(ticket)) capabilityFailure =
-                                    ticket!! to "The server capability check timed out; no methods were verified."
+                                    ticket!! to "The client capability check timed out; no methods were verified."
                             } catch (_: Exception) {
                                 if (stillCurrent(ticket)) capabilityFailure =
-                                    ticket!! to "The signed-in server did not complete the read-only check."
+                                    ticket!! to "The signed-in remote client did not complete the read-only check."
                             } finally {
                                 if (pendingCapability === ticket) pendingCapability = null
                             }
@@ -1580,7 +1580,7 @@ internal fun CombinedTransfersScreen(
                                 // Never display RPC fault bodies, d.message,
                                 // tracker URLs, path names or credentials.
                                 if (stillStall(ticket)) stallFailure = ticket!! to
-                                    "The signed-in server could not finish the exact transfer check."
+                                    "The signed-in remote client could not finish the exact transfer check."
                             } finally {
                                 if (pendingStall === ticket) pendingStall = null
                             }
@@ -1623,7 +1623,7 @@ internal fun CombinedTransfersScreen(
             known == null -> "This transfer's running state is not known yet. Refresh before changing it."
             lifecycleEligible(key, live) -> null
             key.environment != EnvironmentSnapshots.LOCAL && key.environment != serverId ->
-                "Connect to this server in Connections to control its transfers."
+                "Connect to this remote client in Connections to control its transfers."
             key.environment == EnvironmentSnapshots.LOCAL && !localRunning ->
                 "Open transfers on this device to start the local client."
             else -> "This transfer list is out of date. Refresh or reconnect before making changes."
@@ -2178,7 +2178,7 @@ internal fun CombinedTransfersScreen(
                     }, modifier = Modifier.heightIn(min = 48.dp)) {
                     // Reads already happen automatically; this is an immediate
                     // read-only refresh, never a sign-in or command.
-                    Text("Refresh other saved servers")
+                    Text("Refresh other saved remote clients")
                 }
                 if (result.missingSelectedEnvironments.isNotEmpty()) Text(
                     (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected client is" else "$n selected clients are" }) + " no longer set up. " +

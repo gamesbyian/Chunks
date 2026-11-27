@@ -14,7 +14,7 @@ class CombinedFriendlyEnvironmentLabelTest {
             CombinedSavedProfile("f".repeat(64), "Other server"),
             CombinedSavedProfile(id.value, "Library seedbox")
         )
-        assertEquals("Server · Library seedbox",
+        assertEquals("Remote · Library seedbox",
             connectedServerFriendlyLabel(aliasScope, id, labels))
     }
 

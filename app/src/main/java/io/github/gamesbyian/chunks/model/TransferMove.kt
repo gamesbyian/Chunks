@@ -181,12 +181,12 @@ internal object TransferMove {
     }
 
     fun destination(record: Record) =
-        if (record.direction == Direction.LOCAL_TO_SERVER) "server" else "local"
+        if (record.direction == Direction.LOCAL_TO_SERVER) "remote client" else "local"
 
     private fun doneMessage(record: Record) =
         if (record.direction == Direction.LOCAL_TO_SERVER)
-            "Moved: the job now lives on the server. Downloaded files remain on this device and still use its storage."
-        else "Moved: the job now lives on this device. Downloaded files remain on the server and still use its storage."
+            "Moved: the job now lives on the remote client. Downloaded files remain on this device and still use its storage."
+        else "Moved: the job now lives on this device. Downloaded files remain on the remote client and still use its storage."
 
     fun decode(text: String): Record? = try {
         val parts = text.split('\n')

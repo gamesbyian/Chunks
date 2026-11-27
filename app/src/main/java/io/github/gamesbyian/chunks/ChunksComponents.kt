@@ -239,7 +239,7 @@ internal fun serverEnvironmentLabel(aliasScope: String): String {
     val endpoint = aliasScope.substringBefore('\u0000')
     val user = aliasScope.substringAfter('\u0000', "").trim()
     val address = RememberedRemoteProfileRoster.addressOf(endpoint)
-    return "Server · " + (if (user.isEmpty()) address else "$user @ $address")
+    return "Remote · " + (if (user.isEmpty()) address else "$user @ $address")
 }
 
 internal const val LOCAL_ENVIRONMENT_LABEL = "On this device"

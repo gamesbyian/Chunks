@@ -109,14 +109,14 @@ internal fun SnapshotInventoryExportScreen(
         Text("Save transfer snapshot", style = MaterialTheme.typography.headlineMedium)
         Text(
             "This snapshot records transfer names and exact infohashes from the " +
-                "currently loaded '$view' server view. You can explicitly request " +
-                "verified original .torrent definitions if the server supports them. " +
+                "currently loaded '$view' client view. You can explicitly request " +
+                "verified original .torrent definitions if the remote client supports them. " +
                 "Downloaded files and payload bytes are never included.",
             style = MaterialTheme.typography.bodyLarge
         )
         if (stale || loading || snapshotRevision <= 0) {
             Text(
-                "The server inventory is not currently fresh. Return to transfers " +
+                "The remote inventory is not currently fresh. Return to transfers " +
                     "and Refresh before saving.",
                 color = MaterialTheme.colorScheme.error
             )
@@ -132,7 +132,7 @@ internal fun SnapshotInventoryExportScreen(
             Text(
                 "Source queue revision: $snapshotRevision. " +
                     "This snapshot reflects one loaded view, not necessarily " +
-                    "every transfer on the server."
+                    "every transfer on the remote client."
             )
             if (captured.omitted.isNotEmpty()) {
                 Text(
@@ -152,13 +152,13 @@ internal fun SnapshotInventoryExportScreen(
             ) {
                 Checkbox(checked = includeHistoricalDirectories, onCheckedChange = null)
                 Text(
-                    "Include old server directories (may reveal private paths)",
+                    "Include old remote directories (may reveal private paths)",
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
             Text(
                 "Old paths are reference hints only. They will never be " +
-                    "automatically sent to another server.",
+                    "automatically sent to another remote client.",
                 style = MaterialTheme.typography.bodySmall
             )
             Row(
@@ -181,7 +181,7 @@ internal fun SnapshotInventoryExportScreen(
             Text(
                 "Original torrent definitions can contain private tracker passkeys " +
                     "and sensitive announce URLs. Enabling this explicitly requests " +
-                    "them from this server without altering its transfers. " +
+                    "them from this remote client without altering its transfers. " +
                     "Unsupported or missing originals remain inventory-only. " +
                     "Keep the shared snapshot private.",
                 style = MaterialTheme.typography.bodySmall
@@ -199,11 +199,11 @@ internal fun SnapshotInventoryExportScreen(
                 }
                 if (includeSettings) Text(
                     "Aliases may contain private text. Priorities require an exact match " +
-                        "between the server's current files and the original .torrent layout.",
+                        "between the remote client's current files and the original .torrent layout.",
                     style = MaterialTheme.typography.bodySmall)
             }
             if (readOriginalMetainfo == null) {
-                Text("Original-source retrieval is unavailable for this server.",
+                Text("Original-source retrieval is unavailable for this remote client.",
                     style = MaterialTheme.typography.bodySmall)
             }
         } else {
@@ -247,7 +247,7 @@ internal fun SnapshotInventoryExportScreen(
                     .withZone(ZoneOffset.UTC).format(Instant.now())
                 scope.launch {
                     try {
-                        check(stillCurrent()) { "The connected server inventory changed." }
+                        check(stillCurrent()) { "The connected remote inventory changed." }
                         val enriched = if (originals && reader != null)
                             SnapshotRemoteMetainfoCaptureV1.collect(
                                 capture, reader, stillCurrent, settingsCapture = captureSettings,
@@ -259,12 +259,12 @@ internal fun SnapshotInventoryExportScreen(
                         val bytes = enriched?.archive ?: withContext(Dispatchers.Default) {
                             capture.toArchive()
                         }
-                        check(stillCurrent()) { "The connected server inventory changed." }
+                        check(stillCurrent()) { "The connected remote inventory changed." }
                         val uri = withContext(Dispatchers.IO) {
                             OwnedDiagnosticExportProvider.publish(context,
                                 "chunks-snapshot-${stamp}.chunksnap", bytes)
                         }
-                        check(stillCurrent()) { "The connected server inventory changed." }
+                        check(stillCurrent()) { "The connected remote inventory changed." }
                         OwnedDiagnosticShare.openChooser(context, uri,
                             "application/octet-stream", "transfer snapshot")
                         result = if (enriched != null)
@@ -291,7 +291,7 @@ internal fun SnapshotInventoryExportScreen(
                         throw cancel
                     } catch (_: Exception) {
                         result = "Could not verify and share this snapshot. Refresh the exact " +
-                            "server inventory and review the request again. No server transfer was changed."
+                            "remote inventory and review the request again. No remote transfer was changed."
                     } finally {
                         busy = false
                     }
@@ -317,7 +317,7 @@ internal fun SnapshotInventoryExportScreen(
         }
         Text(
             "This action reads the already-loaded Chunks transfer list. " +
-                "It does not add, start, stop, delete, or copy any torrent on your server.",
+                "It does not add, start, stop, delete, or copy any torrent on your remote client.",
             style = MaterialTheme.typography.bodySmall
         )
         restorePanel?.invoke()
