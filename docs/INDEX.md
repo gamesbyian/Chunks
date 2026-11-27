@@ -30,7 +30,7 @@
 
 **Visual research:** [Torrent-client iconography atlas](research/torrent-iconography/README.md) compares six clients' source-backed symbols with the existing Chunks SVG drafts. Its [HTML gallery](research/torrent-iconography/gallery.html) and exported choices are non-normative decision aids, not an implementation queue.
 
-**Local Device terminology:** The app's built-in torrent environment is **Local Device** in the UI, `Local` in code, and `local` as its exact environment ID. Older **Phone** wording in dated evidence is historical. Current feature specs, navigation and engine APIs use the canonical identity; see [unified environments](UNIFIED-ENVIRONMENTS.md).
+**Remote client terminology (2026-11-27):** a remote BitTorrent client is a **remote client**, a saved relationship is a **connection**, and **server** is reserved for components that accept network requests; see [clients, not servers](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md#clients-not-servers-owner-directive-2026-11-27). **Local Device terminology:** The app's built-in torrent environment is **Local Device** in the UI, `Local` in code, and `local` as its exact environment ID. Older **Phone** wording in dated evidence is historical. Current feature specs, navigation and engine APIs use the canonical identity; see [unified environments](UNIFIED-ENVIRONMENTS.md).
 
 **Current integration:** Inspect live main and open PRs. Owning PRs/issues and Actions hold current evidence; [QUALITY-LEDGER](QUALITY-LEDGER.md) indexes historical receipts. [WORK-QUEUE](WORK-QUEUE.md) owns work status and [SPEC-COVERAGE](SPEC-COVERAGE.md) owns gates.
 

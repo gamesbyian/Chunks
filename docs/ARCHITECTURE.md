@@ -1,3 +1,5 @@
+> **Clients, not servers · owner 2026-11-27:** Chunks manages BitTorrent clients, some of which expose server interfaces. Domain concepts (transfers, inventory, Places, seeding, Add destinations) speak of **local and remote clients**; "server" belongs only to the networking and transport layer. [Terminology policy](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md#clients-not-servers-owner-directive-2026-11-27).
+
 > **Universal Add architecture · owner 2026-11-16:** [One cross-client Add contract](design/UNIVERSAL-ADD-CLIENT-PARITY.md) supersedes separate user-visible Local/rTorrent Add lifecycles. Keep native/RPC adapters, the one-shot coordinator and truthful exact readback; converge Compose screen orchestration into an app-owned shared attempt controller. Shared receipt projection is the initial slice only.
 
 # Chunks architecture and behavior contracts
