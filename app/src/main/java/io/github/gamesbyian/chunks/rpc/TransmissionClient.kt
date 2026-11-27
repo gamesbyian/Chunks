@@ -312,7 +312,7 @@ internal class TransmissionClient(
                     403 -> throw ClientRefusedException("Transmission denied this request")
                     else -> {
                         if (mutating && response.status >= 500)
-                            throw ClientWriteUncertainException("Transmission server error")
+                            throw ClientWriteUncertainException("Transmission client returned an HTTP server error")
                         throw ClientRefusedException("Transmission HTTP " + response.status)
                     }
                 }
