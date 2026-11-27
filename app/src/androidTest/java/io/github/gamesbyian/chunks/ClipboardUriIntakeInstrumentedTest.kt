@@ -80,11 +80,24 @@ class ClipboardUriIntakeInstrumentedTest {
             val targetAnr = runCatching {
                 device.findObject(By.text("Chunks isn't responding")) != null
             }.getOrNull()
+            val targetFocused = runCatching { rule.activity.hasWindowFocus() }.getOrNull()
             Log.e("ChunksClipboardFocus",
-                "required-focus-failed targetFocused=${rule.activity.hasWindowFocus()} " +
+                "required-focus-failed targetFocused=$targetFocused " +
                     "targetPackageForeground=$targetFront pixelLauncherAnr=$launcherAnr " +
                     "targetAnr=$targetAnr launcherAnrDismissed=$dismissedLauncherAnr")
-            throw failure
+            if (failure !is androidx.compose.ui.test.ComposeTimeoutException) throw failure
+            throw AssertionError(
+                "Installed clipboard journey did not acquire Chunks window focus; " +
+                    "targetFocused=${targetFocused ?: "unavailable"}; " +
+                    "targetPackageForeground=${targetFront ?: "unavailable"}; " +
+                    "pixelLauncherAnr=${launcherAnr ?: "unavailable"}; " +
+                    "targetAnr=${targetAnr ?: "unavailable"}; " +
+                    "launcherAnrDismissed=$dismissedLauncherAnr. No clipboard read or transfer write was attempted.\n" +
+                    "CHUNKS_SAFE_DIAG clipboard-focus targetFocused=${targetFocused ?: "unavailable"} " +
+                    "targetPackageForeground=${targetFront ?: "unavailable"} " +
+                    "pixelLauncherAnr=${launcherAnr ?: "unavailable"} " +
+                    "targetAnr=${targetAnr ?: "unavailable"} launcherAnrDismissed=$dismissedLauncherAnr",
+                failure)
         }
         val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=ClipboardUri"
         val torrentLink = "https://example.org/releases/test.torrent"
