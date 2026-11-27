@@ -180,6 +180,8 @@ Historical alternatives remain in critical review and research, not in competing
 
 See [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md) and issue #70 for the comprehensive contract. These entries do not constitute implementation evidence.
 
+- **D-EXTRACT-TIMING-20261127 | Binding owner:** Separate global Options switches for automatic extraction and early archive-set extraction, both OFF by default; early extraction subordinate to automatic authorization. Default automatic timing waits for verified whole-torrent completion. Manual extraction independent. [Storage contract](STORAGE-AND-EXTRACTION.md#archive-extraction-experience) supersedes any earlier implication of unconditional early automatic extraction.
+
 ## Naming decisions after storage D21–D23 (2026-10-24)
 
 - **D24 | Owner:** Editable per-transfer device-local Chunks display alias, distinct from torrent name and file path, preserving engine hash, source data and seeding; original remains searchable and inspectable.
