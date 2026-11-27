@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
@@ -245,7 +247,14 @@ class RemoteAddSessionContinuityTest {
             assertEquals(oldHash, session.attemptTicket?.intent?.source?.expectedInfoHash)
             assertTrue(session.attemptTicket?.intent?.startWhenAdded == true)
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
-            rule.onNodeWithText("Check server state (read only)").performClick()
+            // #2138: a background follow-up recheck disables this action ("Checking server…")
+            // while it runs; a click on the disabled button is ignored, so the person's own
+            // check never ran under hosted load. Click only once the action is enabled.
+            rule.waitUntil(15_000) {
+                rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_CHECK_STATUS) and isEnabled())
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithTag(ChunksSemantics.ADD_CHECK_STATUS).performClick()
             try {
                 rule.waitUntil(15_000) {
                     session.coordinator.phase ==
