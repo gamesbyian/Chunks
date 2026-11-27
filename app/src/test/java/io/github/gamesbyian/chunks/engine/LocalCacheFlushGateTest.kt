@@ -104,6 +104,33 @@ class LocalCacheFlushGateTest {
         gate.complete("hash", handle)
     }
 
+    @Test fun freshPartialSetMustNotJoinAFlushRequestedBeforeItsVerification() {
+        val gate = LocalCacheFlushGate<Handle>(Any())
+        val handle = Handle()
+        var calls = 0
+        // Earlier complete-job or other-set request, still pending.
+        assertFalse(gate.flush("hash", 1, { handle }, { it.complete }) { calls++ })
+        assertFalse(gate.flush("hash", 100, { handle }, { it.complete }, requireFresh = true) {
+            calls++
+        })
+        assertEquals(1, calls)
+        gate.complete("hash", handle)
+        assertTrue(gate.flush("hash", 100, { handle }, { it.complete }, requireFresh = true) {
+            calls++
+            gate.complete("hash", it)
+        })
+        assertEquals(2, calls)
+    }
+
+    @Test fun freshPartialSetReadbackMustStillBeVerified() {
+        val gate = LocalCacheFlushGate<Handle>(Any())
+        val handle = Handle()
+        assertFalse(gate.flush("hash", 100, { handle }, { it.complete }, requireFresh = true) {
+            gate.complete("hash", it)
+            it.complete = false
+        })
+    }
+
     @Test fun waitingForNativeAlertDoesNotHoldTheRemovalMonitor() {
         val monitor = Any()
         val gate = LocalCacheFlushGate<Handle>(monitor)
