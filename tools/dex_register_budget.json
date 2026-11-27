@@ -1,8 +1,8 @@
 {
-  "note": "Methods allowed above 255 dex registers. Each budget is a ceiling: the debug-build size measured on 2026-11-27 at 688c015 (404, 370, 310) plus small headroom, because harmless edits move counts by a few registers. Lower, never raise, as A2611-02 decomposes them.",
+  "note": "Methods allowed above 255 DEX registers. Individual exact-head hosted measurements on 2026-11-27: LocalEngineScreen 385 (#2170), ChunksApp 360 (#2172), CombinedTransfersScreen 297 (#2169). Ceilings retain five registers of headroom; the assembled candidate must independently pass. Lower, never raise, as A2611-02 decomposes them.",
   "budgets": {
-    "io.github.gamesbyian.chunks.LocalEngineScreenKt.LocalEngineScreen": 410,
-    "io.github.gamesbyian.chunks.MainActivityKt.ChunksApp": 375,
-    "io.github.gamesbyian.chunks.CombinedTransfersScreenKt.CombinedTransfersScreen": 315
+    "io.github.gamesbyian.chunks.LocalEngineScreenKt.LocalEngineScreen": 390,
+    "io.github.gamesbyian.chunks.MainActivityKt.ChunksApp": 365,
+    "io.github.gamesbyian.chunks.CombinedTransfersScreenKt.CombinedTransfersScreen": 302
   }
 }

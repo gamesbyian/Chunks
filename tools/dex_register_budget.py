@@ -72,12 +72,22 @@ def main() -> int:
     tool = dexdump_tool()
     found: dict[str, int] = {}
     with tempfile.TemporaryDirectory() as tmp, zipfile.ZipFile(args.apk) as apk:
-        for entry in apk.namelist():
-            if re.fullmatch(r"classes\d*\.dex", entry):
-                path = apk.extract(entry, tmp)
-                dump = subprocess.run([tool, path], capture_output=True).stdout.decode("utf-8", "replace")
-                for method, registers in methods(dump, args.package).items():
-                    found[method] = max(found.get(method, 0), registers)
+        entries = [name for name in apk.namelist() if re.fullmatch(r"classes\d*\.dex", name)]
+        if "classes.dex" not in entries or len(entries) != len(set(entries)):
+            print("CHUNKS_DEX_REGISTER_BUDGET: unavailable (missing or duplicate DEX entries)", file=sys.stderr)
+            return 1
+        for entry in entries:
+            path = apk.extract(entry, tmp)
+            result = subprocess.run([tool, path], capture_output=True)
+            dump = result.stdout.decode("utf-8", "replace")
+            if result.returncode != 0 or not CLASS.search(dump):
+                print("CHUNKS_DEX_REGISTER_BUDGET: unavailable (DEX dump failed or unrecognized)", file=sys.stderr)
+                return 1
+            for method, registers in methods(dump, args.package).items():
+                found[method] = max(found.get(method, 0), registers)
+    if not found:
+        print("CHUNKS_DEX_REGISTER_BUDGET: unavailable (no app methods measured)", file=sys.stderr)
+        return 1
     problems = over_budget(found, budgets)
     largest = sorted(found.items(), key=lambda kv: -kv[1])[:5]
     print("CHUNKS_DEX_REGISTER_BUDGET: methods=%d over=%d largest=%s" % (
