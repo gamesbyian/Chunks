@@ -1246,6 +1246,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
       ]
+    },
+    {
+      "id": "protocol-add-ungated",
+      "invariant": "Add to a typed client is composed only through that client's privacy gate",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/LocalTransferPrivacyGate.kt",
+      "old": "    ProtocolTransferPrivacyGate(scope = privacyScope, clientKind = clientKind, onBack = onBack,\n        controlsInContent = true, content = content)",
+      "new": "    content()",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
     }
   ]
 }

@@ -470,3 +470,24 @@ private fun TransferPrivacyGate(
         }
     }
 }
+
+/**
+ * Add to one typed client: never composes for an unverifiable client identity (no privacy
+ * scope), and otherwise only through that client's own gate. Extracted from `ChunksApp` so the
+ * wiring itself is testable (invariant control `protocol-add-ungated`).
+ */
+@Composable
+internal fun GatedProtocolAdd(
+    privacyScope: String?,
+    clientKind: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    if (privacyScope == null) {
+        Text("Cannot verify which client this Add is for. Reconnect it from Connections.",
+            color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(16.dp))
+        return
+    }
+    ProtocolTransferPrivacyGate(scope = privacyScope, clientKind = clientKind, onBack = onBack,
+        controlsInContent = true, content = content)
+}

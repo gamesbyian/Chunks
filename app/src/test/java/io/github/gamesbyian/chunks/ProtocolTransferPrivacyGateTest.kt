@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.privacy.GatedProtocolAdd
 import io.github.gamesbyian.chunks.privacy.ProtocolTransferPrivacyGate
 import io.github.gamesbyian.chunks.privacy.TransferLockMode
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
@@ -62,5 +63,27 @@ class ProtocolTransferPrivacyGateTest {
         policy(other, TransferLockMode.ONCE_PER_PROCESS)
         show(scope)
         rule.onNodeWithText("PROTECTED-ROWS").assertExists()
+    }
+
+    private fun showAdd(s: String?) = rule.setContent {
+        ChunksTheme { GatedProtocolAdd(privacyScope = s, clientKind = "Deluge", onBack = {}) { Text("ADD-FORM") } }
+    }
+
+    @Test fun addToALockedTypedClientIsBehindItsGate() {
+        policy(scope, TransferLockMode.ONCE_PER_PROCESS)
+        showAdd(scope)
+        rule.onNodeWithText("Deluge client locked").assertExists()
+        rule.onNodeWithText("ADD-FORM").assertDoesNotExist()
+    }
+
+    @Test fun addToAnUnverifiableClientIsRefused() {
+        showAdd(null)
+        rule.onNodeWithText("Cannot verify which client", substring = true).assertExists()
+        rule.onNodeWithText("ADD-FORM").assertDoesNotExist()
+    }
+
+    @Test fun addToAnUnprotectedTypedClientIsShown() {
+        showAdd(scope)
+        rule.onNodeWithText("ADD-FORM").assertExists()
     }
 }
