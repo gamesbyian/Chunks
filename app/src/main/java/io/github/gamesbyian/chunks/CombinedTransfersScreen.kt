@@ -6,7 +6,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import android.content.Context
 import android.content.ContextWrapper
-import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -1094,8 +1093,8 @@ internal fun CombinedTransfersScreen(
             privacyScope?.let { privacyEvidence?.decision(it, privacySession, deviceSecure) }
         })
     DisposableEffect(activity, secure) {
-        if (secure) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+        if (secure) io.github.gamesbyian.chunks.privacy.SecureWindowFlag.acquire(activity)
+        onDispose { if (secure) io.github.gamesbyian.chunks.privacy.SecureWindowFlag.release(activity) }
     }
 
     val listState = listState ?: rememberLazyListState()

@@ -5,7 +5,6 @@ import android.os.Build
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.CancellationSignal
-import android.view.WindowManager
 import io.github.gamesbyian.chunks.LocalEngineService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -157,12 +156,8 @@ private fun TransferPrivacyGate(
     // not re-read state that may already say NEVER after a policy change.
     val secureWindow = mode != TransferLockMode.NEVER
     DisposableEffect(activity, secureWindow) {
-        if (secureWindow)
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        onDispose {
-            if (secureWindow)
-                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        }
+        if (secureWindow) SecureWindowFlag.acquire(activity)
+        onDispose { if (secureWindow) SecureWindowFlag.release(activity) }
     }
     DisposableEffect(scope, activity) {
         onDispose {

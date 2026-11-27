@@ -1256,6 +1256,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
       ]
+    },
+    {
+      "id": "secure-window-flag-not-counted",
+      "invariant": "One FLAG_SECURE owner's release never clears the flag while another owner still holds it",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/privacy/SecureWindowFlag.kt",
+      "old": "        if (count <= 1) {",
+      "new": "        if (true) {",
+      "tests": [
+        "io.github.gamesbyian.chunks.SecureWindowFlagTest"
+      ]
     }
   ]
 }
