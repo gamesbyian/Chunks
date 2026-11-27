@@ -81,7 +81,7 @@ class LocalArchiveInventoryInstrumentedTest {
             compose.onNodeWithText(namesOnly).assertExists()
             compose.onNodeWithText("Filename candidates only.", substring = true).assertExists()
             compose.onNodeWithText("Next group").performScrollTo().performClick()
-            compose.onNodeWithText("Missing volume number 2 (1 gaps in listed numbering).").assertExists()
+            compose.onNodeWithText("Missing volume number 2 (1 gap in listed numbering).").assertExists()
             compose.onNodeWithText(namesOnly).assertDoesNotExist()
             assertEquals(LocalTransferState.SEEDING, engine.status(hash)?.state)
             contents.forEach { (file, bytes) -> assertArrayEquals(bytes, file.readBytes()) }
