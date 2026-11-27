@@ -244,8 +244,8 @@
       "id": "rtorrent-add-duplicates-existing-hash",
       "invariant": "An Add whose exact hash is already registered sends no load",
       "file": "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt",
-      "old": "        if (lookupName(plan.expectedInfoHash) != null) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useServerDefault) listOf(\"\", plan.source)",
-      "new": "        if (false) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useServerDefault) listOf(\"\", plan.source)",
+      "old": "        if (lookupName(plan.expectedInfoHash) != null) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useRemoteDefault) listOf(\"\", plan.source)",
+      "new": "        if (false) {\n            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)\n        }\n        prepareLoad(plan, beforeLoad)\n        try {\n            val params: List<Any> = if (plan.useRemoteDefault) listOf(\"\", plan.source)",
       "tests": [
         "*RemoteHiddenDuplicateAddTest",
         "*RemoteBinaryStoppedAddTest",
@@ -331,7 +331,7 @@
       "new": "if (confirmedCopy.hash != exact)",
       "tests": [
         "*ClientJobTransferTest",
-        "*BatchServerCopy*",
+        "*BatchRemoteCopy*",
         "*BatchLocalCopy*"
       ]
     },
@@ -343,7 +343,7 @@
       "new": "        val connectionChanged",
       "tests": [
         "*ClientJobTransferTest",
-        "*BatchServerCopy*",
+        "*BatchRemoteCopy*",
         "*BatchLocalCopy*"
       ]
     },
@@ -355,7 +355,7 @@
       "new": "        if (false)\n            return@withLock",
       "tests": [
         "*ClientJobTransferTest",
-        "*BatchServerCopy*",
+        "*BatchRemoteCopy*",
         "*BatchLocalCopy*"
       ]
     },
@@ -789,7 +789,7 @@
       "tests": [
         "*TransferMove*",
         "*MoveControl*",
-        "*BatchServerCopy*"
+        "*BatchRemoteCopy*"
       ]
     },
     {
@@ -801,7 +801,7 @@
       "tests": [
         "*TransferMove*",
         "*MoveControl*",
-        "*BatchServerCopy*"
+        "*BatchRemoteCopy*"
       ]
     },
     {
@@ -1285,6 +1285,47 @@
       "new": "if (activity?.isChangingConfigurations != true) session.onExit(scope)",
       "tests": [
         "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
+      ]
+    },
+    {
+      "id": "options-alias-keyed-to-wrong-destination",
+      "invariant": "Options search aliases for Connections (endpoint, login, account) find the Connections destination",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "old": "        Section.SERVER -> \"connection connections endpoint",
+      "new": "        Section.SNAPSHOT -> \"connection connections endpoint",
+      "tests": [
+        "io.github.gamesbyian.chunks.OptionsDestinationSearchTest"
+      ]
+    },
+    {
+      "id": "queued-recheck-overlaps-follow-up",
+      "invariant": "A person's recheck that arrives during a background follow-up never runs alongside that follow-up's read",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddAttemptController.kt",
+      "old": "            queuedRechecks[environment] = QueuedRecheck(coordinator, observer, onResult)\n            note(\"manual-queued\")\n            return true\n        }\n        checking[environment] = true",
+      "new": "        }\n        checking[environment] = true",
+      "tests": [
+        "io.github.gamesbyian.chunks.LocalNativeAddObserverTest",
+        "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
+      ]
+    },
+    {
+      "id": "follow-up-drops-persons-recheck",
+      "invariant": "A person's recheck that arrives during a background follow-up is queued, not silently dropped",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddAttemptController.kt",
+      "old": "            if (environment !in followUpChecking || environment in queuedRechecks)\n                return false.also { note(\"manual-refused:in-flight\") }",
+      "new": "            return false",
+      "tests": [
+        "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
+      ]
+    },
+    {
+      "id": "refused-queued-recheck-reports-false-failure",
+      "invariant": "A queued recheck refused when its turn comes reports nothing (never a null 'check failed' on an attempt the follow-up may have verified)",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/UniversalAddAttemptController.kt",
+      "old": "        recheck(queued.coordinator, queued.observer, queued.onResult)\n    }",
+      "new": "        if (!recheck(queued.coordinator, queued.observer, queued.onResult)) queued.onResult(null)\n    }",
+      "tests": [
+        "io.github.gamesbyian.chunks.UniversalAddAttemptControllerTest"
       ]
     }
   ]

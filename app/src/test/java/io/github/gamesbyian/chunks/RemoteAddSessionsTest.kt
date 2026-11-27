@@ -61,11 +61,11 @@ class RemoteAddSessionsTest {
     @Test fun onlyExplicitAcknowledgmentOfExactSessionReleasesUncertainAdd() {
         val review = RemoteAddSession(first, "/reviewed")
         val hash = "ab".repeat(20)
-        val target = UniversalAddTarget.AuthenticatedServer(first)
+        val target = UniversalAddTarget.AuthenticatedRemoteClient(first)
         val intent = UniversalAddIntent(
             source = UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash),
             target = target,
-            place = UniversalAddPlace.ServerCustom("/reviewed"),
+            place = UniversalAddPlace.RemoteCustom("/reviewed"),
             startWhenAdded = true, allowArtwork = true)
         assertTrue(review.coordinator.review(intent,
             EnvironmentCapabilities.unprobed(target.environment),

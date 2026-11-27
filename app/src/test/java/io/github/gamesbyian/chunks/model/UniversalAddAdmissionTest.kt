@@ -14,15 +14,15 @@ class UniversalAddAdmissionTest {
     private val source = UniversalAddSource.magnet(
         "magnet:?xt=urn:btih:$hash&tr=https://private.invalid/passkey", hash)
     private val local = UniversalAddTarget.Local
-    private val server = UniversalAddTarget.AuthenticatedServer(
+    private val server = UniversalAddTarget.AuthenticatedRemoteClient(
         "https://host.invalid/RPC2\u0000exact-user")
-    private val otherServer = UniversalAddTarget.AuthenticatedServer(
+    private val otherServer = UniversalAddTarget.AuthenticatedRemoteClient(
         "https://host.invalid/RPC2\u0000different-user")
 
     private fun intent(target: UniversalAddTarget) = UniversalAddIntent(
         source, target,
         if (target === local) UniversalAddPlace.Local("exact-reviewed-place")
-        else UniversalAddPlace.ServerCustom("/exact-reviewed-folder"),
+        else UniversalAddPlace.RemoteCustom("/exact-reviewed-folder"),
         startWhenAdded = true, allowArtwork = false)
 
     private fun capabilities(target: UniversalAddTarget) =

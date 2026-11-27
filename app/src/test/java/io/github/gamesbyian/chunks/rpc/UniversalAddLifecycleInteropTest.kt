@@ -262,8 +262,8 @@ class UniversalAddLifecycleInteropTest {
         val folder = placed(fx)
         val intent = UniversalAddIntent(
             UniversalAddSource.metainfo(fx.result.torrent, fx.result.infoHashV1),
-            UniversalAddTarget.AuthenticatedServer(remote.addAccountScope()),
-            UniversalAddPlace.ServerCustom(folder), startWhenAdded = false, allowArtwork = true)
+            UniversalAddTarget.AuthenticatedRemoteClient(remote.addAccountScope()),
+            UniversalAddPlace.RemoteCustom(folder), startWhenAdded = false, allowArtwork = true)
         val executor: UniversalAddExecutor<RTorrentAddExecutor.Result> = RTorrentAddExecutor(remote, false, null)
         val (coordinator, ticket) = admit(intent)
         val run = UniversalAddLifecycle.run(coordinator, ticket, executor)
@@ -288,8 +288,8 @@ class UniversalAddLifecycleInteropTest {
         val lostFolder = placed(lost)
         val lostIntent = UniversalAddIntent(
             UniversalAddSource.metainfo(lost.result.torrent, lost.result.infoHashV1),
-            UniversalAddTarget.AuthenticatedServer(remote.addAccountScope()),
-            UniversalAddPlace.ServerCustom(lostFolder), startWhenAdded = false, allowArtwork = true)
+            UniversalAddTarget.AuthenticatedRemoteClient(remote.addAccountScope()),
+            UniversalAddPlace.RemoteCustom(lostFolder), startWhenAdded = false, allowArtwork = true)
         val (lostCoordinator, lostTicket) = admit(lostIntent)
         val inner = RTorrentAddExecutor(remote, false, null)
         var loads = 0

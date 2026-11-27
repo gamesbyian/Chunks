@@ -176,7 +176,7 @@ class SeedhostP0CohortProvisionTest {
             }
             snapshot(fixture, "dispatch-possible-manual-reconciliation-if-interrupted")
             val result = remote.loadStoppedTorrentBytes(
-                fixture.bytes, selectedParent, useServerDefault = false)
+                fixture.bytes, selectedParent, useRemoteDefault = false)
             if (result is RemoteAddOutcome.Uncertain) {
                 snapshot(fixture, "uncertain-manual-reconciliation-required")
                 error("Exact Add outcome uncertain. No retry or cleanup permitted")

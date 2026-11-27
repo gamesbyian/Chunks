@@ -30,7 +30,7 @@ internal object BatchMoveRemoval {
 
     /** Final batch consent is meaningful only for one exact account.
      * Identical infohashes on different servers do not establish the same job. */
-    fun matchesServerScope(moves: List<TransferMove.Record>, serverScopeDigest: String): Boolean =
+    fun matchesRemoteScope(moves: List<TransferMove.Record>, serverScopeDigest: String): Boolean =
         Regex("[0-9a-f]{64}").matches(serverScopeDigest) && moves.isNotEmpty() &&
             moves.all { it.serverScopeDigest == serverScopeDigest }
 

@@ -45,11 +45,11 @@ class RemoteDefaultDirectoryIdentityTest {
             val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
             val selected = requireNotNull(remote.defaultDirectory())
             assertEquals(observed, selected)
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(
+            val plan = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(
                 "magnet:?xt=urn:btih:" + "ab".repeat(20), selected)
             assertEquals("Observed default must remain exact for later readback",
                 observed, plan.destination)
-            assertTrue(plan.useServerDefault)
+            assertTrue(plan.useRemoteDefault)
             assertEquals(listOf("directory.default"), gateway.methods)
         }
     }

@@ -383,8 +383,8 @@ class RTorrentLibtorrentInteropTest {
             val raised = layout.filter { it.index != skipped.single().index }.take(1)
             val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
                 io.github.gamesbyian.chunks.model.UniversalAddSource.metainfo(torrent, hash),
-                io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedServer(rig.remote.addAccountScope()),
-                io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom(leechParent.absolutePath),
+                io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedRemoteClient(rig.remote.addAccountScope()),
+                io.github.gamesbyian.chunks.model.UniversalAddPlace.RemoteCustom(leechParent.absolutePath),
                 startWhenAdded = true, allowArtwork = false)
             val coordinator = io.github.gamesbyian.chunks.model.UniversalAddCoordinator()
             assertTrue(coordinator.review(intent,
@@ -540,7 +540,7 @@ class RTorrentLibtorrentInteropTest {
             rig.remote.call("system.cwd.set", listOf("", leechParent.absolutePath))
             rig.remote.call("directory.default.set", listOf("", ""))
             assertEquals("", rig.remote.call("directory.default"))
-            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, "")
+            val plan = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(magnet, "")
             val started = rig.remote.loadStarted(plan)
             assertTrue("Actual magnet native load refused: $started",
                 started is RemoteAddAndStart.Started ||

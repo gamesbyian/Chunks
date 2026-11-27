@@ -38,7 +38,7 @@ class NativeDefaultObservationTest {
         try { check(RTorrentRemote(RemoteCredentials("http://127.0.0.1:${server.address.port}/RPC2", "", "")), methods) }
         finally { server.stop(0) }
     }
-    private fun plan(parent: String = "") = StoppedRemoteAddPlan.fromMagnetAtServerDefault("magnet:?xt=urn:btih:$hash", parent)
+    private fun plan(parent: String = "") = StoppedRemoteAddPlan.fromMagnetAtRemoteDefault("magnet:?xt=urn:btih:$hash", parent)
 
     @Test fun aRootDefaultKeepsOneSeparatorForMultiFileReadback() = fixture("/Fixture", multi = true) { remote, _ ->
         assertEquals(RemoteAddOutcome.VerifiedStopped(hash, "/Fixture"), remote.reconcileStoppedAdd(plan("/")))

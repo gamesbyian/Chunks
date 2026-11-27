@@ -18,14 +18,14 @@ import org.junit.Test
  * It never authorizes or repeats the already attempted Add or Start. */
 class VerifiedAddRecheckWitnessTest {
     private val hash = "a".repeat(40)
-    private val server = UniversalAddTarget.AuthenticatedServer(
+    private val server = UniversalAddTarget.AuthenticatedRemoteClient(
         "https://example.invalid/RPC2\u0000exact-user")
 
     private fun confirmed(): Pair<UniversalAddCoordinator, UniversalAddCoordinator.Ticket> {
         val state = UniversalAddCoordinator()
         val intent = UniversalAddIntent(
             UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash),
-            server, UniversalAddPlace.ServerCustom("/downloads"),
+            server, UniversalAddPlace.RemoteCustom("/downloads"),
             startWhenAdded = true, allowArtwork = false
         )
         assertTrue(state.review(intent, EnvironmentCapabilities.unprobed(server.environment),

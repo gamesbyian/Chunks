@@ -1,6 +1,6 @@
 package io.github.gamesbyian.chunks.rpc
 
-import io.github.gamesbyian.chunks.model.BatchServerCopy
+import io.github.gamesbyian.chunks.model.BatchRemoteCopy
 import java.io.File
 import java.net.URI
 import kotlinx.coroutines.runBlocking
@@ -42,21 +42,21 @@ class RTorrentDisposableBatchCopyTest {
         val (firstHash, first) = definitions.entries.first().let { it.key to it.value }
         val place = requireNotNull(rtorrent.defaultDirectory())
         // One is already on the server: the batch must not add it again.
-        val pre = rtorrent.loadStoppedTorrentBytes(first.second, place, useServerDefault = true)
+        val pre = rtorrent.loadStoppedTorrentBytes(first.second, place, useRemoteDefault = true)
         assertTrue("$pre", pre is RemoteAddOutcome.VerifiedStopped || pre is RemoteAddOutcome.PendingVerification)
         repeat(30) {
             if (rtorrent.listTransfers("main").none { it.hash.equals(firstHash, true) }) Thread.sleep(300)
         }
         val before = rtorrent.listTransfers("main").map { it.hash.lowercase() to it.started }.toSet()
 
-        val report = BatchServerCopy.run(
-            definitions.map { (hash, value) -> BatchServerCopy.Item(hash, value.first) },
+        val report = BatchRemoteCopy.run(
+            definitions.map { (hash, value) -> BatchRemoteCopy.Item(hash, value.first) },
             exportTorrent = { hash -> definitions[hash.lowercase()]?.second },
             addStopped = { bytes ->
                 rtorrent.loadStoppedTorrentBytes(bytes, requireNotNull(rtorrent.defaultDirectory()),
-                    useServerDefault = true)
+                    useRemoteDefault = true)
             })
-        assertEquals(listOf(BatchServerCopy.Result.ALREADY_ON_SERVER, BatchServerCopy.Result.ADDED),
+        assertEquals(listOf(BatchRemoteCopy.Result.ALREADY_ON_REMOTE_CLIENT, BatchRemoteCopy.Result.ADDED),
             report.results.map { it.second })
         val rows = rtorrent.listTransfers("main").filter { it.hash.lowercase() in definitions.keys }
         assertEquals(2, rows.size)

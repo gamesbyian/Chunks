@@ -156,6 +156,7 @@ class RemoteAddSessionContinuityTest {
     }
 
     @Test fun lostMutationReplyAndSameAccountReconnectKeepFrozenReadOnlyRecovery() {
+        UniversalAddAttemptController.clearEvents()
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
         val calls = java.util.concurrent.CopyOnWriteArrayList<Pair<String, String>>()
         val received = java.util.concurrent.CountDownLatch(1)
@@ -264,7 +265,12 @@ class RemoteAddSessionContinuityTest {
                 // #2138: no timeout change; report what the gateway saw and the phase reached.
                 // Allowlisted by tools/ci_failure_digest.py: enum phase and RPC method names only.
                 throw AssertionError("read-only check did not confirm within 15 s\n" +
-                    "CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} gateway=${calls.map { it.first }}", timeout)
+                    // The digest keeps only lines of at most 300 allowlisted characters, so the
+                    // short, decisive facts come first, each on its own capped line.
+                    ("CHUNKS_SAFE_DIAG phase=${session.coordinator.phase} " +
+                        "events=${UniversalAddAttemptController.recentEvents()}").take(300) + "\n" +
+                    ("CHUNKS_SAFE_DIAG gateway-count=${calls.size} " +
+                        "last=${calls.map { it.first }.takeLast(12)}").take(300), timeout)
             }
             assertEquals("Recovered state cannot prove which client originally registered it", 0, verified)
             assertFalse("Late old completion must preserve the newer exclusion", artwork.value)
@@ -317,10 +323,10 @@ class RemoteAddSessionContinuityTest {
         val oldSource = "magnet:?xt=urn:btih:$oldHash"
         val newSource = mutableStateOf("magnet:?xt=urn:btih:" + "cd".repeat(20))
         val session = RemoteAddSession(account, "/srv")
-        val target = io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedServer(account)
+        val target = io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedRemoteClient(account)
         val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
             io.github.gamesbyian.chunks.model.UniversalAddSource.magnet(oldSource, oldHash),
-            target, io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom("/srv"),
+            target, io.github.gamesbyian.chunks.model.UniversalAddPlace.RemoteCustom("/srv"),
             startWhenAdded = true, allowArtwork = true)
         assertTrue(session.coordinator.review(intent,
             io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(target.environment),

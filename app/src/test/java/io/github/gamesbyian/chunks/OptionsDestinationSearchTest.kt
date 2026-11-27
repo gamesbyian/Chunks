@@ -5,36 +5,47 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Tests only existing screen discovery; there is no new settings authority. */
+/**
+ * Tests only existing screen discovery; there is no new settings authority. Uses the real
+ * [Section] values: aliases keyed by stale label text (e.g. "Server" after the section became
+ * "Connections") silently stopped matching anything.
+ */
 class OptionsDestinationSearchTest {
-    private val routes = listOf(
-        "Transfers", "On this device", "Places", "Organize", "Server",
-        "ZIP review", "Create"
-    )
+    private val routes = listOf(Section.TRANSFERS, Section.LOCAL, Section.PLACES, Section.ORGANIZE,
+        Section.SERVER, Section.ARCHIVES, Section.CREATE, Section.MEDIA)
+
+    private fun find(query: String) = routes.filter { optionsDestinationMatches(it, query) }
 
     @Test fun blankSearchRetainsEveryExistingDestination() {
-        assertEquals(routes, routes.filter { optionsDestinationMatches(it, "   ") })
+        assertEquals(routes, find("   "))
     }
 
     @Test fun exactDestinationAndDocumentedAliasesFindSameExistingRoutes() {
-        assertEquals(listOf("Server"), routes.filter { optionsDestinationMatches(it, "SERVER settings") })
-        assertEquals(listOf("Server"), routes.filter { optionsDestinationMatches(it, "remote client") })
-        assertEquals(listOf("Places"), routes.filter { optionsDestinationMatches(it, "folder") })
-        assertEquals(listOf("ZIP review"), routes.filter { optionsDestinationMatches(it, "archive") })
-        assertEquals(listOf("Organize"), routes.filter { optionsDestinationMatches(it, "collections") })
-        assertTrue(optionsDestinationMatches("On this device", "local storage"))
-        assertTrue(optionsDestinationMatches("Transfers", "torrent list"))
+        assertEquals(listOf(Section.SERVER), find("SERVER settings"))
+        assertEquals(listOf(Section.SERVER), find("remote client"))
+        assertEquals(listOf(Section.PLACES), find("folder"))
+        assertEquals(listOf(Section.ARCHIVES), find("archive"))
+        assertEquals(listOf(Section.ORGANIZE), find("collections"))
+        assertEquals(listOf(Section.MEDIA), find("poster"))
+        assertTrue(optionsDestinationMatches(Section.LOCAL, "local storage"))
+        assertTrue(optionsDestinationMatches(Section.TRANSFERS, "torrent list"))
+    }
+
+    @Test fun relabelledConnectionsAndLocalDestinationsKeepTheirAliases() {
+        // Regression: these aliases were keyed by the old labels and matched no destination.
+        assertEquals(listOf(Section.SERVER), find("endpoint"))
+        assertEquals(listOf(Section.SERVER), find("login"))
+        assertEquals(listOf(Section.SERVER), find("Connections"))
+        assertEquals(listOf(Section.LOCAL), find("local storage"))
     }
 
     @Test fun unknownOrContradictoryWordsDoNotCreateFakeScreenLinks() {
-        assertEquals(emptyList<String>(), routes.filter { optionsDestinationMatches(it, "paywall") })
-        assertFalse(optionsDestinationMatches("Server", "local storage"))
-        assertFalse(optionsDestinationMatches("Create", "delete payload"))
+        assertEquals(emptyList<Section>(), find("paywall"))
+        assertFalse(optionsDestinationMatches(Section.SERVER, "local storage"))
+        assertFalse(optionsDestinationMatches(Section.CREATE, "delete payload"))
     }
 
     @Test fun casingAndWhitespaceDoNotChangeSelectedActualDestination() {
-        assertEquals(listOf("Server"), routes.filter {
-            optionsDestinationMatches(it, "  CoNnEcTiOn     ACCOUNT ")
-        })
+        assertEquals(listOf(Section.SERVER), find("  CoNnEcTiOn     ACCOUNT "))
     }
 }

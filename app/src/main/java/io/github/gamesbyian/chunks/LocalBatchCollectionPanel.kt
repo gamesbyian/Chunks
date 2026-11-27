@@ -193,7 +193,7 @@ internal fun LocalBatchCollectionPanel(
                     Text("Copy selected to the remote client", style = MaterialTheme.typography.titleMedium)
                     OutlinedButton(onClick = { copyConfirm = !copyConfirm },
                         enabled = !saving && !inventoryStale && selected.isNotEmpty() &&
-                            selected.size <= io.github.gamesbyian.chunks.model.BatchServerCopy.MAX_ITEMS,
+                            selected.size <= io.github.gamesbyian.chunks.model.BatchRemoteCopy.MAX_ITEMS,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text("Copy Transfer to remote client (${selected.size})…")
                     }
@@ -219,7 +219,7 @@ internal fun LocalBatchCollectionPanel(
                 if (onBatchMoveToServer != null && copyServerLabel != null) {
                     OutlinedButton(onClick = { moveConfirm = !moveConfirm },
                         enabled = !saving && !inventoryStale && selected.isNotEmpty() &&
-                            selected.size <= io.github.gamesbyian.chunks.model.BatchServerCopy.MAX_ITEMS,
+                            selected.size <= io.github.gamesbyian.chunks.model.BatchRemoteCopy.MAX_ITEMS,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text("Move Transfer to remote client (${selected.size})…")
                     }

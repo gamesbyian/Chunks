@@ -11,8 +11,8 @@ class UniversalAddCoordinatorTest {
     private val hash = "a".repeat(40)
     private val otherHash = "b".repeat(40)
     private val local = UniversalAddTarget.Local
-    private val remote = UniversalAddTarget.AuthenticatedServer("https://host.invalid/RPC2\u0000exact-user")
-    private val otherRemote = UniversalAddTarget.AuthenticatedServer("https://host.invalid/RPC2\u0000another-user")
+    private val remote = UniversalAddTarget.AuthenticatedRemoteClient("https://host.invalid/RPC2\u0000exact-user")
+    private val otherRemote = UniversalAddTarget.AuthenticatedRemoteClient("https://host.invalid/RPC2\u0000another-user")
 
     private fun magnet() = UniversalAddSource.magnet(
         "magnet:?xt=urn:btih:$hash&tr=https://private.invalid/announce?passkey=SECRET", hash)
@@ -21,7 +21,7 @@ class UniversalAddCoordinatorTest {
         target: UniversalAddTarget = local,
         place: UniversalAddPlace = if (target === local)
             UniversalAddPlace.Local("verified-local-place")
-        else UniversalAddPlace.ServerCustom("/srv/downloads"),
+        else UniversalAddPlace.RemoteCustom("/srv/downloads"),
         start: Boolean = true,
         source: UniversalAddSource = magnet()
     ) = UniversalAddIntent(source, target, place, start, allowArtwork = false)
@@ -75,7 +75,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val wrongCapabilities = EnvironmentCapabilities.unprobed(remote.environment)
         assertFalse(state.review(intent(), wrongCapabilities, EnvironmentAvailability.LIVE).accepted)
-        assertFalse(review(state, intent(local, UniversalAddPlace.ServerCustom("/srv"))).accepted)
+        assertFalse(review(state, intent(local, UniversalAddPlace.RemoteCustom("/srv"))).accepted)
         assertFalse(review(state, intent(remote, UniversalAddPlace.Local("local-place"))).accepted)
         assertNull(state.beginSubmission(1000))
     }

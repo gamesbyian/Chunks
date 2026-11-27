@@ -51,7 +51,7 @@ internal fun BatchMoveRemovalPanel(
     // confirmation. The job list is independently keyed by server scope.
     var confirming by remember(serverScopeDigest, pending) { mutableStateOf(false) }
     var working by remember { mutableStateOf(false) }
-    val exactScope = BatchMoveRemoval.matchesServerScope(pending, serverScopeDigest)
+    val exactScope = BatchMoveRemoval.matchesRemoteScope(pending, serverScopeDigest)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("${pending.size} transfers are now on $serverLabel. Their original $sourceLabel jobs are still here.",
             style = MaterialTheme.typography.bodyMedium)
@@ -69,7 +69,7 @@ internal fun BatchMoveRemovalPanel(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     confirming = false
-                    if (!BatchMoveRemoval.matchesServerScope(pending, serverScopeDigest)) {
+                    if (!BatchMoveRemoval.matchesRemoteScope(pending, serverScopeDigest)) {
                         onFinished("The destination remote account changed. No original jobs were removed.")
                         return@Button
                     }

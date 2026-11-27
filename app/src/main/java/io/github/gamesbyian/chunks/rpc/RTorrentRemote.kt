@@ -506,16 +506,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return resolveInventoryDirectories(requireUniqueIdentities(transfers))
     }
 
-    private class UnresolvedServerDirectory : IllegalStateException("Remote directory could not be resolved")
+    private class UnresolvedRemoteDirectory : IllegalStateException("Remote directory could not be resolved")
 
     /** Only lexical child components are resolvable without server realpath/symlink evidence. */
     private fun relativeDirectorySuffix(raw: String): String {
         if (raw.isEmpty() || raw.length > 4096 ||
-            raw.any { it.code < 32 || it.code == 127 || it == '\\' }) throw UnresolvedServerDirectory()
+            raw.any { it.code < 32 || it.code == 127 || it == '\\' }) throw UnresolvedRemoteDirectory()
         if (raw in setOf(".", "./")) return ""
         val relative = raw.removePrefix("./").removeSuffix("/")
         if (!relative.split('/').all { it.isNotEmpty() && it != "." && it != ".." })
-            throw UnresolvedServerDirectory()
+            throw UnresolvedRemoteDirectory()
         return relative
     }
 
@@ -527,16 +527,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val untrustedCwd = fault.code == "-507" && fault.message ==
                 "Command \"system.cwd\" is not allowed for untrusted connections."
             if (!fault.isUnsupportedOptionalGetter() && !untrustedCwd) throw fault
-            throw UnresolvedServerDirectory()
-        } ?: throw UnresolvedServerDirectory()
-        if (!RuTorrentDeleteData.safeDirectory(cwd, allowRoot = true)) throw UnresolvedServerDirectory()
+            throw UnresolvedRemoteDirectory()
+        } ?: throw UnresolvedRemoteDirectory()
+        if (!RuTorrentDeleteData.safeDirectory(cwd, allowRoot = true)) throw UnresolvedRemoteDirectory()
         return cwd
     }
 
     /** Relative rTorrent roots are relative to THIS server process, never to Android. */
     private fun directoryAt(cwd: String, suffix: String): String {
         val directory = if (suffix.isEmpty()) cwd else cwd.trimEnd('/') + "/" + suffix
-        if (directory.length > 4096) throw UnresolvedServerDirectory()
+        if (directory.length > 4096) throw UnresolvedRemoteDirectory()
         return directory
     }
 
@@ -545,7 +545,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val suffix = relativeDirectorySuffix(raw)
         val cwd = serverWorkingDirectory()
         val directory = directoryAt(cwd, suffix)
-        if (serverWorkingDirectory() != cwd) throw UnresolvedServerDirectory()
+        if (serverWorkingDirectory() != cwd) throw UnresolvedRemoteDirectory()
         return directory
     }
 
@@ -561,7 +561,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val suffixes = rows.mapNotNull { row ->
             if (row.directory.startsWith('/')) null
             else try { row.directory to relativeDirectorySuffix(row.directory) }
-            catch (_: UnresolvedServerDirectory) { null }
+            catch (_: UnresolvedRemoteDirectory) { null }
         }.toMap()
         if (suffixes.isEmpty()) return rows
         return try {
@@ -570,10 +570,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val resolved = rows.map { row ->
                 val suffix = suffixes[row.directory] ?: return@map row
                 try { row.copy(directory = directoryAt(cwd, suffix)) }
-                catch (_: UnresolvedServerDirectory) { row }
+                catch (_: UnresolvedRemoteDirectory) { row }
             }
             if (serverWorkingDirectory() != cwd) rows else resolved
-        } catch (_: UnresolvedServerDirectory) {
+        } catch (_: UnresolvedRemoteDirectory) {
             // Keep unresolved rows readable. Auth/network/operational errors still propagate.
             rows
         }
@@ -682,7 +682,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     /** Refuse a stale default preview before sending even the first Add write. */
     private suspend fun prepareLoad(plan: StoppedRemoteAddPlan, beforeLoad: suspend () -> Unit) {
-        if (plan.useServerDefault && plan.destination.isNotEmpty()) {
+        if (plan.useRemoteDefault && plan.destination.isNotEmpty()) {
             check(defaultDirectory() == plan.destination) {
                 "Remote default location is missing or changed. Review this Add again."
             }
@@ -702,7 +702,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         prepareLoad(plan, beforeLoad)
         try {
-            val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
+            val params: List<Any> = if (plan.useRemoteDefault) listOf("", plan.source)
                 else listOf("", plan.source, "d.directory.set=" + plan.destination)
             call("load.verbose", params)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -725,20 +725,20 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * post-failure cleanup. Live Seedhost acceptance remains separate.
      */
     suspend fun loadStoppedTorrentBytes(
-        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false,
+        torrentBytes: ByteArray, destination: String, useRemoteDefault: Boolean = false,
         beforeLoad: suspend () -> Unit = {}
     ): RemoteAddOutcome =
-        loadStoppedTorrentBytes(torrentBytes, destination, useServerDefault, beforeLoad, beforeWrite = {})
+        loadStoppedTorrentBytes(torrentBytes, destination, useRemoteDefault, beforeLoad, beforeWrite = {})
 
     internal suspend fun loadStoppedTorrentBytes(
-        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean,
+        torrentBytes: ByteArray, destination: String, useRemoteDefault: Boolean,
         beforeLoad: suspend () -> Unit, beforeWrite: () -> Unit
     ): RemoteAddOutcome {
         val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val inspected = TorrentMetainfoReader.preview(torrentBytes)
         val hash = inspected.infoHashV1
         val link = "magnet:?xt=urn:btih:" + hash
-        val plan = if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, destination)
+        val plan = if (useRemoteDefault) StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(link, destination)
             else StoppedRemoteAddPlan.fromMagnet(link, destination)
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(hash)
@@ -746,7 +746,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         prepareLoad(plan, beforeLoad)
         try {
-            val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
+            val params: List<Any> = if (plan.useRemoteDefault) listOf("", newMetainfo)
                 else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
             call("load.raw_verbose", params, beforeWrite)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -777,7 +777,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         prepareLoad(plan, beforeLoad)
         try {
-            val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
+            val params: List<Any> = if (plan.useRemoteDefault) listOf("", plan.source)
                 else listOf("", plan.source, "d.directory.set=" + plan.destination)
             call("load.start", params)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -790,13 +790,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     internal suspend fun loadStartedTorrentBytes(
-        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false,
+        torrentBytes: ByteArray, destination: String, useRemoteDefault: Boolean = false,
         beforeLoad: suspend () -> Unit = {}
     ): RemoteAddAndStart {
         val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val hash = TorrentMetainfoReader.preview(torrentBytes).infoHashV1
         val link = "magnet:?xt=urn:btih:" + hash
-        val plan = if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, destination)
+        val plan = if (useRemoteDefault) StoppedRemoteAddPlan.fromMagnetAtRemoteDefault(link, destination)
             else StoppedRemoteAddPlan.fromMagnet(link, destination)
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) } ||
             lookupName(hash) != null) {
@@ -804,7 +804,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         prepareLoad(plan, beforeLoad)
         try {
-            val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
+            val params: List<Any> = if (plan.useRemoteDefault) listOf("", newMetainfo)
                 else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
             call("load.raw_start", params)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -838,7 +838,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 null
             }
             val pending = metadataFlag()
-            val nativeMetadata = pending == true && plan.useServerDefault && plan.destination.isEmpty()
+            val nativeMetadata = pending == true && plan.useRemoteDefault && plan.destination.isEmpty()
             if (!nativeMetadata && readVerifiedAddDirectory(hash, plan.destination, name) == null) {
                 if (lookupName(hash) != name) return RemoteAddProgress(registered = true)
                 error("The registered torrent is outside the reviewed destination")
@@ -903,7 +903,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         suspend fun stableDifferentPlace(): DifferentPlace? {
             // No concrete parent was reviewed for an unknown native default.
             // A later absolute payload root cannot contradict an empty preview.
-            if (plan.useServerDefault && plan.destination.isEmpty()) return null
+            if (plan.useRemoteDefault && plan.destination.isEmpty()) return null
             val name = lookupName(hash) ?: return null
             // A malformed/partial metainfo name cannot establish a changed Place.
             if (name.isBlank() || name.length > 255 || name == "." || name == ".." ||

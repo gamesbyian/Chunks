@@ -92,12 +92,12 @@ class BatchMoveRemovalTest {
         val second = move(2)
         // A stale remembered A selection must never run against B, even when
         // both destinations happen to contain the same infohashes.
-        assertTrue(BatchMoveRemoval.matchesServerScope(listOf(first, second), accountA))
-        assertFalse(BatchMoveRemoval.matchesServerScope(listOf(first, second), accountB))
-        assertFalse(BatchMoveRemoval.matchesServerScope(
+        assertTrue(BatchMoveRemoval.matchesRemoteScope(listOf(first, second), accountA))
+        assertFalse(BatchMoveRemoval.matchesRemoteScope(listOf(first, second), accountB))
+        assertFalse(BatchMoveRemoval.matchesRemoteScope(
             listOf(first, second.copy(serverScopeDigest = accountB)), accountA))
-        assertFalse(BatchMoveRemoval.matchesServerScope(emptyList(), accountA))
-        assertFalse(BatchMoveRemoval.matchesServerScope(listOf(first), "wrong-account"))
+        assertFalse(BatchMoveRemoval.matchesRemoteScope(emptyList(), accountA))
+        assertFalse(BatchMoveRemoval.matchesRemoteScope(listOf(first), "wrong-account"))
     }
 
     @Test fun failedJournalCleanupDoesNotClaimCompletedMoveOrContinueBatch() {

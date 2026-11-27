@@ -22,7 +22,7 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableBatchLifecycleTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/RemoteBatchLifecycle.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableBatchCopyTest.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/model/BatchServerCopy.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/BatchRemoteCopy.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableFinishInOrderTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteFinishInOrderPort.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableBatchMoveTest.kt"

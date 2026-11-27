@@ -264,13 +264,28 @@ class ProtocolClientInstalledJourneyTest {
             trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
     }
 
+    /** The same loopback endpoint spelled with `localhost` instead of `127.0.0.1` (a separate owner key). */
+    private fun independentLoopbackSpelling(url: String): String {
+        val uri = URI(url)
+        require(uri.host == "127.0.0.1") { "expected a 127.0.0.1 disposable endpoint" }
+        return URI(uri.scheme, uri.userInfo, "localhost", uri.port, uri.path, uri.query, uri.fragment).toString()
+    }
+
     @Test fun protocolClientConnectTransfersDetailsAddAndRemove() {
         assumeTrue("Disposable runner daemon only", args.getString("chunks_protocol_disposable") == "authorized")
         val kind = io.github.gamesbyian.chunks.model.RemoteBackendKind.valueOf(decoded("chunks_protocol_kind_b64"))
         val url = decoded("chunks_protocol_url_b64")
         val user = decoded("chunks_protocol_user_b64")
         val pass = decoded("chunks_protocol_pass_b64")
-        val credentials = RemoteCredentials(url,
+        // #2165: the test's own Deluge witness must not share the app's in-process Web UI lock.
+        // Compose v2 test effects run on a scheduler pumped only by this instrumentation thread, so
+        // a runBlocking witness read that waits behind an app-held bracket (the Add screen's session
+        // read, waiting to resume on that scheduler) deadlocked the journey. DelugeRoutingOwner is
+        // keyed by endpoint spelling, so the witness addresses the same loopback Web UI as
+        // `localhost` while the app uses the URL it was given. One daemon per lane: no slot race.
+        val witnessUrl = if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE)
+            independentLoopbackSpelling(url) else url
+        val credentials = RemoteCredentials(witnessUrl,
             if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE) "" else user, pass)
         val daemon = if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE) runBlocking {
             io.github.gamesbyian.chunks.rpc.DelugeReadOnlyRpc(credentials, "unselected").registeredDaemonIds().single()
@@ -281,8 +296,20 @@ class ProtocolClientInstalledJourneyTest {
         // sessions. Always use a NEW independent authenticated connection for
         // post-app readback, not the potentially stale fixture-preload cookie.
         // This remains real-daemon evidence and never replays the app's write.
-        suspend fun independentRead(hash: String) =
-            io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+        // #2165: bounded. A hang becomes an explicit failure that names the Deluge bracket holder;
+        // a timeout never becomes "absent" (callers assert null), it throws.
+        suspend fun independentRead(hash: String) = try {
+            kotlinx.coroutines.withTimeout(60_000) {
+                io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon).torrent(hash)
+            }
+        } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) {
+            val owner = if (kind == io.github.gamesbyian.chunks.model.RemoteBackendKind.DELUGE)
+                "witness " + io.github.gamesbyian.chunks.rpc.DelugeRoutingOwner.forEndpoint(URI(witnessUrl)).diagnostics() +
+                    " app " + io.github.gamesbyian.chunks.rpc.DelugeRoutingOwner.forEndpoint(URI(url)).diagnostics()
+                else "n/a"
+            throw AssertionError("Independent ${kind.name} read did not answer within 60 s\n" +
+                "CHUNKS_SAFE_DIAG independent-read-timeout kind=${kind.name} $owner", timeout)
+        }
         stage("client-" + kind.name.lowercase())
 
         /** Two unique files in one folder; returns the metainfo and the shared file-name suffix. */

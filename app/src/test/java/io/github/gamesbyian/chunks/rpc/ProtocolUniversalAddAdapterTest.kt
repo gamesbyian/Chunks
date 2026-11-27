@@ -82,7 +82,7 @@ class ProtocolUniversalAddAdapterTest {
             ClientAddRequest(ClientAddSource.Magnet(magnet), null, startNow = true), "/srv/dl")
         assertTrue(byDefault.target is UniversalAddTarget.ProtocolClient)
         assertEquals("qb-profile", byDefault.target.environment.value)
-        assertTrue(byDefault.place is UniversalAddPlace.ServerDefault)
+        assertTrue(byDefault.place is UniversalAddPlace.RemoteDefault)
         assertTrue(byDefault.startWhenAdded)
         assertTrue("Protocol artwork defaults enabled", byDefault.allowArtwork)
         assertFalse("A frozen opt-out remains off", ProtocolUniversalAddAdapter.intent("qb-profile",
@@ -90,7 +90,7 @@ class ProtocolUniversalAddAdapterTest {
             allowArtwork = false).allowArtwork)
         val custom = ProtocolUniversalAddAdapter.intent("qb-profile",
             ClientAddRequest(ClientAddSource.Magnet(magnet), "/data/tv", startNow = false), "/srv/dl")
-        assertEquals("/data/tv", (custom.place as UniversalAddPlace.ServerCustom).absolutePath)
+        assertEquals("/data/tv", (custom.place as UniversalAddPlace.RemoteCustom).absolutePath)
     }
 
     @Test fun aVerifiedAddIsVerifiedWithPositiveProvenance() {

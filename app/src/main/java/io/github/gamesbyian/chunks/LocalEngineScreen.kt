@@ -2302,11 +2302,11 @@ internal fun LocalEngineScreen(
             onBatchCopyToServer = serverCopy?.let { link ->
                 { ids ->
                     val items = transfers.filter { it.infoHash in ids }
-                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                        .map { io.github.gamesbyian.chunks.model.BatchRemoteCopy.Item(it.infoHash, it.name) }
                     performLocalMutation {
-                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                        val problem = io.github.gamesbyian.chunks.model.BatchRemoteCopy.validate(items)
                         message = if (problem != null) problem else try {
-                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                            val report = io.github.gamesbyian.chunks.model.BatchRemoteCopy.run(items,
                                 exportTorrent = { hash ->
                                     withContext(Dispatchers.IO) {
                                         LocalEngineHolder.current()?.exportTorrentFile(hash)
@@ -2314,7 +2314,7 @@ internal fun LocalEngineScreen(
                                 },
                                 addStopped = link.addStoppedAtDefault)
                             report.summary() + report.results
-                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
+                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchRemoteCopy.Result.ADDED }
                                 .take(10).joinToString("") { (item, result) ->
                                     "\n• " + item.name.take(80) + ": " + result.label
                                 }
@@ -2331,19 +2331,19 @@ internal fun LocalEngineScreen(
                 val link = serverCopy
                 val server = moveServer
                 val items = transfers.filter { it.infoHash in ids }
-                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                    .map { io.github.gamesbyian.chunks.model.BatchRemoteCopy.Item(it.infoHash, it.name) }
                 performLocalMutation {
-                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                    val problem = io.github.gamesbyian.chunks.model.BatchRemoteCopy.validate(items)
                     message = if (problem != null) problem else try {
-                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                        val report = io.github.gamesbyian.chunks.model.BatchRemoteCopy.run(items,
                             exportTorrent = { hash ->
                                 withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
                             },
                             addStopped = link.addStoppedAtDefault)
                         // Only destination jobs verified by readback (or already present) start a Move.
                         val verified = report.results.filter {
-                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
-                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
+                            it.second == io.github.gamesbyian.chunks.model.BatchRemoteCopy.Result.ADDED ||
+                                it.second == io.github.gamesbyian.chunks.model.BatchRemoteCopy.Result.ALREADY_ON_REMOTE_CLIENT
                         }
                         var aliasCopied = 0
                         var aliasFailed = 0
@@ -2362,7 +2362,7 @@ internal fun LocalEngineScreen(
                                 } catch (_: Exception) {
                                     TransferMove.Observation.Unknown
                                 }
-                                if (!io.github.gamesbyian.chunks.model.BatchServerCopy
+                                if (!io.github.gamesbyian.chunks.model.BatchRemoteCopy
                                         .observedDestinationForMove(result, observed)) {
                                     missingReadback++
                                     continue

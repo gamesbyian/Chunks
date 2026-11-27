@@ -480,9 +480,9 @@
   "reason": "readLocalFile is a non-suspend (MediaFileHint) -> ByteArray? lambda."
  },
  {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/BatchServerCopy.kt",
+  "path": "app/src/main/java/io/github/gamesbyian/chunks/model/BatchRemoteCopy.kt",
   "kind": "broad-catch",
-  "fingerprint": "ffbd0b63a4fa6bc7a28c0584",
+  "fingerprint": "62f83f29cd9fccafe339a42c",
   "count": 1,
   "disposition": "SAFE-NONSUSPEND",
   "reason": "TorrentMetainfoReader.preview(definition) is a plain fun; the suspending exportTorrent call has its own cancel-rethrow at line 75."

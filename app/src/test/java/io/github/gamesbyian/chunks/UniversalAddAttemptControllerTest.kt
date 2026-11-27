@@ -34,7 +34,7 @@ class UniversalAddAttemptControllerTest {
         val coordinator = UniversalAddCoordinator()
         val target = UniversalAddTarget.ProtocolClient(EnvironmentId(profile))
         val intent = UniversalAddIntent(UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", hash), target,
-            UniversalAddPlace.ServerCustom("/dl"), startWhenAdded = false, allowArtwork = false)
+            UniversalAddPlace.RemoteCustom("/dl"), startWhenAdded = false, allowArtwork = false)
         return coordinator to requireNotNull(UniversalAddAdmission.authorize(coordinator, intent,
             EnvironmentCapabilities.unprobed(target.environment), EnvironmentAvailability.LIVE, { true }, 1L).ticket)
     }
@@ -122,4 +122,65 @@ class UniversalAddAttemptControllerTest {
         assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, coordinator.phase)
         assertFalse(controller.isSubmitting(EnvironmentId("local-like")))
     }
+
+    /** Settle one Add as READBACK_REQUIRED so rechecks and follow-ups are admissible. */
+    private suspend fun unresolved(controller: UniversalAddAttemptController, profile: String):
+        UniversalAddCoordinator {
+        val (coordinator, t) = ticket(profile)
+        val executor = Gated()
+        controller.launch(coordinator, t, executor)
+        executor.release.complete(Unit)
+        while (controller.isSubmitting(EnvironmentId(profile))) yield()
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, coordinator.phase)
+        return coordinator
+    }
+
+    @Test fun aPersonsCheckDuringABackgroundFollowUpIsQueuedAndRunsRightAfterIt() = runBlocking {
+        // #2138: a follow-up check in flight used to make the person's explicit check a silent no-op.
+        val scope = CoroutineScope(coroutineContext + Job())
+        val controller = UniversalAddAttemptController { scope }
+        val coordinator = unresolved(controller, "deluge")
+        val followUpGate = CompletableDeferred<Unit>()
+        val order = mutableListOf<String>()
+        assertTrue(controller.followUp(coordinator, { order += "follow-up"; followUpGate.await(); null },
+            schedule = listOf(0L)))
+        while (!controller.isChecking(EnvironmentId("deluge"))) yield()
+        var manualResult: UniversalAddCoordinator.Readback? = UniversalAddCoordinator.Readback.WRONG_TICKET
+        assertTrue("accepted, not dropped",
+            controller.recheck(coordinator, { order += "person"; null }) { manualResult = it })
+        assertFalse("at most one queued check per client", controller.recheck(coordinator, { order += "extra"; null }))
+        assertEquals("nothing runs alongside the follow-up", listOf("follow-up"), order)
+        followUpGate.complete(Unit)
+        while (order.size < 2 || controller.isChecking(EnvironmentId("deluge"))) yield()
+        assertEquals(listOf("follow-up", "person"), order)
+        assertNull("the person's own observer ran and reported its result", manualResult)
+        scope.cancel()
+    }
+
+    @Test fun aQueuedCheckThatMayNoLongerRunNeverRunsAndNeverReportsAFalseFailure() = runBlocking {
+        val scope = CoroutineScope(coroutineContext + Job())
+        val controller = UniversalAddAttemptController { scope }
+        val coordinator = unresolved(controller, "qbittorrent")
+        val followUpGate = CompletableDeferred<Unit>()
+        assertTrue(controller.followUp(coordinator, { followUpGate.await(); null }, schedule = listOf(0L)))
+        while (!controller.isChecking(EnvironmentId("qbittorrent"))) yield()
+        var reported = false
+        var personRan = false
+        assertTrue(controller.recheck(coordinator, { personRan = true; null }) { reported = true })
+        // A new write for the same client starts before the follow-up ends: a check may never run
+        // alongside a write, so the queued check is refused when its turn comes.
+        val (other, otherTicket) = ticket("qbittorrent")
+        val writer = Gated()
+        controller.launch(other, otherTicket, writer)
+        while (!controller.isSubmitting(EnvironmentId("qbittorrent"))) yield()
+        followUpGate.complete(Unit)
+        while (controller.isChecking(EnvironmentId("qbittorrent"))) yield()
+        repeat(20) { yield() }
+        assertFalse("never admitted during a write", personRan)
+        // Like any refused recheck it reports nothing: a null result would read as a failed check.
+        assertFalse("no false 'check failed' result", reported)
+        writer.release.complete(Unit)
+        scope.cancel()
+    }
 }
+
