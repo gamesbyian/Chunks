@@ -16,12 +16,17 @@ internal class LocalCacheFlushGate<H : Any>(private val engineMonitor: Any) {
         timeoutMs: Long,
         currentHandle: () -> H?,
         isComplete: (H) -> Boolean,
+        requireFresh: Boolean = false,
         invokeNative: (H) -> Unit
     ): Boolean {
         if (timeoutMs <= 0L) return false
         val (handle, pending) = synchronized(engineMonitor) {
             val current = currentHandle() ?: return false
             if (!isComplete(current)) return false
+            // A partial-set consumer must not join a request made before its
+            // own exact volume set was verified. Do not cancel the old request
+            // or let its callback acknowledge a newer one.
+            if (requireFresh && requests.pendingFor(key, current) != null) return false
             current to requests.acquire(key, current) { invokeNative(current) }
         }
         val completed = try {
