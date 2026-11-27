@@ -1337,6 +1337,16 @@
       "tests": [
         "io.github.gamesbyian.chunks.ProtocolTransferPrivacyGateTest"
       ]
+    },
+    {
+      "id": "actual-typed-add-bypasses-privacy-gate",
+      "invariant": "The actual ChunksApp typed Add route never constructs source or write operations behind a locked exact client",
+      "file": "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt",
+      "old": "          GatedProtocolAdd(privacyScope = protocolPrivacyScope,\n              clientKind = RemoteProtocolLabels.kind(profile.backend), onBack = ::returnFromAdd) {",
+      "new": "          run {",
+      "tests": [
+        "io.github.gamesbyian.chunks.ProtocolAddPrivacyRouteTest"
+      ]
     }
   ]
 }
