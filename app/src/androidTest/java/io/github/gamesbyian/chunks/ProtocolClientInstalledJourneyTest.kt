@@ -352,6 +352,34 @@ class ProtocolClientInstalledJourneyTest {
             }
             stage("transfers-shows-fixture")
 
+            // Read-only file selection is deliberately independent of the
+            // lifecycle batch review. Exercise the real canonical host and
+            // this exact daemon's roster, then leave selection before Details.
+            val reportedPaths = runBlocking { client.files(hash) }.map { it.path }
+            assertTrue("Exact fixture has reported files", reportedPaths.isNotEmpty())
+            val expectedPath = reportedPaths.first()
+            clickOnce("transfers-find-files", "Find files")
+            val select = hasContentDescription("Select $name on", substring = true)
+            scrollToNode(select)
+            rule.onAllNodes(select).onFirst().performClick()
+            val disclosure = hasText("Find files across selected transfers")
+            scrollToNode(disclosure)
+            rule.onNode(disclosure).performClick()
+            val input = hasTestTag("selected-file-search-query")
+            scrollToNode(input)
+            rule.onNode(input).performTextReplacement(expectedPath)
+            val submit = hasText("Search selected files")
+            scrollToNode(submit)
+            rule.onNode(submit).performClick()
+            waitFor("exact file result from live client", 60_000) { visible(expectedPath) && visible("Open transfer details") }
+            assertTrue("File selection cannot arm a Start/Stop review",
+                !visible("Start selected") && !visible("Stop selected"))
+            assertEquals("Read-only search leaves fixture registered and stopped", ClientRunState.STOPPED,
+                runBlocking { independentRead(hash) }?.runState)
+            clickOnce("transfers-find-files", "Done finding files")
+            assertTrue("Leaving search disposes file results", !visible("Open transfer details"))
+            stage("selected-file-search-live-exact-read-only")
+
             val details = hasContentDescription("Details for $name", substring = true)
             waitFor("Details control") {
                 runCatching { scrollToNode(details); true }.getOrDefault(false)
