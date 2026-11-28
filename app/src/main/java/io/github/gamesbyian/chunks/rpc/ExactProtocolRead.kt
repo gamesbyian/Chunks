@@ -55,28 +55,32 @@ internal fun exactProgressFraction(value: Any?): Double? =
  * escaped spellings of the same key. The wire already bounds response bytes.
  */
 internal object ExactRpcJson {
-    fun objectBody(body: String): JSONObject = value(body) as? JSONObject
+    fun objectBody(body: String, preserveDecimals: Boolean = false): JSONObject =
+        value(body, preserveDecimals) as? JSONObject
         ?: throw IOException("Expected an exact client object")
 
     fun arrayBody(body: String): JSONArray = value(body) as? JSONArray
         ?: throw IOException("Expected an exact client array")
 
-    private fun value(body: String): Any {
+    private fun value(body: String, preserveDecimals: Boolean = false): Any {
         val parsed = try {
             Json.parseUnique(body, maxChars = 4_194_304, maxMembers = 220_000)
         } catch (_: MediaJsonException) {
             throw IOException("Malformed or ambiguous exact client JSON")
         }
-        return convert(parsed)
+        return convert(parsed, preserveDecimals)
     }
 
-    private fun convert(value: Json): Any = when (value) {
+    private fun convert(value: Json, preserveDecimals: Boolean): Any = when (value) {
         Json.Null -> JSONObject.NULL
         is Json.Bool -> value.value
-        is Json.Num -> value.asLong ?: value.asDouble?.takeIf { it.isFinite() }
+        // Preserve the original numeric lexeme only for explicitly opted-in
+        // decimal observations. All other consumers retain the existing types.
+        is Json.Num -> value.asLong ?: (if (preserveDecimals) value.raw.toBigDecimalOrNull()
+            else value.asDouble?.takeIf { it.isFinite() })
             ?: throw IOException("Invalid exact client number")
         is Json.Str -> value.value
-        is Json.Arr -> JSONArray().apply { value.items.forEach { put(convert(it)) } }
-        is Json.Obj -> JSONObject().apply { value.members.forEach { (key, row) -> put(key, convert(row)) } }
+        is Json.Arr -> JSONArray().apply { value.items.forEach { put(convert(it, preserveDecimals)) } }
+        is Json.Obj -> JSONObject().apply { value.members.forEach { (key, row) -> put(key, convert(row, preserveDecimals)) } }
     }
 }

@@ -196,6 +196,8 @@ jobs:
       resume: ${{ steps.routes.outputs.resume }}
     steps:
       - uses: actions/checkout@v4
+      - name: Require reviewed cancellation inventory before expensive qualification
+        run: time python3 tools/check_coroutine_cancellation.py --reviews tools/coroutine_cancellation_reviews.json
       - name: Resolve complete PR file selection or conservatively select all
         id: routes
         env:

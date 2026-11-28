@@ -36,8 +36,12 @@ internal object LocalPayloadAccess {
         val root: File,
         val source: File,
         val identity: LocalPinnedReadIdentity,
-        val revision: Int
+        val revision: Int,
+        internal val revocationEpoch: Any
     ) {
+        // Accessed only under LocalPayloadAccess's monitor. A preparation is
+        // authority for one handoff attempt, not a reusable grant factory.
+        internal var issued = false
         val name = file.path.substringAfterLast('/')
         val mime: String get() = MimeTypeMap.getSingleton()
             .getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase(Locale.ROOT))
@@ -49,6 +53,10 @@ internal object LocalPayloadAccess {
     }
 
     private val grants = LinkedHashMap<String, Grant>()
+    private var revocationEpoch = Any()
+
+    @Synchronized
+    private fun currentRevocationEpoch(): Any = revocationEpoch
     // Revoked/expired grants may still have open proxy descriptors. Count
     // them until onRelease; removing a token cannot free a reader slot.
     private var activeReaders = 0
@@ -77,9 +85,10 @@ internal object LocalPayloadAccess {
     fun prepare(context: Context, engine: LocalTorrentEngine,
                 review: LocalFileInspection.Review, file: LocalTransferFile,
                 cancelled: () -> Boolean): Prepared? {
+        val epoch = currentRevocationEpoch()
         val revision = TransferPrivacyPolicyStore.revision
-        fun authorized() = !cancelled() && privacyAllows(context, revision) &&
-            reviewed(engine, review, file)
+        fun authorized() = !cancelled() && epoch === currentRevocationEpoch() &&
+            privacyAllows(context, revision) && reviewed(engine, review, file)
         if (file !in review.files || file.sizeBytes !in 0..MAX_BYTES ||
             !authorized()) return null
         return try {
@@ -94,7 +103,7 @@ internal object LocalPayloadAccess {
                 val identity = LocalPinnedReadIdentity.from(stat)
                 if (stat.st_size != file.sizeBytes || !identity.matches(Os.lstat(source.absolutePath)) ||
                     !onDisk(selected, file) || selected.canonicalFile != root || !authorized()) null
-                else Prepared(engine, review.copy(files = listOf(file)), file, root, source, identity, revision)
+                else Prepared(engine, review.copy(files = listOf(file)), file, root, source, identity, revision, epoch)
             } finally { Os.close(fd) }
         } catch (_: Exception) { null }
     }
@@ -103,6 +112,8 @@ internal object LocalPayloadAccess {
 
     @Synchronized
     fun issue(context: Context, prepared: Prepared): Uri? {
+        if (prepared.issued || prepared.revocationEpoch !== revocationEpoch) return null
+        prepared.issued = true
         if (!privacyAllows(context, prepared.revision)) return null
         val now = SystemClock.elapsedRealtime()
         grants.entries.removeAll { now >= it.value.expires }
@@ -141,7 +152,12 @@ internal object LocalPayloadAccess {
     }
 
     fun revokeAll(context: Context) {
-        val ids = synchronized(this) { grants.keys.toList().also { grants.clear() } }
+        val ids = synchronized(this) {
+            // Atomically retire both issued tokens and preparations that
+            // started before this revocation, including a pending cache flush.
+            revocationEpoch = Any()
+            grants.keys.toList().also { grants.clear() }
+        }
         ids.forEach { id ->
             val uri = Uri.Builder().scheme("content").authority(authority(context)).appendPath(id).build()
             revoke(context, uri)

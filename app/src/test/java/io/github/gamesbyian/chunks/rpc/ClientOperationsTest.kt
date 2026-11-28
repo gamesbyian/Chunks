@@ -29,7 +29,13 @@ class ClientOperationsTest {
             ClientFile(1, "b", 1, 0, ClientFilePriority.NORMAL))
 
         override suspend fun session() = ClientSessionInfo(kind, "1", "/d", caps, levels)
-        override suspend fun torrents() = listOfNotNull(present) + siblings.keys
+        var inventoryReads = 0
+        var onInventory: (Fake) -> Unit = {}
+        override suspend fun torrents(): List<ClientTorrent> {
+            inventoryReads++
+            onInventory(this)
+            return listOfNotNull(present) + siblings.keys
+        }
         var fileReads = 0
         var onFiles: (Fake) -> Unit = {}
         var reads = 0
@@ -235,6 +241,72 @@ class ClientOperationsTest {
         assertTrue(outcome.toString(), outcome is ClientOperationOutcome.Refused)
         assertEquals(ClientPayloadOverlap.CHANGED, (outcome as ClientOperationOutcome.Refused).reason)
         assertEquals(0, fake.writes)
+    }
+
+    @Test fun reviewedPayloadDeletionRefusesWhenFirstInventoryDisagreesWithReviewedRoot() = runBlocking {
+        val fake = sharedFake(sibling("/moved", "n/a.bin"))
+        fake.onInventory = { f ->
+            f.present = f.present?.copy(downloadDirectory = "/moved")
+        }
+        val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+        assertTrue(outcome is ClientOperationOutcome.Refused)
+        assertEquals(ClientPayloadOverlap.CHANGED, (outcome as ClientOperationOutcome.Refused).reason)
+        assertEquals(0, fake.writes)
+    }
+
+    @Test fun reviewedPayloadDeletionRefusesSiblingRenameWithoutInventoryChange() = runBlocking {
+        for (renamed in listOf("n/a.bin", "n/different.bin")) {
+            val fake = sharedFake(sibling("/d", "n/other.bin"))
+            fake.onFiles = { f ->
+                if (f.fileReads == 3) f.siblings = mapOf(sibling("/d", renamed))
+            }
+            val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+            assertTrue("Sibling mapping changed: $outcome", outcome is ClientOperationOutcome.Refused)
+            assertEquals(if (renamed == "n/a.bin") ClientPayloadOverlap.SHARED else ClientPayloadOverlap.CHANGED,
+                (outcome as ClientOperationOutcome.Refused).reason)
+            assertEquals(0, fake.writes)
+        }
+    }
+
+    @Test fun reviewedPayloadDeletionRefusesInventoryChangeDuringFinalFileRead() = runBlocking {
+        val fake = sharedFake(sibling("/d", "n/other.bin"))
+        fake.onFiles = { f ->
+            if (f.fileReads == 4) f.present = f.present?.copy(downloadDirectory = "/moved")
+        }
+        val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+        assertTrue(outcome is ClientOperationOutcome.Refused)
+        assertEquals(ClientPayloadOverlap.CHANGED, (outcome as ClientOperationOutcome.Refused).reason)
+        assertEquals(0, fake.writes)
+    }
+
+    @Test fun reviewedPayloadDeletionTreatsCaseAliasedDirectoryAsPossibleOverlap() = runBlocking {
+        val fake = sharedFake(sibling("/D/N", "A.BIN"))
+        val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+        assertTrue(outcome is ClientOperationOutcome.Refused)
+        assertEquals(ClientPayloadOverlap.SHARED, (outcome as ClientOperationOutcome.Refused).reason)
+        assertEquals(0, fake.writes)
+    }
+
+    @Test fun reviewedPayloadDeletionRefusesIncompleteOrAmbiguousPathEvidence() = runBlocking {
+        val cases = listOf<Pair<String, (Fake) -> Unit>>(
+            "empty target roster" to { it.files = emptyList() },
+            "empty nested sibling roster" to { it.siblings = mapOf(sibling("/d")) },
+            "interior repeated separator" to { it.siblings = mapOf(sibling("/d//n", "a.bin")) },
+            "ambiguous network-style root" to { it.siblings = mapOf(sibling("//d/n", "a.bin")) },
+            "backslash" to { it.siblings = mapOf(sibling("/d", "n\\\\a.bin")) },
+            "duplicate sibling hash" to {
+                val first = sibling("/d", "x")
+                it.siblings = mapOf(first, first.first.copy(downloadDirectory = "/elsewhere") to first.second)
+            },
+            "duplicate target index" to { it.files = listOf(file("a"), file("b")) }
+        )
+        for ((label, arrange) in cases) {
+            val fake = sharedFake().apply(arrange)
+            val outcome = ops(fake).removeReviewedPayload(hash, "/d")
+            assertTrue("$label: $outcome", outcome is ClientOperationOutcome.Refused)
+            assertEquals(label, ClientPayloadOverlap.UNREADABLE, (outcome as ClientOperationOutcome.Refused).reason)
+            assertEquals(label, 0, fake.writes)
+        }
     }
 
     @Test fun adaptersThatProveNoSharingThemselvesAreNotReadTwiceAndJobOnlyRemovalNeverScans() = runBlocking {

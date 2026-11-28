@@ -37,6 +37,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Require reviewed cancellation inventory before expensive qualification
+        run: time python3 tools/check_coroutine_cancellation.py --reviews tools/coroutine_cancellation_reviews.json
       - name: Prove the R8 JUnit receipt gate before allocating Android toolchain
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_minified_smoke_digest.py
       - uses: actions/setup-java@v4

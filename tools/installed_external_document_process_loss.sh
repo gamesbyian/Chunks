@@ -229,6 +229,54 @@ elif item: print("other-activity")
 else: print("unknown")
 PY
 )"
+  # A focused/resumed Activity is not proof that its application window
+  # exists or has drawn. Observe only the exact MainActivity records before
+  # diagnostic task focus; raw dumps never leave scratch. Unknown/conflicting
+  # fields remain unknown (OEM formatting is not a behavioural assertion).
+  local window_witness=unavailable
+  if timeout 12s adb shell dumpsys window windows > "$scratch/first-view-windows.txt" 2>/dev/null &&
+     timeout 12s adb shell dumpsys activity -a activities > "$scratch/first-view-activities.txt" 2>/dev/null; then
+    window_witness="$(python3 - "$scratch/first-view-windows.txt" "$scratch/first-view-activities.txt" "$pkg" <<'PY_FIRST_VIEW'
+import re, sys
+from pathlib import Path
+
+package = re.escape(sys.argv[3])
+component = package + r"/(?:\.MainActivity|" + package + r"\.MainActivity)"
+window_header = re.compile(r"(?m)^\s*Window #\d+ Window\{[^\n]*\}:?\s*$")
+activity_header = re.compile(r"(?m)^\s*\* Hist\s+#\d+: ActivityRecord\{[^\n]*\}\s*$")
+target = re.compile(r"(?<![\w.])" + component + r"(?=[\s}])")
+
+def records(path, pattern):
+    raw = Path(path).read_text(errors="replace")
+    headers = list(pattern.finditer(raw))
+    return [raw[h.end():headers[i+1].start() if i+1 < len(headers) else len(raw)]
+            for i, h in enumerate(headers) if target.search(h.group())]
+
+def field(rows, name, values):
+    if len(rows) != 1:
+        return "unknown"
+    matches = set(re.findall(r"(?<![\w])" + name + r"=(" + values + r")(?![\w])", rows[0]))
+    return next(iter(matches)).lower() if len(matches) == 1 else "unknown"
+
+windows = records(sys.argv[1], window_header)
+activities = records(sys.argv[2], activity_header)
+# Counts are capped, categorical values are drawn only from fixed enums.
+print(" ".join((
+    "window_count=" + str(min(len(windows), 9)),
+    "has_surface=" + field(windows, "mHasSurface", "true|false"),
+    "draw_state=" + field(windows, "mDrawState", "NO_SURFACE|DRAW_PENDING|COMMIT_DRAW_PENDING|READY_TO_SHOW|HAS_DRAWN"),
+    "view_visibility=" + field(windows, "mViewVisibility", "0x0|0x4|0x8"),
+    "obscured=" + field(windows, "mObscured", "true|false"),
+    "activity_count=" + str(min(len(activities), 9)),
+    "activity_state=" + field(activities, "state", "INITIALIZING|RESUMED|PAUSING|PAUSED|STOPPING|STOPPED|FINISHING|DESTROYING|DESTROYED|RESTARTING_PROCESS"),
+    "visible_requested=" + field(activities, "mVisibleRequested", "true|false"),
+    "client_visible=" + field(activities, "mClientVisible", "true|false"),
+)))
+PY_FIRST_VIEW
+)" || window_witness=unavailable
+  fi
+  printf 'CHUNKS_DOCUMENT_WINDOW_DIAG: %s\n' "$window_witness" |
+    tee "$out/document-window-diagnostic.txt"
   # Diagnostic only: focusing the *existing* Chunks task is not accepted as
   # proof that the foreign sender foregrounded it. Do not submit/Start/reopen
   # a source or let this salvage the failing first-launch assertion.
