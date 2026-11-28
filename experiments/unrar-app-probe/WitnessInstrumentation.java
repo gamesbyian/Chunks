@@ -197,6 +197,7 @@ public final class WitnessInstrumentation extends Instrumentation {
             runCase(context, "budget", good, 1047, false, receipt);
             runCase(context, "positive_after_refusals", good, 1048, true, receipt);
             corpus(context, receipt);
+            IsolatedInputWitness.run(context, a, receipt);
             receipt.append("CHUNKS_UNRAR_JNI: PASS app_uid=").append(Process.myUid()).append('\n');
             result.putString("stream", receipt.toString());
             finish(Activity.RESULT_OK, result);
