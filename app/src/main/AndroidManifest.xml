@@ -21,7 +21,7 @@
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/ChunksAndroidTheme">
         <!-- #1786: one Chunks task. With singleTop, Open With/Share from another app
              created a second MainActivity inside the *source app's* task; its RAM-only
              Add handoff vanished with that task and the launcher icon showed a different

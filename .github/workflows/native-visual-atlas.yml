@@ -6,6 +6,10 @@ on:
     paths:
       - ".github/workflows/native-visual-atlas.yml"
       - "tools/native_visual_atlas.py"
+      - "tools/native_statusbar_contrast.py"
+      - "tests/test_native_statusbar_contrast.py"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/res/values/styles.xml"
       - "tests/test_native_visual_atlas.py"
       - "tools/native_atlas_capture.sh"
       - "tools/native_atlas_launcher_anr.py"
@@ -44,6 +48,7 @@ jobs:
       - name: Test first-launch atlas receipt validator before Android SDK/emulator setup
         run: |
           python3 -m unittest discover -s tests -p test_native_visual_atlas.py
+          python3 -m unittest discover -s tests -p test_native_statusbar_contrast.py
           python3 -m unittest discover -s tests -p test_native_atlas_launcher_anr.py
           bash -n tools/native_atlas_capture.sh
       - uses: actions/setup-node@v4
