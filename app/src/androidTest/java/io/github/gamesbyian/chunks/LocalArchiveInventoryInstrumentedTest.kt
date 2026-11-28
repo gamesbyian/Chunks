@@ -42,7 +42,9 @@ class LocalArchiveInventoryInstrumentedTest {
         val pieceSize = 16 * 1024
         val unrelated = ByteArray(6 * pieceSize).also { Random(741L).nextBytes(it) }
         File(seed, "Unrelated.bin").writeBytes(unrelated)
-        val torrent = TorrentBuilder().path(seed).pieceSize(pieceSize).generate().entry().bencode()
+        val torrent = TorrentBuilder().flags(TorrentBuilder.V1_ONLY).path(seed).pieceSize(pieceSize).generate().entry().bencode()
+        // This exact-byte reader deliberately supports pure v1; default native builder is hybrid.
+        io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(torrent)
         val destination = File(root, "destination").apply { assertTrue(mkdir()) }
         val payload = File(destination, seed.name).apply { assertTrue(mkdir()) }
         archives.forEach { (name, bytes) -> File(payload, name).writeBytes(bytes) }
@@ -84,7 +86,12 @@ class LocalArchiveInventoryInstrumentedTest {
             assertTrue(LocalArchiveInventory.canInspectHeaders(group))
             assertEquals(io.github.gamesbyian.chunks.model.RarVolumeStructure.TERMINAL_CHAIN,
                 LocalArchiveInventory.inspectHeaders(engine, review, group))
-            val snapshot = requireNotNull(LocalArchiveInventory.captureExactBytes(engine, review, group))
+            val plan = requireNotNull(engine.readArchivePiecePlan(hash, review.nativeToken, review.savePath,
+                group.volumes.map { it.file })) { "Pure-v1 native piece plan unavailable" }
+            assertTrue(plan.pieces.isNotEmpty())
+            val snapshot = requireNotNull(LocalArchiveInventory.captureExactBytes(engine, review, group)) {
+                "Pure-v1 exact source capture unavailable"
+            }
             assertEquals(2, snapshot.volumeCount)
             assertEquals(archives.values.sumOf { it.size.toLong() }, snapshot.sizeBytes)
             snapshot.sources().zip(names).forEach { (source, name) ->
@@ -131,7 +138,8 @@ class LocalArchiveInventoryInstrumentedTest {
         val engine = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0"))
         try {
             engine.start()
-            val torrent = TorrentBuilder().path(folder).pieceSize(16 * 1024).generate().entry().bencode()
+            val torrent = TorrentBuilder().flags(TorrentBuilder.V1_ONLY).path(folder).pieceSize(16 * 1024).generate().entry().bencode()
+            io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(torrent)
             val hash = (engine.addStopped(torrent, root) as LocalAddResult.AddedStopped).status.infoHash
             engine.resume(hash)
             val deadline = System.nanoTime() + 30_000_000_000L
