@@ -212,12 +212,41 @@ class RTorrentInstalledAddResponseFaultTest {
                 val originalIntent = openForStoppedAdd(activity, document, hash)
                 faultRelay.arm(fault)
                 journey.submit()
-                stage("add-fault-$fault-dispatched-once")
+                // A UI submit return is not independent evidence of an RPC dispatch.
+                stage("add-fault-$fault-submit-returned")
 
-                rule.waitUntil(45_000) {
-                    runBlocking { witness.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
-                        ?.let { it.name == name && !it.started } == true
+                try {
+                    rule.waitUntil(45_000) {
+                        runBlocking { witness.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
+                            ?.let { it.name == name && !it.started } == true
+                    }
+                } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                    // Diagnose the failed precondition without accepting an alternate
+                    // success condition or retrying the mutation. Each observation is
+                    // independent; a broken relay must not suppress the direct daemon checks.
+                    val relay = try { faultRelay.addDiagnostic() }
+                        catch (_: Exception) { "relay=unavailable" }
+                    val session = try {
+                        when (runBlocking { witness.lookupName(hash) }) {
+                            null -> "absent"
+                            name -> "exact"
+                            else -> "name_mismatch"
+                        }
+                    } catch (_: Exception) { "unavailable" }
+                    val main = try {
+                        val rows = runBlocking { witness.listTransfers("main").filter { it.hash.equals(hash, true) } }
+                        when {
+                            rows.isEmpty() -> "absent"
+                            rows.size != 1 -> "ambiguous"
+                            rows.single().name != name -> "name_mismatch"
+                            rows.single().started -> "started"
+                            else -> "exact_stopped"
+                        }
+                    } catch (_: Exception) { "unavailable" }
+                    stage("add-fault-$fault-registration-timeout $relay session=$session main=$main")
+                    throw AssertionError("Exact stopped registration did not appear: $relay session=$session main=$main", failure)
                 }
+                stage("add-fault-$fault-exact-stopped-registration-observed")
                 val hideFromMain = fault == "timeout"
                 if (hideFromMain) runBlocking { witness.call("view.set_not_visible", listOf(hash, "main")) }
                 try {
