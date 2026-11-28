@@ -1,5 +1,10 @@
 """Offline tests: skipped, cancelled or absent gates are never passes."""
 import sys
+import contextlib
+import io
+import json
+import tempfile
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -152,6 +157,71 @@ class AcceptanceReportTest(unittest.TestCase):
         base = r.profile_gates(CONFIG, "integration")
         extended = r.profile_gates(CONFIG, "integration-real-peer")
         self.assertEqual(base + ["installed-magnet-lifecycle"], extended)
+
+    def test_live_inventory_requires_full_sha_before_request(self):
+        for ref in ("main", "abc123", "refs/pull/1/merge", "g" * 40):
+            with self.subTest(ref=ref), patch.object(r, "_get") as get:
+                with self.assertRaises(ValueError):
+                    r.fetch_checks("gamesbyian/Chunks", ref)
+                get.assert_not_called()
+
+    def test_live_inventory_fetches_all_attempts_and_exact_source(self):
+        sha = "a" * 40
+        first = dict(check("build", "success"), head_sha=sha, id=1)
+        second = dict(check("build", "failure"), head_sha=sha, id=2)
+        with patch.object(r, "_get", side_effect=[
+            {"total_count": 2, "check_runs": [first]},
+            {"total_count": 2, "check_runs": [second]},
+        ]) as get:
+            checks = r.fetch_checks("gamesbyian/Chunks", sha)
+        self.assertEqual([first, second], checks)
+        self.assertEqual(2, get.call_count)
+        self.assertIn("filter=all", get.call_args_list[0].args[0])
+        self.assertIn("page=2", get.call_args_list[1].args[0])
+        self.assertFalse(r.evaluate(checks, ["build"], CONFIG, {})["acceptable"])
+
+    def test_live_inventory_rejects_incomplete_or_inconsistent_pages(self):
+        sha = "a" * 40
+        first = dict(check("build"), head_sha=sha, id=1)
+        second = dict(check("check"), head_sha=sha, id=2)
+        for pages in (
+            [{"total_count": 2, "check_runs": [first]},
+             {"total_count": 2, "check_runs": []}],
+            [{"total_count": 2, "check_runs": [first]},
+             {"total_count": 3, "check_runs": [second]}],
+            [{"total_count": 2, "check_runs": [first, first]}],
+            [{"total_count": 1, "check_runs": [first, second]}],
+            [{"total_count": 1, "check_runs": [dict(first, head_sha="b" * 40)]}],
+            [{"total_count": 1, "check_runs": [check("build")]}],
+            [{"total_count": 1, "check_runs": [dict(first, id=None)]}],
+        ):
+            with self.subTest(pages=pages), patch.object(r, "_get", side_effect=pages):
+                with self.assertRaises(ValueError):
+                    r.fetch_checks("gamesbyian/Chunks", sha)
+
+    def test_empty_inventory_is_not_a_pass(self):
+        with patch.object(r, "_get", return_value={"total_count": 0, "check_runs": []}):
+            checks = r.fetch_checks("gamesbyian/Chunks", "a" * 40)
+        self.assertEqual([], checks)
+        self.assertFalse(r.evaluate(checks, ["build"], CONFIG, {})["acceptable"])
+
+    def test_offline_fixture_is_explicitly_not_live_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "checks.json"
+            fixture.write_text(json.dumps({"check_runs": all_green("foundation")}))
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), patch.object(r, "_get") as get:
+                code = r.main(["--fixture", str(fixture), "--sha", "a" * 40,
+                               "--profile", "foundation"])
+            self.assertEqual(0, code)
+            get.assert_not_called()
+            self.assertIn("OFFLINE FIXTURE: synthetic input, not live commit acceptance evidence.", output.getvalue())
+
+    def test_waiver_verdict_never_claims_every_gate_executed(self):
+        report = r.evaluate([], ["build"], CONFIG, {"build": "explicit scope waiver"})
+        rendered = r.render(report, "a" * 40, "foundation")
+        self.assertIn("ACCEPTABLE with explicit waivers", rendered)
+        self.assertNotIn("every required gate executed", rendered)
 
     def test_unknown_profile_is_rejected(self):
         with self.assertRaises(ValueError):

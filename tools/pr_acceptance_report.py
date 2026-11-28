@@ -145,9 +145,13 @@ def render(report: dict, sha: str, profile: str) -> str:
         lines.append(f"  {row['state'].upper():13} {row['gate']}  [{row['detail']}]")
     if report["unlisted"]:
         lines += ["", "Other checks on this commit (not part of the profile): " + ", ".join(report["unlisted"])]
-    lines += ["", "ACCEPTABLE: every required gate executed and passed on this exact commit."
-              if report["acceptable"] else
-              "NOT ACCEPTABLE. Blocking: " + "; ".join(report["blockers"])]
+    if report["acceptable"]:
+        verdict = ("ACCEPTABLE with explicit waivers: all non-waived gates passed."
+                   if any(row["state"] == "waived" for row in report["rows"])
+                   else "ACCEPTABLE: every required gate executed and passed on this exact commit.")
+    else:
+        verdict = "NOT ACCEPTABLE. Blocking: " + "; ".join(report["blockers"])
+    lines += ["", verdict]
     lines.append("Skipped, cancelled or absent gates are not passes; emulator results are not physical-device evidence.")
     return "\n".join(lines)
 
@@ -162,13 +166,40 @@ def _get(url: str):
         return json.load(response)
 
 
+def immutable_sha(value: str) -> bool:
+    return bool(re.fullmatch(r"[0-9a-fA-F]{40}", value))
+
+
 def fetch_checks(repo: str, sha: str) -> list[dict]:
-    checks, page = [], 1
+    if not immutable_sha(sha):
+        raise ValueError("Live acceptance requires a full immutable commit SHA")
+    checks, page, expected = [], 1, None
+    seen_ids = set()
     while True:
-        data = _get(f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs?per_page=100&page={page}")
-        checks += data["check_runs"]
-        if len(checks) >= data["total_count"] or not data["check_runs"]:
+        # Include earlier executions so evaluate() can compare exact child
+        # and unexpanded caller results across workflow runs and attempts.
+        data = _get(f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs?filter=all&per_page=100&page={page}")
+        total, batch = data["total_count"], data["check_runs"]
+        if type(total) is not int or total < 0 or not isinstance(batch, list):
+            raise ValueError("Invalid check-run page metadata")
+        if expected is None:
+            expected = total
+        if total != expected:
+            raise ValueError("Check-run inventory changed during pagination; fetch again")
+        for check in batch:
+            if not isinstance(check, dict) or check.get("head_sha") != sha.lower():
+                raise ValueError("Check-run source does not match the requested exact commit")
+            identity = check.get("id")
+            if type(identity) is not int or identity <= 0 or identity in seen_ids:
+                raise ValueError("Missing or duplicate check-run identity")
+            seen_ids.add(identity)
+        checks.extend(batch)
+        if len(checks) > expected:
+            raise ValueError("Check-run page exceeded declared inventory")
+        if len(checks) == expected:
             return checks
+        if not batch:
+            raise ValueError("Incomplete check-run inventory; no acceptance verdict")
         page += 1
 
 
@@ -205,11 +236,16 @@ def main(argv: list[str] | None = None) -> int:
         checks = json.loads(Path(args.fixture).read_text(encoding="utf-8"))["check_runs"]
         sha = args.sha or "(fixture)"
     else:
-        if not args.sha:
-            parser.error("--sha is required (the exact commit being accepted)")
-        checks, sha = fetch_checks(args.repo, args.sha), args.sha
+        if not args.sha or not immutable_sha(args.sha):
+            parser.error("--sha must be a full immutable 40-hex commit SHA")
+        try:
+            checks, sha = fetch_checks(args.repo, args.sha), args.sha
+        except ValueError as exc:
+            parser.error(str(exc))
         attach_steps(args.repo, checks)
     report = evaluate(checks, profile_gates(config, args.profile), config, waivers, args.draft)
+    if args.fixture:
+        print("OFFLINE FIXTURE: synthetic input, not live commit acceptance evidence.")
     print(render(report, sha, args.profile))
     return 0 if report["acceptable"] else 1
 
