@@ -36,6 +36,11 @@ internal fun CombinedSelectedFileSearch(
     onOpen: (UnifiedTransferKey) -> Unit
 ) {
     if (selected.isEmpty()) return
+    if (selected.size > SelectedFileSearch.MAX_TRANSFERS) {
+        androidx.compose.material3.Text("Find files: select at most " +
+            SelectedFileSearch.MAX_TRANSFERS + " transfers for one search.")
+        return
+    }
     val app = LocalContext.current.applicationContext
     val visibleByKey = visible.filter { it.key in selected }.associateBy { it.key }
     // Do not silently narrow a previously selected batch after filters change.

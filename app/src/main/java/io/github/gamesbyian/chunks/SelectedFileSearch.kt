@@ -3,8 +3,10 @@ package io.github.gamesbyian.chunks
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import io.github.gamesbyian.chunks.rpc.ClientFile
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -50,7 +52,8 @@ internal object SelectedFileSearch {
         val pageCount: Int get() = ((matches.size + PAGE_SIZE - 1) / PAGE_SIZE).coerceAtLeast(1)
         fun page(index: Int): List<Match> {
             require(index in 0 until pageCount)
-            return matches.drop(index * PAGE_SIZE).take(PAGE_SIZE)
+            val start = index * PAGE_SIZE
+            return matches.subList(start, minOf(start + PAGE_SIZE, matches.size))
         }
     }
 
@@ -110,38 +113,60 @@ internal object SelectedFileSearch {
                 continue
             }
 
-            val limit = minOf(MAX_FILES_PER_TRANSFER, MAX_FILES_TOTAL - examined)
-            val bounded = ArrayList<ClientFile>()
-            var pathChars = 0
-            for (file in files.take(limit)) {
-                if (file.path.length > MAX_PATH_CHARS_TOTAL - examinedPathChars - pathChars) break
-                bounded += file
-                pathChars += file.path.length
+            // Potentially expensive Unicode matching and row validation are CPU work,
+            // not UI work. Authorization checks remain on the caller dispatcher.
+            val inspected = withContext(Dispatchers.Default) {
+                inspect(target, files, query, MAX_FILES_TOTAL - examined,
+                    MAX_PATH_CHARS_TOTAL - examinedPathChars, clock())
             }
-            // Preserve provider indices, including sparse indices and repeated paths.
-            // Duplicate indices or malformed rows are ambiguous, so refuse this source.
-            if (bounded.any { it.index < 0 || it.sizeBytes < 0 || it.path.isBlank() ||
-                    it.path.length > MAX_PATH_LENGTH || it.path.any(Char::isISOControl) ||
-                    it.completedBytes?.let { n -> n !in 0L..it.sizeBytes } == true } ||
-                bounded.map { it.index }.distinct().size != bounded.size
-            ) {
-                sources += SourceResult(target.key, Coverage.INVALID, 0)
-            } else {
-                examined += bounded.size
-                examinedPathChars += pathChars
-                val observedAt = clock()
-                for (file in bounded) if (file.path.contains(query, ignoreCase = true)) {
-                    matches += Match(target.key, target.clientLabel, target.transferName, file.index,
-                        file.path, file.sizeBytes, file.completedBytes, observedAt)
-                }
-                sources += SourceResult(target.key,
-                    if (files.size > bounded.size) Coverage.LIMITED else Coverage.OBSERVED, bounded.size)
-            }
+            if (!viewCurrent() || !target.authorized()) return Outcome.Revoked
+            examined += inspected.examined
+            examinedPathChars += inspected.pathChars
+            matches += inspected.matches
+            sources += SourceResult(target.key, inspected.coverage, inspected.examined)
             progress(sources.size, targets.size)
         }
         currentCoroutineContext().ensureActive()
         // Also revoke on a previously read owner's generation change.
         if (!viewCurrent() || targets.any { it.read != null && !it.authorized() }) return Outcome.Revoked
         return Outcome.Observed(Result(matches.toList(), sources.toList()))
+    }
+
+    private data class Inspected(
+        val coverage: Coverage,
+        val examined: Int,
+        val pathChars: Int,
+        val matches: List<Match>
+    )
+
+    private suspend fun inspect(
+        target: Target, files: List<ClientFile>, query: String,
+        remainingFiles: Int, remainingPathChars: Int, observedAt: Long
+    ): Inspected {
+        val limit = minOf(MAX_FILES_PER_TRANSFER, remainingFiles)
+        val indices = HashSet<Int>()
+        val matches = ArrayList<Match>()
+        var examined = 0
+        var pathChars = 0
+        for (file in files.take(limit)) {
+            currentCoroutineContext().ensureActive()
+            if (file.path.length > remainingPathChars - pathChars) break
+            // Preserve provider indices, including sparse indices and repeated paths.
+            // Duplicate indices or malformed rows are ambiguous; refuse this source.
+            if (file.index < 0 || file.sizeBytes < 0 || file.path.isBlank() ||
+                file.path.length > MAX_PATH_LENGTH ||
+                file.path.any { it.isISOControl() || it in '\u202A'..'\u202E' || it in '\u2066'..'\u2069' } ||
+                file.completedBytes?.let { n -> n !in 0L..file.sizeBytes } == true ||
+                !indices.add(file.index)
+            ) return Inspected(Coverage.INVALID, 0, 0, emptyList())
+            examined++
+            pathChars += file.path.length
+            if (file.path.contains(query, ignoreCase = true)) {
+                matches += Match(target.key, target.clientLabel, target.transferName, file.index,
+                    file.path, file.sizeBytes, file.completedBytes, observedAt)
+            }
+        }
+        return Inspected(if (files.size > examined) Coverage.LIMITED else Coverage.OBSERVED,
+            examined, pathChars, matches)
     }
 }

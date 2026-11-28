@@ -72,6 +72,29 @@ class SelectedFileSearchTest {
         assertEquals(0, reads)
     }
 
+    @Test fun globalFileAndPathBudgetsAreDisclosedAndDoNotReadPastExhaustion() = runBlocking {
+        val sources = List(6) { i ->
+            target("many-$i", List(SelectedFileSearch.MAX_FILES_PER_TRANSFER) { file(it, "match/$it") })
+        }
+        val found = result(SelectedFileSearch.scan("match", sources, { true }))
+        assertEquals(SelectedFileSearch.MAX_FILES_TOTAL, found.matches.size)
+        assertEquals(SelectedFileSearch.Coverage.LIMITED, found.sources[4].coverage)
+        assertEquals(0, found.sources[5].examined)
+
+        val longPath = "match" + "a".repeat(SelectedFileSearch.MAX_PATH_LENGTH - 5)
+        val long = target("long", List(1_000) { file(it, longPath) })
+        val more = target("more", listOf(file(0, longPath)))
+        val bounded = result(SelectedFileSearch.scan("match", listOf(long, more), { true }))
+        assertTrue(bounded.matches.sumOf { it.path.length } <= SelectedFileSearch.MAX_PATH_CHARS_TOTAL)
+        assertEquals(listOf(SelectedFileSearch.Coverage.LIMITED, SelectedFileSearch.Coverage.LIMITED),
+            bounded.sources.map { it.coverage })
+
+        val deceptive = target("bidi", listOf(file(0, "match\u202Etxt")))
+        val invalid = result(SelectedFileSearch.scan("match", listOf(deceptive), { true }))
+        assertTrue(invalid.matches.isEmpty())
+        assertEquals(SelectedFileSearch.Coverage.INVALID, invalid.sources.single().coverage)
+    }
+
     @Test fun revokingOwnerDuringReadDiscardsAllEarlierResultsAndDoesNotReadLaterSources() = runBlocking {
         val first = target("first", listOf(file(0, "match")))
         val waiting = CompletableDeferred<Unit>()
