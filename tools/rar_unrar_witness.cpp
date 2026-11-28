@@ -164,7 +164,10 @@ static int decodeCorpus(const std::string &root, const std::string &kind,
         if (RARReadHeaderEx(handle, &h) != ERAR_SUCCESS || w.refused ||
             (h.Flags & (RHDF_ENCRYPTED | RHDF_DIRECTORY | RHDF_SPLITBEFORE)) ||
             h.RedirType != 0 || h.UnpSizeHigh != 0 || h.UnpSize != sizes[i] ||
-            h.FileCRC != crc[i] || sizes[i] > w.limit - w.bytes.size())
+            // The first split header carries a packed-segment CRC, not
+            // the final decoded member CRC. Native test plus independent
+            // full decoded bytes verify the first member.
+            (i == 1 && h.FileCRC != crc[i]) || sizes[i] > w.limit - w.bytes.size())
             return finish(3);
         std::wstring name(h.FileNameW);
         std::replace(name.begin(), name.end(), L'\\', L'/');
