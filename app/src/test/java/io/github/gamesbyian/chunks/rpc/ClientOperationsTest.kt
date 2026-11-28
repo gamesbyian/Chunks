@@ -292,6 +292,7 @@ class ClientOperationsTest {
             "empty target roster" to { it.files = emptyList() },
             "empty nested sibling roster" to { it.siblings = mapOf(sibling("/d")) },
             "interior repeated separator" to { it.siblings = mapOf(sibling("/d//n", "a.bin")) },
+            "ambiguous network-style root" to { it.siblings = mapOf(sibling("//d/n", "a.bin")) },
             "backslash" to { it.siblings = mapOf(sibling("/d", "n\\\\a.bin")) },
             "duplicate sibling hash" to {
                 val first = sibling("/d", "x")
