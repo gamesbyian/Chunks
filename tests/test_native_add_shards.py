@@ -75,7 +75,7 @@ class ShardedNativeAddTests(unittest.TestCase):
 
     def test_exact_native_witnesses_cannot_be_replaced_by_other_passing_cases(self):
         expected = {
-            hashlib.sha256(("io.github.gamesbyian.chunks." + cls + "\0" + method).encode()).hexdigest()
+            hashlib.sha256(("io.github.gamesbyian.chunks." + cls + "\\0" + method).encode()).hexdigest()
             for cls, method in (
                 ("LocalArchiveInventoryInstrumentedTest", "actualCompleteRarSetCanBeInspectedWhileOtherTorrentPiecesRemainCorrupt"),
                 ("LocalArchiveInventoryInstrumentedTest", "canonicalDetailsInspectsNativeVerifiedVolumeHeadersAndKeepsFilenameGaps"),
@@ -87,6 +87,23 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.change(1, lambda d: d["test_cases"][-1].update(id_sha256="f" * 64))
         with self.assertRaisesRegex(ValueError, "required native witness"):
             self.check()
+
+    def test_required_identities_match_real_junit_receipt_producer(self):
+        # Exercise the actual producer, not another copy of the hash formula.
+        from ci_failure_digest import make_digest
+        import xml.etree.ElementTree as ET
+        suite = ET.Element("testsuite", tests="3", failures="0", errors="0", skipped="0")
+        for cls, method in (
+            ("LocalArchiveInventoryInstrumentedTest", "actualCompleteRarSetCanBeInspectedWhileOtherTorrentPiecesRemainCorrupt"),
+            ("LocalArchiveInventoryInstrumentedTest", "canonicalDetailsInspectsNativeVerifiedVolumeHeadersAndKeepsFilenameGaps"),
+            ("LocalTorrentEngineInstrumentedTest", "nativePieceMapShowsVerifiedPositionsAndRefusesWrongRegistration"),
+        ):
+            ET.SubElement(suite, "testcase", classname="io.github.gamesbyian.chunks." + cls, name=method)
+        path = self.root / "witnesses.xml"
+        ET.ElementTree(suite).write(path, encoding="utf-8")
+        receipt = make_digest([str(path)], "success", "fixture", env={})
+        self.assertEqual(REQUIRED_NATIVE_WITNESS_IDS,
+                         {c["id_sha256"] for c in receipt["test_cases"] if c["outcome"] == "passed"})
 
     def test_required_native_witness_cannot_use_generic_skip_allowance(self):
         def skip(d):

@@ -112,7 +112,7 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
 # baseline counts cannot distinguish a missing/skipped witness from another
 # unrelated passing case. Keep stable exact identities, not raw test output.
 REQUIRED_NATIVE_WITNESS_IDS = frozenset(
-    hashlib.sha256(("io.github.gamesbyian.chunks." + cls + "\0" + method).encode()).hexdigest()
+    hashlib.sha256(("io.github.gamesbyian.chunks." + cls + "\\0" + method).encode()).hexdigest()
     for cls, method in (
         ("LocalArchiveInventoryInstrumentedTest", "actualCompleteRarSetCanBeInspectedWhileOtherTorrentPiecesRemainCorrupt"),
         ("LocalArchiveInventoryInstrumentedTest", "canonicalDetailsInspectsNativeVerifiedVolumeHeadersAndKeepsFilenameGaps"),
