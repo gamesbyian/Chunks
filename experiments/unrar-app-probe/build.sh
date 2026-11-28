@@ -11,6 +11,12 @@ fi
 mkdir -p "$work/classes" "$work/dex" "$work/assets"
 cp app/src/androidTest/assets/rar-volume-review/Verified.part{1,2}.rar "$work/assets/"
 cp upstream-unrar/license.txt "$work/assets/UnRAR-LICENSE.txt"
+test "$(git -C upstream-rarfile-fixtures rev-parse HEAD)" = d2f7df6fc843dae356fd6b0a85971dc36fd6e757
+# Only the nine known files; never package the upstream tree or other fixtures.
+for name in rar3-old.rar rar3-old.r00 rar3-old.r01 rar3-vols.part{1,2,3}.rar rar5-vols.part{1,2,3}.rar; do
+  cp "upstream-rarfile-fixtures/test/files/$name" "$work/assets/$name"
+done
+cp upstream-rarfile-fixtures/LICENSE "$work/assets/rarfile-fixtures-LICENSE.txt"
 javac --release 8 -classpath "$platform" -d "$work/classes" experiments/unrar-app-probe/WitnessInstrumentation.java
 "$bt/d8" --min-api 29 --lib "$platform" --output "$work/dex" "$work/classes/io/github/gamesbyian/chunks/unrarprobe/WitnessInstrumentation.class"
 "$bt/aapt2" link -o "$work/unsigned.apk" -I "$platform" --manifest experiments/unrar-app-probe/AndroidManifest.xml -A "$work/assets"
