@@ -57,6 +57,7 @@ class LocalPayloadAccessInstrumentedTest {
             val uri = requireNotNull(LocalPayloadAccess.issue(context, prepared))
             assertFalse(uri.toString().contains(row.path))
             assertFalse(uri.toString().contains(hash))
+            assertNull("A prepared handoff is single-use", LocalPayloadAccess.issue(context, prepared))
             val unknown = Uri.Builder().scheme("content").authority(LocalPayloadAccess.authority(context))
                 .appendPath("00000000-0000-0000-0000-000000000000").build()
             assertNotNull(runCatching { resolver.openFileDescriptor(unknown, "r")?.close() }.exceptionOrNull())
@@ -105,14 +106,37 @@ class LocalPayloadAccessInstrumentedTest {
             } finally { seek.close() }
             assertNotNull(runCatching { resolver.openFileDescriptor(uri, "r")?.close() }.exceptionOrNull())
 
-            val protected = requireNotNull(LocalPayloadAccess.issue(context, prepared))
+            assertNull("Revoking a token cannot restore its preparation",
+                LocalPayloadAccess.issue(context, prepared))
+
+            val beforeRevoke = requireNotNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
+            LocalPayloadAccess.revokeAll(context)
+            assertNull("Revoke all invalidates an unissued preparation",
+                LocalPayloadAccess.issue(context, beforeRevoke))
+            var revokedWhilePreparing = false
+            assertNull("Revoke all fences an in-flight preparation", LocalPayloadAccess.prepare(
+                context, engine, review, row) {
+                if (!revokedWhilePreparing) {
+                    revokedWhilePreparing = true
+                    LocalPayloadAccess.revokeAll(context)
+                }
+                false
+            })
+            assertTrue(revokedWhilePreparing)
+
+            val freshGrant = requireNotNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
+            val protected = requireNotNull(LocalPayloadAccess.issue(context, freshGrant))
+            val pendingPrivacy = requireNotNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
+            requireNotNull(resolver.openFileDescriptor(protected, "r")).use {
+                assertArrayEquals(bytes.copyOfRange(301, 316), readAt(it, 301, 15))
+            }
             assertTrue(policy.setMode(scope, TransferLockMode.ONCE_PER_PROCESS, true))
             assertNull(LocalPayloadAccess.lookup(context, protected))
             assertNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
             assertTrue(policy.setMode(scope, TransferLockMode.NEVER, true))
             assertNull(LocalPayloadAccess.lookup(context, protected))
             assertNull("Old preparation cannot inherit a new privacy epoch",
-                LocalPayloadAccess.issue(context, prepared))
+                LocalPayloadAccess.issue(context, pendingPrivacy))
 
             val fresh = requireNotNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
             val swapped = requireNotNull(LocalPayloadAccess.issue(context, fresh))
