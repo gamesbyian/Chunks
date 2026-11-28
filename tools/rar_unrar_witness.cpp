@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include <utility>
+#include <algorithm>
 #ifdef CHUNKS_UNRAR_JNI
 #include <jni.h>
 #endif
@@ -17,12 +18,12 @@
 #endif
 
 struct Witness {
-    std::string next;
-    std::wstring nextWide;
+    std::vector<std::string> next;
+    std::vector<std::wstring> nextWide;
     std::vector<unsigned char> bytes;
     size_t limit;
-    bool narrowSeen = false;
-    bool wideSeen = false;
+    size_t narrowSeen = 0;
+    size_t wideSeen = 0;
     bool refused = false;
 };
 
@@ -39,16 +40,16 @@ static int CALLBACK receive(UINT message, LPARAM user, LPARAM p1, LPARAM p2) {
         } catch (...) { return refuse(); }
         return 1;
     case UCM_CHANGEVOLUME:
-        if (p2 != RAR_VOL_NOTIFY || !p1 || w.narrowSeen ||
-            w.next != reinterpret_cast<const char *>(p1))
+        if (p2 != RAR_VOL_NOTIFY || !p1 || w.narrowSeen >= w.next.size() ||
+            w.next[w.narrowSeen] != reinterpret_cast<const char *>(p1))
             return refuse();
-        w.narrowSeen = true;
+        ++w.narrowSeen;
         return 1;
     case UCM_CHANGEVOLUMEW:
-        if (p2 != RAR_VOL_NOTIFY || !p1 || w.wideSeen ||
-            w.nextWide != reinterpret_cast<const wchar_t *>(p1))
+        if (p2 != RAR_VOL_NOTIFY || !p1 || w.wideSeen >= w.nextWide.size() ||
+            w.nextWide[w.wideSeen] != reinterpret_cast<const wchar_t *>(p1))
             return refuse();
-        w.wideSeen = true;
+        ++w.wideSeen;
         return 1;
     default:
         // No passwords, dictionary overrides, guessed names or other callbacks.
@@ -63,8 +64,8 @@ static int decodeFixture(const std::string &directory, size_t limit,
     if (limit != 1048 && limit != 1047) return 2;
     const std::string first = directory + "/Verified.part1.rar";
     Witness w;
-    w.next = directory + "/Verified.part2.rar";
-    w.nextWide.assign(w.next.begin(), w.next.end());
+    w.next.push_back(directory + "/Verified.part2.rar");
+    w.nextWide.emplace_back(w.next[0].begin(), w.next[0].end());
     w.limit = limit;
     RAROpenArchiveDataEx open{};
     open.ArcName = const_cast<char *>(first.c_str());
@@ -101,8 +102,8 @@ static int decodeFixture(const std::string &directory, size_t limit,
     // bytes to the callback. RAR_EXTRACT is deliberately never called.
     status = RARProcessFile(handle, RAR_TEST, nullptr, nullptr);
     if (status != ERAR_SUCCESS || w.refused || w.bytes.size() != 1048 ||
-        !w.narrowSeen || !w.wideSeen) {
-        std::fprintf(stderr, "test refused: %d bytes=%zu narrow=%d wide=%d\n",
+        w.narrowSeen != w.next.size() || w.wideSeen != w.nextWide.size()) {
+        std::fprintf(stderr, "test refused: %d bytes=%zu narrow=%zu wide=%zu\n",
                      status, w.bytes.size(), w.narrowSeen, w.wideSeen);
         return finish(3);
     }
@@ -115,8 +116,78 @@ static int decodeFixture(const std::string &directory, size_t limit,
 }
 
 #ifndef CHUNKS_UNRAR_JNI
+// Independently generated upstream regression corpus: exact named members
+// and volume transitions, two stored members, no arbitrary archive API.
+// The original compressed fixture and installed JNI tests stay mandatory.
+static int decodeCorpus(const std::string &root, const std::string &kind,
+                        size_t limit, std::vector<unsigned char> &decoded) {
+    const bool legacy = kind == "legacy4";
+    if (!legacy && kind != "modern4" && kind != "modern5") return 2;
+    if (limit != 207050 && limit != 207049) return 2;
+    std::vector<std::string> names = legacy ?
+        std::vector<std::string>{"rar3-old.rar", "rar3-old.r00", "rar3-old.r01"} :
+        (kind == "modern4" ?
+            std::vector<std::string>{"rar3-vols.part1.rar", "rar3-vols.part2.rar", "rar3-vols.part3.rar"} :
+            std::vector<std::string>{"rar5-vols.part1.rar", "rar5-vols.part2.rar", "rar5-vols.part3.rar"});
+    Witness w;
+    w.limit = limit;
+    for (size_t i = 1; i < names.size(); ++i) {
+        w.next.push_back(root + "/" + names[i]);
+        w.nextWide.emplace_back(w.next.back().begin(), w.next.back().end());
+    }
+    std::string first = root + "/" + names[0];
+    RAROpenArchiveDataEx open{};
+    open.ArcName = const_cast<char *>(first.c_str());
+    open.OpenMode = RAR_OM_EXTRACT;
+    open.Callback = receive;
+    open.UserData = reinterpret_cast<LPARAM>(&w);
+    open.MaxAllocate = 128;
+    open.MaxRuntime = 10;
+    open.MaxDiskWrite = 1;
+    auto handle = RAROpenArchiveEx(&open);
+    if (!handle || open.OpenResult != ERAR_SUCCESS) {
+        if (handle) RARCloseArchive(handle);
+        return 3;
+    }
+    auto finish = [&](int code) {
+        const int closed = RARCloseArchive(handle);
+        return code == 0 && closed != ERAR_SUCCESS ? 3 : code;
+    };
+    if (w.refused || (open.Flags & (ROADF_VOLUME | ROADF_FIRSTVOLUME)) !=
+        (ROADF_VOLUME | ROADF_FIRSTVOLUME) || (open.Flags & ROADF_ENCHEADERS))
+        return finish(3);
+    const wchar_t *expectedNames[] = {L"vols/bigfile.txt", L"vols/smallfile.txt"};
+    const size_t sizes[] = {205000, 2050};
+    const unsigned crc[] = {0x509ad74c, 0xd08a1f86};
+    for (size_t i = 0; i < 2; ++i) {
+        RARHeaderDataEx h{};
+        if (RARReadHeaderEx(handle, &h) != ERAR_SUCCESS || w.refused ||
+            (h.Flags & (RHDF_ENCRYPTED | RHDF_DIRECTORY | RHDF_SPLITBEFORE)) ||
+            h.RedirType != 0 || h.UnpSizeHigh != 0 || h.UnpSize != sizes[i] ||
+            // The first split header carries a packed-segment CRC, not
+            // the final decoded member CRC. Native test plus independent
+            // full decoded bytes verify the first member.
+            (i == 1 && h.FileCRC != crc[i]) || sizes[i] > w.limit - w.bytes.size())
+            return finish(3);
+        std::wstring name(h.FileNameW);
+        std::replace(name.begin(), name.end(), L'\\', L'/');
+        if (name != expectedNames[i]) return finish(3);
+        const size_t before = w.bytes.size();
+        if (RARProcessFile(handle, RAR_TEST, nullptr, nullptr) != ERAR_SUCCESS ||
+            w.refused || w.bytes.size() - before != sizes[i])
+            return finish(3);
+    }
+    RARHeaderDataEx end{};
+    if (RARReadHeaderEx(handle, &end) != ERAR_END_ARCHIVE || w.refused ||
+        w.narrowSeen != w.next.size() || w.wideSeen != w.nextWide.size())
+        return finish(3);
+    if (finish(0) != 0) return 3;
+    decoded = std::move(w.bytes);
+    return 0;
+}
+
 int main(int argc, char **argv) {
-    if (argc != 3) return 2;
+    if (argc != 3 && argc != 4) return 2;
 #ifdef __ANDROID__
     // Android shell subprocess only. Scudo reserves large virtual regions,
     // so do not use a host RLIMIT_AS ceiling as an Android memory proof.
@@ -128,9 +199,12 @@ int main(int argc, char **argv) {
     alarm(18);
 #endif
     const std::string limitText = argv[2];
-    if (limitText != "1048" && limitText != "1047") return 2;
+    if (argc == 3 && limitText != "1048" && limitText != "1047") return 2;
+    if (argc == 4 && limitText != "207050" && limitText != "207049") return 2;
     std::vector<unsigned char> bytes;
-    const int status = decodeFixture(argv[1], static_cast<size_t>(std::stoul(limitText)), bytes);
+    const size_t limit = static_cast<size_t>(std::stoul(limitText));
+    const int status = argc == 3 ? decodeFixture(argv[1], limit, bytes) :
+        decodeCorpus(argv[1], argv[3], limit, bytes);
     if (status != 0) return status;
     return std::fwrite(bytes.data(), 1, bytes.size(), stdout) == bytes.size() ? 0 : 4;
 }

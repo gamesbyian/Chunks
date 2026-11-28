@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/unrar-decoder-witness.yml"
       - "tools/rar_unrar_witness.*"
+      - "tools/rar_unrar_corpus.py"
       - "experiments/unrar-app-probe/**"
       - "app/src/androidTest/assets/rar-volume-review/**"
     types: [opened, reopened, synchronize, ready_for_review]
@@ -36,12 +37,24 @@ jobs:
           make -C upstream-unrar -j2 lib
           c++ -std=c++11 -D_UNIX -I upstream-unrar tools/rar_unrar_witness.cpp \
             upstream-unrar/libunrar.a -pthread -o "$RUNNER_TEMP/unrar-witness"
+      - uses: actions/checkout@v4
+        with:
+          repository: markokr/rarfile
+          ref: d2f7df6fc843dae356fd6b0a85971dc36fd6e757
+          path: upstream-rarfile-fixtures
+          persist-credentials: false
       - name: Actual test-mode callback bytes and refusal proof
         run: |
           set -euo pipefail
           printf 'CHUNKS_UNRAR_SOURCE: %s\n' "$(git -C upstream-unrar rev-parse HEAD)" | tee unrar-receipt.txt
           sha256sum "$RUNNER_TEMP/unrar-witness" | tee -a unrar-receipt.txt
           timeout 90s python3 tools/rar_unrar_witness.py app/src/androidTest/assets/rar-volume-review "$RUNNER_TEMP/unrar-witness" 2>&1 | tee -a unrar-receipt.txt
+      - name: Legacy and modern multi-member volume corpus
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream-rarfile-fixtures rev-parse HEAD)" = d2f7df6fc843dae356fd6b0a85971dc36fd6e757
+          test -s upstream-rarfile-fixtures/LICENSE
+          timeout 180s python3 tools/rar_unrar_corpus.py upstream-rarfile-fixtures/test/files "$RUNNER_TEMP/unrar-witness" 2>&1 | tee -a unrar-receipt.txt
       - if: always()
         uses: actions/upload-artifact@v4
         with:
