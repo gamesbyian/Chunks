@@ -6,6 +6,10 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <utility>
+#ifdef CHUNKS_UNRAR_JNI
+#include <jni.h>
+#endif
 #include "dll.hpp"
 #ifdef __ANDROID__
 #include <sys/resource.h>
@@ -52,25 +56,16 @@ static int CALLBACK receive(UINT message, LPARAM user, LPARAM p1, LPARAM p2) {
     }
 }
 
-int main(int argc, char **argv) {
-    if (argc != 3) return 2;
-#ifdef __ANDROID__
-    // Android shell subprocess only. Scudo reserves large virtual regions,
-    // so do not use a host RLIMIT_AS ceiling as an Android memory proof.
-    // The decoder's MaxAllocate, output callback and process CPU/file caps
-    // remain separate; production process/resource isolation is unproved.
-    const struct rlimit cpu = {15, 16}, zero = {0, 0};
-    if (setrlimit(RLIMIT_CPU, &cpu) || setrlimit(RLIMIT_FSIZE, &zero) ||
-        setrlimit(RLIMIT_CORE, &zero)) return 2;
-    alarm(18);
-#endif
-    const std::string first = std::string(argv[1]) + "/Verified.part1.rar";
+// Shared fixed-fixture decoder for both disposable transports. Never calls
+// RAR_EXTRACT, never accepts arbitrary members or writes an output path.
+static int decodeFixture(const std::string &directory, size_t limit,
+                         std::vector<unsigned char> &decoded) {
+    if (limit != 1048 && limit != 1047) return 2;
+    const std::string first = directory + "/Verified.part1.rar";
     Witness w;
-    w.next = std::string(argv[1]) + "/Verified.part2.rar";
+    w.next = directory + "/Verified.part2.rar";
     w.nextWide.assign(w.next.begin(), w.next.end());
-    const std::string limitText = argv[2];
-    if (limitText != "1048" && limitText != "1047") return 2;
-    w.limit = static_cast<size_t>(std::stoul(limitText));
+    w.limit = limit;
     RAROpenArchiveDataEx open{};
     open.ArcName = const_cast<char *>(first.c_str());
     open.OpenMode = RAR_OM_EXTRACT;
@@ -115,6 +110,61 @@ int main(int argc, char **argv) {
     if (RARReadHeaderEx(handle, &end) != ERAR_END_ARCHIVE || w.refused)
         return finish(3);
     if (finish(0) != 0) return 3;
-    // Output only to this process's pipe, and only after full success.
-    return std::fwrite(w.bytes.data(), 1, w.bytes.size(), stdout) == w.bytes.size() ? 0 : 4;
+    decoded = std::move(w.bytes);
+    return 0;
 }
+
+#ifndef CHUNKS_UNRAR_JNI
+int main(int argc, char **argv) {
+    if (argc != 3) return 2;
+#ifdef __ANDROID__
+    // Android shell subprocess only. Scudo reserves large virtual regions,
+    // so do not use a host RLIMIT_AS ceiling as an Android memory proof.
+    // The decoder's MaxAllocate, output callback and process CPU/file caps
+    // remain separate; production process/resource isolation is unproved.
+    const struct rlimit cpu = {15, 16}, zero = {0, 0};
+    if (setrlimit(RLIMIT_CPU, &cpu) || setrlimit(RLIMIT_FSIZE, &zero) ||
+        setrlimit(RLIMIT_CORE, &zero)) return 2;
+    alarm(18);
+#endif
+    const std::string limitText = argv[2];
+    if (limitText != "1048" && limitText != "1047") return 2;
+    std::vector<unsigned char> bytes;
+    const int status = decodeFixture(argv[1], static_cast<size_t>(std::stoul(limitText)), bytes);
+    if (status != 0) return status;
+    return std::fwrite(bytes.data(), 1, bytes.size(), stdout) == bytes.size() ? 0 : 4;
+}
+#else
+// Only the separately packaged synthetic witness calls this; no shipping
+// native API or production privileges. Do not change process-wide rlimits.
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_io_github_gamesbyian_chunks_unrarprobe_WitnessInstrumentation_decode(
+    JNIEnv *env, jclass, jstring root, jint limit) {
+    const char *raw = env->GetStringUTFChars(root, nullptr);
+    if (!raw) return nullptr;
+    std::string directory;
+    try { directory.assign(raw); }
+    catch (...) {
+        env->ReleaseStringUTFChars(root, raw);
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "fixture root allocation");
+        return nullptr;
+    }
+    env->ReleaseStringUTFChars(root, raw);
+    try {
+        std::vector<unsigned char> bytes;
+        const int status = decodeFixture(directory, static_cast<size_t>(limit), bytes);
+        if (status == 3) return nullptr;
+        if (status != 0 || bytes.size() != 1048) {
+            env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "unexpected decoder status");
+            return nullptr;
+        }
+        jbyteArray result = env->NewByteArray(static_cast<jsize>(bytes.size()));
+        if (result) env->SetByteArrayRegion(result, 0, static_cast<jsize>(bytes.size()),
+            reinterpret_cast<const jbyte *>(bytes.data()));
+        return result;
+    } catch (...) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "unexpected native failure");
+        return nullptr;
+    }
+}
+#endif

@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.gamesbyian.chunks.unrarprobe">
+    <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="35" />
+    <application android:label="Disposable UnRAR fixture probe"
+        android:allowBackup="false" android:debuggable="true"
+        android:extractNativeLibs="true" android:hasCode="true" />
+    <instrumentation android:name=".WitnessInstrumentation"
+        android:targetPackage="io.github.gamesbyian.chunks.unrarprobe" />
+</manifest>
