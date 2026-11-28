@@ -74,7 +74,7 @@ These are the individually adopted Fxx.yy identifiers in the three canonical con
 | F04.10 — peers, slots and connection limits | V | P4 | Engine connection/upload slots and safe range/readback. |
 | F04.11 — peer management | U | P4 | Capability-gated exact-peer add/kick/ban, no broad accidental blocks. |
 | F04.12 — peer filtering/proxy metadata | U | P4 | Opt-in verified blocklists/class filters, provenance and undo. |
-| F04.14 — piece-map diagnostic | U | P4 | Bounded piece map with actual availability and verified/skipped legend; not progress chunks. |
+| F04.14 — piece-map diagnostic | P | P4 | #2204 merged: manually reviewed Local native have-bit map, bounded exact contiguous counts, exact registration/Place and accessible ranges; installed aggregate witness green. Downloaded/requested/availability/skipped/shared-boundary and remote capability observation remain. Not progress chunks or write authority. |
 | F04.15 — request algorithm | P | P4 | Finish in Order exists; actual algorithm modes only with piece-demand proof. |
 | F04.21 — disk I/O controls | V | P4 | Writable disk/cache limits with reset and safe unsupported states. |
 | F13.01 — separate proxy paths | U | P4 | Separate proxy routing classes with no silent direct fallback. |
