@@ -286,6 +286,9 @@ internal class DelugeClientCore(
         // Deluge expresses limits in KiB/s, including fractional values.
         // Do not round an inexact read into a false confirmation of a write.
         val decimal = kib.toString().toBigDecimalOrNull() ?: return null
+        // Bound exponent/scale before multiplication and exact integer conversion.
+        // A KiB fraction representing whole bytes needs at most ten decimal places.
+        if (decimal.scale() !in -40..40) return null
         if (decimal.compareTo(java.math.BigDecimal.valueOf(-1L)) == 0 ||
             decimal.signum() == 0) return 0L
         if (decimal.signum() < 0) return null
@@ -452,12 +455,18 @@ internal class DelugeClientCore(
                 }
                 val fullInventory = method == "core.get_torrents_status" &&
                     params.optJSONObject(0)?.has("id") != true
+                val capObservation = !mutating && method == "core.get_torrents_status" &&
+                    !fullInventory && params.optJSONArray(1)?.let {
+                        it.length() == 1 && it.opt(0) == "max_upload_speed"
+                    } == true
                 val json = try {
                     // Keep the existing inventory capacity. An error envelope still
                     // needs strict parsing before it can authorize an auth retry.
                     if (fullInventory) JSONObject(response.body).let {
                         if (it.isNull("error")) it else ExactRpcJson.objectBody(response.body)
-                    } else ExactRpcJson.objectBody(response.body)
+                    } else ExactRpcJson.objectBody(response.body, preserveDecimals = capObservation)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     if (mutating) throw ClientWriteUncertainException("Invalid Deluge reply")
                     throw IOException("Malformed Deluge JSON-RPC reply")

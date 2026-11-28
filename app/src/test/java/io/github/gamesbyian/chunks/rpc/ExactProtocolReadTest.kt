@@ -165,6 +165,9 @@ class ExactProtocolReadTest {
         assertEquals(0L, observe(qb, """{"$hash":0}"""))
         assertEquals(128000L, observe(deluge, de("125.0")))
         assertEquals(1536L, observe(deluge, de("1.5")))
+        assertEquals(1L, observe(deluge, de("0.0009765625")))
+        assertEquals(128000L, observe(deluge, de("125.000000000000000000")))
+        assertEquals(0L, observe(deluge, de("0.000")))
         assertEquals(0L, observe(deluge, de("-1.0")))
 
         for (body in listOf(tr("null", "128"), tr("0", "128"), tr("\"false\"", "128"),
@@ -183,6 +186,8 @@ class ExactProtocolReadTest {
             assertNull("qBittorrent: $body", observe(qb, body))
         }
         for (body in listOf(de("\"125\""), de("125.0001"), de("-2"), de("null"), de("1e100"),
+            de("125.000000000000000001"), de("124.999999999999999999"),
+            de("1e-400"), de("-1e-400"), de("1e-2147483647"), de("-0.999999999999999999"),
             """{"$hash":{"max_upload_speed":125},"$other":{"max_upload_speed":125}}""",
             """{"$hash":{"max_upload_speed":125,"max_upload_speed":126}}""")) {
             assertNull("Deluge: $body", observe(deluge, body))

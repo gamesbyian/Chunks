@@ -488,14 +488,6 @@
   "reason": "A preceding catch (cancel: CancellationException) { interrupted(...); throw cancel } handles cancellation from executor.execute before this broad catch."
  },
  {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeClient.kt",
-  "kind": "broad-catch",
-  "fingerprint": "23140a614d3578b9ce435141",
-  "count": 1,
-  "disposition": "SAFE-NONSUSPEND",
-  "reason": "JSONObject(body) and ExactRpcJson.objectBody are plain parsing funs; the HTTP exchange is outside this try."
- },
- {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/DelugeReadOnlyRpc.kt",
   "kind": "broad-catch",
   "fingerprint": "c224e2fbbea77c6bade343cf",
