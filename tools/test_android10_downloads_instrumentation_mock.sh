@@ -51,6 +51,14 @@ case "$1" in
             printf 'OK (2 tests)\n'
             ;;
           *ExclusiveFsyncJournalInstrumentedTest*)
+            if [[ "${MOCK_JOURNAL_CRASH:-0}" == 1 ]]; then
+              printf '%s\n' 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.' 'INSTRUMENTATION_CODE: 0' 'secret-fixture-sentinel'
+              exit 0
+            fi
+            if [[ "${MOCK_JOURNAL_FAILURE:-0}" == 1 ]]; then
+              printf '%s\n' 'INSTRUMENTATION_STATUS: class=io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournalInstrumentedTest' 'INSTRUMENTATION_STATUS: test=fifoSymlinkOversizedAndHardlinkCannotBeAdoptedAsJournal' 'INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: secret-fixture-sentinel' '    at io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournalInstrumentedTest.fifoSymlinkOversizedAndHardlinkCannotBeAdoptedAsJournal(ExclusiveFsyncJournalInstrumentedTest.kt:42)' 'INSTRUMENTATION_STATUS_CODE: -2' 'INSTRUMENTATION_CODE: -1'
+              exit 0
+            fi
             [[ "$MOCK_JOURNAL_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
             printf 'OK (2 tests)\n'
             ;;
@@ -122,6 +130,23 @@ if MOCK_JOURNAL_SKIP=1 bash "$root/android10_downloads_instrumentation.sh" > "$t
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 5 ]]
+# A zero-test crash and an actual failed test must remain red, but have
+# bounded useful evidence without printing raw exception strings.
+for mode in CRASH FAILURE; do
+  : > "$MOCK_DIR/instruments"
+  if env "MOCK_JOURNAL_$mode=1" bash "$root/android10_downloads_instrumentation.sh" > "$temp/journal-$mode.log" 2>&1; then
+    echo "Journal failure $mode accepted" >&2
+    exit 1
+  fi
+  [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 5 ]]
+  grep -F 'CHUNKS_ANDROID10_INTERRUPTED: adb_exit=0' "$temp/journal-$mode.log"
+  if grep -Fq 'secret-fixture-sentinel' "$temp/journal-$mode.log"; then
+    echo "Raw instrumentation contents leaked" >&2
+    exit 1
+  fi
+done
+grep -F 'terminator=rejected process_crash=true' "$temp/journal-CRASH.log"
+grep -F 'CHUNKS_ANDROID10_FAILURE_LOCATION: io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournalInstrumentedTest.fifoSymlinkOversizedAndHardlinkCannotBeAdoptedAsJournal(ExclusiveFsyncJournalInstrumentedTest.kt:42)' "$temp/journal-FAILURE.log"
 export MOCK_EVENT_SKIP=1
 : > "$MOCK_DIR/instruments"
 if bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-resume-events.log" 2>&1; then

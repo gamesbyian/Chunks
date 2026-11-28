@@ -6,9 +6,12 @@ of its offline mocks now trigger the cheap documentation validation workflow.
 from pathlib import Path
 import re
 import unittest
+import subprocess
+import tempfile
 from fnmatch import fnmatchcase
 from tools.ci_shared_debug_routes import (
     LANES, choose, load_routes, matches_ordered, pr_paths, route_patterns, select_paths, union_patterns,
+    require_reviewed_resume_tree,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -614,6 +617,49 @@ class SharedDebugRouteTests(unittest.TestCase):
         self.assertIn("git diff --quiet FETCH_HEAD HEAD", resume)
         self.assertIn("api: [29, 35]", resume)
         self.assertIn("sha256sum --strict --check SHA256SUMS", resume)
+
+    def test_resume_preflight_checks_real_git_trees_before_allocation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+
+            def git(*args):
+                return subprocess.run(["git", *args], cwd=repo, capture_output=True,
+                                      text=True, check=True, timeout=30).stdout.strip()
+
+            git("init", "-q")
+            git("config", "user.email", "fixture@example.invalid")
+            git("config", "user.name", "Fixture")
+            (repo / "source.txt").write_text("reviewed")
+            git("add", "source.txt")
+            git("commit", "-qm", "reviewed")
+            head = git("rev-parse", "HEAD")
+            git("remote", "add", "origin", repo.as_uri())
+            event = {"pull_request": {"head": {"sha": head}}}
+            require_reviewed_resume_tree({"resume"}, "pull_request", event, repo)
+            # Different commits with identical trees are acceptable, just as
+            # the consumer's existing git diff --quiet permits.
+            git("commit", "--allow-empty", "-qm", "same tree")
+            require_reviewed_resume_tree({"native", "resume"}, "pull_request", event, repo)
+            (repo / "source.txt").write_text("unreviewed")
+            git("add", "source.txt")
+            git("commit", "-qm", "different tree")
+            with self.assertRaisesRegex(ValueError, "reconcile before allocation"):
+                require_reviewed_resume_tree({"native", "resume"}, "pull_request", event, repo)
+            # These routes never had the strict resume-specific source gate.
+            require_reviewed_resume_tree({"native"}, "pull_request", {}, repo)
+            require_reviewed_resume_tree({"resume"}, "workflow_dispatch", {}, repo)
+            with self.assertRaisesRegex(ValueError, "reconcile before allocation"):
+                require_reviewed_resume_tree({"resume"}, "pull_request", {}, repo)
+
+    def test_resume_source_gate_runs_before_publishing_routes_and_remains_in_consumers(self):
+        source = (ROOT / "tools/ci_shared_debug_routes.py").read_text()
+        main = source[source.index("def main():"):]
+        self.assertLess(main.index("require_reviewed_resume_tree(selected, event_name, event)"),
+                        main.index('with open(os.environ["GITHUB_OUTPUT"]'))
+        consumer = (ROOT / ".github/workflows/installed-partial-resume-death.yml").read_text()
+        self.assertEqual(2, consumer.count("git diff --quiet FETCH_HEAD HEAD"))
+        self.assertIn("sha256sum --strict --check SHA256SUMS", consumer)
 
     def test_complete_rename_and_pagination(self):
         event = self.event(101)
