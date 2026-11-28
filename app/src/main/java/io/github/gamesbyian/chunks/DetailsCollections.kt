@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Collection membership in canonical Details, for any scope that already owns a
+ * Device-local collection membership and private notes in canonical Details, for any scope that already owns a
  * Chunks display-name scope (the local app namespace or an authorized server alias
  * scope, exactly as the Organize screen uses). App-local data only: no engine or
  * server command. Store reads and writes stay off the UI thread.
@@ -42,4 +42,5 @@ internal fun DetailsCollections(scope: String, infoHash: String, displayName: St
             revision++
         }
     }
+    TransferNotesSection(scope, infoHash)
 }
