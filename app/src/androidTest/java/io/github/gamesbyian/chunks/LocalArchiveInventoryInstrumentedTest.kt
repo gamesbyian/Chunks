@@ -167,6 +167,15 @@ class LocalArchiveInventoryInstrumentedTest {
                 compose.onAllNodes(hasText("Volume headers agree on order and a final volume. Archive identity and integrity are unknown."))
                     .fetchSemanticsNodes().isNotEmpty()
             }
+            compose.onNodeWithText("Review verified piece map…").performScrollTo().performClick()
+            val mapStatus = "At last review: "
+            compose.waitUntil(10_000) {
+                compose.onAllNodes(hasText(mapStatus, substring = true)).fetchSemanticsNodes()
+                    .any { node -> node.config.toString().contains("pieces verified.") }
+            }
+            val map = requireNotNull(engine.readVerifiedPieceMap(hash, review.nativeToken, review.savePath))
+            compose.onNodeWithText("At last review: " + map.totalPieces + " of " +
+                map.totalPieces + " pieces verified.").assertExists()
             assertEquals(LocalTransferState.SEEDING, engine.status(hash)?.state)
             contents.forEach { (file, bytes) -> assertArrayEquals(bytes, file.readBytes()) }
         } finally {

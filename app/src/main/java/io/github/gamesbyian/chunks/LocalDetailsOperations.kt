@@ -53,6 +53,8 @@ internal interface LocalDetailsPort {
     fun removeWithDataIfMatching(infoHash: String, name: String, savePath: String, token: String): LocalDeleteDataReceipt
     /** Read-only: whether DHT can supply peers (for the tracker line). */
     fun dhtEnabled(): Boolean = false
+    fun verifiedPieceMap(infoHash: String, expectedToken: String, expectedPlace: String):
+        io.github.gamesbyian.chunks.engine.LocalVerifiedPieceMap? = null
     fun checksumReview(infoHash: String): LocalFileInspection.Review? = null
     fun archiveReview(infoHash: String): LocalArchiveInventory.Review? = null
     fun inspectArchiveHeaders(review: LocalArchiveInventory.Review,
@@ -81,6 +83,8 @@ internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : 
     override fun removeWithDataIfMatching(infoHash: String, name: String, savePath: String, token: String) =
         engine.removeWithDataIfMatching(infoHash, name, savePath, token)
     override fun dhtEnabled() = engine.isDhtEnabled()
+    override fun verifiedPieceMap(infoHash: String, expectedToken: String, expectedPlace: String) =
+        engine.readVerifiedPieceMap(infoHash, expectedToken, expectedPlace)
     override fun checksumReview(infoHash: String) = LocalFileInspection.review(engine, infoHash)
     override fun archiveReview(infoHash: String) = LocalArchiveInventory.review(engine, infoHash)
     override fun inspectArchiveHeaders(review: LocalArchiveInventory.Review,
@@ -172,7 +176,7 @@ internal fun LocalDetailsOperations(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (current) {
             LocalDetailsFiles(infoHash, locked, engine, ::change)
-            LocalDetailsStatusExtras(infoHash, stale || !current, engine)
+            LocalDetailsStatusExtras(infoHash, stale || !current, engine, allowPieceMap = !locked)
             LocalDetailsRemove(infoHash, locked, engine, ::change)
         }
         outcome?.let {
@@ -256,7 +260,8 @@ private fun LocalDetailsFiles(
  * while shown, because tracker health changes after Start.
  */
 @Composable
-private fun LocalDetailsStatusExtras(infoHash: String, stale: Boolean, engine: () -> LocalDetailsPort?) {
+private fun LocalDetailsStatusExtras(infoHash: String, stale: Boolean, engine: () -> LocalDetailsPort?,
+                                     allowPieceMap: Boolean) {
     var status by remember(infoHash) { mutableStateOf<LocalTransferStatus?>(null) }
     var dht by remember(infoHash) { mutableStateOf(false) }
     LaunchedEffect(infoHash) {
@@ -272,6 +277,12 @@ private fun LocalDetailsStatusExtras(infoHash: String, stale: Boolean, engine: (
         Text(it, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag(ChunksSemantics.DETAILS_LOCAL_TRACKERS))
     }
+    if (allowPieceMap && !stale && shown.metadataKnown && shown.nativeReviewToken.isNotBlank() &&
+        shown.error == null && !shown.stopsAfterCheck && shown.state in setOf(
+            io.github.gamesbyian.chunks.engine.LocalTransferState.DOWNLOADING,
+            io.github.gamesbyian.chunks.engine.LocalTransferState.FINISHED,
+            io.github.gamesbyian.chunks.engine.LocalTransferState.SEEDING))
+        LocalPieceMapPanel(shown, engine)
     if (!stale && shown.metadataKnown && shown.progressPpm == 1_000_000) LocalLibraryCopyPanel(shown)
 }
 

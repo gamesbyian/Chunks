@@ -2407,6 +2407,43 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     } catch (_: Exception) { null }
 
     /**
+     * F04.14 initial Local verified-piece diagnostic. One bounded native
+     * QUERY_PIECES snapshot, exact reviewed registration and Place on both
+     * sides. No writes, peer query, disk read or automatic polling.
+     */
+    @Synchronized
+    internal fun readVerifiedPieceMap(infoHash: String, expectedToken: String,
+                                      expectedPlace: String): LocalVerifiedPieceMap? {
+        val key = normal(infoHash)
+        if (expectedToken.isBlank() || expectedPlace.isBlank()) return null
+        return try {
+            synchronized(handles) {
+                val handle = handles[key]?.takeIf { started && it.isValid } ?: return null
+                fun matches(status: LocalTransferStatus) =
+                    status.infoHash == key && status.nativeReviewToken == expectedToken &&
+                        status.savePath == expectedPlace && status.metadataKnown &&
+                        status.error == null && !status.stopsAfterCheck &&
+                        status.state in setOf(LocalTransferState.DOWNLOADING,
+                            LocalTransferState.FINISHED, LocalTransferState.SEEDING)
+                if (snapshot(key, handle)?.let(::matches) != true) return null
+                val info = handle.torrentFile()?.takeIf { it.isValid } ?: return null
+                if (identity(info) != key) return null
+                val count = info.numPieces()
+                if (count !in 1..LocalVerifiedPieceMap.MAX_PIECES) return null
+                val native = handle.status(TorrentHandle.QUERY_PIECES)
+                if (native.errorCode()?.isError == true || native.state() !in setOf(
+                        TorrentStatus.State.DOWNLOADING, TorrentStatus.State.FINISHED,
+                        TorrentStatus.State.SEEDING)) return null
+                val bits = native.pieces()
+                if (bits.size() != count) return null
+                val observed = LocalVerifiedPieceMap.observe(count, bits::getBit) ?: return null
+                if (handles[key] !== handle || snapshot(key, handle)?.let(::matches) != true) null
+                else observed
+            }
+        } catch (_: Exception) { null }
+    }
+
+    /**
      * Completion status alone does not mean libtorrent's asynchronous disk
      * cache has been flushed. Before an independent SAF library publication,
      * wait for the native cache_flushed_alert for THIS exact infohash.
