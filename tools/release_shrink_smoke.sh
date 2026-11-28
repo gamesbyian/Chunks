@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Installed launch smoke of the REAL R8 release variant, throwaway-signed for an emulator.
 # Verify installed APK bytes, a fresh app-owned UI tree and process-scoped runtime logs.
-# This is not a native-engine journey or signed-release acceptance.
+# The hosted check adds a real Local peer journey when given --engine.
 set -uo pipefail
 apk="${1:?signed release apk}"
+mode="${2:-launch}"
+[[ "$mode" == launch || "$mode" == --engine ]] || exit 2
 out=app/build/outputs; mkdir -p "$out"
 pkg=io.github.gamesbyian.chunks
 fail_smoke() { echo "CHUNKS_RELEASE_SMOKE: $*"; exit 1; }
@@ -11,7 +13,7 @@ fail_smoke() { echo "CHUNKS_RELEASE_SMOKE: $*"; exit 1; }
 tmp="$(mktemp -d)" || fail_smoke "cannot create temporary directory"
 remote_ui="/sdcard/chunks-release-smoke-$$.xml"
 trap 'rm -rf "$tmp"; adb shell rm -f "$remote_ui" >/dev/null 2>&1 || true' EXIT
-rm -f "$out/release-ui.xml" "$out/release-installed-identity.txt" "$out/release-logcat.txt" "$out/release-logcat-app.txt"
+rm -f "$out/release-ui.xml" "$out/release-installed-identity.txt" "$out/release-logcat.txt" "$out/release-logcat-app.txt" "$out/release-engine.txt" "$out/release-engine-final-ui.xml" "$out/release-engine-transfers-ui.xml"
 adb install -r "$apk" || fail_smoke "install failed"
 installed="$(adb shell pm path "$pkg")" || fail_smoke "cannot resolve installed APK"
 installed="${installed//$'\r'/}"
@@ -46,6 +48,13 @@ PY
 )" || fail_smoke "invalid UI hierarchy"
 echo "CHUNKS_RELEASE_SMOKE: pid=${pid:-none} rendered_text_nodes=$texts"
 [ "$texts" -ge 3 ] || { echo "CHUNKS_RELEASE_SMOKE: app-owned Compose UI did not render"; fail=1; }
+if [[ "$mode" == --engine ]]; then
+    if ! /usr/bin/python3 "$script_dir/release_engine_witness.py" --fixture-root "$tmp/chunks-peer" 2>&1 |
+        tee "$out/release-engine.txt"; then
+        echo "CHUNKS_RELEASE_SMOKE: installed native peer journey failed"
+        fail=1
+    fi
+fi
 adb logcat -d > "$out/release-logcat.txt" || fail_smoke "cannot read global logcat"
 # Scan the whole stream (no early-exit pipe under pipefail). A crash may precede a restart.
 if awk -v pkg="$pkg" '

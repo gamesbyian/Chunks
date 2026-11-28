@@ -2,7 +2,7 @@ name: Chunks release R8 shrink smoke
 
 # Manual: builds the real `release` variant with R8 (-Pchunks.releaseShrink=true), checks libtorrent4j
 # JNI class retention offline, debug-signs it with a throwaway key and runs a black-box installed
-# launch smoke on API35. It is release-candidate evidence for A2611-09; qaMinified does not
+# launch and Local real-peer journey on API35. It is release-candidate evidence for A2611-09; qaMinified does not
 # validate this shrink. It never signs with, or exposes, a release key and publishes nothing.
 on:
   # Only the inputs of the release shrink itself; ordinary source changes are covered by
@@ -14,6 +14,8 @@ on:
       - "app/proguard-rules.pro"
       - ".github/workflows/release-shrink-smoke.yml"
       - "tools/release_shrink_smoke.sh"
+      - "tools/release_engine_witness.py"
+      - "tools/interop/loopback_tracker.py"
       - "tools/verify_installed_apk_bytes.sh"
       - "tests/test_release_shrink_smoke.py"
       - "tools/release_jni_witness.py"
@@ -53,6 +55,8 @@ jobs:
         env:
           CHUNKS_SOURCE_SHA: ${{ github.sha }}
         run: |
+          test "$(git rev-parse HEAD)" = "$CHUNKS_SOURCE_SHA"
+          printf 'CHUNKS_RELEASE_SOURCE: sha=%s tree=%s\n' "$CHUNKS_SOURCE_SHA" "$(git rev-parse HEAD^{tree})" | tee -a "$GITHUB_STEP_SUMMARY"
           gradle --daemon -Pchunks.releaseShrink=true :app:assembleRelease
           ls -l app/build/outputs/apk/release/*.apk
           echo "release (R8) APK bytes: $(stat -c %s app/build/outputs/apk/release/app-release-unsigned.apk)" >> "$GITHUB_STEP_SUMMARY"
@@ -75,7 +79,9 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
           [ -c /dev/kvm ] || { echo "::error::no /dev/kvm"; exit 1; }
           sudo chmod 0666 /dev/kvm
-      - name: Installed launch smoke on the shrunk release
+      - name: Install the disposable real BitTorrent peer
+        run: bash tools/apt_install_retry.sh python3-libtorrent
+      - name: Installed launch and Local peer journey on the shrunk release
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -85,7 +91,7 @@ jobs:
           disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/release_shrink_smoke.sh ${{ runner.temp }}/release-smoke.apk
+          script: bash tools/release_shrink_smoke.sh ${{ runner.temp }}/release-smoke.apk --engine
       - name: Upload mapping and smoke output
         if: always()
         uses: actions/upload-artifact@v4
@@ -95,5 +101,7 @@ jobs:
             app/build/outputs/mapping/release/
             app/build/outputs/release-*.txt
             app/build/outputs/release-ui.xml
+            app/build/outputs/release-engine-final-ui.xml
+            app/build/outputs/release-engine-transfers-ui.xml
           retention-days: 14
           if-no-files-found: warn

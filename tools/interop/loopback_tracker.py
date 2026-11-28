@@ -21,6 +21,10 @@ def bencode(x):
     raise TypeError(type(x))
 
 class Handler(BaseHTTPRequestHandler):
+    # Default remains the same-host disposable-client fixture. Emulator
+    # consumers may supply the host alias in their own subclass.
+    peer_address = bytes([127, 0, 0, 1])
+
     def log_message(self, *args):
         pass
 
@@ -44,7 +48,7 @@ class Handler(BaseHTTPRequestHandler):
             for p, seen in list(swarm.items()):
                 if now - seen > 120:
                     swarm.pop(p, None)
-            peers = b"".join(bytes([127, 0, 0, 1]) + p.to_bytes(2, "big") for p in swarm if p != port)
+            peers = b"".join(self.peer_address + p.to_bytes(2, "big") for p in swarm if p != port)
             body = bencode({"interval": 5, "min interval": 2, "peers": peers})
         self.send_response(200)
         self.send_header("Content-Type", "text/plain")
