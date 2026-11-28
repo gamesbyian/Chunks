@@ -32,6 +32,7 @@ class ExactProtocolReadTest {
         transmissionStatus: Any = 0,
         delugeHostStatus: () -> String = { "Connected" },
         sourceWire: ((String) -> String?)? = null,
+        sessionWire: String? = null,
         beforeReply: (String) -> Unit = {}
     ): Fixture {
         var writes = 0
@@ -47,7 +48,7 @@ class ExactProtocolReadTest {
                     val method = JSONObject(req.body.toString(Charsets.UTF_8)).getString("method")
                     beforeReply(method)
                     val args = when (method) {
-                        "session-get" -> sourceWire?.invoke(method) ?: """{"version":"4.0","download-dir":"/data"}"""
+                        "session-get" -> sessionWire ?: """{"version":"4.0","download-dir":"/data"}"""
                         "torrent-get" -> sourceWire?.invoke(method) ?: if (fileWire != null)
                             """{"torrents":[{"hashString":"$hash",$fileWire}]}"""
                             else if (duplicateWireKeys)
@@ -146,9 +147,7 @@ class ExactProtocolReadTest {
         val qb = TorrentClientKind.QBITTORRENT
         val deluge = TorrentClientKind.DELUGE
         suspend fun observe(kind: TorrentClientKind, body: String, units: String = """{"units":{"speed-bytes":1000}}"""): Long? {
-            val f = fixture(kind, emptyList(), sourceWire = { method ->
-                if (method == "session-get") units else body
-            })
+            val f = fixture(kind, emptyList(), sourceWire = { body }, sessionWire = units)
             // A malformed exact envelope may throw IOException; the policy port
             // treats that as unknown, just as it treats a null observation.
             val observed = try { f.client.uploadCapBytesPerSecond(hash) }
