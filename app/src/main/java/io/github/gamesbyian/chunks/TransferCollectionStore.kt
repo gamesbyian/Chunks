@@ -27,11 +27,16 @@ internal class TransferCollectionStore(context: Context) {
     )
     private val hashPattern = Regex("(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})")
 
+    /** Best-effort, read-only projection for aggregate collection views. Never use as edit authority. */
     fun forTransfer(scope: String, infoHash: String): List<String> =
+        synchronized(editLock) { CollectionMembershipRules.ordered(readOrNull(scope, infoHash).orEmpty()) }
+
+    /** An absent preference is empty; an unreadable preference must surface as unavailable. */
+    fun readForEdit(scope: String, infoHash: String): List<String> =
         synchronized(editLock) { CollectionMembershipRules.ordered(read(scope, infoHash)) }
 
     fun add(scope: String, infoHash: String, name: String): Boolean = synchronized(editLock) {
-        val original = read(scope, infoHash)
+        val original = readOrNull(scope, infoHash) ?: return@synchronized false
         val updated = CollectionMembershipRules.add(original, name) ?: return@synchronized false
         if (updated == original) return@synchronized true
         return@synchronized prefs.edit().putStringSet(key(scope, infoHash), updated.toHashSet()).commit()
@@ -55,7 +60,7 @@ internal class TransferCollectionStore(context: Context) {
         // In a single preflight, compute the entire write set with no writes.
         val updates = ArrayList<Pair<String, Set<String>>>()
         for (hash in normalized) {
-            val before = read(scope, hash)
+            val before = readOrNull(scope, hash) ?: return@synchronized false
             val after = CollectionMembershipRules.add(before, collection) ?: return@synchronized false
             if (after != before) updates += key(scope, hash) to after
         }
@@ -72,7 +77,7 @@ internal class TransferCollectionStore(context: Context) {
     }
 
     fun remove(scope: String, infoHash: String, name: String): Boolean = synchronized(editLock) {
-        val original = read(scope, infoHash)
+        val original = readOrNull(scope, infoHash) ?: return@synchronized false
         if (original.none { it.equals(name, ignoreCase = true) }) return@synchronized false
         val updated = CollectionMembershipRules.remove(original, name)
         val editor = prefs.edit()
@@ -82,10 +87,12 @@ internal class TransferCollectionStore(context: Context) {
     }
 
     private fun read(scope: String, infoHash: String): Set<String> {
-        val stored = try { prefs.getStringSet(key(scope, infoHash), null)?.toSet().orEmpty() }
-        catch (_: ClassCastException) { emptySet() }
+        val stored = prefs.getStringSet(key(scope, infoHash), null)?.toSet().orEmpty()
         return CollectionMembershipRules.ordered(stored).toSet()
     }
+
+    private fun readOrNull(scope: String, infoHash: String): Set<String>? =
+        try { read(scope, infoHash) } catch (_: ClassCastException) { null }
 
     private fun key(scope: String, infoHash: String): String {
         require(scope.isNotBlank() && hashPattern.matches(infoHash)) { "Invalid scoped transfer identity" }

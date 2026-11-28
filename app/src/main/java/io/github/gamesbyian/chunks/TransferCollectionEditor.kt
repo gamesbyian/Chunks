@@ -97,7 +97,7 @@ private fun ScopedCollectionEditor(
         readFailed = false
         memberships = null
         try {
-            memberships = withContext(Dispatchers.IO) { store.forTransfer(scope, infoHash) }
+            memberships = withContext(Dispatchers.IO) { store.readForEdit(scope, infoHash) }
             if (reload > 0) message = "Memberships reloaded. Check the current list before editing."
         } catch (cancel: CancellationException) {
             throw cancel
@@ -123,7 +123,7 @@ private fun ScopedCollectionEditor(
                     } catch (_: RuntimeException) {
                         false
                     }
-                    saved to store.forTransfer(scope, infoHash)
+                    saved to store.readForEdit(scope, infoHash)
                 }
                 memberships = observed
                 val present = observed.any { it.equals(cleaned, ignoreCase = true) }
