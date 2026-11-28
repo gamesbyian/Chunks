@@ -64,6 +64,35 @@ def junit_declared_count_conflicts(root):
     return False
 
 
+def junit_structure_problem(root):
+    """Require actual named testcase records inside suites, with one outcome.
+
+    A well-formed XML document can still be a malformed JUnit receipt. Do not
+    count a placeholder or output-embedded testcase as an executed witness.
+    Class names remain optional; parameterized names remain opaque identities.
+    """
+    suites = [root]
+    allowed_cases = set()
+    while suites:
+        suite = suites.pop()
+        for child in suite:
+            if child.tag == "testsuite":
+                suites.append(child)
+            elif suite.tag == "testsuite" and child.tag == "testcase":
+                allowed_cases.add(child)
+    outcomes = {"failure", "error", "skipped"}
+    for case in root.iter("testcase"):
+        if case not in allowed_cases:
+            return "JUnitUnexpectedCasePlacement"
+        if not (case.get("name") or "").strip():
+            return "JUnitMissingCaseName"
+        direct = [child for child in case if child.tag in outcomes]
+        all_outcomes = [node for node in case.iter() if node.tag in outcomes]
+        if len(direct) > 1 or len(all_outcomes) != len(direct):
+            return "JUnitAmbiguousCaseOutcome"
+    return None
+
+
 SAFE_DIAG_PREFIX = "CHUNKS_SAFE_DIAG "
 _SAFE_DIAG_LINE = re.compile(r"^CHUNKS_SAFE_DIAG ([A-Za-z0-9 _=.,:/\[\]-]{1,300})$")
 
@@ -106,6 +135,10 @@ def make_digest(paths, status, suite, env=None):
             root = ET.parse(path).getroot()
             if root.tag not in ("testsuite", "testsuites"):
                 raise ValueError("unexpected JUnit root")
+            structure_problem = junit_structure_problem(root)
+            if structure_problem:
+                invalid.append({"report": safe_report_reference(path),
+                                "problem": structure_problem})
             if junit_declared_count_conflicts(root):
                 invalid.append({"report": safe_report_reference(path),
                                 "problem": "JUnitDeclaredCountMismatch"})
