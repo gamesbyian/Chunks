@@ -1809,6 +1809,37 @@ internal fun CombinedTransfersScreen(
             )
             }
         }
+        if (selecting && selected.isNotEmpty() && !batchRunning && quickRunning == null) {
+            item(key = "selected-file-search") {
+                val searchSelection = selected.toSet()
+                val searchScope = query.scope
+                CombinedSelectedFileSearch(
+                    selected = searchSelection,
+                    visible = result.transfers,
+                    sources = sourcesByEnvironment,
+                    labels = rowLabels,
+                    server = server,
+                    serverId = serverId,
+                    localAllowed = localPrivacy.mayShow,
+                    serverAllowed = serverPrivacy?.mayShow == true,
+                    protocolProfiles = protocolProfiles,
+                    protocolAllowed = protocolAllowed,
+                    protocolOwnerCurrent = protocolOwnerCurrent,
+                    viewWitness = listOf(batchIdentity, searchScope, policyRevision, privacyVisibilityRevision),
+                    viewStillCurrent = {
+                        selecting && showingBatchTools && !batchRunning && quickRunning == null &&
+                            selected == searchSelection && query.scope == searchScope &&
+                            latestBatchIdentity.value == batchIdentity &&
+                            TransferPrivacyPolicyStore.revision == policyRevision &&
+                            TransferPrivacyRuntime.lifecycleRevision == privacyRevision &&
+                            TransferPrivacyRuntime.visibilityRevision == privacyVisibilityRevision
+                    },
+                    onOpen = { key ->
+                        savedDetailTarget = arrayListOf(key.environment.value, key.infoHash)
+                    }
+                )
+            }
+        }
         }
         // Inventory count and aggregate live speeds belong together ABOVE the
         // transfer rows, not at the end of the list. Preserve incomplete-source
