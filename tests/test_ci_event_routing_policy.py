@@ -207,6 +207,28 @@ class CiDispatchRelevance(unittest.TestCase):
         self.assertTrue(dispatches_for_changed_paths(native,
             (path, APP_TEST_ROOT + "NewSharedInstrumentedTest.kt")))
 
+    def test_cancellation_review_precedes_expensive_parallel_qualification(self):
+        command = ("run: time python3 tools/check_coroutine_cancellation.py "
+                   "--reviews tools/coroutine_cancellation_reviews.json")
+        for name, first_costly_step in (
+            ("minified-smoke.yml", "uses: actions/setup-java@v4"),
+            ("real-client-interop.yml", "name: Install real torrent client daemons"),
+            ("native-add-instrumentation.yml",
+             "name: Resolve complete PR file selection or conservatively select all"),
+        ):
+            with self.subTest(workflow=name):
+                source = workflow(name)
+                self.assertEqual(1, source.count(command))
+                self.assertLess(source.index(command), source.index(first_costly_step))
+                self.assertIn(
+                    "      - name: Require reviewed cancellation inventory before expensive qualification\n"
+                    "        " + command + "\n", source)
+        # The selector must not let downstream producer/consumer work bypass
+        # its failed preflight.
+        native = workflow("native-add-instrumentation.yml")
+        self.assertRegex(native, r"(?m)^  build-once:\n    needs: select$")
+        self.assertIn("python3 tools/check_coroutine_cancellation.py --reviews", workflow("android-check.yml"))
+
     def test_real_client_campaigns_wait_for_ready_and_ignore_snapshot_only_folder_fixture(self):
         docs = workflow("documentation-validation.yml")
         only_snapshot = ("tools/interop/disposable_snapshot_folder_listing.py",)
