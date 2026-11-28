@@ -80,6 +80,12 @@ jobs:
           ref: cacdcb8cbe1813b6151e3f92f2ccec7afe4d6a41
           path: upstream-unrar
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: markokr/rarfile
+          ref: d2f7df6fc843dae356fd6b0a85971dc36fd6e757
+          path: upstream-rarfile-fixtures
+          persist-credentials: false
       - name: Install pinned NDK if absent
         run: |
           set -euo pipefail

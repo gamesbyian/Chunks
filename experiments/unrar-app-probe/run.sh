@@ -16,6 +16,15 @@ for case in missing_last reversed duplicate corrupt truncated budget; do
   grep -F "CHUNKS_UNRAR_JNI: $case=refused" "$tmp/result.txt"
 done
 grep -F 'CHUNKS_UNRAR_JNI: positive_after_refusals bytes=1048 sha256=05abc6df769ec4637bcb82ddc1b5514d910d62502b40c1336aa15436405e2696' "$tmp/result.txt"
+for kind in legacy4 modern4 modern5; do
+  for label in positive positive_after_refusals; do
+    grep -F "CHUNKS_UNRAR_JNI_CORPUS: $kind/$label bytes=207050 member_sha256=57613b4a0d18b31472c9abe90780dcaf834f4edf48e79008f027a99710cf3632,6805973b24128edda3148235c77a7f7b5a7a9be6272bc882a6e030871b2b18d1" "$tmp/result.txt"
+  done
+  for label in missing_middle missing_last corrupt_middle reversed_middle_last aggregate_budget; do
+    grep -F "CHUNKS_UNRAR_JNI_CORPUS: $kind/$label=refused" "$tmp/result.txt"
+  done
+done
+grep -F 'CHUNKS_UNRAR_JNI_CORPUS: PASS' "$tmp/result.txt"
 grep -E 'CHUNKS_UNRAR_JNI: PASS app_uid=[1-9][0-9]{4,}' "$tmp/result.txt"
 grep -E '^INSTRUMENTATION_CODE: -1[[:space:]]*$' "$tmp/result.txt"
 if grep -E 'CHUNKS_UNRAR_JNI: FAIL|INSTRUMENTATION_FAILED|Process crashed' "$tmp/result.txt"; then exit 1; fi

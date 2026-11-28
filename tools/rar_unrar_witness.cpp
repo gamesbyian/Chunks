@@ -115,7 +115,6 @@ static int decodeFixture(const std::string &directory, size_t limit,
     return 0;
 }
 
-#ifndef CHUNKS_UNRAR_JNI
 // Independently generated upstream regression corpus: exact named members
 // and volume transitions, two stored members, no arbitrary archive API.
 // The original compressed fixture and installed JNI tests stay mandatory.
@@ -186,6 +185,7 @@ static int decodeCorpus(const std::string &root, const std::string &kind,
     return 0;
 }
 
+#ifndef CHUNKS_UNRAR_JNI
 int main(int argc, char **argv) {
     if (argc != 3 && argc != 4) return 2;
 #ifdef __ANDROID__
@@ -241,4 +241,41 @@ Java_io_github_gamesbyian_chunks_unrarprobe_WitnessInstrumentation_decode(
         return nullptr;
     }
 }
+// Same finite, fixture-specific contract, now inside an installed app.
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_io_github_gamesbyian_chunks_unrarprobe_WitnessInstrumentation_decodeMulti(
+    JNIEnv *env, jclass, jstring root, jint kind, jint limit) {
+    const char *kinds[] = {"legacy4", "modern4", "modern5"};
+    if (kind < 0 || kind > 2 || (limit != 207050 && limit != 207049)) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalArgumentException"), "unknown corpus");
+        return nullptr;
+    }
+    const char *raw = env->GetStringUTFChars(root, nullptr);
+    if (!raw) return nullptr;
+    std::string directory;
+    try { directory.assign(raw); }
+    catch (...) {
+        env->ReleaseStringUTFChars(root, raw);
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "fixture root allocation");
+        return nullptr;
+    }
+    env->ReleaseStringUTFChars(root, raw);
+    try {
+        std::vector<unsigned char> bytes;
+        const int status = decodeCorpus(directory, kinds[kind], static_cast<size_t>(limit), bytes);
+        if (status == 3) return nullptr;
+        if (status != 0 || bytes.size() != 207050) {
+            env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "unexpected corpus decoder status");
+            return nullptr;
+        }
+        jbyteArray result = env->NewByteArray(static_cast<jsize>(bytes.size()));
+        if (result) env->SetByteArrayRegion(result, 0, static_cast<jsize>(bytes.size()),
+            reinterpret_cast<const jbyte *>(bytes.data()));
+        return result;
+    } catch (...) {
+        env->ThrowNew(env->FindClass("java/lang/IllegalStateException"), "unexpected native corpus failure");
+        return nullptr;
+    }
+}
+
 #endif
