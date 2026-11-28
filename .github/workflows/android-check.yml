@@ -124,6 +124,15 @@ jobs:
       - name: Emit bounded synthetic catalog measurements (advisory)
         if: always()
         run: python3 tools/ci_catalog_measurement.py app/build/test-results/testDebugUnitTest
+      # A single synthetic fixture capture for the bounded file-search page.
+      - name: Retain narrow large-text file search render
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-file-search-render-${{ github.sha }}
+          path: app/build/chunks-visual/selected-file-search-page-320x700-200pct.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Retain structured failure digest
         if: failure()
         uses: actions/upload-artifact@v4

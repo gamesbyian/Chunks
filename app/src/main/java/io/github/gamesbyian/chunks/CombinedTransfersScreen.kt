@@ -896,6 +896,8 @@ internal fun CombinedTransfersScreen(
     val latestBatchIdentity = rememberUpdatedState(batchIdentity)
     // All four state fields must share exactly the same identity boundary.
     var selecting by remember(batchIdentity) { mutableStateOf(false) }
+    var findingFiles by remember(batchIdentity) { mutableStateOf(false) }
+    var fileSelection by remember(batchIdentity) { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var selected by remember(batchIdentity) { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var batchRunning by remember(batchIdentity) { mutableStateOf(false) }
     var batchResult by remember(batchIdentity) { mutableStateOf<List<String>>(emptyList()) }
@@ -1412,6 +1414,8 @@ internal fun CombinedTransfersScreen(
             onReviewStartStop = if (canReviewLifecycle) ({
                 // Selection is always the one exact key just examined, not
                 // another transfer sharing its infohash on a different server.
+                findingFiles = false
+                fileSelection = emptySet()
                 selected = setOf(focusedKey)
                 selecting = true
                 showingBatchTools = true
@@ -1638,6 +1642,7 @@ internal fun CombinedTransfersScreen(
         // the environment chips. Batch and filter panels are still the same
         // exact-account safety-gated sections; these icons only reveal them.
         item(key = "transfers-search-tools") {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TransfersInlineToolbar(
                 search = query.search,
                 onSearchChange = {
@@ -1656,8 +1661,23 @@ internal fun CombinedTransfersScreen(
                     showingViewOptions = !showingViewOptions
                     if (!showingViewOptions) showingSortOptions = false
                 },
-                onBatch = { showingBatchTools = !showingBatchTools }
+                onBatch = {
+                    findingFiles = false
+                    fileSelection = emptySet()
+                    showingBatchTools = !showingBatchTools
+                }
             )
+            OutlinedButton(onClick = {
+                findingFiles = !findingFiles
+                fileSelection = emptySet()
+                selecting = false
+                selected = emptySet()
+                showingBatchTools = false
+            }, enabled = !batchRunning && quickRunning == null,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("transfers-find-files")) {
+                Text(if (findingFiles) "Done finding files" else "Find files…")
+            }
+            }
         }
         // Explain a nondefault view and expose recovery inside its disclosure,
         // never as a banner or oversized CTA above every transfer card.
@@ -1810,6 +1830,50 @@ internal fun CombinedTransfersScreen(
             }
         }
         }
+        if (findingFiles && !batchRunning && quickRunning == null) {
+            item(key = "selected-file-search-selection") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Select transfers to search their reported file names and paths.", style = MaterialTheme.typography.bodyMedium)
+                    Text("${fileSelection.size} selected", style = MaterialTheme.typography.titleSmall)
+                    if (fileSelection.isNotEmpty()) OutlinedButton(onClick = { fileSelection = emptySet() },
+                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear file selection") }
+                }
+            }
+        }
+        if (findingFiles && fileSelection.isNotEmpty() && !batchRunning && quickRunning == null) {
+            item(key = "selected-file-search") {
+                val searchSelection = fileSelection.toSet()
+                val searchQuery = query
+                CombinedSelectedFileSearch(
+                    selected = searchSelection,
+                    visible = result.transfers,
+                    sources = sourcesByEnvironment,
+                    labels = rowLabels,
+                    server = server,
+                    serverId = serverId,
+                    localAllowed = localPrivacy.mayShow,
+                    serverAllowed = serverPrivacy?.mayShow == true,
+                    protocolProfiles = protocolProfiles,
+                    protocolAllowed = protocolAllowed,
+                    protocolOwnerCurrent = protocolOwnerCurrent,
+                    viewWitness = listOf(batchIdentity, searchQuery, policyRevision, privacyVisibilityRevision),
+                    viewStillCurrent = {
+                        findingFiles && !showingBatchTools && !batchRunning && quickRunning == null &&
+                            fileSelection == searchSelection && query == searchQuery &&
+                            latestBatchIdentity.value == batchIdentity &&
+                            TransferPrivacyPolicyStore.revision == policyRevision &&
+                            TransferPrivacyRuntime.lifecycleRevision == privacyRevision &&
+                            TransferPrivacyRuntime.visibilityRevision == privacyVisibilityRevision
+                    },
+                    onOpen = { key ->
+                        // Do not retain private search terms or selection when leaving the search task.
+                        findingFiles = false
+                        fileSelection = emptySet()
+                        savedDetailTarget = arrayListOf(key.environment.value, key.infoHash)
+                    }
+                )
+            }
+        }
         // Inventory count and aggregate live speeds belong together ABOVE the
         // transfer rows, not at the end of the list. Preserve incomplete-source
         // and unknown-rate caveats rather than inventing a precise total.
@@ -1887,15 +1951,18 @@ internal fun CombinedTransfersScreen(
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), hueFor(row.key.environment),
                     visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
-                        selection = if (selecting) row.key in selected else null,
-                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
+                        selection = if (findingFiles) row.key in fileSelection else if (selecting) row.key in selected else null,
+                        onSelect = { on ->
+                            if (findingFiles) fileSelection = if (on) fileSelection + row.key else fileSelection - row.key
+                            else if (selecting) selected = if (on) selected + row.key else selected - row.key
+                        },
                         onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) },
                         expanded = rowKeyText(row.key) in expandedRows,
-                        onToggleExpanded = if (selecting) null else ({
+                        onToggleExpanded = if (selecting || findingFiles) null else ({
                             val id = rowKeyText(row.key)
                             expandedRows = if (id in expandedRows) expandedRows - id else expandedRows + id
                         }),
-                        quickControls = if (selecting) null else ({ quickControlsFor(row) }))
+                        quickControls = if (selecting || findingFiles) null else ({ quickControlsFor(row) }))
                 }
             }
         } else {
@@ -1903,15 +1970,18 @@ internal fun CombinedTransfersScreen(
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), hueFor(row.key.environment),
                     visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
-                    selection = if (selecting) row.key in selected else null,
-                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
+                    selection = if (findingFiles) row.key in fileSelection else if (selecting) row.key in selected else null,
+                    onSelect = { on ->
+                            if (findingFiles) fileSelection = if (on) fileSelection + row.key else fileSelection - row.key
+                            else if (selecting) selected = if (on) selected + row.key else selected - row.key
+                        },
                         onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) },
                         expanded = rowKeyText(row.key) in expandedRows,
-                        onToggleExpanded = if (selecting) null else ({
+                        onToggleExpanded = if (selecting || findingFiles) null else ({
                             val id = rowKeyText(row.key)
                             expandedRows = if (id in expandedRows) expandedRows - id else expandedRows + id
                         }),
-                        quickControls = if (selecting) null else ({ quickControlsFor(row) }))
+                        quickControls = if (selecting || findingFiles) null else ({ quickControlsFor(row) }))
             }
         }
         // #2026: retained typed-client receipts whose job is no longer listed

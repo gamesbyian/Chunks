@@ -363,11 +363,45 @@ class ProtocolClientInstalledJourneyTest {
             }
             stage("transfers-shows-fixture")
 
-            val details = hasContentDescription("Details for $name", substring = true)
-            waitFor("Details control") {
-                runCatching { scrollToNode(details); true }.getOrDefault(false)
+            // Read-only file selection is deliberately independent of the
+            // lifecycle batch review. Exercise the real canonical host and
+            // this exact daemon's roster, then leave selection before Details.
+            val reportedPaths = runBlocking { client.files(hash) }.map { it.path }
+            assertTrue("Exact fixture has reported files", reportedPaths.isNotEmpty())
+            val expectedPath = reportedPaths.first()
+            clickOnce("transfers-find-files", "Find files")
+            val select = hasContentDescription("Select $name on", substring = true)
+            scrollToNode(select)
+            rule.onAllNodes(select).onFirst().performClick()
+            val transferFilter = hasTestTag(ChunksSemantics.TRANSFERS_SEARCH)
+            scrollToNode(transferFilter)
+            rule.onNode(transferFilter).performTextReplacement("no-matching-fixture-${hash.take(12)}")
+            val hidden = hasText("Some selected transfers are hidden.", substring = true)
+            waitFor("hidden selection denies file search") {
+                runCatching { scrollToNode(hidden); true }.getOrDefault(false)
             }
-            rule.onAllNodes(details).onFirst().performClick()
+            assertTrue("Hidden selection cannot start file metadata reads", !visible("Search selected files"))
+            scrollToNode(transferFilter)
+            rule.onNode(transferFilter).performTextReplacement("")
+            val disclosure = hasText("Find files across selected transfers")
+            scrollToNode(disclosure)
+            rule.onNode(disclosure).performClick()
+            val input = hasTestTag("selected-file-search-query")
+            scrollToNode(input)
+            rule.onNode(input).performTextReplacement(expectedPath)
+            val submit = hasText("Search selected files")
+            scrollToNode(submit)
+            rule.onNode(submit).performClick()
+            waitFor("exact file result from live client", 60_000) { visible(expectedPath) && visible("Open transfer details") }
+            assertTrue("File selection cannot arm a Start/Stop review",
+                !visible("Start selected") && !visible("Stop selected"))
+            assertEquals("Read-only search leaves fixture registered and stopped", ClientRunState.STOPPED,
+                runBlocking { independentRead(hash) }?.runState)
+            val openResult = hasText("Open transfer details")
+            scrollToNode(openResult)
+            rule.onNode(openResult).performClick()
+            waitFor("exact Details from file result") { visible(name) && !visible("Open transfer details") }
+            stage("selected-file-search-live-exact-read-only")
             stage("details-open")
 
             // Exact Details is already open before the identically named sibling
