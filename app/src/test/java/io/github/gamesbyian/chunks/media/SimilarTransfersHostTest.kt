@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.test.performClick
 import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTheme
@@ -29,9 +31,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 /** The actual Details relation host must remain a read-only consumer of authorized observations. */
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h900dp-xxhdpi")
 class SimilarTransfersHostTest {
     @get:Rule val rule = createComposeRule()
@@ -103,6 +107,7 @@ class SimilarTransfersHostTest {
             }
         }
         rule.onNodeWithText(label).assertExists()
+        rule.onRoot().captureRoboImage("build/chunks-visual/details-exact-similar-host-412x900.png")
         rule.onNodeWithContentDescription(label, substring = true).performClick()
         assertEquals(duplicate.key, opened)
         rule.runOnIdle {
