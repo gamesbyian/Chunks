@@ -110,7 +110,18 @@ class LocalPayloadAccessInstrumentedTest {
                 LocalPayloadAccess.issue(context, prepared))
 
             val beforeRevoke = requireNotNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
-            LocalPayloadAccess.revokeAll(context)
+            val activePreparation = requireNotNull(LocalPayloadAccess.prepare(context, engine, review, row) { false })
+            val active = requireNotNull(LocalPayloadAccess.issue(context, activePreparation))
+            requireNotNull(resolver.openFileDescriptor(active, "r")).use { reader ->
+                assertArrayEquals(bytes.copyOfRange(200, 216), readAt(reader, 200, 16))
+                LocalPayloadAccess.revokeAll(context)
+                assertNull(LocalPayloadAccess.lookup(context, active))
+                val afterRevoke = runCatching {
+                    Os.pread(reader.fileDescriptor, ByteArray(16), 0, 16, 700_000L)
+                }
+                assertTrue("Revoke all denies subsequent uncached reads",
+                    afterRevoke.isFailure || (afterRevoke.getOrNull() ?: 0) <= 0)
+            }
             assertNull("Revoke all invalidates an unissued preparation",
                 LocalPayloadAccess.issue(context, beforeRevoke))
             var revokedWhilePreparing = false
