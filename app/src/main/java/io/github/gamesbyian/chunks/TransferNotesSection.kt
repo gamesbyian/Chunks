@@ -26,6 +26,8 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +51,7 @@ private fun ScopedTransferNotes(scope: String, infoHash: String, store: Transfer
     var observed by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf("") }
     var editing by remember { mutableStateOf(false) }
+    var showFull by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var unavailable by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
@@ -146,7 +149,15 @@ private fun ScopedTransferNotes(scope: String, infoHash: String, store: Transfer
                         enabled = !saving, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel note edit") }
                 }
                 else -> {
-                    Text(if (current.isEmpty()) "No private note" else current)
+                    if (current.isEmpty()) Text("No private note")
+                    else {
+                        Text(current, maxLines = if (showFull) Int.MAX_VALUE else 3,
+                            overflow = TextOverflow.Ellipsis)
+                        OutlinedButton(onClick = { showFull = !showFull },
+                            modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                stateDescription = if (showFull) "Expanded" else "Collapsed"
+                            }) { Text(if (showFull) "Show less note" else "Show full note") }
+                    }
                     OutlinedButton(onClick = { draft = current; editing = true; status = null },
                         modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit private note") }
                 }
