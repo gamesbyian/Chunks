@@ -136,12 +136,44 @@ def choose(routes, event_name, scope, event=None, repo=None, fetch=get_json):
     return (selected, "exact-pr-files") if selected else (set(LANES), "conservative-unmatched-dispatch")
 
 
+def require_reviewed_resume_tree(selected, event_name, event, checkout=ROOT):
+    """Fail early only when the existing resume source gate applies.
+
+    The two installed resume consumers still independently check the exact
+    source tree and APK digest. Do not weaken their gate, choose fewer lanes,
+    or treat missing identity as success. A stale base that changes the
+    synthetic merge tree makes this complete selected campaign unqualified.
+    """
+    if event_name != "pull_request" or "resume" not in selected:
+        return
+    try:
+        head = event["pull_request"]["head"]["sha"]
+        if not isinstance(head, str) or not re.fullmatch(r"[0-9a-f]{40}", head):
+            raise ValueError("Invalid reviewed head")
+
+        def git(*args):
+            return subprocess.run(["git", *args], cwd=checkout, capture_output=True,
+                                  text=True, check=True, timeout=30).stdout.strip()
+
+        git("fetch", "--no-tags", "--depth=1", "origin", head)
+        if git("rev-parse", "FETCH_HEAD") != head:
+            raise ValueError("Wrong fetched commit")
+        if git("rev-parse", "FETCH_HEAD^{tree}") != git("rev-parse", "HEAD^{tree}"):
+            raise ValueError("Different reviewed tree")
+    except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError):
+        raise ValueError("Resume source preflight could not confirm exact reviewed head tree; reconcile before allocation") from None
+    print("CHUNKS_SHARED_DEBUG_RESUME_TREE: exact reviewed tree matched")
+
+
 def main():
     routes = load_routes()
     event_name = os.environ["GITHUB_EVENT_NAME"]
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     selected, reason = choose(routes, event_name, os.environ.get("CHUNKS_SCOPE") or "native",
                               event, os.environ["GITHUB_REPOSITORY"])
+    # Before publishing lane outputs: a failed selector must not allocate the
+    # shared build or installed jobs for a source tree resume will reject.
+    require_reviewed_resume_tree(selected, event_name, event)
     with open(os.environ["GITHUB_OUTPUT"], "a") as output:
         for lane in LANES:
             output.write(f"{lane}={'true' if lane in selected else 'false'}\n")
