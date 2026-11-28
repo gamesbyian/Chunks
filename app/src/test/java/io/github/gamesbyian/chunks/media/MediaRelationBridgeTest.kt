@@ -6,7 +6,7 @@ import io.github.gamesbyian.chunks.model.MediaRelationIndex
 import io.github.gamesbyian.chunks.model.MediaRelationKind
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,20 +25,38 @@ class MediaRelationBridgeTest {
             // Same title, different provider identity (TVmaze 57926): must never relate by title.
             assigned(other, episode("57926", 2, 8)),
             assigned(suggested, episode("475", 2, 9), MediaAssignmentState.SUGGESTED)))
-        assertEquals(3, members.size)
+        assertEquals(4, members.size)
+        assertTrue(members.single { it.key == suggested }.members.isEmpty())
         val index = MediaRelationIndex.build(members)
         val related = index.similar(e7, setOf(e7, e8, other, suggested))
         assertEquals(listOf(e8), related.map { it.key })
         assertTrue(related.single().evidence.any { it.kind == MediaRelationKind.ADJACENT_EPISODE || it.kind == MediaRelationKind.SAME_SERIES })
     }
 
-    @Test fun unconfirmedOrCategoryOnlyContributesNothing() {
+    @Test fun unconfirmedOrCategoryOnlyContributesNoMediaFacetsButKeepsExactIdentity() {
         val k = key("local", 9)
-        assertNull(MediaRelationBridge.members(k, null))
-        assertNull(MediaRelationBridge.members(k, TransferMediaAssignment(MediaTransferKey.of(k), MediaAssignmentState.CATEGORY_ART_BY_USER,
-            episode("475", 1, 1))))
+        val same = key("rtorrent:a", 9)
+        val unrelated = key("local", 10)
+        assertTrue(MediaRelationBridge.members(k, null).members.isEmpty())
+        assertTrue(MediaRelationBridge.members(k, TransferMediaAssignment(MediaTransferKey.of(k), MediaAssignmentState.CATEGORY_ART_BY_USER,
+            episode("475", 1, 1))).members.isEmpty())
+        assertTrue(MediaRelationBridge.members(k, assigned(unrelated, episode("475", 1, 1)).second).members.isEmpty())
+        assertTrue(MediaRelationBridge.members(k, assigned(k, episode("475", -1, 1)).second).members.isEmpty())
         val movie = MediaCandidate(MediaMetadataCacheKey("tmdb", "movie", "949"), MediaKind.MOVIE, "Heat", 1995, attribution = attr)
         assertEquals("tmdb:movie:949", MediaRelationBridge.members(k, TransferMediaAssignment(MediaTransferKey.of(k),
-            MediaAssignmentState.AUTOMATIC, movie))!!.members.single().workId)
+            MediaAssignmentState.AUTOMATIC, movie)).members.single().workId)
+
+        val index = MediaRelationIndex.build(MediaRelationBridge.members(listOf(
+            k to null, assigned(same, episode("475", 1, 1), MediaAssignmentState.SUGGESTED),
+            assigned(unrelated, episode("475", 1, 1), MediaAssignmentState.SUGGESTED))))
+        val visible = setOf(k, same, unrelated)
+        val related = index.similar(k, visible).single()
+        assertEquals(same, related.key)
+        assertEquals(MediaRelationKind.SAME_TORRENT, related.strongestRelation)
+        assertEquals(0, related.observedMembers)
+        assertTrue(index.similar(k, visible - same).isEmpty())
+        assertTrue(index.similar(k, visible, sameEnvironmentOnly = true).isEmpty())
+        assertTrue(index.similar(k, visible - k).isEmpty())
+        assertFalse(index.similar(same, visible).isEmpty())
     }
 }

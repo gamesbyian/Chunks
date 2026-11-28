@@ -7,6 +7,9 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class TransferCollectionStoreInstrumentedTest {
@@ -35,6 +38,32 @@ class TransferCollectionStoreInstrumentedTest {
             store.remove(bob, hash, "Star Trek")
             store.remove(other, hash, "Star Trek")
             store.remove(alice, secondHash, "Star Trek")
+        }
+    }
+
+    @Test fun independentStoresPreserveConcurrentMembershipsForOneExactTransfer() {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        val scope = "https://test.invalid/RPC2\u0000parallel-membership-test"
+        val hash = "9".repeat(40)
+        val names = (1..8).map { "Parallel collection $it" }
+        val store = TransferCollectionStore(ctx)
+        val workers = Executors.newFixedThreadPool(names.size)
+        val start = CyclicBarrier(names.size)
+        try {
+            names.forEach { store.remove(scope, hash, it) }
+            val writes = names.map { name ->
+                workers.submit<Boolean> {
+                    val independent = TransferCollectionStore(ctx)
+                    start.await(10, TimeUnit.SECONDS)
+                    independent.add(scope, hash, name)
+                }
+            }
+            writes.forEach { assertTrue(it.get(20, TimeUnit.SECONDS)) }
+            assertEquals(names, store.forTransfer(scope, hash))
+        } finally {
+            workers.shutdownNow()
+            workers.awaitTermination(10, TimeUnit.SECONDS)
+            names.forEach { store.remove(scope, hash, it) }
         }
     }
 }

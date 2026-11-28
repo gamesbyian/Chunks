@@ -4,14 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import io.github.gamesbyian.chunks.media.LocalTransferMediaController
-import io.github.gamesbyian.chunks.media.MediaTransferKey
-import io.github.gamesbyian.chunks.media.rememberTransferMedia
 import io.github.gamesbyian.chunks.media.ui.SimilarTransferDisplay
 import io.github.gamesbyian.chunks.media.ui.SimilarTransfersSection
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
@@ -23,9 +22,9 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 
 /**
  * Similar Transfers for Combined details. Inventory comes only from the already displayed,
- * privacy-authorized sources (a LOCKED source contributes nothing); relations use only confirmed
- * media identities through `MediaRelationBridge` + `MediaRelationIndex`. Opening details never
- * starts a provider lookup or RPC, and [onOpen] navigates to the exact environment + transfer.
+ * privacy-authorized sources (a LOCKED source contributes nothing). The controller owns relation
+ * evidence; this host does not register a new automatic media observer or perform an RPC.
+ * [onOpen] navigates to the exact environment + transfer.
  */
 @Composable
 internal fun SimilarTransfersHost(
@@ -39,30 +38,42 @@ internal fun SimilarTransfersHost(
     val controller = LocalTransferMediaController.current ?: return
     val prefs by controller.presentation.collectAsState()
     if (!prefs.showSimilarTransfers) return
-    val authorized = remember(sources) {
-        sources.filter { it.availability != EnvironmentAvailability.LOCKED }
-            .flatMap { source -> source.transfers.map { it to source } }
+    val authorized = remember(sources, transfer.key.environment, prefs.similarSameEnvironmentOnly) {
+        sources.filter { source ->
+            source.availability != EnvironmentAvailability.LOCKED &&
+                (!prefs.similarSameEnvironmentOnly || source.environment == transfer.key.environment)
+        }.flatMap { source -> source.transfers.map { it to source } }
             .associateBy { it.first.key }
     }
-    // Recompute when this transfer's own confirmed identity changes (e.g. after Identify).
-    val sourceState by rememberTransferMedia(MediaTransferKey.of(transfer.key), transfer.originalName)
-    var candidates by remember(transfer.key) { mutableStateOf<List<RelatedTransferCandidate>>(emptyList()) }
-    LaunchedEffect(transfer.key, authorized.keys, sourceState.assignment?.displayMatch?.ref, prefs.similarSameEnvironmentOnly) {
-        candidates = if (sourceState.assignment?.displayMatch == null) emptyList()
-            else controller.similarFor(transfer.key, authorized.keys, sameEnvironmentOnly = prefs.similarSameEnvironmentOnly)
+    // A details route can temporarily outlive its authorized inventory. Do not query or render
+    // relations for a source no longer present in that inventory.
+    if (transfer.key !in authorized) return
+    val assignmentRevision by controller.assignmentRevision.collectAsState()
+    val visibleKeys = authorized.keys
+    // Reset old results synchronously when the exact scope or stored evidence changes, rather
+    // than displaying a previous query while the new asynchronous read runs. The revision also
+    // covers corrections to other transfers and same-provider-record episode/season corrections.
+    var candidates by remember(controller, transfer.key, visibleKeys, assignmentRevision) {
+        mutableStateOf<List<RelatedTransferCandidate>>(emptyList())
     }
-    SimilarTransfersSection(
-        candidates = candidates,
-        display = { key ->
-            val (row, source) = authorized[key] ?: return@SimilarTransfersSection null
-            val label = environmentLabel(key.environment) ?: return@SimilarTransfersSection null
-            SimilarTransferDisplay(name = row.displayName, environmentName = label,
-                environmentColor = environmentColor(key.environment), statusText = transferAtAGlance(row),
-                stale = !source.canClaimCompleteLiveInventory)
-        },
-        onOpen = onOpen,
-        modifier = modifier
-    )
+    LaunchedEffect(controller, transfer.key, visibleKeys, assignmentRevision) {
+        candidates = controller.similarFor(transfer.key, visibleKeys,
+            sameEnvironmentOnly = prefs.similarSameEnvironmentOnly)
+    }
+    key(transfer.key) {
+        SimilarTransfersSection(
+            candidates = candidates,
+            display = { key ->
+                val (row, source) = authorized[key] ?: return@SimilarTransfersSection null
+                val label = environmentLabel(key.environment) ?: return@SimilarTransfersSection null
+                SimilarTransferDisplay(name = row.displayName, environmentName = label,
+                    environmentColor = environmentColor(key.environment), statusText = transferAtAGlance(row),
+                    stale = !source.canClaimCompleteLiveInventory)
+            },
+            onOpen = { target -> if (target in visibleKeys) onOpen(target) },
+            modifier = modifier
+        )
+    }
 }
 
 /** The local's own list as a Similar Transfers source (same-environment scope in local details). */

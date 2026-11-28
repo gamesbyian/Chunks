@@ -144,6 +144,21 @@ jobs:
             app/build/test-results/testDebugUnitTest/*.xml
           if-no-files-found: ignore
           retention-days: 14
+      # Synthetic fixture renders only, never arbitrary screenshots or app data.
+      # These named files are expected only in the Details metadata campaign.
+      - name: Retain representative synthetic Details renders
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-details-metadata-render-${{ github.sha }}
+          path: |
+            app/build/chunks-visual/details-collection-saved-412x892.png
+            app/build/chunks-visual/details-collection-edit-320x700-200pct.png
+            app/build/chunks-visual/details-private-note-saved-412x1200.png
+            app/build/chunks-visual/details-private-note-edit-412x1200.png
+            app/build/chunks-visual/details-exact-similar-host-412x900.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Verify embedded revision and save APK checksum
         run: |
           apk="app/build/outputs/apk/debug/chunks-debug.apk"

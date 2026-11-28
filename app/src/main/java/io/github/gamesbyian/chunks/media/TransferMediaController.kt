@@ -196,7 +196,7 @@ class TransferMediaController(
             .also { states[key] = it }
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
-            settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
+            refreshPresentationOnly()
             applyFileEvidence(key, flow)
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled && localRulesAllowed()) applyRuleIfAny(key, flow.value.recognition) else null
@@ -1014,18 +1014,42 @@ class TransferMediaController(
     }
 
     /**
-     * Similar Transfers over the caller's already-authorized, visible inventory. Only confirmed
-     * (automatic or user-chosen) identities count; title-only or suggested matches never join.
+     * Similar Transfers over the caller's already-authorized, visible inventory. Exact torrent
+     * identity does not need a media assignment; media facets require confirmed matches.
      * Reads local assignments on the lookup dispatcher; never starts a lookup.
      */
     suspend fun similarFor(source: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
                            visible: Collection<io.github.gamesbyian.chunks.model.UnifiedTransferKey>,
                            limit: Int = 20, sameEnvironmentOnly: Boolean = false): List<io.github.gamesbyian.chunks.model.RelatedTransferCandidate> =
         kotlinx.coroutines.withContext(lookupDispatcher) {
-            val keys = (listOf(source) + visible).distinct().take(MAX_SIMILAR_INVENTORY)
-            val index = io.github.gamesbyian.chunks.model.MediaRelationIndex.build(
-                MediaRelationBridge.members(keys.map { it to store.get(MediaTransferKey.of(it)) }))
-            index.similar(source, keys.toSet(), sameEnvironmentOnly = sameEnvironmentOnly, limit = limit.coerceIn(1, 100))
+            val preferences = settings()
+            if (!preferences.showSimilarTransfers || source !in visible) return@withContext emptyList()
+            val sameEnvironment = sameEnvironmentOnly || preferences.similarSameEnvironmentOnly
+            val authorized = visible.asSequence().filter {
+                !sameEnvironment || it.environment == source.environment
+            }
+            // Exact duplicates outrank media candidates and must not disappear behind the
+            // metadata window. Keep the existing total work bound, and scope before reading.
+            val keys = (sequenceOf(source) +
+                authorized.filter { it.infoHash == source.infoHash }.distinct().sortedBy { it.environment.value } +
+                authorized.filter { it.infoHash != source.infoHash })
+                .distinct().take(MAX_SIMILAR_INVENTORY).toList()
+            val queryContext = kotlinx.coroutines.currentCoroutineContext()
+            val records = synchronized(assignmentLock) {
+                val sourceRecord = MediaRelationBridge.members(source, store.get(MediaTransferKey.of(source)))
+                if (sourceRecord.members.isEmpty()) {
+                    // No confirmed source facets: only exact torrent matches are possible.
+                    keys.filter { it.infoHash == source.infoHash }
+                        .map { io.github.gamesbyian.chunks.model.MediaTransferMembers(it, emptyList()) }
+                } else keys.map { key ->
+                    queryContext.ensureActive()
+                    if (key == source) sourceRecord
+                    else MediaRelationBridge.members(key, store.get(MediaTransferKey.of(key)))
+                }
+            }
+            queryContext.ensureActive()
+            val index = io.github.gamesbyian.chunks.model.MediaRelationIndex.build(records)
+            index.similar(source, keys.toSet(), sameEnvironmentOnly = sameEnvironment, limit = limit.coerceIn(1, 100))
         }
 
     /**
@@ -1036,18 +1060,30 @@ class TransferMediaController(
     private val largeListArtworkFlow = MutableStateFlow(false)
     /** Presentation preference for list rows; refreshed from settings on first observe and on change. */
     val largeListArtwork: StateFlow<Boolean> get() = largeListArtworkFlow
-    private val presentationFlow = MutableStateFlow(MediaPrivacySettings())
+    // Do not briefly show relations before the persisted preference is known.
+    private val presentationFlow = MutableStateFlow(MediaPrivacySettings(showSimilarTransfers = false))
     /** The latest loaded media settings, for presentation-only host decisions (e.g. Similar transfers). */
     val presentation: StateFlow<MediaPrivacySettings> get() = presentationFlow
+    private val presentationLock = Any()
+
+    /** Read only preferences, independent of any provider/inventory observer. */
+    private fun refreshPresentationOnly(): MediaPrivacySettings = synchronized(presentationLock) {
+        settings().also {
+            largeListArtworkFlow.value = it.largeListArtwork
+            presentationFlow.value = it
+        }
+    }
+
+    init {
+        scope.launch(lookupDispatcher) { refreshPresentationOnly() }
+    }
 
     fun onSettingsChanged() {
         val snapshot = synchronized(this) { states.entries.map { it.key to it.value } }
         scope.launch(artworkDispatcher) {
-            val s = settings()
             // Provider configuration revisions are issued by ChunksMedia.updateSettings()
             // and setProviderKey(), never by this presentation refresh.
-            largeListArtworkFlow.value = s.largeListArtwork
-            presentationFlow.value = s
+            val s = refreshPresentationOnly()
             snapshot.forEach { (key, f) ->
                 val enabled = !automationStore.isExcluded(key)
                 f.update { cur -> cur.copy(automaticMessage =
