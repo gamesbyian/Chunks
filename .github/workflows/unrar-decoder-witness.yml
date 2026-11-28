@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/unrar-decoder-witness.yml"
       - "tools/rar_unrar_witness.*"
+      - "experiments/unrar-app-probe/**"
       - "app/src/androidTest/assets/rar-volume-review/**"
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
@@ -88,9 +89,21 @@ jobs:
               LDFLAGS="-pthread -static-libstdc++"
             "$cxx" -std=c++11 -D_UNIX -I upstream-unrar tools/rar_unrar_witness.cpp \
               upstream-unrar/libunrar.a -pthread -static-libstdc++ -o "$RUNNER_TEMP/unrar-${target}"
+            abi=x86_64
+            if [ "$target" = aarch64-linux-android ]; then abi=arm64-v8a; fi
+            mkdir -p "$RUNNER_TEMP/unrar-apk/lib/$abi"
+            "$cxx" -std=c++11 -D_UNIX -DCHUNKS_UNRAR_JNI -fPIC -shared -I upstream-unrar tools/rar_unrar_witness.cpp \
+              upstream-unrar/libunrar.a -pthread -static-libstdc++ -Wl,--no-undefined -Wl,-z,max-page-size=16384 \
+              -o "$RUNNER_TEMP/unrar-apk/lib/$abi/libchunks_unrar_probe.so"
             "$bin/llvm-readelf" -h -d "$RUNNER_TEMP/unrar-${target}" | tee -a unrar-android-receipt.txt
+            "$bin/llvm-readelf" -h -d "$RUNNER_TEMP/unrar-apk/lib/$abi/libchunks_unrar_probe.so" | tee -a unrar-android-receipt.txt
             sha256sum "$RUNNER_TEMP/unrar-${target}" | tee -a unrar-android-receipt.txt
           done
+      - name: Assemble disposable JNI probe APK (not Chunks)
+        run: |
+          set -euo pipefail
+          bash experiments/unrar-app-probe/build.sh "$RUNNER_TEMP/unrar-apk"
+          sha256sum "$RUNNER_TEMP/unrar-apk/probe.apk" | tee -a unrar-android-receipt.txt
       - name: Enable KVM for disposable emulator
         run: |
           test -c /dev/kvm
@@ -104,7 +117,7 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash -o pipefail -c 'timeout 150s python3 tools/rar_unrar_witness.py app/src/androidTest/assets/rar-volume-review "$RUNNER_TEMP/unrar-x86_64-linux-android" --android 2>&1 | tee -a unrar-android-receipt.txt'
+          script: bash -o pipefail -c 'timeout 150s python3 tools/rar_unrar_witness.py app/src/androidTest/assets/rar-volume-review "$RUNNER_TEMP/unrar-x86_64-linux-android" --android 2>&1 | tee -a unrar-android-receipt.txt && bash experiments/unrar-app-probe/run.sh "$RUNNER_TEMP/unrar-apk/probe.apk" 2>&1 | tee -a unrar-android-receipt.txt'
       - if: always()
         uses: actions/upload-artifact@v4
         with:
