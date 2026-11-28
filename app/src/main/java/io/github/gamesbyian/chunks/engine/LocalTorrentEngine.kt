@@ -1563,6 +1563,47 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         } catch (_: Exception) { null }
     }
 
+    /** Independent bounded archive-piece read plan. Pure v1 only; no native
+     * handle escapes and no skipped/padding backing is admitted. */
+    @Synchronized
+    internal fun readArchivePiecePlan(infoHash: String, token: String, place: String,
+                                      selected: List<LocalTransferFile>): LocalArchivePiecePlan? {
+        if (token.isBlank() || place.isBlank() || selected.size !in 1..32) return null
+        return try {
+            synchronized(handles) {
+                val key = normal(infoHash)
+                val handle = handles[key]?.takeIf { started && it.isValid } ?: return null
+                val before = readVerifiedFileInventory(key) ?: return null
+                if (before.status.nativeReviewToken != token || before.status.savePath != place ||
+                    selected.any { file -> before.files.singleOrNull { it.index == file.index } != file })
+                    return null
+                val info = handle.torrentFile()?.takeIf { it.isValid } ?: return null
+                val hashes = info.infoHashes()
+                if (identity(info) != key || !hashes.hasV1() || hashes.hasV2()) return null
+                val storage = info.files()
+                if (storage.numFiles() != before.files.size) return null
+                val native = handle.status(TorrentHandle.QUERY_PIECES)
+                if (native.errorCode()?.isError == true || native.state() !in setOf(
+                        TorrentStatus.State.DOWNLOADING, TorrentStatus.State.FINISHED,
+                        TorrentStatus.State.SEEDING)) return null
+                val bits = native.pieces()
+                if (bits.size() != info.numPieces()) return null
+                val layout = before.files.map { file ->
+                    LocalArchivePiecePlan.Span(file.copy(doneBytes = 0L), storage.fileOffset(file.index))
+                }
+                val plan = LocalArchivePiecePlan.build(selected, layout, info.totalSize(),
+                    info.pieceLength(), info.numPieces()) { index ->
+                    if (!bits.getBit(index)) null else info.hashForPiece(index).toHex()
+                } ?: return null
+                val after = readVerifiedFileInventory(key) ?: return null
+                if (handles[key] !== handle || after.status.nativeReviewToken != token ||
+                    after.status.savePath != place ||
+                    selected.any { file -> after.files.singleOrNull { it.index == file.index } != file })
+                    null else plan
+            }
+        } catch (_: Exception) { null }
+    }
+
     /** Complete native file-priority observation for a portable snapshot. */
     @Synchronized
     internal fun readFilePriorities(infoHash: String, maxFiles: Int): List<LocalTransferFile>? {

@@ -52,7 +52,19 @@ trap 'rm -f "$log"' EXIT
 fail_if_skipped_or_failed() { # $1 status, $2 expected "OK (N tests)", $3 label
  if [ "$1" -ne 0 ] || ! grep -q "^$2" "$log" ||
     grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
-  awk '/^INSTRUMENTATION_STATUS: stack=/{p=1} p && /^INSTRUMENTATION_STATUS(_CODE)?: / && !/stack=/{p=0} p' "$log" | head -200 || true
+  # Never print raw instrumentation stacks, paths, URLs or exception text.
+  # Reuse the native runner's fixed structural failure vocabulary, including
+  # the case where am instrument returns before any test starts.
+  python3 - "$log" "$1" <<'PY' || true
+import sys
+from pathlib import Path
+from tools.parse_instrumentation_stream import interrupted_stream_witness, failure_locations
+raw = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+status = int(sys.argv[2])
+print("CHUNKS_ANDROID10_INTERRUPTED: adb_exit=" + str(status) + " " + interrupted_stream_witness(raw))
+for location in failure_locations(raw):
+    print("CHUNKS_ANDROID10_FAILURE_LOCATION: " + location)
+PY
   echo "::error::$3 failed, or a test was skipped"
   exit 1
  fi
