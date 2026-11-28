@@ -80,6 +80,21 @@ class TransferNotesTest {
                 // Expected: original data is retained.
             }
             assertEquals(9, prefs.getInt(prefKey, 0))
+            val oversized = "x".repeat(TransferNotesStore.MAX_LENGTH + 1)
+            assertTrue(prefs.edit().putString(prefKey, oversized).commit())
+            try {
+                store.read(scope, hash)
+                fail("Oversized stored note must be unavailable")
+            } catch (_: IllegalStateException) {
+                // Expected.
+            }
+            try {
+                store.save(scope, hash, "", "Do not replace")
+                fail("Oversized stored note must not become a writable empty note")
+            } catch (_: IllegalStateException) {
+                // Expected.
+            }
+            assertEquals(oversized, prefs.getString(prefKey, null))
         } finally {
             prefs.edit().remove(prefKey).commit()
         }
