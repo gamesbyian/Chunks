@@ -25,7 +25,8 @@ for kind in legacy4 modern4 modern5; do
   done
 done
 grep -F 'CHUNKS_UNRAR_JNI_CORPUS: PASS' "$tmp/result.txt"
-grep -E 'CHUNKS_UNRAR_ISOLATED: readonly_input bytes=[1-9][0-9]* sha256=4cc78dae7289d222afae0c28a1e186c59dba7298cf49e7cfa25ad57230a054f7 distinct_uid=true private_path_denied=true' "$tmp/result.txt"
+grep -E 'CHUNKS_UNRAR_ISOLATED: readonly_input bytes=[1-9][0-9]* sha256=4cc78dae7289d222afae0c28a1e186c59dba7298cf49e7cfa25ad57230a054f7 distinct_uid=true private_path_denied=true sealed=true' "$tmp/result.txt"
+grep -E 'CHUNKS_UNRAR_ISOLATED: tmpfile=(verified|(stat|flags|read):access_denied)' "$tmp/result.txt"
 grep -F 'CHUNKS_UNRAR_ISOLATED: wrong_length=refused' "$tmp/result.txt"
 grep -F 'CHUNKS_UNRAR_ISOLATED: named_inode=refused' "$tmp/result.txt"
 grep -F 'CHUNKS_UNRAR_ISOLATED: PASS' "$tmp/result.txt"
