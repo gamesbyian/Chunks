@@ -3,7 +3,7 @@
   "path": "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt",
   "kind": "runCatching",
   "fingerprint": "228be0e4c21b26a302f72922",
-  "count": 1,
+  "count": 2,
   "disposition": "SAFE-NONSUSPEND",
   "reason": "Body is SmartRoutingPolicyStore(context).read(), a plain fun (SharedPreferences/JSON read); no suspension point inside runCatching."
  },
