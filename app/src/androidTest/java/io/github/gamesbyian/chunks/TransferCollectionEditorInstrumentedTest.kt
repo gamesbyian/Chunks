@@ -20,6 +20,8 @@ import java.lang.reflect.Proxy
 import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -183,6 +185,13 @@ class TransferCollectionEditorInstrumentedTest {
             rule.onNodeWithTag("collection-name-input").performTextInput("Recovered")
             rule.onNodeWithText("Add to collection").assertIsNotEnabled()
             assertEquals("malformed", prefs.getString(key, null))
+            // A correctly typed but malformed set must also be preserved.
+            val invalidSet = setOf("Valid", "  Invalid  ")
+            assertTrue(prefs.edit().putStringSet(key, invalidSet).commit())
+            assertFalse(store.add(scope, hash, "Do not normalize"))
+            assertFalse(store.remove(scope, hash, "Valid"))
+            assertFalse(store.addBatch(scope, listOf(otherHash, hash), "No partial batch"))
+            assertEquals(invalidSet, prefs.getStringSet(key, null))
             // Simulate an independent repair, then explicitly reload before allowing an edit.
             assertTrue(prefs.edit().putStringSet(key, setOf("Restored")).commit())
             rule.onNodeWithText("Reload memberships").performClick()
@@ -256,6 +265,91 @@ class TransferCollectionEditorInstrumentedTest {
             release.countDown()
             realStore.remove(first, hash, "First account only")
             realStore.remove(second, hash, "First account only")
+        }
+    }
+
+    @Test fun unverifiedCommitRequiresExplicitRecoveryEvenAfterScopeSwitch() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val realStore = TransferCollectionStore(context)
+        val prefs = context.getSharedPreferences("chunks_collection_memberships_v1", Context.MODE_PRIVATE)
+        val reportFailure = AtomicBoolean(true)
+        val commits = AtomicInteger()
+        val wrappedPrefs = object : SharedPreferences by prefs {
+            override fun edit(): SharedPreferences.Editor {
+                val delegate = prefs.edit()
+                return Proxy.newProxyInstance(
+                    javaClass.classLoader, arrayOf(SharedPreferences.Editor::class.java)
+                ) { proxy, method, args ->
+                    if (method.name == "commit") {
+                        commits.incrementAndGet()
+                        check(delegate.commit()) { "Fixture commit failed" }
+                        !reportFailure.get()
+                    } else {
+                        val result = method.invoke(delegate, *(args ?: emptyArray()))
+                        if (result is SharedPreferences.Editor) proxy else result
+                    }
+                } as SharedPreferences.Editor
+            }
+        }
+        val wrappedContext = object : ContextWrapper(context) {
+            override fun getApplicationContext(): Context = this
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                if (name == "chunks_collection_memberships_v1") wrappedPrefs
+                else super.getSharedPreferences(name, mode)
+        }
+        val store = TransferCollectionStore(wrappedContext)
+        val hash = "4".repeat(40)
+        val bystander = "5".repeat(40)
+        val first = "https://test.invalid/RPC2\u0000collection-uncertain-first"
+        val second = "https://test.invalid/RPC2\u0000collection-uncertain-second"
+        val selected = mutableStateOf(first)
+        try {
+            realStore.remove(first, hash, "Pending collection")
+            rule.setContent {
+                MaterialTheme { TransferCollectionEditor(hash, "Same hash", selected.value, store) {} }
+            }
+            waitForText("No manual collections")
+            rule.onNodeWithText("Edit collections").performClick()
+            rule.onNodeWithTag("collection-name-input").performTextInput("Pending collection")
+            rule.onNodeWithText("Add to collection").performClick()
+            waitForText("Observed: Pending collection. Save not confirmed.")
+            rule.onNodeWithText("Membership saved on this device. Sharing is unchanged.").assertDoesNotExist()
+            assertEquals(TransferCollectionStore.Observation(listOf("Pending collection"), true),
+                realStore.observeForEdit(first, hash))
+            assertFalse(realStore.add(first, hash, "Pending collection"))
+            assertFalse(realStore.remove(first, hash, "Pending collection"))
+            assertFalse(realStore.addBatch(first, listOf(bystander, hash), "Pending collection"))
+            assertEquals(emptyList<String>(), realStore.readForEdit(first, bystander))
+            assertEquals(1, commits.get())
+            rule.runOnIdle { selected.value = second }
+            waitForText("No manual collections")
+            rule.onNodeWithText("Confirm save observed memberships").assertDoesNotExist()
+            rule.runOnIdle { selected.value = first }
+            waitForText("Observed: Pending collection. Save not confirmed.")
+            rule.onNodeWithText("Reload memberships").performClick()
+            waitForText("Observed: Pending collection. Save not confirmed.")
+            assertEquals(1, commits.get())
+            reportFailure.set(false)
+            rule.onNodeWithText("Confirm save observed memberships").performClick()
+            waitForText("Collection memberships confirmed saved.")
+            assertEquals(2, commits.get())
+            assertEquals(listOf("Pending collection"), realStore.readForEdit(first, hash))
+            // An uncertain deletion must not turn into a confirmed empty membership on reopening.
+            reportFailure.set(true)
+            assertFalse(store.remove(first, hash, "Pending collection"))
+            assertEquals(TransferCollectionStore.Observation(emptyList(), true),
+                realStore.observeForEdit(first, hash))
+            assertFalse(store.addBatch(first, listOf(hash, bystander), "New collection"))
+            reportFailure.set(false)
+            assertTrue(store.confirmObserved(first, hash, emptyList()))
+            assertEquals(4, commits.get())
+            assertEquals(emptyList<String>(), realStore.readForEdit(first, hash))
+        } finally {
+            reportFailure.set(false)
+            val current = realStore.observeForEdit(first, hash)
+            if (current.writeUnverified) realStore.confirmObserved(first, hash, current.names)
+            realStore.remove(first, hash, "Pending collection")
+            realStore.remove(first, bystander, "Pending collection")
         }
     }
 }

@@ -89,16 +89,21 @@ private fun ScopedCollectionEditor(
     var memberships by remember { mutableStateOf<List<String>?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var readFailed by remember { mutableStateOf(false) }
+    var writeUnverified by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var saving by remember { mutableStateOf(false) }
     val coroutines = rememberCoroutineScope()
 
     LaunchedEffect(reload, store) {
         readFailed = false
+        writeUnverified = false
         memberships = null
         try {
-            memberships = withContext(Dispatchers.IO) { store.readForEdit(scope, infoHash) }
-            if (reload > 0) message = "Memberships reloaded. Check the current list before editing."
+            val observed = withContext(Dispatchers.IO) { store.observeForEdit(scope, infoHash) }
+            memberships = observed.names
+            writeUnverified = observed.writeUnverified
+            if (reload > 0) message = if (writeUnverified) "Current memberships observed; save is not confirmed."
+                else "Memberships reloaded. Check the current list before editing."
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: RuntimeException) {
@@ -106,34 +111,29 @@ private fun ScopedCollectionEditor(
         }
     }
 
-    fun changeMembership(name: String, adding: Boolean, clearDraft: Boolean = false) {
+    fun performEdit(
+        action: () -> Boolean,
+        matches: (List<String>) -> Boolean,
+        success: String,
+        clearDraft: Boolean = false
+    ) {
         if (saving || memberships == null) return
-        val cleaned = CollectionMembershipRules.cleanName(name) ?: return
         saving = true
         message = "Saving collection membership…"
         coroutines.launch {
             try {
                 val (committed, observed) = withContext(Dispatchers.IO) {
-                    // A failed commit does not establish that nothing changed.
-                    val saved = try {
-                        if (adding) store.add(scope, infoHash, cleaned)
-                        else store.remove(scope, infoHash, cleaned)
-                    } catch (cancel: CancellationException) {
-                        throw cancel
-                    } catch (_: RuntimeException) {
-                        false
-                    }
-                    saved to store.readForEdit(scope, infoHash)
+                    val saved = action()
+                    saved to store.observeForEdit(scope, infoHash)
                 }
-                memberships = observed
-                val present = observed.any { it.equals(cleaned, ignoreCase = true) }
-                if (committed && present == adding) {
+                memberships = observed.names
+                writeUnverified = observed.writeUnverified
+                if (committed && !writeUnverified && matches(observed.names)) {
                     if (clearDraft) draft = ""
-                    message = if (adding) "Membership saved on this device. Sharing is unchanged."
-                        else "Collection membership removed. Torrent files are unchanged."
+                    message = success
                     onMembershipChanged()
                 } else {
-                    message = "Could not verify the save. Current memberships are shown; check them before trying again."
+                    message = "Could not verify the save. Check the observed memberships before trying again."
                 }
             } catch (cancel: CancellationException) {
                 throw cancel
@@ -145,6 +145,21 @@ private fun ScopedCollectionEditor(
                 saving = false
             }
         }
+    }
+
+    fun changeMembership(name: String, adding: Boolean, clearDraft: Boolean = false) {
+        if (writeUnverified) return
+        val cleaned = CollectionMembershipRules.cleanName(name) ?: return
+        performEdit(
+            action = {
+                if (adding) store.add(scope, infoHash, cleaned)
+                else store.remove(scope, infoHash, cleaned)
+            },
+            matches = { names -> names.any { it.equals(cleaned, ignoreCase = true) } == adding },
+            success = if (adding) "Membership saved on this device. Sharing is unchanged."
+                else "Collection membership removed. Torrent files are unchanged.",
+            clearDraft = clearDraft
+        )
     }
 
     Card(modifier = Modifier.fillMaxWidth()) {
@@ -159,6 +174,8 @@ private fun ScopedCollectionEditor(
                 when {
                     readFailed -> "Collection memberships unavailable"
                     current == null -> "Loading collection memberships…"
+                    writeUnverified -> if (current.isEmpty()) "Observed: no collections. Save not confirmed."
+                        else "Observed: " + current.joinToString(" · ") + ". Save not confirmed."
                     current.isEmpty() -> "No manual collections"
                     else -> current.joinToString(" · ")
                 },
@@ -171,6 +188,23 @@ private fun ScopedCollectionEditor(
                     modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Reload memberships")
                 }
+            }
+            if (writeUnverified && current != null && !readFailed) {
+                Text("Review the observed memberships before confirming a save.",
+                    style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(
+                    onClick = {
+                        performEdit(
+                            action = { store.confirmObserved(scope, infoHash, current) },
+                            matches = { it == current },
+                            success = "Collection memberships confirmed saved."
+                        )
+                    },
+                    enabled = !saving,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("Confirm save observed memberships") }
+                OutlinedButton(onClick = { reload++ }, enabled = !saving,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Reload memberships") }
             }
             OutlinedButton(
                 onClick = { expanded = !expanded },
@@ -186,7 +220,7 @@ private fun ScopedCollectionEditor(
                 )
                 val choices = if (current == null) emptyList()
                     else CollectionChoicePlanner.unassigned(availableCollections, current)
-                val canAdd = !saving && current != null &&
+                val canAdd = !saving && !writeUnverified && current != null &&
                     current.size < CollectionMembershipRules.MAX_PER_TRANSFER
                 if (choices.isNotEmpty()) {
                     OutlinedButton(
@@ -227,7 +261,7 @@ private fun ScopedCollectionEditor(
                 for (name in current.orEmpty()) {
                     OutlinedButton(
                         onClick = { changeMembership(name, adding = false) },
-                        enabled = !saving,
+                        enabled = !saving && !writeUnverified,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) { Text("Remove from $name") }
                 }
