@@ -61,6 +61,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Require reviewed cancellation inventory before expensive qualification
+        run: time python3 tools/check_coroutine_cancellation.py --reviews tools/coroutine_cancellation_reviews.json
       - name: Install real torrent client daemons
         run: |
           bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web rtorrent nginx

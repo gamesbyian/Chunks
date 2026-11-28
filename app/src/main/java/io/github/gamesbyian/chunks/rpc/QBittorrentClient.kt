@@ -288,10 +288,15 @@ internal class QBittorrentClient(
     override suspend fun uploadCapBytesPerSecond(hash: String): Long? {
         val exact = ClientHashes.requireHash(hash)
         val body = request("POST", "torrents/uploadLimit", "hashes=$exact".toByteArray(Charsets.UTF_8))
-        val limits = runCatching { JSONObject(body) }.getOrNull() ?: return null
+        val limits = ExactRpcJson.objectBody(body)
+        if (limits.length() != 1) return null
         val key = limits.keys().asSequence().singleOrNull { it.equals(exact, ignoreCase = true) } ?: return null
-        val value = limits.optLong(key, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE } ?: return null
-        return if (value <= 0) 0L else value
+        val value = exactWireInteger(limits.opt(key)) ?: return null
+        return when {
+            value == -1L || value == 0L -> 0L
+            value > 0L -> value
+            else -> null
+        }
     }
 
     override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {

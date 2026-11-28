@@ -335,7 +335,18 @@ class ProtocolClientInstalledJourneyTest {
             return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(folder, entries,
                 trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
         }
-        val preload = fixture("details")
+        // Use two distinct info dictionaries over the same multi-file paths,
+        // as in the real-daemon byte-preservation interop witness.
+        val sharedName = "chunks-installed-shared-" + java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36)
+        val sharedBytes = listOf(ByteArray(64 * 1024).also(SecureRandom()::nextBytes),
+            ByteArray(48 * 1024).also(SecureRandom()::nextBytes))
+        fun sharedFixture(pieceLength: Int) = TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(
+            sharedName, sharedBytes.mapIndexed { index, bytes ->
+                TorrentMetainfoBuilder.Entry(listOf("part-$index.bin"), bytes.size.toLong()) { bytes.inputStream() }
+            }, trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = pieceLength))
+        val preload = sharedFixture(16 * 1024)
+        val sibling = sharedFixture(32 * 1024)
+        check(preload.infoHashV1 != sibling.infoHashV1)
         val name = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(preload.torrent).name
         val hash = preload.infoHashV1
         val added = runBlocking {
@@ -358,6 +369,38 @@ class ProtocolClientInstalledJourneyTest {
             }
             rule.onAllNodes(details).onFirst().performClick()
             stage("details-open")
+
+            // Exact Details is already open before the identically named sibling
+            // is registered. Require the shared-file refusal, not an unrelated
+            // disabled action, stale scope or missing delete capability.
+            val reviewedRoot = requireNotNull(runBlocking { independentRead(hash) }?.downloadDirectory)
+            val siblingHash = sibling.infoHashV1
+            try {
+                val siblingAdded = runBlocking {
+                    witness.add(ClientAddRequest(ClientAddSource.TorrentFile(sibling.torrent), reviewedRoot, startNow = false))
+                }
+                assertTrue("Shared sibling registered", siblingAdded is ClientOperationOutcome.Verified)
+                assertTrue("Sibling uses exact reviewed root", ClientHashes.sameDirectory(
+                    runBlocking { independentRead(siblingHash) }?.downloadDirectory, reviewedRoot))
+                clickOnce(ChunksSemantics.PROTOCOL_REMOVE, "Review shared payload Remove", 60_000)
+                val deleteChoice = hasText("Also delete its downloaded files on the remote client")
+                scrollToNode(deleteChoice)
+                rule.onNode(deleteChoice).assertIsEnabled().performClick()
+                rule.onNodeWithText("Remove and delete files").assertExists()
+                clickOnce(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM, "Explicit Remove and delete files", 60_000)
+                waitFor("shared payload deletion refused", 60_000) {
+                    visible("Another transfer in this client uses some of these files")
+                }
+                assertEquals("Reviewed registration remains", hash, runBlocking { independentRead(hash) }?.hash)
+                assertEquals("Shared sibling registration remains", siblingHash,
+                    runBlocking { independentRead(siblingHash) }?.hash)
+                stage("shared-payload-delete-refused-both-registrations-retained")
+            } finally {
+                if (runBlocking { independentRead(siblingHash) } != null) {
+                    val cleanup = runBlocking { witness.remove(siblingHash, deleteData = false) }
+                    assertTrue("Disposable sibling removed without data deletion", cleanup is ClientOperationOutcome.Verified)
+                }
+            }
 
             clickOnce(ChunksSemantics.PROTOCOL_START_STOP, "Start", 60_000)
             waitFor("Start confirmed", 60_000) { visible("Start: confirmed") }

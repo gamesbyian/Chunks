@@ -183,7 +183,7 @@ internal class TransmissionClient(
     override suspend fun uploadCapStepBytes(): Long? {
         val units = call("session-get", JSONObject().put("fields", JSONArray().put("units")), mutating = false)
             .optJSONObject("units") ?: return null
-        return units.optLong("speed-bytes", 0L).takeIf { it == 1000L || it == 1024L }
+        return exactWireInteger(units.opt("speed-bytes"))?.takeIf { it == 1000L || it == 1024L }
     }
 
     override suspend fun uploadCapBytesPerSecond(hash: String): Long? {
@@ -192,9 +192,15 @@ internal class TransmissionClient(
         val rows = call("torrent-get", JSONObject().put("fields", JSONArray(listOf("hashString", "uploadLimit", "uploadLimited")))
             .put("ids", JSONArray().put(exact)), mutating = false).optJSONArray("torrents") ?: return null
         if (rows.length() != 1) return null
-        val r = rows.getJSONObject(0).takeIf { it.optString("hashString").equals(exact, ignoreCase = true) } ?: return null
-        if (!r.has("uploadLimited") || !r.has("uploadLimit")) return null
-        return if (!r.optBoolean("uploadLimited")) 0L else r.optLong("uploadLimit") * step
+        val r = rows.optJSONObject(0)?.takeIf {
+            (it.opt("hashString") as? String).equals(exact, ignoreCase = true)
+        } ?: return null
+        val limited = r.opt("uploadLimited") as? Boolean ?: return null
+        val limit = exactWireInteger(r.opt("uploadLimit"))?.takeIf { it >= 0L } ?: return null
+        if (!limited) return 0L
+        // Zero here is not proof of an explicitly disabled cap.
+        if (limit == 0L || limit > Long.MAX_VALUE / step) return null
+        return limit * step
     }
 
     override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
@@ -290,7 +296,8 @@ internal class TransmissionClient(
                     }
                     in 200..299 -> {
                         val root = try {
-                            if (mutating || (method == "torrent-get" && args.has("ids")))
+                            if (mutating || (method == "torrent-get" && args.has("ids")) ||
+                                (method == "session-get" && args.optJSONArray("fields")?.opt(0) == "units"))
                                 ExactRpcJson.objectBody(response.body)
                             else JSONObject(response.body)
                         } catch (_: Exception) {
