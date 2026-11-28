@@ -240,8 +240,11 @@ class RealClientInteropTest {
                     shared is ClientOperationOutcome.Refused && shared.reason == ClientPayloadOverlap.SHARED)
                 assertEquals("Both jobs remain after the refusal", hash, client.torrent(hash)?.hash)
                 assertEquals(siblingHash, client.torrent(siblingHash)?.hash)
-                assertTrue("The shared payload is untouched",
-                    fx.files.keys.all { File(finalDir, fx.name + "/" + it).isFile })
+                assertTrue("The shared payload's exact bytes are untouched",
+                    fx.files.all { (name, bytes) ->
+                        val file = File(finalDir, fx.name + "/" + name)
+                        file.isFile && file.readBytes().contentEquals(bytes)
+                    })
                 stage("remove_with_shared_payload=refused_before_dispatch")
             } finally {
                 assertVerified("shared_payload_sibling_remove_session_only", ops.remove(siblingHash, deleteData = false))
@@ -255,19 +258,58 @@ class RealClientInteropTest {
                 fx.files.keys.all { File(finalDir, fx.name + "/" + it).isFile })
         }
         stage("remove_with_stale_folder=refused")
-        val removal = ops.removeReviewedPayload(hash, reviewedFolder)
-        assertTrue("Remote ACK and job absence cannot certify payload deletion: $removal",
-            removal is ClientOperationOutcome.Pending && removal.registrationAbsent)
-        assertEquals("The exact job is independently absent", null, client.torrent(hash))
-        stage("remove_with_data=registration_absent_payload_unverified")
-        if (payloadRoot != null) {
-            var gone = false
-            for (i in 0 until 60) {
-                if (fx.files.keys.none { File(finalDir, fx.name + "/" + it).exists() }) { gone = true; break }
-                delay(500)
+        // Keep a real disjoint sibling at the same root during the positive
+        // deletion, not only the shared-file refusal. Never add this extra
+        // fixture on protected live endpoints.
+        val disjoint = if (disposableLoopback && kind != RemoteBackendKind.RTORRENT) fixture() else null
+        if (disjoint != null) {
+            assertFalse(disjoint.result.infoHashV1 in before)
+            assertFalse(disjoint.name == fx.name)
+            val top = File(finalDir, disjoint.name)
+            assertTrue("Exclusive disjoint fixture directory", top.mkdir())
+            disjoint.files.forEach { (name, bytes) ->
+                val file = File(top, name)
+                assertTrue("Exclusive disjoint fixture file", file.createNewFile())
+                file.writeBytes(bytes)
             }
-            assertTrue("Payload still present after Remove + data", gone)
-            stage("payload_deleted=independently_observed")
+        }
+        try {
+            if (disjoint != null) {
+                assertVerified("disjoint_sibling_add_stopped", ops.add(ClientAddRequest(
+                    ClientAddSource.TorrentFile(disjoint.result.torrent), reviewedFolder, startNow = false)))
+                val observed = requireNotNull(client.torrent(disjoint.result.infoHashV1))
+                assertTrue("Sibling really shares the reviewed root",
+                    ClientHashes.sameDirectory(observed.downloadDirectory, reviewedFolder))
+            }
+            val removal = ops.removeReviewedPayload(hash, reviewedFolder)
+            assertTrue("Remote ACK and job absence cannot certify payload deletion: $removal",
+                removal is ClientOperationOutcome.Pending && removal.registrationAbsent)
+            assertEquals("The exact job is independently absent", null, client.torrent(hash))
+            stage("remove_with_data=registration_absent_payload_unverified")
+            if (payloadRoot != null) {
+                var gone = false
+                for (i in 0 until 60) {
+                    if (fx.files.keys.none { File(finalDir, fx.name + "/" + it).exists() }) { gone = true; break }
+                    delay(500)
+                }
+                assertTrue("Payload still present after Remove + data", gone)
+                stage("payload_deleted=independently_observed")
+            }
+            if (disjoint != null) {
+                assertEquals("Disjoint registration survives", disjoint.result.infoHashV1,
+                    client.torrent(disjoint.result.infoHashV1)?.hash)
+                assertTrue("Disjoint sibling's exact payload bytes survive",
+                    disjoint.files.all { (name, bytes) ->
+                        val file = File(finalDir, disjoint.name + "/" + name)
+                        file.isFile && file.readBytes().contentEquals(bytes)
+                    })
+                stage("disjoint_sibling=registration_and_bytes_preserved")
+            }
+        } finally {
+            if (disjoint != null && client.torrent(disjoint.result.infoHashV1) != null) {
+                assertVerified("disjoint_sibling_remove_session_only",
+                    ops.remove(disjoint.result.infoHashV1, deleteData = false))
+            }
         }
         }
 
