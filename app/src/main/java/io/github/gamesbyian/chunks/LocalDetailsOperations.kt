@@ -60,6 +60,8 @@ internal interface LocalDetailsPort {
     fun inspectArchiveHeaders(review: LocalArchiveInventory.Review,
         candidate: RarVolumeCandidates.Candidate) =
         RarVolumeStructure.UNCONFIRMED
+    fun reviewExactArchiveBytes(review: LocalArchiveInventory.Review,
+        candidate: RarVolumeCandidates.Candidate): Long? = null
     fun prepareFileAccess(context: android.content.Context, review: LocalFileInspection.Review,
         file: LocalTransferFile, cancelled: () -> Boolean): LocalPayloadAccess.Prepared? = null
     fun inspectChecksum(review: LocalFileInspection.Review, file: LocalTransferFile,
@@ -90,6 +92,9 @@ internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : 
     override fun inspectArchiveHeaders(review: LocalArchiveInventory.Review,
         candidate: RarVolumeCandidates.Candidate) =
         LocalArchiveInventory.inspectHeaders(engine, review, candidate)
+    override fun reviewExactArchiveBytes(review: LocalArchiveInventory.Review,
+        candidate: RarVolumeCandidates.Candidate) =
+        LocalArchiveInventory.captureExactBytes(engine, review, candidate)?.sizeBytes
     override fun prepareFileAccess(context: android.content.Context, review: LocalFileInspection.Review,
         file: LocalTransferFile, cancelled: () -> Boolean) =
         LocalPayloadAccess.prepare(context, engine, review, file, cancelled)

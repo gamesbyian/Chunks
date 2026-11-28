@@ -21,7 +21,7 @@ import java.util.Locale
  * Never return a pathname-only reader: every range checks the same physical
  * observation on a nonblocking, no-follow, regular-file descriptor.
  */
-internal class LocalCompletedMediaFiles(private val savePath: String, files: List<LocalTransferFile>,
+internal class LocalCompletedMediaFiles(private val savePath: String, private val files: List<LocalTransferFile>,
     private val io: LocalMediaReadPort = AndroidLocalMediaReadPort) {
     private val byPath = eligible(files)
 
@@ -63,6 +63,19 @@ internal class LocalCompletedMediaFiles(private val savePath: String, files: Lis
 
     fun open(hint: MediaFileHint): MediaByteSource? {
         val file = row(hint) ?: return null
+        return openPhysical(file)
+    }
+
+    /** Only for independently metainfo-hashed piece reads. A wanted
+     * boundary file can be incomplete; physical identity is not verification. */
+    internal fun openPieceBoundary(file: LocalTransferFile): MediaByteSource? {
+        if (!file.wanted || file.sizeBytes <= 0 ||
+            files.singleOrNull { it.index == file.index } != file ||
+            files.count { it.path == file.path } != 1) return null
+        return openPhysical(file)
+    }
+
+    private fun openPhysical(file: LocalTransferFile): MediaByteSource? {
         val root = root() ?: return null
         if (!present(root, file)) return null
         val path = File(root, file.path)
