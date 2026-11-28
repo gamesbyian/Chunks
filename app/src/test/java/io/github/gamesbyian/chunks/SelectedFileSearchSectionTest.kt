@@ -3,7 +3,14 @@ package io.github.gamesbyian.chunks
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Surface
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -76,5 +83,48 @@ class SelectedFileSearchSectionTest {
         rule.onNodeWithText("Find files across selected transfers").assertExists()
         rule.onNodeWithText("folder/target.mkv").assertDoesNotExist()
         assertEquals(1, reads)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h700dp-xhdpi")
+    fun narrowLargeTextFullPageAndCoverageRemainReachable() {
+        val targets = (0 until 24).map { i ->
+            val exact = UnifiedTransferKey.of(EnvironmentId("test-$i"), "%040x".format(i + 1))
+            SelectedFileSearch.Target(exact, "Client $i", "Transfer $i", false,
+                read = if (i == 0) ({
+                    (0 until 21).map { n ->
+                        ClientFile(n, "folder/target-$n.mkv", 42, null, ClientFilePriority.NORMAL)
+                    }
+                }) else null, authorized = { i == 0 })
+        }
+        var opened: UnifiedTransferKey? = null
+        rule.setContent {
+            val original = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(original.density, 2f)) {
+                ChunksTheme {
+                    Surface {
+                        LazyColumn {
+                            item {
+                                SelectedFileSearchSection(targets, "narrow", { true }, { opened = it })
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("Find files across selected transfers").performClick()
+        rule.onNodeWithTag("selected-file-search-query").performScrollTo().performTextInput("target")
+        rule.onNodeWithText("Search selected files").performScrollTo().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Page 1 of 2").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Client 23: Transfer 23: File list unavailable").performScrollTo().assertExists()
+        rule.onNodeWithText("Next files").performScrollTo().performClick()
+        rule.onNodeWithText("Page 2 of 2").performScrollTo().assertExists()
+        rule.onNodeWithText("Open transfer details").performScrollTo().performClick()
+        assertEquals(targets.first().key, opened)
+        rule.onRoot().captureRoboImage("build/chunks-visual/selected-file-search-page-320x700-200pct.png")
+        rule.onNodeWithText("Previous files").performScrollTo().performClick()
+        rule.onNodeWithText("Page 1 of 2").performScrollTo().assertExists()
     }
 }
