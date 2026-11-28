@@ -145,6 +145,42 @@ class LocalTorrentEngineInstrumentedTest {
             payload, "after-session-only-removal")
     }
 
+    @Test fun nativePieceMapShowsVerifiedPositionsAndRefusesWrongRegistration() {
+        val size = 16 * 1024
+        val source = File(work, "piece-map/Map fixture").apply { mkdirs() }
+        val bytes = ByteArray(4 * size).also { Random(55).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(bytes)
+        val torrent = TorrentBuilder().path(source).pieceSize(size).generate().entry().bencode()
+        val destination = File(work, "piece-map-target").apply { mkdirs() }
+        val folder = File(destination, source.name).apply { mkdir() }
+        val corrupt = bytes.copyOf().also {
+            for (i in size until 2 * size) it[i] = (it[i].toInt() xor 0x55).toByte()
+        }
+        val physical = File(folder, "payload.bin").apply { writeBytes(corrupt) }
+        val instance = engine()
+        val added = (instance.addStoppedChecked(torrent, destination) as LocalAddResult.AddedStopped).status
+        assertTrue(instance.beginStoppedVerification(added.infoHash))
+        waitFor {
+            val state = instance.status(added.infoHash)
+            state != null && state.stopped && !state.stopsAfterCheck &&
+                state.state != LocalTransferState.CHECKING && state.progressPpm in 1 until 1_000_000
+        }
+        val current = requireNotNull(instance.status(added.infoHash))
+        val map = requireNotNull(instance.readVerifiedPieceMap(current.infoHash,
+            current.nativeReviewToken, current.savePath))
+        assertEquals(4, map.totalPieces)
+        assertEquals(3, map.verifiedPieces)
+        assertEquals(listOf(1, 0, 1, 1), map.ranges.map { it.verified })
+        assertEquals(null, instance.readVerifiedPieceMap(current.infoHash, "wrong", current.savePath))
+        assertEquals(null, instance.readVerifiedPieceMap(current.infoHash, current.nativeReviewToken, "/wrong"))
+        assertEquals(null, instance.readVerifiedPieceMap("0".repeat(40), current.nativeReviewToken, current.savePath))
+        assertArrayEquals(corrupt, physical.readBytes())
+        val after = requireNotNull(instance.status(current.infoHash))
+        assertTrue(after.stopped)
+        assertEquals(0L, after.payloadDownloadedBytes)
+        assertEquals(current.nativeReviewToken, after.nativeReviewToken)
+    }
+
     @Test fun nativeCompletedTorrentFlushesDiskCacheBeforeIndependentLibraryRead() {
         val seedRoot = File(work, "flush/Flush fixture").apply { mkdirs() }
         val payload = ByteArray(95_000).also { Random(19).nextBytes(it) }
