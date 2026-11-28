@@ -87,6 +87,44 @@ class SimilarTransfersHostTest {
         assertTrue("Similarity itself must not start an identification or artwork request", http.requests.isEmpty())
     }
 
+    @Test fun unidentifiedExactTorrentPairIsNavigableOnlyWhileAuthorizedAndEnabled() {
+        settings = settings.copy(automaticLookup = true)
+        val c = controller()
+        val duplicate = row(remote, "a", "Different display title")
+        val inventory = mutableStateOf(listOf(snapshot(source), snapshot(duplicate)))
+        var opened: UnifiedTransferKey? = null
+        val label = "Also on ${remote.value}"
+        rule.setContent {
+            ChunksTheme {
+                CompositionLocalProvider(LocalTransferMediaController provides c) {
+                    SimilarTransfersHost(source, inventory.value,
+                        { it.value }, { ChunksColors.Cyan }, { opened = it })
+                }
+            }
+        }
+        rule.onNodeWithText(label).assertExists()
+        rule.onNodeWithContentDescription(label, substring = true).performClick()
+        assertEquals(duplicate.key, opened)
+        rule.runOnIdle {
+            opened = null
+            settings = settings.copy(showSimilarTransfers = false)
+            c.onSettingsChanged()
+        }
+        rule.onNodeWithContentDescription(label, substring = true).assertDoesNotExist()
+        rule.runOnIdle {
+            settings = settings.copy(showSimilarTransfers = true)
+            c.onSettingsChanged()
+        }
+        rule.onNodeWithText(label).assertExists()
+        rule.runOnIdle {
+            inventory.value = listOf(snapshot(source), snapshot(duplicate, EnvironmentAvailability.LOCKED))
+        }
+        rule.onNodeWithText("Similar transfers").assertDoesNotExist()
+        rule.onNodeWithContentDescription(label, substring = true).assertDoesNotExist()
+        assertEquals(null, opened)
+        assertTrue(http.requests.isEmpty())
+    }
+
     @Test fun targetCorrectionsAndScopeChangesInvalidateRowsWithoutNewNetworkRequests() {
         val store = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
         store.put(TransferMediaAssignment(MediaTransferKey.of(source.key), MediaAssignmentState.CHOSEN_BY_USER, episode("475", 7)))
