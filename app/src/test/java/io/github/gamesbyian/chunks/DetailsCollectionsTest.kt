@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -26,6 +27,7 @@ class DetailsCollectionsTest {
         val hash = "ef".repeat(20)
         val serverScope = "https://seed.example/RPC2\u0000user"
         rule.setContent { ChunksTheme { DetailsCollections(serverScope, hash, "Show S01") } }
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("No manual collections").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Edit collections").performClick()
         rule.onNodeWithText("Collection name").performTextInput("Watch next")
         rule.onNodeWithText("Add to collection").performClick()

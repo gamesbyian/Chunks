@@ -14,6 +14,10 @@ import java.util.Locale
  */
 internal class TransferCollectionStore(context: Context) {
     companion object {
+        // Every instance addresses the same process-local preferences file.
+        // Serialize read/modify/write across Details, Organize and batch editors.
+        private val editLock = Any()
+
         /** Separate from every URL+account scope; no engine side effects. */
         const val LOCAL_ENGINE_SCOPE = "\u0001chunks-local-private-v1"
     }
@@ -24,14 +28,13 @@ internal class TransferCollectionStore(context: Context) {
     private val hashPattern = Regex("(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})")
 
     fun forTransfer(scope: String, infoHash: String): List<String> =
-        CollectionMembershipRules.ordered(read(scope, infoHash))
+        synchronized(editLock) { CollectionMembershipRules.ordered(read(scope, infoHash)) }
 
-    @Synchronized
-    fun add(scope: String, infoHash: String, name: String): Boolean {
+    fun add(scope: String, infoHash: String, name: String): Boolean = synchronized(editLock) {
         val original = read(scope, infoHash)
-        val updated = CollectionMembershipRules.add(original, name) ?: return false
-        if (updated == original) return true
-        return prefs.edit().putStringSet(key(scope, infoHash), updated.toHashSet()).commit()
+        val updated = CollectionMembershipRules.add(original, name) ?: return@synchronized false
+        if (updated == original) return@synchronized true
+        return@synchronized prefs.edit().putStringSet(key(scope, infoHash), updated.toHashSet()).commit()
     }
 
     /**
@@ -42,23 +45,22 @@ internal class TransferCollectionStore(context: Context) {
      * No Android torrent/network/filesystem API is called. This is independent
      * of any future batch Move/Copy transaction.
      */
-    @Synchronized
-    fun addBatch(scope: String, hashes: Collection<String>, proposedName: String): Boolean {
-        if (scope.isBlank() || hashes.isEmpty() || hashes.size > 512) return false
-        val collection = CollectionMembershipRules.cleanName(proposedName) ?: return false
+    fun addBatch(scope: String, hashes: Collection<String>, proposedName: String): Boolean = synchronized(editLock) {
+        if (scope.isBlank() || hashes.isEmpty() || hashes.size > 512) return@synchronized false
+        val collection = CollectionMembershipRules.cleanName(proposedName) ?: return@synchronized false
         val normalized = hashes.map { it.trim().uppercase(Locale.ROOT) }
         if (normalized.any { !hashPattern.matches(it) } ||
-            normalized.distinct().size != normalized.size) return false
+            normalized.distinct().size != normalized.size) return@synchronized false
 
         // In a single preflight, compute the entire write set with no writes.
         val updates = ArrayList<Pair<String, Set<String>>>()
         for (hash in normalized) {
             val before = read(scope, hash)
-            val after = CollectionMembershipRules.add(before, collection) ?: return false
+            val after = CollectionMembershipRules.add(before, collection) ?: return@synchronized false
             if (after != before) updates += key(scope, hash) to after
         }
-        if (updates.isEmpty()) return true
-        return try {
+        if (updates.isEmpty()) return@synchronized true
+        return@synchronized try {
             val editor = prefs.edit()
             for ((key, members) in updates) editor.putStringSet(key, members.toHashSet())
             editor.commit()
@@ -69,15 +71,14 @@ internal class TransferCollectionStore(context: Context) {
         }
     }
 
-    @Synchronized
-    fun remove(scope: String, infoHash: String, name: String): Boolean {
+    fun remove(scope: String, infoHash: String, name: String): Boolean = synchronized(editLock) {
         val original = read(scope, infoHash)
-        if (original.none { it.equals(name, ignoreCase = true) }) return false
+        if (original.none { it.equals(name, ignoreCase = true) }) return@synchronized false
         val updated = CollectionMembershipRules.remove(original, name)
         val editor = prefs.edit()
         if (updated.isEmpty()) editor.remove(key(scope, infoHash))
         else editor.putStringSet(key(scope, infoHash), updated.toHashSet())
-        return editor.commit()
+        return@synchronized editor.commit()
     }
 
     private fun read(scope: String, infoHash: String): Set<String> {

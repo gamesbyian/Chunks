@@ -2,7 +2,9 @@ package io.github.gamesbyian.chunks
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +20,10 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class TransferCollectionEditorInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    private fun waitForText(text: String) {
+        rule.waitUntil(10_000) { rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    }
 
     @Test fun reusesAnExistingCollectionByExplicitOneTapWithoutNetworkSideEffects() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -35,14 +41,16 @@ class TransferCollectionEditorInstrumentedTest {
                         availableCollections = listOf("Star Trek", "STAR TREK")) {}
                 }
             }
+            waitForText("No manual collections")
             rule.onNodeWithText("Edit collections").performClick()
             rule.onNodeWithText("Choose existing collection", substring = true).performClick()
             rule.onNodeWithText("Add to Star Trek").performClick()
-            rule.waitForIdle()
+            waitForText("Membership saved on this device. Sharing is unchanged.")
             assertEquals(listOf("Star Trek"), TransferCollectionStore(context).forTransfer(scope, hash))
             assertEquals("Untouched.torrent.name", transfer.name)
             assertEquals("/original/path", transfer.directory)
             rule.onNodeWithText("Remove from Star Trek").performClick()
+            waitForText("No manual collections")
             assertEquals(emptyList<String>(), store.forTransfer(scope, hash))
         } finally {
             store.remove(scope, hash, "Star Trek")
@@ -63,13 +71,15 @@ class TransferCollectionEditorInstrumentedTest {
                     TransferCollectionEditor(infoHash, "Local download", localScope, store) {}
                 }
             }
+            waitForText("No manual collections")
             rule.onNodeWithText("Edit collections").performClick()
             rule.onNodeWithTag("collection-name-input").performTextInput("On the local device")
             rule.onNodeWithText("Add to collection").performClick()
-            rule.waitForIdle()
+            waitForText("Membership saved on this device. Sharing is unchanged.")
             assertEquals(listOf("On the local device"), TransferCollectionStore(context).forTransfer(localScope, infoHash))
             assertEquals(emptyList<String>(), store.forTransfer(remoteScope, infoHash))
             rule.onNodeWithText("Remove from On the local device").performClick()
+            waitForText("No manual collections")
             assertEquals(emptyList<String>(), store.forTransfer(localScope, infoHash))
         } finally {
             store.remove(localScope, infoHash, "On the local device")
@@ -89,19 +99,51 @@ class TransferCollectionEditorInstrumentedTest {
                     TransferCollectionEditor(transfer, scope, store) {}
                 }
             }
-            rule.onNodeWithText("No manual collections").assertExists()
+            waitForText("No manual collections")
             rule.onNodeWithText("Edit collections").performClick()
             rule.onNodeWithTag("collection-name-input").performTextInput("Celeb Jeopardy")
             rule.onNodeWithText("Add to collection").performClick()
-            rule.waitForIdle()
+            waitForText("Membership saved on this device. Sharing is unchanged.")
             assertEquals(listOf("Celeb Jeopardy"), store.forTransfer(scope, hash))
             rule.onNodeWithText("Remove from Celeb Jeopardy").performClick()
-            rule.waitForIdle()
+            waitForText("No manual collections")
             assertEquals(emptyList<String>(), store.forTransfer(scope, hash))
             assertEquals("Original.Celebrity.Jeopardy.mkv", transfer.name)
             assertEquals("/unchanged/source", transfer.directory)
         } finally {
             store.remove(scope, hash, "Celeb Jeopardy")
+        }
+    }
+
+    @Test fun switchingExactScopeWithSameHashDiscardsOldEditorState() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = TransferCollectionStore(context)
+        val hash = "B".repeat(40)
+        val local = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        val remote = "https://test.invalid/RPC2\u0000collection-scope-switch"
+        val selectedScope = mutableStateOf(remote)
+        try {
+            store.add(remote, hash, "Remote membership")
+            store.remove(local, hash, "Local membership")
+            rule.setContent {
+                MaterialTheme { TransferCollectionEditor(hash, "Same hash", selectedScope.value, store) {} }
+            }
+            waitForText("Remote membership")
+            rule.onNodeWithText("Edit collections").performClick()
+            rule.onNodeWithTag("collection-name-input").performTextInput("Unsaved remote draft")
+            rule.runOnIdle { selectedScope.value = local }
+            waitForText("No manual collections")
+            rule.onNodeWithText("Remote membership").assertDoesNotExist()
+            rule.onNodeWithText("Edit collections").performClick()
+            rule.onNodeWithText("Unsaved remote draft").assertDoesNotExist()
+            rule.onNodeWithTag("collection-name-input").performTextInput("Local membership")
+            rule.onNodeWithText("Add to collection").performClick()
+            waitForText("Membership saved on this device. Sharing is unchanged.")
+            assertEquals(listOf("Local membership"), store.forTransfer(local, hash))
+            assertEquals(listOf("Remote membership"), store.forTransfer(remote, hash))
+        } finally {
+            store.remove(remote, hash, "Remote membership")
+            store.remove(local, hash, "Local membership")
         }
     }
 }
