@@ -84,6 +84,24 @@ class LocalArchiveInventoryInstrumentedTest {
             assertTrue(LocalArchiveInventory.canInspectHeaders(group))
             assertEquals(io.github.gamesbyian.chunks.model.RarVolumeStructure.TERMINAL_CHAIN,
                 LocalArchiveInventory.inspectHeaders(engine, review, group))
+            val snapshot = requireNotNull(LocalArchiveInventory.captureExactBytes(engine, review, group))
+            assertEquals(2, snapshot.volumeCount)
+            assertEquals(archives.values.sumOf { it.size.toLong() }, snapshot.sizeBytes)
+            snapshot.sources().zip(names).forEach { (source, name) ->
+                assertArrayEquals(archives.getValue(name), source.read(0, source.size.toInt()))
+            }
+            val altered = archives.getValue(names.first()).clone().apply {
+                this[100] = (this[100].toInt() xor 0x40).toByte()
+            }
+            val physical = File(payload, names.first())
+            physical.writeBytes(altered)
+            assertNull(LocalArchiveInventory.captureExactBytes(engine, review, group))
+            assertArrayEquals(altered, physical.readBytes())
+            assertArrayEquals(archives.getValue(names.first()),
+                snapshot.sources().first().read(0, archives.getValue(names.first()).size))
+            physical.writeBytes(archives.getValue(names.first()))
+            assertNull(LocalArchiveInventory.captureExactBytes(engine,
+                review.copy(nativeToken = "wrong"), group))
             val after = requireNotNull(engine.status(hash))
             assertTrue(after.stopped)
             assertTrue(after.progressPpm in 1 until 1_000_000)
@@ -167,6 +185,13 @@ class LocalArchiveInventoryInstrumentedTest {
                 compose.onAllNodes(hasText("Volume headers agree on order and a final volume. Archive identity and integrity are unknown."))
                     .fetchSemanticsNodes().isNotEmpty()
             }
+            compose.onNodeWithText("Recheck exact archive source bytes").performScrollTo().performClick()
+            val total = review.candidates.last().volumes.sumOf { it.file.sizeBytes }
+            val checked = "At last review: $total archive bytes matched torrent piece hashes. Decoded integrity is unknown."
+            compose.waitUntil(30_000) {
+                compose.onAllNodes(hasText(checked)).fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText(checked).assertExists()
             compose.onNodeWithText("Review verified piece map…").performScrollTo().performClick()
             val mapStatus = "At last review: "
             compose.waitUntil(10_000) {

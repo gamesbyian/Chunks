@@ -40,6 +40,8 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
     var page by remember(infoHash) { mutableStateOf(0) }
     var structure by remember(infoHash, review, group) { mutableStateOf<RarVolumeStructure?>(null) }
     var inspecting by remember(infoHash) { mutableStateOf(false) }
+    var exactBytes by remember(infoHash, review, group) { mutableStateOf<Long?>(null) }
+    var exactAttempted by remember(infoHash, review, group) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     fun read() {
         if (busy || inspecting) return
@@ -124,6 +126,29 @@ internal fun LocalArchiveInventoryPanel(infoHash: String, engine: () -> LocalDet
                         null -> if (inspecting) "Inspecting volume headers…" else null
                     }
                     if (headerStatus != null) Text(headerStatus,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+                if (LocalArchiveInventory.canReviewExactBytes(candidate)) {
+                    OutlinedButton(onClick = {
+                        inspecting = true
+                        exactAttempted = false
+                        exactBytes = null
+                        scope.launch {
+                            try {
+                                exactBytes = runInterruptible(Dispatchers.IO) {
+                                    engine()?.reviewExactArchiveBytes(shown, candidate)
+                                }
+                                exactAttempted = true
+                            } finally { inspecting = false }
+                        }
+                    }, enabled = !inspecting, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Recheck exact archive source bytes")
+                    }
+                    Text("Small v1 archive groups up to 8 MiB. Rechecks complete torrent pieces, including shared file boundaries; no extraction or output.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (exactAttempted) Text(exactBytes?.let {
+                        "At last review: $it archive bytes matched torrent piece hashes. Decoded integrity is unknown."
+                    } ?: "Exact source bytes could not be confirmed within this review’s limits.",
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 }
                 val lastPage = (candidate.volumes.size - 1) / 8
