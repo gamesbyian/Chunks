@@ -21,6 +21,8 @@
 **Owner-approved Add/environment polish (2026-11-13):** [Add destination and outcome UX](design/ADD-DESTINATION-AND-OUTCOME.md) binds compact Local/named-connection Add chips, short-name-only status, one in-place operation outcome, matched transfer stripe/label/dot colours and contextual rather than permanent remote folder explanations. Integrate with existing R1 UX work; implementation and installed acceptance remain pending.
 **Chunks full-product closure:** [Detailed technical requirements inventory](TECHNICAL-COMPLETENESS-REQUIREMENTS.md) (all adopted advanced IDs, specialist and implied journeys); [WORK-QUEUE](WORK-QUEUE.md) R5 owns execution, [#2176](https://github.com/gamesbyian/Chunks/issues/2176) tracks closure. Existing scope exclusions remain.
 
+**Development efficiency and capability dependencies:** [2026-11-27 review](audits/DEVELOPMENT-EFFICIENCY-2026-11-27.md) maps existing implementation owners to ten reuse opportunities, qualifies dependency/CI strategy and proposes evidence-weighted progress; execution remains in WORK-QUEUE R5, #2176/#10/#687.
+
 # Chunks documentation index
 
 > **Forensic follow-through (2026-11-23):** [Source-pinned audit](archive/FORENSIC-ENGINEERING-AUDIT-2026-11-23.md) (historical evidence), [R0](WORK-QUEUE.md#r0-current-ownership-safety-and-arbitration) (active dispositions), #687 (tracking index). **Pass 2 (2026-11-25):** [engineering audit](audits/ENGINEERING-AUDIT-2026-11-25.md), executable as [R0 pass-2 dispositions](WORK-QUEUE.md#r0-audit-pass-2-dispositions-2026-11-25). Domain contracts remain normative; atlas is future scope only.
