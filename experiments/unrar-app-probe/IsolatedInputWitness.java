@@ -50,69 +50,33 @@ final class IsolatedInputWitness {
             require(bound, "isolated service bind refused");
             IBinder service = ready.poll(15, TimeUnit.SECONDS);
             require(service != null, "isolated service bind timeout");
-            // Observe the original disk-backed transport independently.
+            // The previous run proved this transport works. Now require the
+            // full positive/negative contract on this exact carrier.
             writer = Os.open(context.getCacheDir().getAbsolutePath(),
                     0x410000 | OsConstants.O_RDWR | OsConstants.O_CLOEXEC, 0600);
-            try {
-                reader = readonly(writer, fixture, false);
-                Os.close(writer);
-                writer = null;
-                try (ParcelFileDescriptor fd = ParcelFileDescriptor.dup(reader)) {
-                    int[] actual = check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length, fd, digest(fixture), false);
-                    require(actual[0] != Process.myUid() && actual[1] != Process.myPid() && actual[2] == 1,
-                        "disk input isolation");
-                    receipt.append("CHUNKS_UNRAR_ISOLATED: tmpfile=verified\n");
-                }
-            } catch (IllegalArgumentException refused) {
-                String reason = refused.getMessage();
-                if (!("isolated input refused:stat:access_denied".equals(reason) ||
-                      "isolated input refused:flags:access_denied".equals(reason) ||
-                      "isolated input refused:read:access_denied".equals(reason))) throw refused;
-                receipt.append("CHUNKS_UNRAR_ISOLATED: tmpfile=").append(reason.substring("isolated input refused:".length())).append('\n');
-            } finally {
-                if (reader != null) { Os.close(reader); reader = null; }
-                if (writer != null) { Os.close(writer); writer = null; }
-            }
-            // Mandatory positive: kernel-sealed anonymous memory, no writable
-            // descriptor or mutable backing filesystem admitted to the worker.
-            writer = Os.memfd_create("chunks-synthetic-rar", 3); // CLOEXEC | ALLOW_SEALING
-            reader = readonly(writer, fixture, true);
+            reader = readonly(writer, fixture, false);
             Os.close(writer);
             writer = null;
-            String expected = digest(fixture);
-            try (ParcelFileDescriptor fd = ParcelFileDescriptor.dup(reader)) {
-                int[] actual = check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length, fd, expected, true);
-                require(actual[0] != Process.myUid() && actual[1] != Process.myPid(),
-                    "not a different UID and process");
-                require(actual[2] == 1, "isolated worker opened app-private path");
-                // The parent has independently pinned the exact sentinel
-                // before and after each Binder call. ENOENT/ENOTDIR means
-                // invisible to this worker, not a claim about the kernel cause.
-                receipt.append("CHUNKS_UNRAR_ISOLATED: private_path=")
-                    .append(IsolatedInputService.pathDisposition(actual[3]))
-                    .append(" parent_inode_and_bytes=verified accessible_control=verified negative_control=enotdir\n");
-                receipt.append("CHUNKS_UNRAR_ISOLATED: readonly_input bytes=").append(fixture.length)
-                    .append(" sha256=").append(expected).append(" distinct_uid=true private_path_denied=true sealed=true\n");
-                try {
-                    check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length - 1, fd, expected, true);
-                    throw new AssertionError("wrong length accepted");
-                } catch (IllegalArgumentException refused) {
-                    require("isolated input refused:identity:other".equals(refused.getMessage()), "wrong-length refusal reason");
-                    receipt.append("CHUNKS_UNRAR_ISOLATED: wrong_length=refused\n");
-                }
-                try (ParcelFileDescriptor named = ParcelFileDescriptor.open(sentinel, ParcelFileDescriptor.MODE_READ_ONLY)) {
-                    try {
-                        check(service, sentinel, sentinelIdentity, sentinelBefore, 3, named, digest(sentinelBefore), true);
-                        throw new AssertionError("named inode accepted");
-                    } catch (IllegalArgumentException refused) {
-                        require("isolated input refused:identity:other".equals(refused.getMessage()) ||
-                            "isolated input refused:stat:access_denied".equals(refused.getMessage()),
-                            "named inode refusal reason");
-                        receipt.append("CHUNKS_UNRAR_ISOLATED: named_inode=refused\n");
-                    }
-                }
-                int[] again = check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length, fd, expected, true);
-                require(java.util.Arrays.equals(actual, again), "isolated process or result changed");
+            verifyCarrier(service, sentinel, sentinelIdentity, sentinelBefore, reader, fixture, false, receipt);
+            Os.close(reader);
+            reader = null;
+            receipt.append("CHUNKS_UNRAR_ISOLATED: tmpfile=verified\n");
+
+            // Independently test the sealed memory carrier. Only a classified
+            // parent read-only reopen failure AFTER sealing and byte proof is
+            // a supported capability limitation. No read-write FD is sent.
+            writer = Os.memfd_create("chunks-synthetic-rar", 3);
+            try {
+                reader = readonly(writer, fixture, true);
+            } catch (ReadonlyReopenDenied denied) {
+                receipt.append("CHUNKS_UNRAR_ISOLATED: memfd=parent_readonly_reopen_")
+                    .append(denied.errnoClass).append(" seals_and_parent_bytes=verified\n");
+            }
+            Os.close(writer);
+            writer = null;
+            if (reader != null) {
+                verifyCarrier(service, sentinel, sentinelIdentity, sentinelBefore, reader, fixture, true, receipt);
+                receipt.append("CHUNKS_UNRAR_ISOLATED: memfd=verified\n");
             }
             verifySentinel(sentinel, sentinelIdentity, sentinelBefore);
             receipt.append("CHUNKS_UNRAR_ISOLATED: PASS\n");
@@ -123,6 +87,62 @@ final class IsolatedInputWitness {
             // Exclusively created synthetic fixture only.
             Files.deleteIfExists(sentinel.toPath());
         }
+    }
+
+    private static void verifyCarrier(IBinder service, File sentinel, StructStat identity, byte[] sentinelBytes,
+                                      FileDescriptor reader, byte[] fixture, boolean sealed,
+                                      StringBuilder receipt) throws Exception {
+        String carrier = sealed ? "memfd" : "tmpfile";
+        String expected = digest(fixture);
+        try (ParcelFileDescriptor fd = ParcelFileDescriptor.dup(reader)) {
+            int[] actual = check(service, sentinel, identity, sentinelBytes, fixture.length, fd, expected, sealed);
+            require(actual[0] != Process.myUid() && actual[1] != Process.myPid() && actual[2] == 1,
+                "isolated input identity");
+            receipt.append("CHUNKS_UNRAR_ISOLATED: private_path=")
+                .append(IsolatedInputService.pathDisposition(actual[3]))
+                .append(" parent_inode_and_bytes=verified accessible_control=verified negative_control=enotdir\n");
+            receipt.append("CHUNKS_UNRAR_ISOLATED: ").append(carrier)
+                .append(" readonly_input bytes=").append(fixture.length).append(" sha256=").append(expected)
+                .append(" distinct_uid=true private_path_denied=true sealed=").append(sealed)
+                .append(" write_refused=true\n");
+            try {
+                check(service, sentinel, identity, sentinelBytes, fixture.length - 1, fd, expected, sealed);
+                throw new AssertionError("wrong length accepted");
+            } catch (IllegalArgumentException refused) {
+                require("isolated input refused:identity:other".equals(refused.getMessage()), "wrong-length refusal reason");
+                receipt.append("CHUNKS_UNRAR_ISOLATED: ").append(carrier).append(" wrong_length=refused\n");
+            }
+            try (ParcelFileDescriptor named = ParcelFileDescriptor.open(sentinel, ParcelFileDescriptor.MODE_READ_ONLY)) {
+                try {
+                    check(service, sentinel, identity, sentinelBytes, sentinelBytes.length, named, digest(sentinelBytes), sealed);
+                    throw new AssertionError("named inode accepted");
+                } catch (IllegalArgumentException refused) {
+                    require("isolated input refused:identity:other".equals(refused.getMessage()) ||
+                        "isolated input refused:stat:access_denied".equals(refused.getMessage()), "named inode refusal reason");
+                    receipt.append("CHUNKS_UNRAR_ISOLATED: ").append(carrier).append(" named_inode=refused\n");
+                }
+            }
+            int[] again = check(service, sentinel, identity, sentinelBytes, fixture.length, fd, expected, sealed);
+            require(java.util.Arrays.equals(actual, again), "isolated process or result changed");
+            receipt.append("CHUNKS_UNRAR_ISOLATED: ").append(carrier).append(" repeat=verified\n");
+        }
+        verifyBytes(reader, fixture);
+    }
+
+    private static void verifyBytes(FileDescriptor descriptor, byte[] fixture) throws Exception {
+        byte[] actual = new byte[fixture.length];
+        int offset = 0;
+        while (offset < actual.length) {
+            int n = Os.pread(descriptor, actual, offset, actual.length - offset, offset);
+            require(n > 0, "anonymous input short parent read");
+            offset += n;
+        }
+        require(java.util.Arrays.equals(actual, fixture), "anonymous input bytes changed");
+    }
+
+    private static final class ReadonlyReopenDenied extends IOException {
+        final String errnoClass;
+        ReadonlyReopenDenied(String errnoClass) { this.errnoClass = errnoClass; }
     }
 
     private static FileDescriptor readonly(FileDescriptor writer, byte[] fixture, boolean sealed) throws Exception {
@@ -148,9 +168,17 @@ final class IsolatedInputWitness {
         StructStat before = Os.fstat(writer);
         require(OsConstants.S_ISREG(before.st_mode) && before.st_nlink == 0 &&
                 before.st_size == fixture.length, "anonymous input identity");
+        verifyBytes(writer, fixture);
         try (ParcelFileDescriptor pin = ParcelFileDescriptor.dup(writer)) {
-            FileDescriptor reader = Os.open("/proc/self/fd/" + pin.getFd(),
-                OsConstants.O_RDONLY | OsConstants.O_CLOEXEC, 0);
+            FileDescriptor reader;
+            try {
+                reader = Os.open("/proc/self/fd/" + pin.getFd(),
+                    OsConstants.O_RDONLY | OsConstants.O_CLOEXEC, 0);
+            } catch (android.system.ErrnoException denied) {
+                if (sealed && (denied.errno == OsConstants.EACCES || denied.errno == OsConstants.EPERM))
+                    throw new ReadonlyReopenDenied(denied.errno == OsConstants.EACCES ? "eacces" : "eperm");
+                throw denied;
+            }
             boolean retained = false;
             try {
                 StructStat view = Os.fstat(reader);

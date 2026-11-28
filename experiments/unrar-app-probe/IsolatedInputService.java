@@ -111,6 +111,28 @@ public final class IsolatedInputService extends Service {
                 stage = "seals";
                 if (sealed && (Os.fcntlInt(input.getFileDescriptor(), GET_SEALS, 0) & ALL_SEALS) != ALL_SEALS)
                     throw new IOException("unsealed memory input");
+                stage = "write_refusal";
+                // Test only the synthetic input. An ordinary read-only FD
+                // must reject direct writes and not permit a writable reopen.
+                try {
+                    Os.pwrite(input.getFileDescriptor(), new byte[]{0}, 0, 1, 0);
+                    throw new IOException("input write unexpectedly succeeded");
+                } catch (ErrnoException denied) {
+                    if (denied.errno != OsConstants.EBADF && denied.errno != OsConstants.EACCES &&
+                        denied.errno != OsConstants.EPERM) throw denied;
+                }
+                if (!sealed) {
+                    stage = "writable_reopen";
+                    try {
+                        java.io.FileDescriptor reopened = Os.open("/proc/self/fd/" + input.getFd(),
+                            OsConstants.O_RDWR | OsConstants.O_CLOEXEC, 0);
+                        Os.close(reopened);
+                        throw new IOException("disk input writable reopen succeeded");
+                    } catch (ErrnoException denied) {
+                        if (denied.errno != OsConstants.EACCES && denied.errno != OsConstants.EPERM)
+                            throw denied;
+                    }
+                }
                 stage = "read";
                 // pread avoids shared cursor assumptions across Binder dup.
                 byte[] bytes = new byte[expectedSize];
