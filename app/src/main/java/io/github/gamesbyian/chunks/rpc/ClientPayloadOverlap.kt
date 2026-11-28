@@ -116,7 +116,7 @@ internal object ClientPayloadOverlap {
     }
 
     private fun safeDirectory(path: String?): String? {
-        if (path == null || !path.startsWith("/") || path.length > 4096 ||
+        if (path == null || !path.startsWith("/") || path.startsWith("//") || path.length > 4096 ||
             path.any { it.isISOControl() || it == '\\' }) return null
         val normalized = path.trimEnd('/').ifEmpty { "/" }
         if (normalized != "/" && normalized.removePrefix("/").split('/').any {
