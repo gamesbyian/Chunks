@@ -29,6 +29,17 @@ internal class InstalledAddResponseFault(appUrl: String) {
 
     private fun counts() = JSONObject(request("counts"))
 
+    /** Bounded fixture counters only: never emit request bodies, identities or exceptions. */
+    fun addDiagnostic(): String {
+        val observed = counts()
+        return listOf("adds", "acknowledgments_withheld", "starts", "upstream_errors", "view_mutations")
+            .joinToString(" ") { field ->
+                val count = observed.getInt(field)
+                require(count >= 0)
+                "$field=$count"
+            }
+    }
+
     fun hasWithheldReply() = counts().getInt("acknowledgments_withheld") == 1
 
     fun holdNextConnectRead() {
