@@ -47,7 +47,7 @@ class ExactProtocolReadTest {
                     val method = JSONObject(req.body.toString(Charsets.UTF_8)).getString("method")
                     beforeReply(method)
                     val args = when (method) {
-                        "session-get" -> """{"version":"4.0","download-dir":"/data"}"""
+                        "session-get" -> sourceWire?.invoke(method) ?: """{"version":"4.0","download-dir":"/data"}"""
                         "torrent-get" -> sourceWire?.invoke(method) ?: if (fileWire != null)
                             """{"torrents":[{"hashString":"$hash",$fileWire}]}"""
                             else if (duplicateWireKeys)
@@ -82,7 +82,7 @@ class ExactProtocolReadTest {
                         "app/version" -> QBittorrentReadOnlyRpc.Response(200, "v5.1")
                         "app/webapiVersion" -> QBittorrentReadOnlyRpc.Response(200, "2.11")
                         "app/defaultSavePath" -> QBittorrentReadOnlyRpc.Response(200, "/data")
-                        "torrents/properties", "torrents/trackers" ->
+                        "torrents/properties", "torrents/trackers", "torrents/uploadLimit" ->
                             QBittorrentReadOnlyRpc.Response(200, requireNotNull(sourceWire?.invoke(method)))
                         "torrents/info" -> QBittorrentReadOnlyRpc.Response(200, sourceWire?.invoke(method) ?: if (duplicateWireKeys)
                             """[{"hash":"$other","ha\u0073h":"$hash","state":"pausedDL","save_path":"/data"}]"""
@@ -140,6 +140,55 @@ class ExactProtocolReadTest {
 
     private val kinds = listOf(TorrentClientKind.TRANSMISSION, TorrentClientKind.QBITTORRENT, TorrentClientKind.DELUGE)
     private val invalid = listOf(listOf(other), listOf(hash, other), listOf(hash, hash.uppercase()), listOf("bad"))
+
+    @Test fun uploadCapsRequireExactTypedAndScopedWireEvidence() = runBlocking {
+        val trans = TorrentClientKind.TRANSMISSION
+        val qb = TorrentClientKind.QBITTORRENT
+        val deluge = TorrentClientKind.DELUGE
+        suspend fun observe(kind: TorrentClientKind, body: String, units: String = """{"units":{"speed-bytes":1000}}"""): Long? {
+            val f = fixture(kind, emptyList(), sourceWire = { method ->
+                if (method == "session-get") units else body
+            })
+            // A malformed exact envelope may throw IOException; the policy port
+            // treats that as unknown, just as it treats a null observation.
+            val observed = try { f.client.uploadCapBytesPerSecond(hash) }
+                catch (_: java.io.IOException) { null }
+            assertEquals("Cap observation is read-only", 0, f.writes())
+            return observed
+        }
+        fun tr(enabled: String, limit: String, h: String = hash) =
+            """{"torrents":[{"hashString":"$h","uploadLimited":$enabled,"uploadLimit":$limit}]}"""
+        fun de(value: String) = """{"$hash":{"max_upload_speed":$value}}"""
+        assertEquals(128000L, observe(trans, tr("true", "128")))
+        assertEquals(0L, observe(trans, tr("false", "128")))
+        assertEquals(128000L, observe(trans, tr("true", "125"), """{"units":{"speed-bytes":1024}}"""))
+        assertEquals(128000L, observe(qb, """{"$hash":128000}"""))
+        assertEquals(0L, observe(qb, """{"$hash":0}"""))
+        assertEquals(128000L, observe(deluge, de("125.0")))
+        assertEquals(1536L, observe(deluge, de("1.5")))
+        assertEquals(0L, observe(deluge, de("-1.0")))
+
+        for (body in listOf(tr("null", "128"), tr("0", "128"), tr("\"false\"", "128"),
+            tr("true", "\"128\""), tr("true", "128.5"), tr("true", "0"),
+            tr("false", "-2"), tr("true", Long.MAX_VALUE.toString()), tr("true", "128", other))) {
+            assertNull("Transmission: $body", observe(trans, body))
+        }
+        for (units in listOf("""{"units":{"speed-bytes":"1000"}}""",
+            """{"units":{"speed-bytes":1000,"speed-bytes":1024}}""")) {
+            assertNull(observe(trans, tr("true", "128"), units))
+        }
+        for (body in listOf("""{"$hash":"128000"}""", """{"$hash":128000.5}""",
+            """{"$hash":-2}""", """{"$hash":null}""", """{"$hash":1,"$hash":128000}""",
+            """{"$hash":128000,"$other":1}""", """{"$other":128000}""",
+            """{"$hash":128000,"${hash.uppercase()}":1}""")) {
+            assertNull("qBittorrent: $body", observe(qb, body))
+        }
+        for (body in listOf(de("\"125\""), de("125.0001"), de("-2"), de("null"), de("1e100"),
+            """{"$hash":{"max_upload_speed":125},"$other":{"max_upload_speed":125}}""",
+            """{"$hash":{"max_upload_speed":125,"max_upload_speed":126}}""")) {
+            assertNull("Deluge: $body", observe(deluge, body))
+        }
+    }
 
     @Test fun magnetFallbackAndTrackerRulesRequireAnExplicitPublicBoolean() = runBlocking {
         val tracker = "https://tracker.invalid/announce"

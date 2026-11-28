@@ -282,9 +282,16 @@ internal class DelugeClientCore(
         if (result.length() != 1) return null
         val row = result.keys().asSequence().firstOrNull { it.equals(exact, ignoreCase = true) }
             ?.let(result::getJSONObject) ?: return null
-        if (!row.has("max_upload_speed")) return null
-        val kib = row.optDouble("max_upload_speed", Double.NaN).takeIf { !it.isNaN() } ?: return null
-        return if (kib <= 0.0) 0L else Math.round(kib * 1024.0)
+        val kib = row.opt("max_upload_speed") as? Number ?: return null
+        // Deluge expresses limits in KiB/s, including fractional values.
+        // Do not round an inexact read into a false confirmation of a write.
+        val decimal = kib.toString().toBigDecimalOrNull() ?: return null
+        if (decimal.compareTo(java.math.BigDecimal.valueOf(-1L)) == 0 ||
+            decimal.signum() == 0) return 0L
+        if (decimal.signum() < 0) return null
+        return try {
+            decimal.multiply(java.math.BigDecimal.valueOf(1024L)).longValueExact()
+        } catch (_: ArithmeticException) { null }
     }
 
     override suspend fun setUploadCapBytesPerSecond(hash: String, bytesPerSecond: Long) {
