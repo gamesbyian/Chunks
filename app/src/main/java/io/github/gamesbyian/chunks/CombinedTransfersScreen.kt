@@ -1642,6 +1642,7 @@ internal fun CombinedTransfersScreen(
         // the environment chips. Batch and filter panels are still the same
         // exact-account safety-gated sections; these icons only reveal them.
         item(key = "transfers-search-tools") {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TransfersInlineToolbar(
                 search = query.search,
                 onSearchChange = {
@@ -1666,8 +1667,6 @@ internal fun CombinedTransfersScreen(
                     showingBatchTools = !showingBatchTools
                 }
             )
-        }
-        item(key = "transfers-find-files-entry") {
             OutlinedButton(onClick = {
                 findingFiles = !findingFiles
                 fileSelection = emptySet()
@@ -1677,6 +1676,7 @@ internal fun CombinedTransfersScreen(
             }, enabled = !batchRunning && quickRunning == null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("transfers-find-files")) {
                 Text(if (findingFiles) "Done finding files" else "Find files…")
+            }
             }
         }
         // Explain a nondefault view and expose recovery inside its disclosure,
