@@ -39,8 +39,8 @@ class TransferNotesInstrumentedTest {
         val remote = "https://test.invalid/RPC2\u0000private-note-native"
         val selected = mutableStateOf(local)
         try {
-            store.save(local, hash, store.read(local, hash), "")
-            store.save(remote, hash, store.read(remote, hash), "")
+            store.save(local, hash, store.read(local, hash).text, "")
+            store.save(remote, hash, store.read(remote, hash).text, "")
             rule.setContent {
                 ChunksTheme {
                     Column(Modifier.verticalScroll(rememberScrollState()).imePadding()) {
@@ -53,7 +53,7 @@ class TransferNotesInstrumentedTest {
             rule.onNodeWithTag("private-transfer-note-input").performTextInput("Local note")
             rule.onNodeWithText("Save private note").performScrollTo().performClick()
             waitText("Private note saved.")
-            assertEquals("Local note", TransferNotesStore(context).read(local, hash))
+            assertEquals("Local note", TransferNotesStore(context).read(local, hash).text)
 
             rule.runOnIdle { selected.value = remote }
             waitText("No private note")
@@ -62,7 +62,7 @@ class TransferNotesInstrumentedTest {
             rule.onNodeWithTag("private-transfer-note-input").performTextInput("Remote note")
             rule.onNodeWithText("Save private note").performScrollTo().performClick()
             waitText("Private note saved.")
-            assertEquals("Remote note", TransferNotesStore(context).read(remote, hash))
+            assertEquals("Remote note", TransferNotesStore(context).read(remote, hash).text)
 
             rule.runOnIdle { selected.value = local }
             waitText("Local note")
@@ -71,11 +71,11 @@ class TransferNotesInstrumentedTest {
             rule.onNodeWithTag("private-transfer-note-input").performTextClearance()
             rule.onNodeWithText("Save empty note (clear)").performScrollTo().performClick()
             waitText("Private note cleared.")
-            assertEquals("", TransferNotesStore(context).read(local, hash))
-            assertEquals("Remote note", TransferNotesStore(context).read(remote, hash))
+            assertEquals("", TransferNotesStore(context).read(local, hash).text)
+            assertEquals("Remote note", TransferNotesStore(context).read(remote, hash).text)
         } finally {
-            store.save(local, hash, store.read(local, hash), "")
-            store.save(remote, hash, store.read(remote, hash), "")
+            store.save(local, hash, store.read(local, hash).text, "")
+            store.save(remote, hash, store.read(remote, hash).text, "")
         }
     }
 }

@@ -54,22 +54,65 @@ private fun ScopedTransferNotes(scope: String, infoHash: String, store: Transfer
     var showFull by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var unavailable by remember { mutableStateOf(false) }
+    var writeUnverified by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var status by remember { mutableStateOf<String?>(null) }
     val coroutine = rememberCoroutineScope()
 
     LaunchedEffect(reload, store) {
         unavailable = false
+        writeUnverified = false
         observed = null
+        status = null
         try {
             val note = withContext(Dispatchers.IO) { store.read(scope, infoHash) }
-            observed = note
-            draft = note
-            if (reload != 0) status = "Current saved note loaded."
+            observed = note.text
+            draft = note.text
+            editing = false
+            writeUnverified = note.writeUnverified
+            if (reload != 0 && !writeUnverified) status = "Current saved note loaded."
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: RuntimeException) {
             unavailable = true
+        }
+    }
+
+    fun requestSave(expected: String, proposed: String) {
+        if (saving) return
+        saving = true
+        status = "Saving private note…"
+        coroutine.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    store.save(scope, infoHash, expected, proposed)
+                }
+                observed = result.observed
+                when (result.status) {
+                    TransferNotesStore.SaveStatus.VERIFIED -> {
+                        writeUnverified = false
+                        draft = result.observed
+                        editing = false
+                        status = if (proposed.isEmpty()) "Private note cleared." else "Private note saved."
+                    }
+                    TransferNotesStore.SaveStatus.CONFLICT -> {
+                        unavailable = true
+                        status = "The note changed. Reload it before editing again."
+                    }
+                    TransferNotesStore.SaveStatus.UNVERIFIED -> {
+                        writeUnverified = true
+                        status = "Save could not be verified. Review the observed note before saving again."
+                    }
+                }
+            } catch (cancel: CancellationException) {
+                throw cancel
+            } catch (_: RuntimeException) {
+                unavailable = true
+                observed = null
+                status = "Save outcome uncertain. Reload the current note."
+            } finally {
+                saving = false
+            }
         }
     }
 
@@ -82,12 +125,29 @@ private fun ScopedTransferNotes(scope: String, infoHash: String, store: Transfer
             val current = observed
             when {
                 unavailable -> {
-                    Text("Saved note unavailable.", modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    Text(if (current == null) "Saved note unavailable." else "Review required before editing.",
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    if (editing) Text("Reloading discards your unsaved draft.", style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { reload++ }, enabled = !saving,
-                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Reload saved note") }
+                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Reload current note") }
                 }
                 current == null -> Text("Loading saved note…",
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                writeUnverified -> {
+                    Text("Current note is not confirmed saved.",
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    Text(if (current.isEmpty()) "No note text currently observed." else current)
+                    if (editing && draft != current) {
+                        Text("Your submitted draft:", style = MaterialTheme.typography.bodySmall)
+                        Text(draft)
+                        OutlinedButton(onClick = { requestSave(current, draft) }, enabled = !saving,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Save submitted draft instead") }
+                    }
+                    OutlinedButton(onClick = { requestSave(current, current) }, enabled = !saving,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Confirm save observed note") }
+                    OutlinedButton(onClick = { reload++ }, enabled = !saving,
+                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Reload current note") }
+                }
                 editing -> {
                     Text("Unsaved changes are discarded when leaving or locking Details.",
                         style = MaterialTheme.typography.bodySmall)
@@ -104,45 +164,7 @@ private fun ScopedTransferNotes(scope: String, infoHash: String, store: Transfer
                     Text("${draft.length} / ${TransferNotesStore.MAX_LENGTH}", style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(
                         enabled = !saving && draft != current,
-                        onClick = {
-                            if (saving) return@OutlinedButton
-                            val proposed = draft
-                            saving = true
-                            status = "Saving private note…"
-                            coroutine.launch {
-                                try {
-                                    val result = withContext(Dispatchers.IO) {
-                                        store.save(scope, infoHash, current, proposed)
-                                    }
-                                    observed = result.observed
-                                    when (result.status) {
-                                        TransferNotesStore.SaveStatus.VERIFIED -> {
-                                            draft = result.observed
-                                            editing = false
-                                            status = if (proposed.isEmpty()) "Private note cleared." else "Private note saved."
-                                        }
-                                        TransferNotesStore.SaveStatus.CONFLICT -> {
-                                            // Preserve the user's draft, but never rebase it onto a
-                                            // newer value without a deliberate reload and edit.
-                                            unavailable = true
-                                            status = "The saved note changed. Reload it before editing again."
-                                        }
-                                        TransferNotesStore.SaveStatus.UNVERIFIED -> {
-                                            unavailable = true
-                                            status = "Save could not be verified. Reload the saved note."
-                                        }
-                                    }
-                                } catch (cancel: CancellationException) {
-                                    throw cancel
-                                } catch (_: RuntimeException) {
-                                    unavailable = true
-                                    observed = null
-                                    status = "Save outcome uncertain. Reload the saved note."
-                                } finally {
-                                    saving = false
-                                }
-                            }
-                        },
+                        onClick = { requestSave(current, draft) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     ) { Text(if (saving) "Saving…" else if (draft.isEmpty()) "Save empty note (clear)" else "Save private note") }
                     OutlinedButton(onClick = { draft = current; editing = false; status = null },

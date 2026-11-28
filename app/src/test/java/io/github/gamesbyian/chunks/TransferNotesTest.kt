@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.SharedPreferences
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -17,6 +20,7 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 import java.security.MessageDigest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Rule
@@ -39,19 +43,19 @@ class TransferNotesTest {
     @Test fun notesPersistAndConflictingEditsCannotOverwriteAnotherSavedNote() {
         val first = TransferNotesStore(context)
         val second = TransferNotesStore(context)
-        assertEquals("", first.read(remote, hash))
+        assertEquals("", first.read(remote, hash).text)
         assertEquals(TransferNotesStore.SaveStatus.VERIFIED,
             first.save(remote, hash, "", "Original\nSecond line").status)
-        assertEquals("Original\nSecond line", second.read(remote, hash.uppercase()))
-        assertEquals("", second.read(remote + " ", hash))
-        assertEquals("", second.read(local, hash))
-        assertEquals("", second.read(remote, "b".repeat(40)))
+        assertEquals("Original\nSecond line", second.read(remote, hash.uppercase()).text)
+        assertEquals("", second.read(remote + " ", hash).text)
+        assertEquals("", second.read(local, hash).text)
+        assertEquals("", second.read(remote, "b".repeat(40)).text)
         assertEquals(TransferNotesStore.SaveStatus.CONFLICT,
             second.save(remote, hash, "", "Stale editor").status)
-        assertEquals("Original\nSecond line", first.read(remote, hash))
+        assertEquals("Original\nSecond line", first.read(remote, hash).text)
         assertEquals(TransferNotesStore.SaveStatus.VERIFIED,
             second.save(remote, hash, "Original\nSecond line", "").status)
-        assertEquals("", TransferNotesStore(context).read(remote, hash))
+        assertEquals("", TransferNotesStore(context).read(remote, hash).text)
     }
 
     @Test fun corruptNotesAreNotSilentlyClearedOrOverwritten() {
@@ -81,6 +85,62 @@ class TransferNotesTest {
         }
     }
 
+    @Test fun failedCommitCannotBecomeVerifiedFromTheProcessCacheOrSameValueShortcut() {
+        val scope = remote + "-uncertain"
+        val prefs = context.getSharedPreferences("chunks_private_transfer_notes_v1", Context.MODE_PRIVATE)
+        var reportFailure = true
+        var commitCount = 0
+        val injected = object : ContextWrapper(context) {
+            override fun getApplicationContext(): Context = this
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
+                check(name == "chunks_private_transfer_notes_v1")
+                return object : SharedPreferences by prefs {
+                    override fun edit(): SharedPreferences.Editor {
+                        val delegate = prefs.edit()
+                        return object : SharedPreferences.Editor by delegate {
+                            override fun commit(): Boolean {
+                                commitCount++
+                                assertTrue(delegate.commit())
+                                return !reportFailure
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val writer = TransferNotesStore(injected)
+        val reader = TransferNotesStore(context)
+        try {
+            assertEquals(TransferNotesStore.SaveStatus.UNVERIFIED,
+                writer.save(scope, hash, "", "Possibly saved").status)
+            assertEquals(TransferNotesStore.Observation("Possibly saved", true), reader.read(scope, hash))
+            assertFalse(reader.read(local, hash).writeUnverified)
+            assertEquals(TransferNotesStore.SaveStatus.UNVERIFIED,
+                writer.save(scope, hash, "Possibly saved", "Possibly saved").status)
+            assertEquals(2, commitCount)
+            assertTrue(reader.read(scope, hash).writeUnverified)
+
+            reportFailure = false
+            assertEquals(TransferNotesStore.SaveStatus.VERIFIED,
+                writer.save(scope, hash, "Possibly saved", "Possibly saved").status)
+            assertEquals(3, commitCount)
+            assertEquals(TransferNotesStore.Observation("Possibly saved", false), reader.read(scope, hash))
+
+            reportFailure = true
+            assertEquals(TransferNotesStore.SaveStatus.UNVERIFIED,
+                writer.save(scope, hash, "Possibly saved", "").status)
+            assertEquals(TransferNotesStore.Observation("", true), reader.read(scope, hash))
+            reportFailure = false
+            assertEquals(TransferNotesStore.SaveStatus.VERIFIED,
+                writer.save(scope, hash, "", "").status)
+            assertEquals(5, commitCount)
+            assertEquals(TransferNotesStore.Observation("", false), reader.read(scope, hash))
+        } finally {
+            reportFailure = false
+            writer.save(scope, hash, reader.read(scope, hash).text, "")
+        }
+    }
+
     private fun waitText(text: String) {
         rule.waitUntil(10_000) { rule.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     }
@@ -106,8 +166,8 @@ class TransferNotesTest {
             rule.onNodeWithTag("private-transfer-note-input").performScrollTo().performTextInput("Saved privately")
             rule.onNodeWithText("Save private note").performScrollTo().performClick()
             waitText("Private note saved.")
-            assertEquals("Saved privately", TransferNotesStore(context).read(remote, hash))
-            assertEquals("", notes.read(local, hash))
+            assertEquals("Saved privately", TransferNotesStore(context).read(remote, hash).text)
+            assertEquals("", notes.read(local, hash).text)
             rule.onNodeWithText("Edit private note").performScrollTo().performClick()
             rule.onNodeWithTag("private-transfer-note-input").performScrollTo().performTextInput(" unsaved draft")
             rule.runOnIdle { selected.value = detail(EnvironmentAvailability.LOCKED) }
@@ -118,9 +178,9 @@ class TransferNotesTest {
             waitText("Saved privately")
             rule.onNodeWithTag("private-transfer-note-input").assertDoesNotExist()
             rule.onNodeWithText("unsaved draft", substring = true).assertDoesNotExist()
-            assertEquals("Saved privately", notes.read(remote, hash))
+            assertEquals("Saved privately", notes.read(remote, hash).text)
         } finally {
-            notes.save(remote, hash, notes.read(remote, hash), "")
+            notes.save(remote, hash, notes.read(remote, hash).text, "")
         }
     }
 }
