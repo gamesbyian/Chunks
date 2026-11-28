@@ -40,6 +40,36 @@ internal object LocalArchiveInventory {
             candidate.volumes.size in 1..MAX_HEADER_VOLUMES && candidate.allListedComplete &&
             candidate.volumes.all { it.file.wanted }
 
+    fun canReviewExactBytes(candidate: RarVolumeCandidates.Candidate): Boolean =
+        canInspectHeaders(candidate) && candidate.volumes.all {
+            it.file.sizeBytes in 1L..io.github.gamesbyian.chunks.engine.LocalArchivePiecePlan.MAX_INPUT_BYTES.toLong()
+        } && candidate.volumes.sumOf { it.file.sizeBytes } <=
+            io.github.gamesbyian.chunks.engine.LocalArchivePiecePlan.MAX_INPUT_BYTES
+
+    /** Fresh subset flush and independent whole-piece hashes, including
+     * boundaries of unrelated files in an incomplete torrent. */
+    fun captureExactBytes(engine: LocalTorrentEngine, reviewed: Review,
+                          candidate: RarVolumeCandidates.Candidate): LocalArchiveByteSnapshot? {
+        if (candidate !in reviewed.candidates || !canReviewExactBytes(candidate)) return null
+        val selected = candidate.volumes.map { it.file }
+        return try {
+            if (!engine.flushVerifiedFilesForRead(reviewed.infoHash, reviewed.nativeToken,
+                    reviewed.savePath, selected)) return null
+            fun plan() = engine.readArchivePiecePlan(reviewed.infoHash, reviewed.nativeToken,
+                reviewed.savePath, selected)
+            val before = plan() ?: return null
+            val files = before.pieces.flatMap { it.slices }.map { it.file }.distinct()
+            val reader = LocalCompletedMediaFiles(reviewed.savePath, files)
+            val captured = LocalArchiveByteSnapshot.capture(before, reader::openPieceBoundary) {
+                Thread.currentThread().isInterrupted
+            } ?: return null
+            val after = review(engine, reviewed.infoHash) ?: return null
+            if (after.nativeToken != reviewed.nativeToken || after.savePath != reviewed.savePath ||
+                candidate !in after.candidates || before != plan() || Thread.currentThread().isInterrupted) null
+            else captured
+        } catch (_: Exception) { null }
+    }
+
     /** Cache readback and pinned header ranges for one reviewed group. No decoder or destination access. */
     fun inspectHeaders(
         engine: LocalTorrentEngine,
