@@ -128,6 +128,32 @@ class SimilarTransfersHostTest {
         rule.onNodeWithText("Nearby episode").assertExists()
         rule.runOnIdle { inventory.value = listOf(snapshot(source), snapshot(target, EnvironmentAvailability.LOCKED)) }
         rule.onNodeWithText("Similar transfers").assertDoesNotExist()
+        rule.runOnIdle { opened = null; inventory.value = listOf(snapshot(source), snapshot(target)) }
+        rule.onNodeWithText("Nearby episode").assertExists()
+
+        // A previously selected Details source can become unauthorized or absent
+        // while the route remains mounted. Neither its relationships nor navigation survive.
+        rule.runOnIdle { inventory.value = listOf(snapshot(source, EnvironmentAvailability.LOCKED), snapshot(target)) }
+        rule.onNodeWithText("Similar transfers").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Nearby episode", substring = true).assertDoesNotExist()
+        rule.runOnIdle { inventory.value = listOf(snapshot(target)) }
+        rule.onNodeWithText("Similar transfers").assertDoesNotExist()
+        assertEquals(null, opened)
+
+        rule.runOnIdle { inventory.value = listOf(snapshot(source), snapshot(target)) }
+        rule.onNodeWithText("Nearby episode").assertExists()
+        rule.runOnIdle {
+            settings = settings.copy(showSimilarTransfers = false)
+            c.onSettingsChanged()
+        }
+        rule.onNodeWithText("Similar transfers").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Nearby episode", substring = true).assertDoesNotExist()
+        rule.runOnIdle {
+            settings = settings.copy(showSimilarTransfers = true)
+            c.onSettingsChanged()
+        }
+        rule.onNodeWithText("Nearby episode").assertExists()
+        assertEquals(null, opened)
         assertTrue(http.requests.isEmpty())
     }
 }
