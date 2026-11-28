@@ -21,6 +21,44 @@ public final class IsolatedInputService extends Service {
     static final int MAX_BYTES = 1024 * 1024;
     // Linux fcntl seal commands and all four basic seals, not Android API fields.
     static final int ADD_SEALS = 1033, GET_SEALS = 1034, ALL_SEALS = 15;
+    static final int PATH_EACCES = 1, PATH_EPERM = 2, PATH_ENOENT = 3, PATH_ENOTDIR = 4;
+
+    static String pathDisposition(int code) {
+        switch (code) {
+            case PATH_EACCES: return "eacces";
+            case PATH_EPERM: return "eperm";
+            case PATH_ENOENT: return "enoent";
+            case PATH_ENOTDIR: return "enotdir";
+            default: throw new IllegalArgumentException("unknown path disposition");
+        }
+    }
+
+    // Fixed control paths only; do not let a caller choose a probe target.
+    // The isolated UID must be capable of opening a known existing path,
+    // and distinguish a non-directory child from an accessible regular file.
+    private static void pathControls() throws Exception {
+        java.io.FileDescriptor control = Os.open("/proc/self/status",
+            OsConstants.O_RDONLY | OsConstants.O_CLOEXEC, 0);
+        try {
+            byte[] prefix = new byte[5];
+            int offset = 0;
+            while (offset < prefix.length) {
+                int n = Os.read(control, prefix, offset, prefix.length - offset);
+                if (n <= 0) throw new IOException("short positive control");
+                offset += n;
+            }
+            if (!"Name:".equals(new String(prefix, java.nio.charset.StandardCharsets.US_ASCII)))
+                throw new IOException("wrong positive control");
+        } finally { Os.close(control); }
+        try {
+            java.io.FileDescriptor unexpected = Os.open("/proc/self/status/chunks-synthetic-absent",
+                OsConstants.O_RDONLY | OsConstants.O_CLOEXEC, 0);
+            Os.close(unexpected);
+            throw new IOException("negative control opened");
+        } catch (ErrnoException denied) {
+            if (denied.errno != OsConstants.ENOTDIR) throw denied;
+        }
+    }
 
     private final Binder endpoint = new Binder() {
         @Override protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
@@ -41,16 +79,25 @@ public final class IsolatedInputService extends Service {
                     "/data/(user/0|data)/io[.]github[.]gamesbyian[.]chunks[.]unrarprobe/cache/isolation-[0-9]+[.]bin") ||
                         expectedSize <= 0 || expectedSize > MAX_BYTES || input == null)
                     throw new IOException("invalid fixture request");
+                stage = "path_controls";
+                pathControls();
                 stage = "private_path";
-                boolean pathDenied = false;
+                int disposition = 0;
                 try {
                     java.io.FileDescriptor probe = Os.open(sentinel, OsConstants.O_RDONLY | OsConstants.O_CLOEXEC, 0);
+                    // Successful open is a distinct failure even if close fails.
+                    stage = "unexpected_access";
                     Os.close(probe);
+                    throw new IOException("parent private path accessible");
                 } catch (ErrnoException denied) {
-                    if (denied.errno != OsConstants.EACCES && denied.errno != OsConstants.EPERM) throw denied;
-                    pathDenied = true;
+                    if (!"private_path".equals(stage)) throw denied;
+                    if (denied.errno == OsConstants.EACCES) disposition = PATH_EACCES;
+                    else if (denied.errno == OsConstants.EPERM) disposition = PATH_EPERM;
+                    else if (denied.errno == OsConstants.ENOENT) disposition = PATH_ENOENT;
+                    else if (denied.errno == OsConstants.ENOTDIR) disposition = PATH_ENOTDIR;
+                    else throw denied;
                 }
-                if (!pathDenied) throw new IOException("parent private path accessible");
+                if (disposition == 0) throw new IOException("unclassified private path");
                 stage = "stat";
                 android.system.StructStat stat = Os.fstat(input.getFileDescriptor());
                 stage = "identity";
@@ -81,17 +128,24 @@ public final class IsolatedInputService extends Service {
                 reply.writeNoException();
                 reply.writeInt(Process.myUid());
                 reply.writeInt(Process.myPid());
-                reply.writeInt(pathDenied ? 1 : 0);
+                reply.writeInt(1);
+                reply.writeInt(disposition);
                 reply.writeString(hash.toString());
             } catch (Exception refused) {
                 // Fixed reason; no exception paths or descriptors escape.
                 reply.setDataPosition(0);
-                // Only fixed stage and numeric access-denial classification.
-                boolean denied = refused instanceof ErrnoException &&
-                    (((ErrnoException) refused).errno == OsConstants.EACCES ||
-                     ((ErrnoException) refused).errno == OsConstants.EPERM);
-                reply.writeException(new IllegalArgumentException("isolated input refused:" + stage +
-                    (denied ? ":access_denied" : ":other")));
+                // Fixed stages and errno classes only. Keep the established
+                // disk-carrier access_denied disposition for stat/flags/read.
+                String reason = "other";
+                if (refused instanceof ErrnoException) {
+                    int errno = ((ErrnoException) refused).errno;
+                    if (errno == OsConstants.EACCES || errno == OsConstants.EPERM) {
+                        reason = ("private_path".equals(stage) || "path_controls".equals(stage))
+                            ? (errno == OsConstants.EACCES ? "eacces" : "eperm") : "access_denied";
+                    } else if (errno == OsConstants.ENOENT) reason = "enoent";
+                    else if (errno == OsConstants.ENOTDIR) reason = "enotdir";
+                }
+                reply.writeException(new IllegalArgumentException("isolated input refused:" + stage + ":" + reason));
             } finally {
                 if (input != null) try { input.close(); } catch (IOException ignored) {}
             }

@@ -34,7 +34,9 @@ final class IsolatedInputWitness {
     static void run(Context context, byte[] fixture, StringBuilder receipt) throws Exception {
         File sentinel = Files.createTempFile(context.getCacheDir().toPath(), "isolation-", ".bin").toFile();
         Files.write(sentinel.toPath(), new byte[]{12, 34, 56});
-        final byte[] sentinelBefore = Files.readAllBytes(sentinel.toPath());
+        final byte[] sentinelBefore = new byte[]{12, 34, 56};
+        final StructStat sentinelIdentity = Os.lstat(sentinel.getAbsolutePath());
+        verifySentinel(sentinel, sentinelIdentity, sentinelBefore);
         ArrayBlockingQueue<IBinder> ready = new ArrayBlockingQueue<>(1);
         ServiceConnection connection = new ServiceConnection() {
             @Override public void onServiceConnected(ComponentName name, IBinder binder) { ready.offer(binder); }
@@ -56,7 +58,7 @@ final class IsolatedInputWitness {
                 Os.close(writer);
                 writer = null;
                 try (ParcelFileDescriptor fd = ParcelFileDescriptor.dup(reader)) {
-                    int[] actual = check(service, sentinel, fixture.length, fd, digest(fixture), false);
+                    int[] actual = check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length, fd, digest(fixture), false);
                     require(actual[0] != Process.myUid() && actual[1] != Process.myPid() && actual[2] == 1,
                         "disk input isolation");
                     receipt.append("CHUNKS_UNRAR_ISOLATED: tmpfile=verified\n");
@@ -79,14 +81,20 @@ final class IsolatedInputWitness {
             writer = null;
             String expected = digest(fixture);
             try (ParcelFileDescriptor fd = ParcelFileDescriptor.dup(reader)) {
-                int[] actual = check(service, sentinel, fixture.length, fd, expected, true);
+                int[] actual = check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length, fd, expected, true);
                 require(actual[0] != Process.myUid() && actual[1] != Process.myPid(),
                     "not a different UID and process");
                 require(actual[2] == 1, "isolated worker opened app-private path");
+                // The parent has independently pinned the exact sentinel
+                // before and after each Binder call. ENOENT/ENOTDIR means
+                // invisible to this worker, not a claim about the kernel cause.
+                receipt.append("CHUNKS_UNRAR_ISOLATED: private_path=")
+                    .append(IsolatedInputService.pathDisposition(actual[3]))
+                    .append(" parent_inode_and_bytes=verified accessible_control=verified negative_control=enotdir\n");
                 receipt.append("CHUNKS_UNRAR_ISOLATED: readonly_input bytes=").append(fixture.length)
                     .append(" sha256=").append(expected).append(" distinct_uid=true private_path_denied=true sealed=true\n");
                 try {
-                    check(service, sentinel, fixture.length - 1, fd, expected, true);
+                    check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length - 1, fd, expected, true);
                     throw new AssertionError("wrong length accepted");
                 } catch (IllegalArgumentException refused) {
                     require("isolated input refused:identity:other".equals(refused.getMessage()), "wrong-length refusal reason");
@@ -94,7 +102,7 @@ final class IsolatedInputWitness {
                 }
                 try (ParcelFileDescriptor named = ParcelFileDescriptor.open(sentinel, ParcelFileDescriptor.MODE_READ_ONLY)) {
                     try {
-                        check(service, sentinel, 3, named, digest(sentinelBefore), true);
+                        check(service, sentinel, sentinelIdentity, sentinelBefore, 3, named, digest(sentinelBefore), true);
                         throw new AssertionError("named inode accepted");
                     } catch (IllegalArgumentException refused) {
                         require("isolated input refused:identity:other".equals(refused.getMessage()) ||
@@ -103,11 +111,10 @@ final class IsolatedInputWitness {
                         receipt.append("CHUNKS_UNRAR_ISOLATED: named_inode=refused\n");
                     }
                 }
-                int[] again = check(service, sentinel, fixture.length, fd, expected, true);
+                int[] again = check(service, sentinel, sentinelIdentity, sentinelBefore, fixture.length, fd, expected, true);
                 require(java.util.Arrays.equals(actual, again), "isolated process or result changed");
             }
-            require(java.util.Arrays.equals(sentinelBefore, Files.readAllBytes(sentinel.toPath())),
-                "private sentinel changed");
+            verifySentinel(sentinel, sentinelIdentity, sentinelBefore);
             receipt.append("CHUNKS_UNRAR_ISOLATED: PASS\n");
         } finally {
             if (reader != null) Os.close(reader);
@@ -157,8 +164,34 @@ final class IsolatedInputWitness {
         }
     }
 
-    private static int[] check(IBinder service, File sentinel, int bytes,
-                               ParcelFileDescriptor descriptor, String expected, boolean sealed) throws Exception {
+    private static boolean sameSentinel(StructStat actual, StructStat original, int length) {
+        return OsConstants.S_ISREG(actual.st_mode) && actual.st_dev == original.st_dev &&
+            actual.st_ino == original.st_ino && actual.st_nlink == 1 && actual.st_size == length;
+    }
+
+    private static void verifySentinel(File file, StructStat identity, byte[] expected) throws Exception {
+        String path = file.getAbsolutePath();
+        require(sameSentinel(Os.lstat(path), identity, expected.length), "parent sentinel path identity");
+        FileDescriptor fd = Os.open(path, OsConstants.O_RDONLY | OsConstants.O_CLOEXEC |
+            OsConstants.O_NOFOLLOW, 0);
+        try {
+            require(sameSentinel(Os.fstat(fd), identity, expected.length), "parent sentinel descriptor identity");
+            byte[] actual = new byte[expected.length];
+            int offset = 0;
+            while (offset < actual.length) {
+                int n = Os.pread(fd, actual, offset, actual.length - offset, offset);
+                require(n > 0, "parent sentinel short read");
+                offset += n;
+            }
+            require(java.util.Arrays.equals(actual, expected), "parent sentinel bytes changed");
+            require(sameSentinel(Os.fstat(fd), identity, expected.length) &&
+                sameSentinel(Os.lstat(path), identity, expected.length), "parent sentinel changed during read");
+        } finally { Os.close(fd); }
+    }
+
+    private static int[] check(IBinder service, File sentinel, StructStat identity, byte[] sentinelBytes,
+                               int bytes, ParcelFileDescriptor descriptor, String expected, boolean sealed) throws Exception {
+        verifySentinel(sentinel, identity, sentinelBytes);
         Parcel request = Parcel.obtain(), response = Parcel.obtain();
         try {
             request.writeInterfaceToken(IsolatedInputService.INTERFACE);
@@ -169,12 +202,16 @@ final class IsolatedInputWitness {
             descriptor.writeToParcel(request, 0);
             require(service.transact(IsolatedInputService.CHECK, request, response, 0), "no Binder response");
             response.readException();
-            int[] facts = {response.readInt(), response.readInt(), response.readInt()};
+            int[] facts = {response.readInt(), response.readInt(), response.readInt(), response.readInt()};
+            IsolatedInputService.pathDisposition(facts[3]);
             require(expected.equals(response.readString()), "isolated input digest");
             return facts;
         } finally {
             request.recycle();
             response.recycle();
+            // Also check after every refusal, so a missing or substituted
+            // sentinel can never be accepted as isolated denial.
+            verifySentinel(sentinel, identity, sentinelBytes);
         }
     }
 }
