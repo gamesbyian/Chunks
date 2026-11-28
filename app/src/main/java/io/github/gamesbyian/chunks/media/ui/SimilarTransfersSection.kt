@@ -83,8 +83,8 @@ fun SimilarTransfersSection(
     defaultLimit: Int = 5
 ) {
     val rows = candidates.mapNotNull { c -> display(c.key)?.let { c to it } }
-    if (rows.isEmpty()) return
     var showAll by rememberSaveable { mutableStateOf(false) }
+    if (rows.isEmpty()) return
     val visible = if (showAll) rows else rows.take(defaultLimit)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Similar transfers", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text,

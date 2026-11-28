@@ -45,14 +45,93 @@ class TransferMediaControllerTest {
         .on("/shows/57926/episodebynumber", status = 404)
         .onBytes("static.tvmaze.com", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
 
-    private fun controller(httpOverride: MediaHttp = http, artDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Unconfined): TransferMediaController {
+    private fun controller(httpOverride: MediaHttp = http,
+                           artDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Unconfined,
+                           assignmentStore: (() -> TransferMediaAssignmentStore)? = null): TransferMediaController {
         val tv = TvMazeProvider()
         val service = MediaEnrichmentService(listOf(tv), httpOverride, FileMediaQueryCache(File(dir, "q.json")), { clock.now }, clock::sleep)
         return TransferMediaController(service,
             ArtworkRepository(httpOverride, ArtworkDiskCache(File(dir, "art")), hostPolicyFor = { tv.info.artworkHostPolicy }, memoryBytes = 4_000_000),
-            { FileTransferMediaAssignmentStore(File(dir, "assign.json")) }, { settings }, { MediaNetworkState(true, false) },
+            assignmentStore ?: { FileTransferMediaAssignmentStore(File(dir, "assign.json")) },
+            { settings }, { MediaNetworkState(true, false) },
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, artDispatcher, { clock.now },
             automationStoreFactory = { FileMediaAutomationPreferences(File(dir, "automation.json")) })
+    }
+
+    @Test fun similarUsesPersistedPreferencesAndExactVisibleHashWithoutAnObserver() = kotlinx.coroutines.runBlocking {
+        val source = UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40))
+        val duplicate = UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), source.infoHash)
+        val unrelated = (1..TransferMediaController.MAX_SIMILAR_INVENTORY).map {
+            UnifiedTransferKey.of(source.environment, "%040x".format(it))
+        }
+        val backing = InMemoryTransferMediaAssignmentStore()
+        val reads = mutableListOf<MediaTransferKey>()
+        val counted = object : TransferMediaAssignmentStore by backing {
+            override fun get(key: MediaTransferKey): TransferMediaAssignment? {
+                reads += key
+                return backing.get(key)
+            }
+        }
+        settings = settings.copy(onlineLookupConsent = true, automaticLookup = true,
+            showSimilarTransfers = false, similarSameEnvironmentOnly = true)
+        val c = controller(assignmentStore = { counted })
+        assertFalse(c.presentation.value.showSimilarTransfers)
+        assertTrue(c.presentation.value.similarSameEnvironmentOnly)
+        val visible = listOf(source) + unrelated + duplicate
+        assertTrue(c.similarFor(source, visible).isEmpty())
+        assertTrue(reads.isEmpty())
+
+        settings = settings.copy(showSimilarTransfers = true)
+        c.onSettingsChanged()
+        assertTrue(c.similarFor(source, visible).isEmpty())
+        reads.clear()
+        settings = settings.copy(similarSameEnvironmentOnly = false)
+        c.onSettingsChanged()
+        assertTrue(c.similarFor(source, visible.drop(1)).isEmpty())
+        assertTrue(reads.isEmpty())
+        val begin = System.nanoTime()
+        val exact = c.similarFor(source, visible).single()
+        val elapsed = (System.nanoTime() - begin) / 1_000_000.0
+        assertEquals(duplicate, exact.key)
+        assertEquals(io.github.gamesbyian.chunks.model.MediaRelationKind.SAME_TORRENT, exact.strongestRelation)
+        assertEquals(listOf(MediaTransferKey.of(source)), reads)
+        println("CHUNKS_SIMILAR_QUERY unclassified_5002 elapsed_ms=$elapsed assignment_reads=${reads.size}")
+        assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun similarConfirmedSourceReadsOnlyBoundedAuthorizedAssignments() = kotlinx.coroutines.runBlocking {
+        val source = UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40))
+        val duplicate = UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), source.infoHash)
+        val hidden = UnifiedTransferKey.of(EnvironmentId("rtorrent:locked"), source.infoHash)
+        val others = (1..TransferMediaController.MAX_SIMILAR_INVENTORY).map {
+            UnifiedTransferKey.of(source.environment, "%040x".format(it))
+        }
+        val attr = MediaAttribution("TVmaze", "CC BY-SA 4.0", null)
+        val match = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_EPISODE, "Babylon 5", season = 2, episode = 7, attribution = attr)
+        val backing = InMemoryTransferMediaAssignmentStore()
+        for (key in listOf(source, hidden) + others.take(10)) {
+            backing.put(TransferMediaAssignment(MediaTransferKey.of(key), MediaAssignmentState.CHOSEN_BY_USER, match))
+        }
+        val reads = mutableListOf<MediaTransferKey>()
+        val counted = object : TransferMediaAssignmentStore by backing {
+            override fun get(key: MediaTransferKey): TransferMediaAssignment? {
+                reads += key
+                return backing.get(key)
+            }
+        }
+        val c = controller(assignmentStore = { counted })
+        val begin = System.nanoTime()
+        val result = c.similarFor(source, listOf(source) + others + duplicate)
+        val elapsed = (System.nanoTime() - begin) / 1_000_000.0
+        assertEquals(duplicate, result.first().key)
+        assertTrue(result.none { it.key == hidden })
+        assertEquals(TransferMediaController.MAX_SIMILAR_INVENTORY, reads.size)
+        assertEquals(reads.size, reads.toSet().size)
+        assertFalse(MediaTransferKey.of(hidden) in reads)
+        assertTrue(result.drop(1).any { it.key == others.first() })
+        println("CHUNKS_SIMILAR_QUERY confirmed_5002 elapsed_ms=$elapsed assignment_reads=${reads.size}")
+        assertTrue(http.requests.isEmpty())
     }
 
     @Test fun displayingNeverCallsNetworkAndShowsCategoryArt() {
