@@ -8,6 +8,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -181,10 +183,14 @@ class TransferNotesTest {
             rule.onNodeWithTag("private-transfer-note-input").performScrollTo().performTextInput("Saved privately")
             rule.onNodeWithText("Save private note").performScrollTo().performClick()
             waitText("Private note saved.")
+            rule.onNodeWithText("Private note saved.").performScrollTo()
+            rule.onRoot().captureRoboImage("build/chunks-visual/details-private-note-saved-412x1200.png")
             assertEquals("Saved privately", TransferNotesStore(context).read(remote, hash).text)
             assertEquals("", notes.read(local, hash).text)
             rule.onNodeWithText("Edit private note").performScrollTo().performClick()
             rule.onNodeWithTag("private-transfer-note-input").performScrollTo().performTextInput(" unsaved draft")
+            rule.onNodeWithText("Save private note").performScrollTo()
+            rule.onRoot().captureRoboImage("build/chunks-visual/details-private-note-edit-412x1200.png")
             rule.runOnIdle { selected.value = detail(EnvironmentAvailability.LOCKED) }
             rule.onNodeWithText("Private note").assertDoesNotExist()
             rule.onNodeWithText("Saved privately", substring = true).assertDoesNotExist()
