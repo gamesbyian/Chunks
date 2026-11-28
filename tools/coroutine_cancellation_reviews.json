@@ -530,14 +530,6 @@
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
   "kind": "runCatching",
-  "fingerprint": "bd31c85a64c124bbfdb2c571",
-  "count": 1,
-  "disposition": "SAFE-NONSUSPEND",
-  "reason": "JSONObject(body) only; the suspending request() is outside runCatching."
- },
- {
-  "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/QBittorrentClient.kt",
-  "kind": "runCatching",
   "fingerprint": "cc2055d8f3bf246caed41471",
   "count": 1,
   "disposition": "SAFE-NONSUSPEND",
@@ -578,10 +570,10 @@
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionClient.kt",
   "kind": "broad-catch",
-  "fingerprint": "6751bc83dc3134ec186908d4",
+  "fingerprint": "48c9f5b303851e94a3e3e2e4",
   "count": 1,
   "disposition": "SAFE-NONSUSPEND",
-  "reason": "ExactRpcJson.objectBody / JSONObject(response.body) are plain parsing funs."
+  "reason": "The try performs synchronous JSON parsing and reads the already-built arguments object to choose strict parsing for speed units; the suspending wire exchange is outside it. No cancellation point added."
  },
  {
   "path": "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionClient.kt",
