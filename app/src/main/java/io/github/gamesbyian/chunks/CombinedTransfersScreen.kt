@@ -1843,7 +1843,7 @@ internal fun CombinedTransfersScreen(
         if (findingFiles && fileSelection.isNotEmpty() && !batchRunning && quickRunning == null) {
             item(key = "selected-file-search") {
                 val searchSelection = fileSelection.toSet()
-                val searchScope = query.scope
+                val searchQuery = query
                 CombinedSelectedFileSearch(
                     selected = searchSelection,
                     visible = result.transfers,
@@ -1856,16 +1856,19 @@ internal fun CombinedTransfersScreen(
                     protocolProfiles = protocolProfiles,
                     protocolAllowed = protocolAllowed,
                     protocolOwnerCurrent = protocolOwnerCurrent,
-                    viewWitness = listOf(batchIdentity, searchScope, policyRevision, privacyVisibilityRevision),
+                    viewWitness = listOf(batchIdentity, searchQuery, policyRevision, privacyVisibilityRevision),
                     viewStillCurrent = {
                         findingFiles && !showingBatchTools && !batchRunning && quickRunning == null &&
-                            fileSelection == searchSelection && query.scope == searchScope &&
+                            fileSelection == searchSelection && query == searchQuery &&
                             latestBatchIdentity.value == batchIdentity &&
                             TransferPrivacyPolicyStore.revision == policyRevision &&
                             TransferPrivacyRuntime.lifecycleRevision == privacyRevision &&
                             TransferPrivacyRuntime.visibilityRevision == privacyVisibilityRevision
                     },
                     onOpen = { key ->
+                        // Do not retain private search terms or selection when leaving the search task.
+                        findingFiles = false
+                        fileSelection = emptySet()
                         savedDetailTarget = arrayListOf(key.environment.value, key.infoHash)
                     }
                 )
