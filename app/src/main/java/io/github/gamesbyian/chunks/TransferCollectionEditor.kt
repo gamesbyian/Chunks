@@ -98,6 +98,7 @@ private fun ScopedCollectionEditor(
         memberships = null
         try {
             memberships = withContext(Dispatchers.IO) { store.forTransfer(scope, infoHash) }
+            if (reload > 0) message = "Memberships reloaded. Check the current list before editing."
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (_: RuntimeException) {
