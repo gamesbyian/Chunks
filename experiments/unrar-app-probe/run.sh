@@ -25,6 +25,22 @@ for kind in legacy4 modern4 modern5; do
   done
 done
 grep -F 'CHUNKS_UNRAR_JNI_CORPUS: PASS' "$tmp/result.txt"
+grep -E 'CHUNKS_UNRAR_ISOLATED: private_path=(eacces|eperm|enoent|enotdir) parent_inode_and_bytes=verified accessible_control=verified negative_control=enotdir' "$tmp/result.txt"
+for carrier in tmpfile memfd; do
+  if [[ "$carrier" == memfd ]] && grep -E '^CHUNKS_UNRAR_ISOLATED: memfd=parent_readonly_reopen_(eacces|eperm) seals_and_parent_bytes=verified[[:space:]]*$' "$tmp/result.txt"; then
+    # A classified unavailable alternate carrier is not an installed memfd pass.
+    if grep -F 'CHUNKS_UNRAR_ISOLATED: memfd=verified' "$tmp/result.txt"; then exit 1; fi
+    continue
+  fi
+  sealed=false
+  [[ "$carrier" != memfd ]] || sealed=true
+  grep -E "^CHUNKS_UNRAR_ISOLATED: $carrier readonly_input bytes=[1-9][0-9]* sha256=4cc78dae7289d222afae0c28a1e186c59dba7298cf49e7cfa25ad57230a054f7 distinct_uid=true private_path_denied=true sealed=$sealed write_refused=true[[:space:]]*$" "$tmp/result.txt"
+  for control in wrong_length=refused named_inode=refused repeat=verified; do
+    grep -F "CHUNKS_UNRAR_ISOLATED: $carrier $control" "$tmp/result.txt"
+  done
+  grep -F "CHUNKS_UNRAR_ISOLATED: $carrier=verified" "$tmp/result.txt"
+done
+grep -F 'CHUNKS_UNRAR_ISOLATED: PASS' "$tmp/result.txt"
 grep -E 'CHUNKS_UNRAR_JNI: PASS app_uid=[1-9][0-9]{4,}' "$tmp/result.txt"
 grep -E '^INSTRUMENTATION_CODE: -1[[:space:]]*$' "$tmp/result.txt"
 if grep -E 'CHUNKS_UNRAR_JNI: FAIL|INSTRUMENTATION_FAILED|Process crashed' "$tmp/result.txt"; then exit 1; fi

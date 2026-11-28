@@ -3,7 +3,10 @@
     <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="35" />
     <application android:label="Disposable UnRAR fixture probe"
         android:allowBackup="false" android:debuggable="true"
-        android:extractNativeLibs="true" android:hasCode="true" />
+        android:extractNativeLibs="true" android:hasCode="true">
+        <service android:name=".IsolatedInputService" android:exported="false"
+            android:isolatedProcess="true" />
+    </application>
     <instrumentation android:name=".WitnessInstrumentation"
         android:targetPackage="io.github.gamesbyian.chunks.unrarprobe" />
 </manifest>

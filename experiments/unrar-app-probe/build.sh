@@ -17,8 +17,9 @@ for name in rar3-old.rar rar3-old.r00 rar3-old.r01 rar3-vols.part{1,2,3}.rar rar
   cp "upstream-rarfile-fixtures/test/files/$name" "$work/assets/$name"
 done
 cp upstream-rarfile-fixtures/LICENSE "$work/assets/rarfile-fixtures-LICENSE.txt"
-javac --release 8 -classpath "$platform" -d "$work/classes" experiments/unrar-app-probe/WitnessInstrumentation.java
-"$bt/d8" --min-api 29 --lib "$platform" --output "$work/dex" "$work/classes/io/github/gamesbyian/chunks/unrarprobe/WitnessInstrumentation.class"
+javac --release 8 -classpath "$platform" -d "$work/classes" experiments/unrar-app-probe/*.java
+mapfile -t classes < <(find "$work/classes" -name '*.class' -type f | sort)
+"$bt/d8" --min-api 29 --lib "$platform" --output "$work/dex" "${classes[@]}"
 "$bt/aapt2" link -o "$work/unsigned.apk" -I "$platform" --manifest experiments/unrar-app-probe/AndroidManifest.xml -A "$work/assets"
 cp "$work/dex/classes.dex" "$work/classes.dex"
 (cd "$work" && zip -q -0 unsigned.apk classes.dex lib/x86_64/libchunks_unrar_probe.so lib/arm64-v8a/libchunks_unrar_probe.so)
