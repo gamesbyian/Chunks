@@ -146,6 +146,45 @@ class DigestTests(unittest.TestCase):
                               [v["problem"] for v in d["invalid_reports"]])
                 self.assertNotIn(xml, str(d))
 
+    def test_junit_structure_rejects_fabricated_or_ambiguous_execution(self):
+        variants = (
+            ('<testsuite><testcase/></testsuite>', "JUnitMissingCaseName"),
+            ('<testsuite><testcase name="   "/></testsuite>', "JUnitMissingCaseName"),
+            ('<testsuite><system-out><testcase name="fake"/></system-out></testsuite>',
+             "JUnitUnexpectedCasePlacement"),
+            ('<testsuites><testcase name="fake"/></testsuites>',
+             "JUnitUnexpectedCasePlacement"),
+            ('<testsuite><system-out><testsuite><testcase name="fake"/>'
+             '</testsuite></system-out></testsuite>', "JUnitUnexpectedCasePlacement"),
+            ('<testsuite><testcase name="valid"/><testcase name="bad">'
+             '<skipped/><failure/></testcase></testsuite>', "JUnitAmbiguousCaseOutcome"),
+            ('<testsuite><testcase name="bad"><error/><error/></testcase></testsuite>',
+             "JUnitAmbiguousCaseOutcome"),
+            ('<testsuite><testcase name="bad"><system-out><failure/>'
+             '</system-out></testcase></testsuite>', "JUnitAmbiguousCaseOutcome"),
+        )
+        for xml, problem in variants:
+            with self.subTest(problem=problem, xml=xml):
+                self.path.write_text(xml)
+                d = make_digest([str(self.path)], "success", "unit", self.env)
+                self.assertEqual("harness_report", d["phase"])
+                self.assertFalse(d["evidence_executed"])
+                self.assertTrue(rejects_unverified_green(d, "success", True))
+                self.assertIn(problem, [v["problem"] for v in d["invalid_reports"]])
+                self.assertNotIn(xml, str(d))
+
+    def test_nested_suites_and_parameterized_case_names_remain_valid(self):
+        self.path.write_text(
+            '<testsuites tests="2"><testsuite><testsuite>'
+            '<testcase classname="C" name="test[1]"/>'
+            '<testcase name="named case"><system-out>&lt;testcase/&gt;</system-out>'
+            '</testcase></testsuite></testsuite></testsuites>')
+        d = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertTrue(d["evidence_executed"])
+        self.assertEqual(2, d["junit"]["executed"])
+        self.assertFalse(rejects_unverified_green(d, "success", True))
+        self.assertEqual(2, d["test_identity_count"])
+
     def test_declared_junit_totals_accept_consistent_and_nested_reports(self):
         variants = (
             '<testsuite tests="2" failures="0" errors="0" skipped="1">'
