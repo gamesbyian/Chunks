@@ -12,6 +12,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from verify_native_add_shards import (
     verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS,
     HTTPS_LOCAL_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS, DEDICATED_WORKFLOW_OPT_IN_IDS,
+    REQUIRED_NATIVE_WITNESS_IDS,
 )
 
 
@@ -29,6 +30,9 @@ class ShardedNativeAddTests(unittest.TestCase):
                 {"id_sha256": f"{shard * 181 + index:064x}", "outcome": "passed"}
                 for index in range(181)
             ]
+            if shard == 1:
+                for index, ident in enumerate(sorted(REQUIRED_NATIVE_WITNESS_IDS)):
+                    cases[-1 - index]["id_sha256"] = ident
             data = {
                 "schema_version": 1,
                 "source_sha": self.sha,
@@ -68,6 +72,47 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.assertEqual(2, result["mandatory_real_png_count"])
         self.assertEqual({"one-real-compose.png": [0], "two-real-compose.png": [1]},
                          result["screenshot_shards"])
+
+    def test_exact_native_witnesses_cannot_be_replaced_by_other_passing_cases(self):
+        expected = {
+            hashlib.sha256(("io.github.gamesbyian.chunks." + cls + "\\0" + method).encode()).hexdigest()
+            for cls, method in (
+                ("LocalArchiveInventoryInstrumentedTest", "actualCompleteRarSetCanBeInspectedWhileOtherTorrentPiecesRemainCorrupt"),
+                ("LocalArchiveInventoryInstrumentedTest", "canonicalDetailsInspectsNativeVerifiedVolumeHeadersAndKeepsFilenameGaps"),
+                ("LocalTorrentEngineInstrumentedTest", "nativePieceMapShowsVerifiedPositionsAndRefusesWrongRegistration"),
+            )
+        }
+        self.assertEqual(expected, REQUIRED_NATIVE_WITNESS_IDS)
+        self.assertEqual(3, self.check()["required_native_witnesses_passed"])
+        self.change(1, lambda d: d["test_cases"][-1].update(id_sha256="f" * 64))
+        with self.assertRaisesRegex(ValueError, "required native witness"):
+            self.check()
+
+    def test_required_identities_match_real_junit_receipt_producer(self):
+        # Exercise the actual producer, not another copy of the hash formula.
+        from ci_failure_digest import make_digest
+        import xml.etree.ElementTree as ET
+        suite = ET.Element("testsuite", tests="3", failures="0", errors="0", skipped="0")
+        for cls, method in (
+            ("LocalArchiveInventoryInstrumentedTest", "actualCompleteRarSetCanBeInspectedWhileOtherTorrentPiecesRemainCorrupt"),
+            ("LocalArchiveInventoryInstrumentedTest", "canonicalDetailsInspectsNativeVerifiedVolumeHeadersAndKeepsFilenameGaps"),
+            ("LocalTorrentEngineInstrumentedTest", "nativePieceMapShowsVerifiedPositionsAndRefusesWrongRegistration"),
+        ):
+            ET.SubElement(suite, "testcase", classname="io.github.gamesbyian.chunks." + cls, name=method)
+        path = self.root / "witnesses.xml"
+        ET.ElementTree(suite).write(path, encoding="utf-8")
+        receipt = make_digest([str(path)], "success", "fixture", env={})
+        self.assertEqual(REQUIRED_NATIVE_WITNESS_IDS,
+                         {c["id_sha256"] for c in receipt["test_cases"] if c["outcome"] == "passed"})
+
+    def test_required_native_witness_cannot_use_generic_skip_allowance(self):
+        def skip(d):
+            d["test_cases"][-1]["outcome"] = "skipped"
+            d["junit"]["executed"] -= 1
+            d["junit"]["skipped"] += 1
+        self.change(1, skip)
+        with self.assertRaisesRegex(ValueError, "required native witness"):
+            self.check()
 
     def test_reject_missing_shard(self):
         (self.root / "chunks-native-add-receipt-shard-1" / "digest.json").unlink()
