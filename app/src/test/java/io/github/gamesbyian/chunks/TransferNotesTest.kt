@@ -15,7 +15,10 @@ import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
 import io.github.gamesbyian.chunks.model.UnifiedTransferDetails
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
+import java.security.MessageDigest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,6 +52,33 @@ class TransferNotesTest {
         assertEquals(TransferNotesStore.SaveStatus.VERIFIED,
             second.save(remote, hash, "Original\nSecond line", "").status)
         assertEquals("", TransferNotesStore(context).read(remote, hash))
+    }
+
+    @Test fun corruptNotesAreNotSilentlyClearedOrOverwritten() {
+        val scope = remote + "-corrupt"
+        val prefKey = "note_" + MessageDigest.getInstance("SHA-256")
+            .digest((scope + "\u0000" + hash.uppercase(java.util.Locale.ROOT)).toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        val prefs = context.getSharedPreferences("chunks_private_transfer_notes_v1", android.content.Context.MODE_PRIVATE)
+        val store = TransferNotesStore(context)
+        try {
+            assertTrue(prefs.edit().putInt(prefKey, 9).commit())
+            try {
+                store.read(scope, hash)
+                fail("Malformed note must be unavailable")
+            } catch (_: ClassCastException) {
+                // Expected: wrong type is not an absent note.
+            }
+            try {
+                store.save(scope, hash, "", "Do not replace")
+                fail("Malformed note must not become a writable empty note")
+            } catch (_: ClassCastException) {
+                // Expected: original data is retained.
+            }
+            assertEquals(9, prefs.getInt(prefKey, 0))
+        } finally {
+            prefs.edit().remove(prefKey).commit()
+        }
     }
 
     private fun waitText(text: String) {
