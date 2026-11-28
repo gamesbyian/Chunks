@@ -1,4 +1,4 @@
-// Host-only decoder selection experiment. No Android integration or output writer.
+// Disposable decoder selection experiment. No application integration or output writer.
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
@@ -7,6 +7,10 @@
 #include <vector>
 #include <cstdint>
 #include "dll.hpp"
+#ifdef __ANDROID__
+#include <sys/resource.h>
+#include <unistd.h>
+#endif
 
 struct Witness {
     std::string next;
@@ -50,6 +54,16 @@ static int CALLBACK receive(UINT message, LPARAM user, LPARAM p1, LPARAM p2) {
 
 int main(int argc, char **argv) {
     if (argc != 3) return 2;
+#ifdef __ANDROID__
+    // Android shell subprocess only. Scudo reserves large virtual regions,
+    // so do not use a host RLIMIT_AS ceiling as an Android memory proof.
+    // The decoder's MaxAllocate, output callback and process CPU/file caps
+    // remain separate; production process/resource isolation is unproved.
+    const struct rlimit cpu = {15, 16}, zero = {0, 0};
+    if (setrlimit(RLIMIT_CPU, &cpu) || setrlimit(RLIMIT_FSIZE, &zero) ||
+        setrlimit(RLIMIT_CORE, &zero)) return 2;
+    alarm(18);
+#endif
     const std::string first = std::string(argv[1]) + "/Verified.part1.rar";
     Witness w;
     w.next = std::string(argv[1]) + "/Verified.part2.rar";

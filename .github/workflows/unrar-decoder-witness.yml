@@ -1,4 +1,4 @@
-name: UnRAR decoder qualification (host only)
+name: UnRAR decoder qualification (host and Android probe)
 on:
   pull_request:
     branches: [main]
@@ -46,5 +46,69 @@ jobs:
         with:
           name: unrar-host-receipt-${{ github.run_attempt }}
           path: unrar-receipt.txt
+          retention-days: 14
+          if-no-files-found: warn
+
+  android-probe:
+    needs: decode
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NDK_VERSION: "27.3.13750724"
+      UNRAR_COMMIT: cacdcb8cbe1813b6151e3f92f2ccec7afe4d6a41
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pmachapman/unrar
+          ref: cacdcb8cbe1813b6151e3f92f2ccec7afe4d6a41
+          path: upstream-unrar
+          persist-credentials: false
+      - name: Install pinned NDK if absent
+        run: |
+          set -euo pipefail
+          ndk="$ANDROID_HOME/ndk/$NDK_VERSION"
+          if [ ! -x "$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++" ]; then
+            "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION"
+          fi
+          grep -Fx "Pkg.Revision = $NDK_VERSION" "$ndk/source.properties"
+      - name: Cross-build both supported Android ABIs (API29)
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream-unrar rev-parse HEAD)" = "$UNRAR_COMMIT"
+          bin="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          printf 'CHUNKS_UNRAR_ANDROID: source=%s ndk=%s tree=%s\n' "$UNRAR_COMMIT" "$NDK_VERSION" "$(git rev-parse HEAD^{tree})" | tee unrar-android-receipt.txt
+          for target in x86_64-linux-android aarch64-linux-android; do
+            cxx="$bin/${target}29-clang++"
+            make -C upstream-unrar clean
+            make -C upstream-unrar -j2 lib CXX="$cxx" AR="$bin/llvm-ar" \
+              CXXFLAGS="-O2 -std=c++11 -fPIC -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else" \
+              LDFLAGS="-pthread -static-libstdc++"
+            "$cxx" -std=c++11 -D_UNIX -I upstream-unrar tools/rar_unrar_witness.cpp \
+              upstream-unrar/libunrar.a -pthread -static-libstdc++ -o "$RUNNER_TEMP/unrar-${target}"
+            "$bin/llvm-readelf" -h -d "$RUNNER_TEMP/unrar-${target}" | tee -a unrar-android-receipt.txt
+            sha256sum "$RUNNER_TEMP/unrar-${target}" | tee -a unrar-android-receipt.txt
+          done
+      - name: Enable KVM for disposable emulator
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Actual Android callback output and six refusal cases (x86_64)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash -o pipefail -c 'timeout 150s python3 tools/rar_unrar_witness.py app/src/androidTest/assets/rar-volume-review "$RUNNER_TEMP/unrar-x86_64-linux-android" --android 2>&1 | tee -a unrar-android-receipt.txt'
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unrar-android-probe-${{ github.run_attempt }}
+          path: unrar-android-receipt.txt
           retention-days: 14
           if-no-files-found: warn

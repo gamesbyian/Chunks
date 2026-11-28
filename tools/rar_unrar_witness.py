@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Host-only synthetic fixture probe, never a user-data extraction path."""
+"""Disposable host/Android-shell synthetic fixture probe, not a user-data extraction path."""
 import argparse
 import hashlib
 from pathlib import Path
 import resource
+import re
+import shlex
 import subprocess
 import tempfile
 
@@ -21,7 +23,44 @@ def limits():
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 
 
-def main(root, program):
+def adb(*args, timeout=20, check=True):
+    return subprocess.run(["adb", *args], capture_output=True, timeout=timeout, check=check)
+
+
+def shell(*args, check=True, timeout=20):
+    # No PTY: the callback writes binary bytes, and shell v2 preserves exit status.
+    return adb("shell", "-T", shlex.join(args), check=check, timeout=timeout)
+
+
+def run_android(program, directory, budget, expected_files):
+    remote = shell("mktemp", "-d", "/data/local/tmp/chunks-unrar-XXXXXXXX").stdout.decode("ascii").strip()
+    if not re.fullmatch(r"/data/local/tmp/chunks-unrar-[A-Za-z0-9]{8}", remote):
+        raise RuntimeError("unexpected disposable remote root")
+    try:
+        executable = remote + "/witness"
+        adb("push", str(program.resolve()), executable)
+        shell("chmod", "700", executable)
+        for name in expected_files:
+            adb("push", str(directory / name), remote + "/" + name)
+        expected = sorted(["witness", *expected_files])
+        if sorted(shell("ls", "-1A", remote).stdout.decode("ascii").splitlines()) != expected:
+            raise RuntimeError("unexpected staged Android fixture inventory")
+        binary = shell("cat", executable).stdout
+        if hashlib.sha256(binary).digest() != hashlib.sha256(program.read_bytes()).digest():
+            raise RuntimeError("staged Android executable differs")
+        result = shell(executable, remote, str(budget), check=False, timeout=22)
+        if sorted(shell("ls", "-1A", remote).stdout.decode("ascii").splitlines()) != expected:
+            raise RuntimeError("decoder produced unexpected Android files")
+        if shell("cat", executable).stdout != binary or any(
+                shell("cat", remote + "/" + name).stdout != data for name, data in expected_files.items()):
+            raise RuntimeError("decoder modified staged Android inputs")
+        return result
+    finally:
+        # Only the verified mktemp root, never a caller-supplied path.
+        shell("rm", "-rf", remote)
+
+
+def main(root, program, android=False):
     volumes = [(root / f"Verified.part{i}.rar").read_bytes() for i in (1, 2)]
     if tuple(hashlib.sha256(v).hexdigest() for v in volumes) != INPUT_HASHES:
         raise RuntimeError("incorrect fixture bytes")
@@ -42,9 +81,10 @@ def main(root, program):
             expected_files = {f"Verified.part{i}.rar": v for i, v in enumerate(inputs, 1)}
             for name, data in expected_files.items():
                 (directory / name).write_bytes(data)
-            result = subprocess.run([str(program.resolve()), str(directory), str(budget)],
-                                    cwd=directory, capture_output=True, timeout=20,
-                                    preexec_fn=limits)
+            result = (run_android(program, directory, budget, expected_files) if android else
+                      subprocess.run([str(program.resolve()), str(directory), str(budget)],
+                                     cwd=directory, capture_output=True, timeout=20,
+                                     preexec_fn=limits))
             if {p.name: p.read_bytes() for p in directory.iterdir()} != expected_files:
                 raise RuntimeError("decoder modified staged inputs or produced unexpected files")
             if label == "positive":
@@ -56,12 +96,13 @@ def main(root, program):
                 if result.returncode != 3 or result.stdout:
                     raise RuntimeError(f"{label} did not refuse cleanly: {result.returncode} {result.stderr[:500]!r}")
                 print(f"CHUNKS_UNRAR: {label}=refused", flush=True)
-    print("CHUNKS_UNRAR: PASS", flush=True)
+    print("CHUNKS_UNRAR: PASS transport=" + ("android-shell" if android else "host"), flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("fixture_root", type=Path)
     parser.add_argument("program", type=Path)
+    parser.add_argument("--android", action="store_true")
     args = parser.parse_args()
-    main(args.fixture_root, args.program)
+    main(args.fixture_root, args.program, args.android)
