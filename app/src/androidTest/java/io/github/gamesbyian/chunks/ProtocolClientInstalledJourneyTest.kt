@@ -362,6 +362,16 @@ class ProtocolClientInstalledJourneyTest {
             val select = hasContentDescription("Select $name on", substring = true)
             scrollToNode(select)
             rule.onAllNodes(select).onFirst().performClick()
+            val transferFilter = hasTestTag(ChunksSemantics.TRANSFERS_SEARCH)
+            scrollToNode(transferFilter)
+            rule.onNode(transferFilter).performTextReplacement("no-matching-fixture-${hash.take(12)}")
+            val hidden = hasText("Some selected transfers are hidden.", substring = true)
+            waitFor("hidden selection denies file search") {
+                runCatching { scrollToNode(hidden); true }.getOrDefault(false)
+            }
+            assertTrue("Hidden selection cannot start file metadata reads", !visible("Search selected files"))
+            scrollToNode(transferFilter)
+            rule.onNode(transferFilter).performTextReplacement("")
             val disclosure = hasText("Find files across selected transfers")
             scrollToNode(disclosure)
             rule.onNode(disclosure).performClick()
@@ -376,15 +386,11 @@ class ProtocolClientInstalledJourneyTest {
                 !visible("Start selected") && !visible("Stop selected"))
             assertEquals("Read-only search leaves fixture registered and stopped", ClientRunState.STOPPED,
                 runBlocking { independentRead(hash) }?.runState)
-            clickOnce("transfers-find-files", "Done finding files")
-            assertTrue("Leaving search disposes file results", !visible("Open transfer details"))
+            val openResult = hasText("Open transfer details")
+            scrollToNode(openResult)
+            rule.onNode(openResult).performClick()
+            waitFor("exact Details from file result") { visible(name) && !visible("Open transfer details") }
             stage("selected-file-search-live-exact-read-only")
-
-            val details = hasContentDescription("Details for $name", substring = true)
-            waitFor("Details control") {
-                runCatching { scrollToNode(details); true }.getOrDefault(false)
-            }
-            rule.onAllNodes(details).onFirst().performClick()
             stage("details-open")
 
             clickOnce(ChunksSemantics.PROTOCOL_START_STOP, "Start", 60_000)
